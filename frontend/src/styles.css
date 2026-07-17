@@ -1,0 +1,27 @@
+@import "tailwindcss";
+@import "@fontsource/poppins/latin-400.css";
+@import "@fontsource/poppins/latin-600.css";
+@import "@fontsource/inter/latin-400.css";
+@import "@fontsource/inter/latin-500.css";
+@import "@fontsource/ibm-plex-mono/latin-400.css";
+
+@theme {
+  --color-ink: #121212;
+  --color-parchment: #f1ebdd;
+  --color-ivory: #fbf9f4;
+  --color-sage: #6b8f71;
+  --color-bronze: #b08d57;
+  --color-line: #e4dcc9;
+  --color-saltup: #03b3ac;
+
+  --font-heading: "Poppins", sans-serif;
+  --font-body: "Inter", sans-serif;
+  --font-mono: "IBM Plex Mono", monospace;
+}
+
+body {
+  margin: 0;
+  background-color: var(--color-ivory);
+  color: var(--color-ink);
+  font-family: var(--font-body);
+}
