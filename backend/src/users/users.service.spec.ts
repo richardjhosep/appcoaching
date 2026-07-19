@@ -247,7 +247,28 @@ describe('UsersService', () => {
       const users = await service.findAll();
 
       expect(users).toEqual([{ id: 'u1', email: 'a@example.com' }]);
-      expect(repo.find).toHaveBeenCalledWith({ order: { email: 'ASC' } });
+      expect(repo.find).toHaveBeenCalledWith({
+        order: { email: 'ASC' },
+        relations: { empresa: true },
+      });
+    });
+  });
+
+  describe('setActivo', () => {
+    it('throws NotFoundException when the user does not exist', async () => {
+      repo.findOne.mockResolvedValue(null);
+
+      await expect(service.setActivo('missing', false)).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('updates isActive and saves', async () => {
+      repo.findOne.mockResolvedValue({ id: 'u1', isActive: true });
+
+      const user = await service.setActivo('u1', false);
+
+      expect(user.isActive).toBe(false);
     });
   });
 });

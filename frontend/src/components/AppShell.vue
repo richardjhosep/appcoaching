@@ -31,6 +31,7 @@ const coachNav: NavItem[] = [
   { to: '/coach/legal', label: 'Legal', icon: 'legal' },
   { to: '/coach/auditoria', label: 'Auditoría', icon: 'auditoria' },
   { to: '/coach/comercial', label: 'Comercial', icon: 'comercial' },
+  { to: '/coach/empresas', label: 'Empresas', icon: 'empresas' },
   { to: '/coach/administracion', label: 'Administración', icon: 'administracion' },
 ]
 

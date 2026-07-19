@@ -109,6 +109,16 @@ export class CoacheesService {
     return this.coachees.save(coachee);
   }
 
+  async setActivo(id: string, activo: boolean): Promise<Coachee> {
+    const coachee = await this.coachees.findOne({ where: { id } });
+    if (!coachee) {
+      throw new NotFoundException('Coachee not found');
+    }
+    coachee.activo = activo;
+    await this.users.setActivo(coachee.userId, activo);
+    return this.coachees.save(coachee);
+  }
+
   async setConsentimiento(id: string, informado: boolean): Promise<Coachee> {
     const coachee = await this.coachees.findOne({ where: { id } });
     if (!coachee) {

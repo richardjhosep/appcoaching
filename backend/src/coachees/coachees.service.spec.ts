@@ -18,7 +18,7 @@ describe('CoacheesService', () => {
     save: jest.Mock<Promise<PartialCoachee>, [PartialCoachee]>;
   };
   let empresas: { exists: jest.Mock<Promise<boolean>, [string]> };
-  let users: { createUser: jest.Mock };
+  let users: { createUser: jest.Mock; setActivo: jest.Mock };
 
   const buildActor = (
     role: Role,
@@ -45,6 +45,7 @@ describe('CoacheesService', () => {
         user: { id: 'user-1' },
         temporaryPassword: 'temp-pass',
       }),
+      setActivo: jest.fn(),
     };
     service = new CoacheesService(
       repo as unknown as Repository<Coachee>,
@@ -208,6 +209,29 @@ describe('CoacheesService', () => {
       repo.findOne.mockResolvedValue(null);
 
       await expect(service.setConsentimiento('missing', true)).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+  });
+
+  describe('setActivo', () => {
+    it('deactivates the coachee and its linked user account', async () => {
+      repo.findOne.mockResolvedValue({
+        id: 'c1',
+        userId: 'user-1',
+        activo: true,
+      });
+
+      const updated = await service.setActivo('c1', false);
+
+      expect(updated.activo).toBe(false);
+      expect(users.setActivo).toHaveBeenCalledWith('user-1', false);
+    });
+
+    it('throws NotFoundException when the coachee does not exist', async () => {
+      repo.findOne.mockResolvedValue(null);
+
+      await expect(service.setActivo('missing', false)).rejects.toThrow(
         NotFoundException,
       );
     });

@@ -51,6 +51,9 @@ export class Coachee {
   @Column({ name: 'area_gerencia', type: 'varchar', nullable: true })
   areaGerencia: string | null;
 
+  @Column({ type: 'boolean', default: true })
+  activo: boolean;
+
   @Column({ name: 'consentimiento_informado', type: 'boolean', default: false })
   consentimientoInformado: boolean;
 

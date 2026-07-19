@@ -685,3 +685,37 @@ Igual que en el Sprint 13, `npm install`/`npx playwright` se cuelgan indefinidam
 ## Revisión
 
 Sprint 14 completo — cierre del plan de `docs/jira-plan.md`. El hallazgo más significativo no estaba en ninguna historia escrita: 13 sprints de verificación habían sembrado datos siempre vía `curl`, ocultando que jamás existió una UI real para las operaciones más básicas de alta (empresas, coachees, sesiones). Se resolvió con la solución más simple y correcta — exponer en el frontend los endpoints que el Coach ya podía usar desde el backend — en vez de construir un rol "superadmin" paralelo y redundante que el usuario pidió inicialmente sin conocer aún esta causa raíz. El resto de las historias de hardening (backups, puertos, validación, onboarding, densidad celular, e2e/CI) se completaron y verificaron con la misma rigurosidad de siempre, con dos bugs reales encontrados y corregidos en el camino (validación de teléfono demasiado estricta, error de tipos preexistente). Única brecha real: la verificación visual con Playwright, bloqueada por una restricción de red de este sandbox — mitigada construyendo una suite real y verificándola exhaustivamente por vías alternativas (tsc, YAML parsing, revisión manual contra el markup real), lista para correr en CI sin intervención adicional. Con este sprint se cierran las 14 épicas planificadas para el MVP de Coach Fernando Ramos.
+
+---
+
+# Mantenedor de Empresas + activo/inactivo (coachees y usuarios) — post-cierre, 2026-07-19
+
+## Contexto
+
+Iteración post-Sprint-14 (fuera de `docs/jira-plan.md`): reemplazar el alta simple de `AdministracionView` por un patrón de "mantenedor" completo (buscar, filtrar por estado, paginar, crear/editar en modal, activar/desactivar) empezando por Empresas, y extender el activar/desactivar a Coachees y a Cuentas de usuario a nivel de backend. Trabajo iniciado en una sesión anterior cuyo contexto de conversación fue resumido; se retomó a partir del estado real del working tree (`git status`/`git diff`), no de `tasks/todo.md` (que no tenía ninguna entrada de este trabajo todavía).
+
+## Hallazgo al retomar
+
+- Backend completo y con tests (unitarios + e2e) para `Coachee.activo` (`PATCH /coachees/:id/estado`, desactivar el coachee desactiva también su cuenta de login) y `User.isActive` (`PATCH /users/:id/estado`, con registro de auditoría `USER_ACTIVADO`/`USER_DESACTIVADO`).
+- Componentes compartidos nuevos (`AppModal.vue` con `Teleport to="body"`, `Pagination.vue`, `StatusToggle.vue`) y `lib/notify.ts` (wrapper de SweetAlert2 para confirmaciones/toasts) ya construidos.
+- `views/coach/EmpresasView.vue` (mantenedor completo: búsqueda, filtro por estado, paginación, modal de alta/edición, activar/desactivar con confirmación) y su spec ya escritos.
+- **Pieza faltante que impedía verificar nada en el navegador**: `EmpresasView.vue` nunca se conectó a `router/index.ts` ni a la navegación de `AppShell.vue` — quedaba huérfana, inalcanzable desde la UI.
+- La UI de activar/desactivar para Coachees y Cuentas de usuario (dentro de `AdministracionView.vue`, que ya lista ambas) todavía no se construyó — el backend y el cliente API (`setCoacheeActivo`/`setUserActivo`) existen pero ningún componente los invoca todavía.
+
+## Pasos de ejecución
+
+- [x] Aislar el trabajo en un worktree (`git stash` de todo el estado pendiente en el checkout compartido → `EnterWorktree` → `git stash pop` dentro del worktree, para no perder el WIP no commiteado).
+- [x] Conectar `EmpresasView.vue`: ruta `/coach/empresas` en `router/index.ts` (antes de `/coach/administracion`), entrada de nav "Empresas" en `AppShell.vue` con ícono nuevo (`empresas`) en `NavIcon.vue`.
+- [x] Corregir 2 tests reales rotos en `EmpresasView.spec.ts`: `wrapper.find('form')`/`setValue` fallaban con "Cannot call ... on an empty DOMWrapper" porque `AppModal` usa `<Teleport to="body">` y Vue Test Utils no busca dentro de contenido teletransportado por defecto — primer uso de `Teleport` en este proyecto, sin convención de test previa. Corregido consultando `new DOMWrapper(document.body)` en vez de `wrapper` para los elementos dentro del modal.
+- [x] Se dejó `AdministracionView.vue` intacta (su bloque simple de alta de Empresas queda duplicado con el nuevo mantenedor) — decisión deliberada para no arriesgar su suite de tests existente sin confirmación explícita de que debe reemplazarse; queda anotado como pendiente de decisión.
+
+## Verificación
+
+- Backend: `npm run lint` (limpio), `npm test` → **164/164** tests.
+- Frontend: `npm run lint` (limpio), `npm test` (vitest) → **40/40** tests (los 2 antes rotos, ahora corregidos), `npm run build` sin errores de tipos.
+- `docker compose -p appcoaching up --build -d` (reconstruye backend+frontend reusando el proyecto/volúmenes ya existentes) → `GET /api/health` 200, migración `AddCoacheeActivo` ya aplicada ("No migrations are pending").
+- **Verificación real en navegador** (Chrome headless vía CDP crudo — Playwright sigue sin poder instalarse en este sandbox, ver limitación documentada en Sprints 13-14): login de coach → nav lateral muestra "Empresas" → `/coach/empresas` carga el mantenedor con las 8 empresas reales de la base → "+ Nueva Empresa" abre el modal (antes invisible al test por el bug de Teleport, confirmado aquí que sí renderiza en el DOM real) → crear una empresa de prueba la agrega a la lista → toggle de estado dispara el diálogo de confirmación (SweetAlert2) → confirmar muestra el toast "Empresa desactivada" y el toggle queda en gris. Capturas de pantalla tomadas en cada paso. Dato de prueba (`Empresa CDP Test`) borrado de la base al terminar; stack bajado con `docker compose down`.
+
+## Revisión
+
+Se destrabó una feature que estaba 90% construida pero 0% verificable por un solo enlace faltante (ruta + nav). El hallazgo de mayor valor fue metodológico, no de producto: el primer intento de test del modal fallaba silenciosamente por `Teleport`, un patrón nuevo en este código base sin convención de prueba todavía — la solución (`DOMWrapper(document.body)`) queda como precedente para cualquier futuro componente que use `Teleport`. Pendiente real para la próxima sesión: (1) decidir si `AdministracionView.vue` se recorta para no duplicar la gestión de Empresas, (2) construir la UI de activar/desactivar para Coachees y Cuentas de usuario (el backend ya está listo y probado, solo falta el `StatusToggle` en la lista correspondiente), y (3) considerar mantenedores dedicados equivalentes a `EmpresasView` para Coachees y Usuarios si el patrón se valida como el nuevo estándar de la aplicación.

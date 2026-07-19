@@ -69,6 +69,15 @@ defineProps<{ name: string }>()
         rx="1.5"
       /><path d="M8 8V6a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 13h18" />
     </template>
+    <template v-else-if="name === 'empresas'">
+      <rect
+        x="4"
+        y="3"
+        width="12"
+        height="18"
+        rx="1"
+      /><path d="M9 8h2M9 12h2M9 16h2M16 11h4v10h-4z" />
+    </template>
     <template v-else-if="name === 'administracion'">
       <circle
         cx="12"

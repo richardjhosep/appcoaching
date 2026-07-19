@@ -7,8 +7,10 @@ export interface UserAccount {
   email: string
   role: Role
   empresaId: string | null
+  empresa?: { id: string; nombre: string } | null
   mustChangePassword: boolean
   isActive: boolean
+  createdAt?: string
 }
 
 export interface CreateUserResult {
@@ -26,6 +28,13 @@ export function createEmpresaUser(email: string, empresaId: string): Promise<Cre
   return apiRequest<CreateUserResult>('/users', {
     method: 'POST',
     body: { email, role: 'empresa', empresaId },
+  })
+}
+
+export function setUserActivo(id: string, isActive: boolean): Promise<UserAccount> {
+  return apiRequest<UserAccount>(`/users/${id}/estado`, {
+    method: 'PATCH',
+    body: { isActive },
   })
 }
 
