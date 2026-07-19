@@ -139,19 +139,24 @@ describe('Satisfacción y gestión comercial (e2e)', () => {
       .get('/satisfaccion/encuestas/me')
       .set('Authorization', auth(empresaToken))
       .expect(200);
-    expect((misEncuestas.body as EncuestaBody[])).toHaveLength(1);
+    expect(misEncuestas.body as EncuestaBody[]).toHaveLength(1);
 
     const encuestasDesdeCoach = await request(server)
       .get(`/satisfaccion/encuestas/${empresaId}`)
       .set('Authorization', auth(coachToken))
       .expect(200);
-    expect((encuestasDesdeCoach.body as EncuestaBody[])[0].calificacion).toBe(5);
+    expect((encuestasDesdeCoach.body as EncuestaBody[])[0].calificacion).toBe(
+      5,
+    );
 
     // --- Solicitud de nuevo proceso (empresa) ---
     const solicitudCreada = await request(server)
       .post('/satisfaccion/solicitudes')
       .set('Authorization', auth(empresaToken))
-      .send({ nombreSugerido: 'Nuevo Coachee Propuesto', mensaje: 'Necesitamos apoyo' })
+      .send({
+        nombreSugerido: 'Nuevo Coachee Propuesto',
+        mensaje: 'Necesitamos apoyo',
+      })
       .expect(201);
     const solicitudId = (solicitudCreada.body as SolicitudBody).id;
     expect((solicitudCreada.body as SolicitudBody).estado).toBe('pendiente');
@@ -161,7 +166,9 @@ describe('Satisfacción y gestión comercial (e2e)', () => {
       .set('Authorization', auth(coachToken))
       .expect(200);
     expect(
-      (solicitudesPendientes.body as SolicitudBody[]).some((s) => s.id === solicitudId),
+      (solicitudesPendientes.body as SolicitudBody[]).some(
+        (s) => s.id === solicitudId,
+      ),
     ).toBe(true);
 
     await request(server)
@@ -232,7 +239,9 @@ describe('Satisfacción y gestión comercial (e2e)', () => {
       .get('/ciclos/cerrados')
       .set('Authorization', auth(coachToken))
       .expect(200);
-    expect((cerrados.body as CicloBody[]).some((c) => c.id === cicloId)).toBe(true);
+    expect((cerrados.body as CicloBody[]).some((c) => c.id === cicloId)).toBe(
+      true,
+    );
 
     // Con el ciclo anterior cerrado, se puede abrir uno nuevo para el mismo coachee
     // (la propia acción de "abrir nuevo proceso con [nombre]").
