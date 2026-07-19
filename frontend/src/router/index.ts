@@ -115,9 +115,21 @@ const routes: RouteRecordRaw[] = [
     meta: { roles: ['coach'] },
   },
   {
-    path: '/coach/administracion',
-    name: 'coach-administracion',
-    component: () => import('../views/coach/AdministracionView.vue'),
+    path: '/coach/empresas',
+    name: 'coach-empresas',
+    component: () => import('../views/coach/EmpresasView.vue'),
+    meta: { roles: ['coach'] },
+  },
+  {
+    path: '/coach/coachees',
+    name: 'coach-coachees',
+    component: () => import('../views/coach/CoacheesView.vue'),
+    meta: { roles: ['coach'] },
+  },
+  {
+    path: '/coach/usuarios',
+    name: 'coach-usuarios',
+    component: () => import('../views/coach/UsuariosView.vue'),
     meta: { roles: ['coach'] },
   },
   {

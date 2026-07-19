@@ -4,32 +4,44 @@ import AppShell from '../../components/AppShell.vue'
 import AppModal from '../../components/AppModal.vue'
 import Pagination from '../../components/Pagination.vue'
 import StatusToggle from '../../components/StatusToggle.vue'
-import { createEmpresa, listEmpresas, updateEmpresa, type Empresa } from '../../api/empresas'
+import { createEmpresaUser, listUsers, resetPassword, setUserActivo, type UserAccount } from '../../api/users'
+import { listEmpresas, type Empresa } from '../../api/empresas'
 import { ApiError } from '../../api/client'
-import { notifyError, notifySuccess, confirmDialog } from '../../lib/notify'
+import { notifyError, notifySuccess, confirmDialog, showCredential } from '../../lib/notify'
 
 const PAGE_SIZE = 12
 
 const loading = ref(true)
+const usuarios = ref<UserAccount[]>([])
 const empresas = ref<Empresa[]>([])
 const search = ref('')
+const filtroRol = ref<'' | 'coach' | 'coachee' | 'empresa'>('')
 const filtroEstado = ref<'' | 'activas' | 'inactivas'>('')
 const page = ref(1)
 
 async function load() {
   loading.value = true
-  empresas.value = await listEmpresas()
+  const [u, e] = await Promise.all([listUsers(), listEmpresas()])
+  usuarios.value = u
+  empresas.value = e
   loading.value = false
 }
 
 onMounted(load)
 
+const rolLabels: Record<UserAccount['role'], string> = {
+  coach: 'Coach',
+  coachee: 'Coachee',
+  empresa: 'Empresa',
+}
+
 const filtradas = computed(() => {
   const q = search.value.trim().toLowerCase()
-  return empresas.value.filter((e) => {
-    if (q && !e.nombre.toLowerCase().includes(q)) return false
-    if (filtroEstado.value === 'activas' && !e.isActive) return false
-    if (filtroEstado.value === 'inactivas' && e.isActive) return false
+  return usuarios.value.filter((u) => {
+    if (q && !u.email.toLowerCase().includes(q)) return false
+    if (filtroRol.value && u.role !== filtroRol.value) return false
+    if (filtroEstado.value === 'activas' && !u.isActive) return false
+    if (filtroEstado.value === 'inactivas' && u.isActive) return false
     return true
   })
 })
@@ -41,95 +53,83 @@ const paginadas = computed(() => {
 
 function limpiarFiltros() {
   search.value = ''
+  filtroRol.value = ''
   filtroEstado.value = ''
   page.value = 1
 }
 
-const formatoCLP = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 })
-
-// --- Modal de creación/edición ---
+// --- Modal de creación (cuenta Empresa) ---
 const modalOpen = ref(false)
-const editando = ref<Empresa | null>(null)
 const guardando = ref(false)
-const form = reactive({ nombre: '', tarifaHora: null as number | null, horasContratadas: null as number | null, pagada: false })
-const errors = reactive<{ nombre?: string; tarifaHora?: string }>({})
+const form = reactive({ email: '', empresaId: '' })
+const errors = reactive<{ email?: string; empresaId?: string }>({})
 
 function abrirCrear() {
-  editando.value = null
-  form.nombre = ''
-  form.tarifaHora = null
-  form.horasContratadas = null
-  form.pagada = false
-  errors.nombre = undefined
-  errors.tarifaHora = undefined
-  modalOpen.value = true
-}
-
-function abrirEditar(empresa: Empresa) {
-  editando.value = empresa
-  form.nombre = empresa.nombre
-  form.tarifaHora = empresa.tarifaHora
-  form.horasContratadas = empresa.horasContratadas
-  form.pagada = empresa.pagada
-  errors.nombre = undefined
-  errors.tarifaHora = undefined
+  form.email = ''
+  form.empresaId = ''
+  errors.email = undefined
+  errors.empresaId = undefined
   modalOpen.value = true
 }
 
 function validar(): boolean {
-  errors.nombre = !form.nombre.trim() || form.nombre.trim().length < 2
-    ? 'El nombre debe tener al menos 2 caracteres.'
-    : undefined
-  errors.tarifaHora = form.tarifaHora === null || form.tarifaHora < 0 || !Number.isInteger(form.tarifaHora)
-    ? 'La tarifa por hora es obligatoria y debe ser un entero mayor o igual a 0.'
-    : undefined
-  return !errors.nombre && !errors.tarifaHora
+  errors.email = /.+@.+\..+/.test(form.email.trim()) ? undefined : 'Ingresa un email válido.'
+  errors.empresaId = form.empresaId ? undefined : 'Selecciona una empresa.'
+  return !errors.email && !errors.empresaId
 }
 
 async function guardar() {
   if (!validar()) return
   guardando.value = true
   try {
-    if (editando.value) {
-      await updateEmpresa(editando.value.id, {
-        nombre: form.nombre,
-        tarifaHora: form.tarifaHora!,
-        horasContratadas: form.horasContratadas,
-        pagada: form.pagada,
-      })
-      modalOpen.value = false
-      await load()
-      await notifySuccess('Empresa actualizada', `Los datos de ${form.nombre} se guardaron correctamente.`)
-    } else {
-      await createEmpresa(form.nombre, form.tarifaHora!)
-      modalOpen.value = false
-      await load()
-      await notifySuccess('Empresa creada', `${form.nombre} ya está disponible para asignar coachees.`)
-    }
+    const resultado = await createEmpresaUser(form.email, form.empresaId)
+    modalOpen.value = false
+    await load()
+    await showCredential(resultado.email, resultado.temporaryPassword)
   } catch (err) {
-    await notifyError('No se pudo guardar', err instanceof ApiError ? err.message : 'Ocurrió un error inesperado.')
+    await notifyError('No se pudo crear la cuenta', err instanceof ApiError ? err.message : 'Ocurrió un error inesperado.')
   } finally {
     guardando.value = false
   }
 }
 
-async function toggleActivo(empresa: Empresa) {
-  const activar = !empresa.isActive
+async function toggleActivo(usuario: UserAccount) {
+  const activar = !usuario.isActive
   const confirmado = await confirmDialog({
-    title: activar ? '¿Activar esta empresa?' : '¿Desactivar esta empresa?',
+    title: activar ? '¿Activar esta cuenta?' : '¿Desactivar esta cuenta?',
     text: activar
-      ? `${empresa.nombre} volverá a estar disponible.`
-      : `${empresa.nombre} quedará marcada como inactiva. No se elimina ningún dato.`,
+      ? `${usuario.email} podrá volver a iniciar sesión.`
+      : `${usuario.email} no podrá iniciar sesión mientras esté inactiva.`,
     confirmText: activar ? 'Activar' : 'Desactivar',
     danger: !activar,
   })
   if (!confirmado) return
   try {
-    await updateEmpresa(empresa.id, { isActive: activar })
+    await setUserActivo(usuario.id, activar)
     await load()
-    await notifySuccess(activar ? 'Empresa activada' : 'Empresa desactivada')
+    await notifySuccess(activar ? 'Cuenta activada' : 'Cuenta desactivada')
   } catch (err) {
     await notifyError('No se pudo cambiar el estado', err instanceof ApiError ? err.message : 'Ocurrió un error inesperado.')
+  }
+}
+
+const restableciendo = ref<string | null>(null)
+
+async function restablecer(usuario: UserAccount) {
+  const confirmado = await confirmDialog({
+    title: '¿Restablecer contraseña?',
+    text: `Se generará una nueva contraseña temporal para ${usuario.email}.`,
+    confirmText: 'Restablecer',
+  })
+  if (!confirmado) return
+  restableciendo.value = usuario.id
+  try {
+    const { temporaryPassword } = await resetPassword(usuario.id)
+    await showCredential(usuario.email, temporaryPassword)
+  } catch (err) {
+    await notifyError('No se pudo restablecer la contraseña', err instanceof ApiError ? err.message : 'Ocurrió un error inesperado.')
+  } finally {
+    restableciendo.value = null
   }
 }
 </script>
@@ -139,17 +139,17 @@ async function toggleActivo(empresa: Empresa) {
     <div class="mb-4 flex flex-wrap items-start justify-between gap-3">
       <div>
         <h1 class="font-[family-name:var(--font-heading)] text-xl font-semibold">
-          Mantenedor de Empresas
+          Mantenedor de Usuarios
         </h1>
         <p class="text-sm text-[var(--color-ink)]/60">
-          Gestión y administración de las empresas del sistema.
+          Gestión y administración de las cuentas del sistema.
         </p>
       </div>
       <button
         class="rounded-lg bg-[var(--color-ink)] px-4 py-2 text-sm font-medium text-[var(--color-parchment)]"
         @click="abrirCrear"
       >
-        + Nueva Empresa
+        + Nuevo Usuario
       </button>
     </div>
 
@@ -165,22 +165,40 @@ async function toggleActivo(empresa: Empresa) {
     >
       <div class="flex flex-wrap items-center gap-2">
         <select
+          v-model="filtroRol"
+          class="rounded-lg border border-[var(--color-line)] px-3 py-1.5 text-sm"
+          @change="page = 1"
+        >
+          <option value="">
+            Rol: Todos
+          </option>
+          <option value="coach">
+            Coach
+          </option>
+          <option value="coachee">
+            Coachee
+          </option>
+          <option value="empresa">
+            Empresa
+          </option>
+        </select>
+        <select
           v-model="filtroEstado"
           class="rounded-lg border border-[var(--color-line)] px-3 py-1.5 text-sm"
           @change="page = 1"
         >
           <option value="">
-            Estado: Todas
+            Estado: Todos
           </option>
           <option value="activas">
-            Activas
+            Activos
           </option>
           <option value="inactivas">
-            Inactivas
+            Inactivos
           </option>
         </select>
         <button
-          v-if="filtroEstado || search"
+          v-if="filtroRol || filtroEstado || search"
           class="rounded-lg border border-[var(--color-line)] px-3 py-1.5 text-xs hover:bg-[var(--color-parchment)]/50"
           @click="limpiarFiltros"
         >
@@ -192,7 +210,7 @@ async function toggleActivo(empresa: Empresa) {
       <input
         v-model="search"
         type="search"
-        placeholder="Buscar por nombre…"
+        placeholder="Buscar por email…"
         class="w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
         @input="page = 1"
       >
@@ -202,16 +220,13 @@ async function toggleActivo(empresa: Empresa) {
           <thead>
             <tr class="border-b border-[var(--color-line)] bg-[var(--color-ivory)] text-xs text-[var(--color-ink)]/60">
               <th class="px-4 py-3">
-                Nombre
+                Email
               </th>
               <th class="px-4 py-3">
-                Tarifa/hora
+                Rol
               </th>
               <th class="px-4 py-3">
-                Horas contratadas
-              </th>
-              <th class="px-4 py-3">
-                Pagada
+                Empresa
               </th>
               <th class="px-4 py-3">
                 Estado
@@ -230,44 +245,42 @@ async function toggleActivo(empresa: Empresa) {
               class="border-b border-[var(--color-line)] last:border-0"
             >
               <td
-                colspan="7"
+                colspan="6"
                 class="px-4 py-6 text-center text-sm text-[var(--color-ink)]/50"
               >
                 Sin resultados.
               </td>
             </tr>
             <tr
-              v-for="e in paginadas"
-              :key="e.id"
+              v-for="u in paginadas"
+              :key="u.id"
               class="border-b border-[var(--color-line)] last:border-0"
             >
               <td class="px-4 py-3 font-medium">
-                {{ e.nombre }}
-              </td>
-              <td class="px-4 py-3 font-[family-name:var(--font-mono)] text-xs">
-                {{ formatoCLP.format(e.tarifaHora) }}
+                {{ u.email }}
               </td>
               <td class="px-4 py-3">
-                {{ e.horasContratadas ?? '—' }}
+                {{ rolLabels[u.role] }}
               </td>
-              <td class="px-4 py-3">
-                {{ e.pagada ? 'Sí' : 'No' }}
+              <td class="px-4 py-3 text-[var(--color-ink)]/70">
+                {{ u.empresa?.nombre ?? '—' }}
               </td>
               <td class="px-4 py-3">
                 <StatusToggle
-                  :active="e.isActive"
-                  @toggle="toggleActivo(e)"
+                  :active="u.isActive"
+                  @toggle="toggleActivo(u)"
                 />
               </td>
               <td class="px-4 py-3 text-xs text-[var(--color-ink)]/60">
-                {{ e.createdAt ? new Date(e.createdAt).toLocaleDateString('es-CL') : '—' }}
+                {{ u.createdAt ? new Date(u.createdAt).toLocaleDateString('es-CL') : '—' }}
               </td>
               <td class="px-4 py-3">
                 <button
-                  class="rounded-lg border border-[var(--color-line)] px-2 py-1 text-xs hover:bg-[var(--color-parchment)]/50"
-                  @click="abrirEditar(e)"
+                  :disabled="restableciendo === u.id"
+                  class="rounded-lg border border-[var(--color-line)] px-2 py-1 text-xs hover:bg-[var(--color-parchment)]/50 disabled:opacity-50"
+                  @click="restablecer(u)"
                 >
-                  Editar
+                  Restablecer contraseña
                 </button>
               </td>
             </tr>
@@ -284,7 +297,7 @@ async function toggleActivo(empresa: Empresa) {
 
     <AppModal
       v-if="modalOpen"
-      :title="editando ? 'Editar empresa' : 'Nueva empresa'"
+      title="Nuevo usuario (cuenta Empresa)"
       @close="modalOpen = false"
     >
       <form
@@ -292,56 +305,41 @@ async function toggleActivo(empresa: Empresa) {
         @submit.prevent="guardar"
       >
         <label class="block text-sm">
-          Nombre
+          Email
           <input
-            v-model="form.nombre"
-            type="text"
+            v-model="form.email"
+            type="email"
             class="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
-            :class="errors.nombre ? 'border-[var(--color-bronze)]' : 'border-[var(--color-line)]'"
+            :class="errors.email ? 'border-[var(--color-bronze)]' : 'border-[var(--color-line)]'"
           >
           <span
-            v-if="errors.nombre"
+            v-if="errors.email"
             class="mt-1 block text-xs text-[var(--color-bronze)]"
-          >{{ errors.nombre }}</span>
+          >{{ errors.email }}</span>
         </label>
 
         <label class="block text-sm">
-          Tarifa por hora (CLP)
-          <input
-            v-model.number="form.tarifaHora"
-            type="number"
-            min="0"
+          Empresa
+          <select
+            v-model="form.empresaId"
             class="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
-            :class="errors.tarifaHora ? 'border-[var(--color-bronze)]' : 'border-[var(--color-line)]'"
+            :class="errors.empresaId ? 'border-[var(--color-bronze)]' : 'border-[var(--color-line)]'"
           >
+            <option value="">
+              Selecciona…
+            </option>
+            <option
+              v-for="e in empresas"
+              :key="e.id"
+              :value="e.id"
+            >
+              {{ e.nombre }}
+            </option>
+          </select>
           <span
-            v-if="errors.tarifaHora"
+            v-if="errors.empresaId"
             class="mt-1 block text-xs text-[var(--color-bronze)]"
-          >{{ errors.tarifaHora }}</span>
-        </label>
-
-        <label
-          v-if="editando"
-          class="block text-sm"
-        >
-          Horas contratadas
-          <input
-            v-model.number="form.horasContratadas"
-            type="number"
-            min="0"
-            class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
-          >
-        </label>
-
-        <label
-          v-if="editando"
-          class="flex items-center gap-2 text-sm"
-        >
-          <input
-            v-model="form.pagada"
-            type="checkbox"
-          >
-          Pagada
+          >{{ errors.empresaId }}</span>
         </label>
 
         <div class="flex justify-end gap-2 pt-2">

@@ -73,13 +73,13 @@ function verSeguimiento(coacheeId: string) {
         Todavía no tienes ningún coachee.
       </p>
       <p class="mb-3 text-[var(--color-ink)]/70">
-        Crea tu primera empresa y coachee desde Administración para empezar a usar la plataforma.
+        Crea tu primera empresa y coachee para empezar a usar la plataforma.
       </p>
       <RouterLink
-        to="/coach/administracion"
+        to="/coach/coachees"
         class="inline-block rounded-lg bg-[var(--color-ink)] px-3 py-2 text-xs text-[var(--color-parchment)]"
       >
-        Ir a Administración
+        Ir a Coachees
       </RouterLink>
     </div>
     <div
