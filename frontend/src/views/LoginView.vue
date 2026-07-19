@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { ApiError } from '../api/client'
+import AppLogo from '../components/AppLogo.vue'
 
 const auth = useAuthStore()
 const router = useRouter()
@@ -12,18 +13,12 @@ const password = ref('')
 const error = ref<string | null>(null)
 const loading = ref(false)
 
-function homeFor(role: string): string {
-  if (role === 'coach') return '/coach/planes'
-  if (role === 'coachee') return '/coachee/plan'
-  return '/no-disponible'
-}
-
 async function handleSubmit() {
   error.value = null
   loading.value = true
   try {
     await auth.login(email.value, password.value)
-    await router.push(homeFor(auth.user!.role))
+    await router.push('/')
   } catch (err) {
     error.value = err instanceof ApiError ? err.message : 'No se pudo iniciar sesión.'
   } finally {
@@ -33,56 +28,74 @@ async function handleSubmit() {
 </script>
 
 <template>
-  <div class="flex min-h-screen items-center justify-center bg-[var(--color-ivory)] px-4">
-    <form
-      class="w-full max-w-sm rounded-2xl border border-[var(--color-line)] bg-white p-6 shadow-sm"
-      @submit.prevent="handleSubmit"
-    >
-      <h1
-        class="mb-1 font-[family-name:var(--font-heading)] text-xl font-semibold text-[var(--color-ink)]"
-      >
-        Coach Fernando Ramos
-      </h1>
-      <p class="mb-5 text-sm text-[var(--color-ink)]/70">
-        Ingresa a tu cuenta
-      </p>
+  <div
+    class="flex min-h-screen items-center justify-center px-4"
+    style="background: radial-gradient(circle at 20% 20%, #1c2b20 0%, var(--color-ink) 55%, #0a0a0a 100%);"
+  >
+    <div class="w-full max-w-sm">
+      <div class="mb-6 flex justify-center">
+        <AppLogo
+          :size="40"
+          dark
+        />
+      </div>
 
-      <label class="mb-3 block text-sm">
-        Email
-        <input
-          v-model="email"
-          type="email"
-          required
-          autocomplete="username"
-          class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-sage)]/40"
+      <form
+        class="rounded-2xl border border-white/10 bg-white p-7 shadow-xl shadow-black/20"
+        @submit.prevent="handleSubmit"
+      >
+        <h1
+          class="mb-1 font-[family-name:var(--font-heading)] text-lg font-semibold text-[var(--color-ink)]"
         >
-      </label>
+          ¡Bienvenido de vuelta!
+        </h1>
+        <p class="mb-6 text-sm text-[var(--color-ink)]/60">
+          Ingresa a tu cuenta de Coach Fernando Ramos
+        </p>
 
-      <label class="mb-4 block text-sm">
-        Contraseña
-        <input
-          v-model="password"
-          type="password"
-          required
-          autocomplete="current-password"
-          class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-sage)]/40"
+        <label class="mb-4 block text-sm font-medium text-[var(--color-ink)]/80">
+          Email
+          <input
+            v-model="email"
+            type="email"
+            required
+            autocomplete="username"
+            placeholder="tu@correo.com"
+            class="mt-1.5 w-full rounded-lg border border-[var(--color-line)] bg-[var(--color-ivory)]/60 px-3 py-2.5 text-sm text-[var(--color-ink)] transition-shadow focus:border-[var(--color-sage)] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[var(--color-sage)]/30"
+          >
+        </label>
+
+        <label class="mb-5 block text-sm font-medium text-[var(--color-ink)]/80">
+          Contraseña
+          <input
+            v-model="password"
+            type="password"
+            required
+            autocomplete="current-password"
+            placeholder="••••••••"
+            class="mt-1.5 w-full rounded-lg border border-[var(--color-line)] bg-[var(--color-ivory)]/60 px-3 py-2.5 text-sm text-[var(--color-ink)] transition-shadow focus:border-[var(--color-sage)] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[var(--color-sage)]/30"
+          >
+        </label>
+
+        <p
+          v-if="error"
+          class="mb-4 rounded-lg bg-[var(--color-bronze)]/10 px-3 py-2 text-sm text-[var(--color-bronze)]"
         >
-      </label>
+          {{ error }}
+        </p>
 
-      <p
-        v-if="error"
-        class="mb-3 text-sm text-[var(--color-bronze)]"
-      >
-        {{ error }}
+        <button
+          type="submit"
+          :disabled="loading"
+          class="w-full rounded-lg bg-[var(--color-ink)] px-4 py-2.5 text-sm font-medium text-[var(--color-parchment)] transition-colors hover:bg-[var(--color-ink)]/85 disabled:opacity-60"
+        >
+          {{ loading ? 'Ingresando…' : 'Ingresar' }}
+        </button>
+      </form>
+
+      <p class="mt-6 text-center text-xs text-white/40">
+        CoachOS · Plataforma de acompañamiento
       </p>
-
-      <button
-        type="submit"
-        :disabled="loading"
-        class="w-full rounded-lg bg-[var(--color-ink)] px-4 py-2 text-sm font-medium text-[var(--color-parchment)] transition-colors hover:bg-[var(--color-ink)]/90 disabled:opacity-60"
-      >
-        {{ loading ? 'Ingresando…' : 'Ingresar' }}
-      </button>
-    </form>
+    </div>
   </div>
 </template>

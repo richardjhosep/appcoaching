@@ -13,12 +13,14 @@ import {
   type Logro,
   type PuntoProgreso,
 } from '../../api/seguimiento'
+import { getMisCiclos, type Ciclo } from '../../api/ciclos'
 import { ApiError } from '../../api/client'
 
 const loading = ref(true)
 const avance = ref<number | null>(null)
 const puntos = ref<PuntoProgreso[]>([])
 const logros = ref<Logro[]>([])
+const certificados = ref<Ciclo[]>([])
 const nuevaFecha = ref('')
 const nuevaDescripcion = ref('')
 const diarioContenido = ref('')
@@ -28,16 +30,18 @@ const error = ref<string | null>(null)
 
 async function load() {
   loading.value = true
-  const [a, p, l, d] = await Promise.all([
+  const [a, p, l, d, ciclos] = await Promise.all([
     getMiAvance(),
     getMiLineaProgreso(),
     getMisLogros(),
     getMiDiario(),
+    getMisCiclos(),
   ])
   avance.value = a.avance
   puntos.value = p
   logros.value = l
   diarioContenido.value = d.contenido
+  certificados.value = ciclos.filter((c) => c.fechaCierre && c.resultado)
   loading.value = false
 }
 
@@ -125,6 +129,28 @@ async function guardarDiario() {
           Línea de tiempo (cercanía al objetivo por sesión)
         </h2>
         <ProgresoLineaTiempo :puntos="puntos" />
+      </div>
+
+      <div
+        v-if="certificados.length > 0"
+        class="rounded-2xl border border-[var(--color-line)] bg-white p-4"
+      >
+        <h2 class="mb-3 text-sm font-medium">
+          Certificados
+        </h2>
+        <ul class="space-y-1 text-sm">
+          <li
+            v-for="c in certificados"
+            :key="c.id"
+          >
+            <RouterLink
+              :to="{ name: 'coachee-certificado', params: { cicloId: c.id } }"
+              class="text-[var(--color-sage)] underline"
+            >
+              Certificado — ciclo cerrado el {{ new Date(c.fechaCierre!).toLocaleDateString('es-CL') }}
+            </RouterLink>
+          </li>
+        </ul>
       </div>
 
       <div class="rounded-2xl border border-[var(--color-line)] bg-white p-4">

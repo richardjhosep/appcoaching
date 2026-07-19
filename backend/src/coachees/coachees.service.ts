@@ -52,6 +52,7 @@ export class CoacheesService {
         jefeDirecto: dto.jefeDirecto ?? null,
         objetivoProceso: dto.objetivoProceso ?? null,
         tarifaPropia: dto.tarifaPropia ?? null,
+        areaGerencia: dto.areaGerencia ?? null,
       }),
     );
 
@@ -105,6 +106,16 @@ export class CoacheesService {
       throw new NotFoundException('Coachee not found');
     }
     assignDefined(coachee, dto);
+    return this.coachees.save(coachee);
+  }
+
+  async setConsentimiento(id: string, informado: boolean): Promise<Coachee> {
+    const coachee = await this.coachees.findOne({ where: { id } });
+    if (!coachee) {
+      throw new NotFoundException('Coachee not found');
+    }
+    coachee.consentimientoInformado = informado;
+    coachee.consentimientoFecha = informado ? new Date() : null;
     return this.coachees.save(coachee);
   }
 

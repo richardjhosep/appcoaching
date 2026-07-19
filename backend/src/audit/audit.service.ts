@@ -28,4 +28,15 @@ export class AuditService {
       }),
     );
   }
+
+  find(filtros: { targetId?: string; action?: string }): Promise<AuditLog[]> {
+    const where: Record<string, string> = {};
+    if (filtros.targetId) where.targetId = filtros.targetId;
+    if (filtros.action) where.action = filtros.action;
+    return this.logs.find({
+      where,
+      order: { createdAt: 'DESC' },
+      take: 100,
+    });
+  }
 }

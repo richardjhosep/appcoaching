@@ -32,4 +32,8 @@ export class CreateCoacheeDto {
   @IsInt()
   @Min(0)
   tarifaPropia?: number;
+
+  @IsOptional()
+  @IsString()
+  areaGerencia?: string;
 }

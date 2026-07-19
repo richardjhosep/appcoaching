@@ -17,6 +17,7 @@ import { extname, join } from 'path';
 import { randomUUID } from 'crypto';
 import type { Response } from 'express';
 import { CiclosService } from './ciclos.service';
+import { AuditService } from '../audit/audit.service';
 import { AbrirCicloDto } from './dto/abrir-ciclo.dto';
 import { CerrarCicloDto } from './dto/cerrar-ciclo.dto';
 import { UpdateResumenDto } from './dto/update-resumen.dto';
@@ -36,6 +37,7 @@ export class CiclosController {
   constructor(
     private readonly ciclos: CiclosService,
     private readonly coachees: CoacheesService,
+    private readonly audit: AuditService,
   ) {}
 
   @Roles(Role.COACH)
@@ -138,8 +140,25 @@ export class CiclosController {
 
   @Roles(Role.COACH)
   @Post(':id/cerrar')
-  cerrar(@Param('id') id: string, @Body() dto: CerrarCicloDto) {
-    return this.ciclos.cerrar(id, dto.resultado);
+  async cerrar(
+    @Param('id') id: string,
+    @Body() dto: CerrarCicloDto,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    const ciclo = await this.ciclos.cerrar(id, dto.resultado);
+    await this.audit.record('CICLO_CERRADO', {
+      userId: actor.id,
+      targetType: 'Coachee',
+      targetId: ciclo.coacheeId,
+      metadata: { cicloId: id, resultado: dto.resultado },
+    });
+    return ciclo;
+  }
+
+  @Roles(Role.COACH)
+  @Get('cerrados')
+  cerrados() {
+    return this.ciclos.findAllCerradosConEstado();
   }
 
   @Roles(Role.COACH)

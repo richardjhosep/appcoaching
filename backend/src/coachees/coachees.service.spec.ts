@@ -177,4 +177,39 @@ describe('CoacheesService', () => {
       );
     });
   });
+
+  describe('setConsentimiento', () => {
+    it('sets consentimientoFecha when marking as informado', async () => {
+      repo.findOne.mockResolvedValue({
+        id: 'c1',
+        consentimientoInformado: false,
+      });
+
+      const updated = await service.setConsentimiento('c1', true);
+
+      expect(updated.consentimientoInformado).toBe(true);
+      expect(updated.consentimientoFecha).toBeInstanceOf(Date);
+    });
+
+    it('clears consentimientoFecha when unmarking', async () => {
+      repo.findOne.mockResolvedValue({
+        id: 'c1',
+        consentimientoInformado: true,
+        consentimientoFecha: new Date('2026-01-01'),
+      });
+
+      const updated = await service.setConsentimiento('c1', false);
+
+      expect(updated.consentimientoInformado).toBe(false);
+      expect(updated.consentimientoFecha).toBeNull();
+    });
+
+    it('throws NotFoundException when the coachee does not exist', async () => {
+      repo.findOne.mockResolvedValue(null);
+
+      await expect(service.setConsentimiento('missing', true)).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+  });
 });

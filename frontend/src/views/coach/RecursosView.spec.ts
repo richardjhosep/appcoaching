@@ -39,7 +39,15 @@ describe('RecursosView', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     vi.mocked(listRecursos).mockResolvedValue([recurso])
-    vi.mocked(listCoachees).mockResolvedValue([{ id: 'c1', nombre: 'Coachee Uno' }])
+    vi.mocked(listCoachees).mockResolvedValue([
+      {
+        id: 'c1',
+        nombre: 'Coachee Uno',
+        empresaId: null,
+        consentimientoInformado: false,
+        consentimientoFecha: null,
+      },
+    ])
     vi.mocked(getAsignacionesDeRecurso).mockResolvedValue([])
   })
 

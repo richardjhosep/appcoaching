@@ -20,6 +20,7 @@ export interface Sesion {
   linkVideollamada: string | null
   resumenCompartido: string | null
   notasPrivadas?: string | null
+  asistio?: boolean | null
   postSesion: PostSesion | null
 }
 
@@ -37,6 +38,24 @@ export function getMisSesiones(): Promise<Sesion[]> {
 
 export function getSesionesDeCoachee(coacheeId: string): Promise<Sesion[]> {
   return apiRequest<Sesion[]>(`/sesiones?coacheeId=${coacheeId}`)
+}
+
+export function agendarSesion(
+  coacheeId: string,
+  fechaHora: string,
+  linkVideollamada?: string,
+): Promise<Sesion> {
+  return apiRequest<Sesion>('/sesiones', {
+    method: 'POST',
+    body: { coacheeId, fechaHora, linkVideollamada: linkVideollamada || undefined },
+  })
+}
+
+export function actualizarAsistencia(sesionId: string, asistio: boolean): Promise<Sesion> {
+  return apiRequest<Sesion>(`/sesiones/${sesionId}`, {
+    method: 'PATCH',
+    body: { asistio },
+  })
 }
 
 export function guardarPostSesion(

@@ -20,6 +20,12 @@ export class Empresa {
   @Column({ name: 'is_active', default: true })
   isActive: boolean;
 
+  @Column({ default: false })
+  pagada: boolean;
+
+  @Column({ name: 'horas_contratadas', type: 'integer', nullable: true })
+  horasContratadas: number | null;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

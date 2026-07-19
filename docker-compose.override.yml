@@ -1,0 +1,12 @@
+# Se fusiona automáticamente con docker-compose.yml en desarrollo local
+# (docker compose lo carga solo, sin flags). Expone los puertos internos
+# de postgres/redis al host únicamente para correr migraciones, tests y
+# psql directamente desde la máquina — nunca debe existir en producción.
+services:
+  postgres:
+    ports:
+      - "5432:5432"
+
+  redis:
+    ports:
+      - "6379:6379"

@@ -18,6 +18,10 @@ import { PlanesDesarrolloModule } from './planes-desarrollo/planes-desarrollo.mo
 import { SeguimientoModule } from './seguimiento/seguimiento.module';
 import { RecursosModule } from './recursos/recursos.module';
 import { CiclosModule } from './ciclos/ciclos.module';
+import { NegocioModule } from './negocio/negocio.module';
+import { LegalModule } from './legal/legal.module';
+import { BusquedaModule } from './busqueda/busqueda.module';
+import { SatisfaccionModule } from './satisfaccion/satisfaccion.module';
 
 @Module({
   imports: [
@@ -53,6 +57,10 @@ import { CiclosModule } from './ciclos/ciclos.module';
     SeguimientoModule,
     RecursosModule,
     CiclosModule,
+    NegocioModule,
+    LegalModule,
+    BusquedaModule,
+    SatisfaccionModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

@@ -7,6 +7,7 @@ import { PlanesDesarrolloService } from './planes-desarrollo.service';
 import { PlanesDesarrolloController } from './planes-desarrollo.controller';
 import { CoacheesModule } from '../coachees/coachees.module';
 import { CompetenciasModule } from '../competencias/competencias.module';
+import { AuditModule } from '../audit/audit.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { CompetenciasModule } from '../competencias/competencias.module';
     ]),
     CoacheesModule,
     CompetenciasModule,
+    AuditModule,
   ],
   providers: [PlanesDesarrolloService],
   controllers: [PlanesDesarrolloController],

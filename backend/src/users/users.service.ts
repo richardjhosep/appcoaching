@@ -42,6 +42,10 @@ export class UsersService {
     return this.users.findOne({ where: { id } });
   }
 
+  findAll(): Promise<User[]> {
+    return this.users.find({ order: { email: 'ASC' } });
+  }
+
   hasAnyWithRole(role: Role): Promise<boolean> {
     return this.users.exists({ where: { role } });
   }

@@ -48,6 +48,15 @@ export class Coachee {
   @Column({ name: 'email_contacto', type: 'varchar', nullable: true })
   emailContacto: string | null;
 
+  @Column({ name: 'area_gerencia', type: 'varchar', nullable: true })
+  areaGerencia: string | null;
+
+  @Column({ name: 'consentimiento_informado', type: 'boolean', default: false })
+  consentimientoInformado: boolean;
+
+  @Column({ name: 'consentimiento_fecha', type: 'timestamptz', nullable: true })
+  consentimientoFecha: Date | null;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

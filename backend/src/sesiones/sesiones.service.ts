@@ -121,6 +121,9 @@ export class SesionesService {
     if (dto.notasPrivadas !== undefined) {
       sesion.notasPrivadas = dto.notasPrivadas;
     }
+    if (dto.asistio !== undefined) {
+      sesion.asistio = dto.asistio;
+    }
     return this.sesiones.save(sesion);
   }
 

@@ -1,4 +1,10 @@
-import { IsDateString, IsOptional, IsString } from 'class-validator';
+import {
+  IsBoolean,
+  IsDateString,
+  IsOptional,
+  IsString,
+  IsUrl,
+} from 'class-validator';
 
 export class UpdateSesionDto {
   @IsOptional()
@@ -6,7 +12,7 @@ export class UpdateSesionDto {
   fechaHora?: string;
 
   @IsOptional()
-  @IsString()
+  @IsUrl()
   linkVideollamada?: string;
 
   @IsOptional()
@@ -16,4 +22,8 @@ export class UpdateSesionDto {
   @IsOptional()
   @IsString()
   notasPrivadas?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  asistio?: boolean;
 }

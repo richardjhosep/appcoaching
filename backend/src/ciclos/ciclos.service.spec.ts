@@ -250,4 +250,25 @@ describe('CiclosService', () => {
       ).rejects.toThrow(ForbiddenException);
     });
   });
+
+  describe('findAllCerradosConEstado', () => {
+    it('returns every closed cycle across the platform with its estado attached', async () => {
+      ciclosRepo.find.mockResolvedValue([
+        {
+          id: 'ciclo-1',
+          totalSesiones: 5,
+          fechaCierre: new Date('2026-01-01'),
+          coachee: { nombre: 'Coachee Uno' } as CicloCoaching['coachee'],
+        },
+      ]);
+
+      const cerrados = await service.findAllCerradosConEstado();
+
+      expect(cerrados).toHaveLength(1);
+      expect(cerrados[0].alertaPorVencer).toBe(false);
+      expect(ciclosRepo.find).toHaveBeenCalledWith(
+        expect.objectContaining({ order: { fechaCierre: 'DESC' } }),
+      );
+    });
+  });
 });

@@ -18,6 +18,7 @@ describe('UsersService', () => {
   let service: UsersService;
   let repo: {
     findOne: jest.Mock<Promise<PartialUser | null>, unknown[]>;
+    find: jest.Mock<Promise<PartialUser[]>, unknown[]>;
     exists: jest.Mock;
     create: jest.Mock<PartialUser, [PartialUser]>;
     save: jest.Mock<Promise<PartialUser>, [PartialUser]>;
@@ -29,6 +30,7 @@ describe('UsersService', () => {
   beforeEach(() => {
     repo = {
       findOne: jest.fn<Promise<PartialUser | null>, unknown[]>(),
+      find: jest.fn<Promise<PartialUser[]>, unknown[]>().mockResolvedValue([]),
       exists: jest.fn(),
       create: jest.fn((data: PartialUser) => data),
       save: jest.fn((data: PartialUser) =>
@@ -235,6 +237,17 @@ describe('UsersService', () => {
       expect(await bcrypt.compare(temporaryPassword, saved.passwordHash)).toBe(
         true,
       );
+    });
+  });
+
+  describe('findAll', () => {
+    it('lists users ordered by email', async () => {
+      repo.find.mockResolvedValue([{ id: 'u1', email: 'a@example.com' }]);
+
+      const users = await service.findAll();
+
+      expect(users).toEqual([{ id: 'u1', email: 'a@example.com' }]);
+      expect(repo.find).toHaveBeenCalledWith({ order: { email: 'ASC' } });
     });
   });
 });

@@ -1,4 +1,4 @@
-import { IsDateString, IsOptional, IsString, IsUUID } from 'class-validator';
+import { IsDateString, IsOptional, IsUUID, IsUrl } from 'class-validator';
 
 export class CreateSesionDto {
   @IsUUID()
@@ -8,6 +8,6 @@ export class CreateSesionDto {
   fechaHora: string;
 
   @IsOptional()
-  @IsString()
+  @IsUrl()
   linkVideollamada?: string;
 }

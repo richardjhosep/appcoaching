@@ -10,6 +10,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { PlanesDesarrolloService } from './planes-desarrollo.service';
+import { AuditService } from '../audit/audit.service';
 import { UpdatePlanDto } from './dto/update-plan.dto';
 import { CreateObjetivoDto } from './dto/create-objetivo.dto';
 import { UpdateObjetivoDto } from './dto/update-objetivo.dto';
@@ -27,7 +28,10 @@ import type { AuthenticatedUser } from '../auth/auth.types';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('planes-desarrollo')
 export class PlanesDesarrolloController {
-  constructor(private readonly planes: PlanesDesarrolloService) {}
+  constructor(
+    private readonly planes: PlanesDesarrolloService,
+    private readonly audit: AuditService,
+  ) {}
 
   @Roles(Role.COACHEE)
   @Get('me')
@@ -120,16 +124,33 @@ export class PlanesDesarrolloController {
 
   @Roles(Role.COACH)
   @Post(':coacheeId/aprobar')
-  aprobar(@Param('coacheeId') coacheeId: string) {
-    return this.planes.aprobar(coacheeId);
+  async aprobar(
+    @Param('coacheeId') coacheeId: string,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    const plan = await this.planes.aprobar(coacheeId);
+    await this.audit.record('PLAN_APROBADO', {
+      userId: actor.id,
+      targetType: 'Coachee',
+      targetId: coacheeId,
+    });
+    return plan;
   }
 
   @Roles(Role.COACH)
   @Post(':coacheeId/solicitar-cambios')
-  solicitarCambios(
+  async solicitarCambios(
     @Param('coacheeId') coacheeId: string,
     @Body() dto: SolicitarCambiosDto,
+    @CurrentUser() actor: AuthenticatedUser,
   ) {
-    return this.planes.solicitarCambios(coacheeId, dto.comentario);
+    const plan = await this.planes.solicitarCambios(coacheeId, dto.comentario);
+    await this.audit.record('PLAN_CAMBIOS_SOLICITADOS', {
+      userId: actor.id,
+      targetType: 'Coachee',
+      targetId: coacheeId,
+      metadata: { comentario: dto.comentario },
+    });
+    return plan;
   }
 }

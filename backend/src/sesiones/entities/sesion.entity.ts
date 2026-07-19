@@ -41,6 +41,9 @@ export class Sesion {
   @Column({ name: 'notas_privadas', type: 'text', nullable: true })
   notasPrivadas: string | null;
 
+  @Column({ type: 'boolean', nullable: true })
+  asistio: boolean | null;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

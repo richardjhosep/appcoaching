@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { IsNull, LessThanOrEqual, Repository } from 'typeorm';
+import { IsNull, LessThanOrEqual, Not, Repository } from 'typeorm';
 import { CicloCoaching } from './entities/ciclo-coaching.entity';
 import { Sesion } from '../sesiones/entities/sesion.entity';
 import { AbrirCicloDto } from './dto/abrir-ciclo.dto';
@@ -202,6 +202,23 @@ export class CiclosService {
       where: { coacheeId, fechaCierre: IsNull() },
     });
     return ciclo ? this.attachEstado(ciclo) : null;
+  }
+
+  async findAllAbiertosConEstado(): Promise<CicloConEstado[]> {
+    const ciclos = await this.ciclos.find({
+      where: { fechaCierre: IsNull() },
+      relations: { coachee: true },
+    });
+    return Promise.all(ciclos.map((c) => this.attachEstado(c)));
+  }
+
+  async findAllCerradosConEstado(): Promise<CicloConEstado[]> {
+    const ciclos = await this.ciclos.find({
+      where: { fechaCierre: Not(IsNull()) },
+      relations: { coachee: true },
+      order: { fechaCierre: 'DESC' },
+    });
+    return Promise.all(ciclos.map((c) => this.attachEstado(c)));
   }
 
   private async resolveCoacheeId(actorUserId: string): Promise<string> {

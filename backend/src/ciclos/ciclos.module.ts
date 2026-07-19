@@ -7,6 +7,7 @@ import { CiclosController } from './ciclos.controller';
 import { CoacheesModule } from '../coachees/coachees.module';
 import { PlanesDesarrolloModule } from '../planes-desarrollo/planes-desarrollo.module';
 import { SeguimientoModule } from '../seguimiento/seguimiento.module';
+import { AuditModule } from '../audit/audit.module';
 
 @Module({
   imports: [
@@ -14,8 +15,10 @@ import { SeguimientoModule } from '../seguimiento/seguimiento.module';
     CoacheesModule,
     PlanesDesarrolloModule,
     SeguimientoModule,
+    AuditModule,
   ],
   providers: [CiclosService],
   controllers: [CiclosController],
+  exports: [CiclosService],
 })
 export class CiclosModule {}

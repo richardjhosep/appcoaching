@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Get,
   Param,
   Patch,
   Post,
@@ -48,6 +49,13 @@ export class UsersController {
       role: user.role,
       temporaryPassword,
     };
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.COACH)
+  @Get()
+  findAll() {
+    return this.users.findAll();
   }
 
   @UseGuards(JwtAuthGuard)

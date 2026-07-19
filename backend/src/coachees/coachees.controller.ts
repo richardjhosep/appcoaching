@@ -11,6 +11,7 @@ import { CoacheesService } from './coachees.service';
 import { CreateCoacheeDto } from './dto/create-coachee.dto';
 import { UpdateCoacheeDto } from './dto/update-coachee.dto';
 import { UpdateContactoDto } from './dto/update-contacto.dto';
+import { SetConsentimientoDto } from './dto/set-consentimiento.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -60,5 +61,14 @@ export class CoacheesController {
   @Patch(':id')
   update(@Param('id') id: string, @Body() dto: UpdateCoacheeDto) {
     return this.coachees.update(id, dto);
+  }
+
+  @Roles(Role.COACH)
+  @Patch(':id/consentimiento')
+  setConsentimiento(
+    @Param('id') id: string,
+    @Body() dto: SetConsentimientoDto,
+  ) {
+    return this.coachees.setConsentimiento(id, dto.informado);
   }
 }
