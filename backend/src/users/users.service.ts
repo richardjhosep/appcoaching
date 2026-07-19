@@ -43,7 +43,19 @@ export class UsersService {
   }
 
   findAll(): Promise<User[]> {
-    return this.users.find({ order: { email: 'ASC' } });
+    return this.users.find({
+      order: { email: 'ASC' },
+      relations: { empresa: true },
+    });
+  }
+
+  async setActivo(id: string, isActive: boolean): Promise<User> {
+    const user = await this.findById(id);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+    user.isActive = isActive;
+    return this.users.save(user);
   }
 
   hasAnyWithRole(role: Role): Promise<boolean> {
