@@ -149,7 +149,7 @@ async function handleLogout() {
     </aside>
 
     <main class="sm:pl-64">
-      <div class="mx-auto max-w-3xl px-4 py-6 sm:px-8 sm:py-8">
+      <div class="max-w-[1600px] px-4 py-6 sm:px-8 sm:py-8">
         <slot />
       </div>
     </main>
