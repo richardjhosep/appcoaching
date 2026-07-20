@@ -12,6 +12,7 @@ export interface CurrentUser {
   email: string
   role: Role
   empresaId: string | null
+  nombre: string | null
 }
 
 export function login(email: string, password: string): Promise<TokenPair> {

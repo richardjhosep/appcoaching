@@ -7,6 +7,7 @@ import { Role } from './enums/role.enum';
 import { UsersService } from '../users/users.service';
 import { RedisService } from '../redis/redis.service';
 import { AuditService } from '../audit/audit.service';
+import { CoacheesService } from '../coachees/coachees.service';
 
 describe('AuthService', () => {
   let service: AuthService;
@@ -15,6 +16,7 @@ describe('AuthService', () => {
   let redis: { setWithTtl: jest.Mock; get: jest.Mock; delete: jest.Mock };
   let audit: { record: jest.Mock };
   let config: { get: jest.Mock };
+  let coachees: { findByUserId: jest.Mock };
 
   const CONFIG_VALUES: Record<string, string> = {
     'jwt.accessSecret': 'access-secret',
@@ -32,6 +34,7 @@ describe('AuthService', () => {
     redis = { setWithTtl: jest.fn(), get: jest.fn(), delete: jest.fn() };
     audit = { record: jest.fn() };
     config = { get: jest.fn((key: string) => CONFIG_VALUES[key]) };
+    coachees = { findByUserId: jest.fn() };
 
     service = new AuthService(
       jwt as unknown as JwtService,
@@ -39,6 +42,7 @@ describe('AuthService', () => {
       users as unknown as UsersService,
       redis as unknown as RedisService,
       audit as unknown as AuditService,
+      coachees as unknown as CoacheesService,
     );
   });
 
@@ -161,6 +165,46 @@ describe('AuthService', () => {
 
       expect(redis.delete).not.toHaveBeenCalled();
       expect(audit.record).toHaveBeenCalledWith('LOGOUT', { userId: 'user-1' });
+    });
+  });
+
+  describe('getProfile', () => {
+    it('includes the linked coachee name for a coachee account', async () => {
+      coachees.findByUserId.mockResolvedValue({ nombre: 'Ignacio Prieto' });
+
+      const profile = await service.getProfile({
+        id: 'user-1',
+        email: 'ignacio@example.com',
+        role: Role.COACHEE,
+        empresaId: null,
+      });
+
+      expect(profile.nombre).toBe('Ignacio Prieto');
+    });
+
+    it('returns null nombre for a coach account (no name field yet)', async () => {
+      const profile = await service.getProfile({
+        id: 'user-1',
+        email: 'coach@example.com',
+        role: Role.COACH,
+        empresaId: null,
+      });
+
+      expect(profile.nombre).toBeNull();
+      expect(coachees.findByUserId).not.toHaveBeenCalled();
+    });
+
+    it('returns null nombre when the coachee has no linked profile', async () => {
+      coachees.findByUserId.mockResolvedValue(null);
+
+      const profile = await service.getProfile({
+        id: 'user-1',
+        email: 'orphan@example.com',
+        role: Role.COACHEE,
+        empresaId: null,
+      });
+
+      expect(profile.nombre).toBeNull();
     });
   });
 });

@@ -47,3 +47,10 @@ export function resetPassword(id: string): Promise<{ temporaryPassword: string }
 export function deleteUser(id: string): Promise<{ success: boolean }> {
   return apiRequest<{ success: boolean }>(`/users/${id}`, { method: 'DELETE' })
 }
+
+export function changeOwnPassword(currentPassword: string, newPassword: string): Promise<{ success: boolean }> {
+  return apiRequest<{ success: boolean }>('/users/me/password', {
+    method: 'PATCH',
+    body: { currentPassword, newPassword },
+  })
+}

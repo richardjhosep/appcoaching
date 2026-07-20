@@ -4,6 +4,7 @@ import { PassportModule } from '@nestjs/passport';
 import { UsersModule } from '../users/users.module';
 import { AuditModule } from '../audit/audit.module';
 import { RedisModule } from '../redis/redis.module';
+import { CoacheesModule } from '../coachees/coachees.module';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { JwtStrategy } from './strategies/jwt.strategy';
@@ -15,6 +16,7 @@ import { JwtStrategy } from './strategies/jwt.strategy';
     UsersModule,
     AuditModule,
     RedisModule,
+    CoacheesModule,
   ],
   providers: [AuthService, JwtStrategy],
   controllers: [AuthController],
