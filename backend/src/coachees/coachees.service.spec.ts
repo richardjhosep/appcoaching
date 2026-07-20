@@ -1,4 +1,8 @@
-import { ForbiddenException, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { Repository } from 'typeorm';
 import { CoacheesService } from './coachees.service';
 import { Coachee } from './entities/coachee.entity';
@@ -16,9 +20,14 @@ describe('CoacheesService', () => {
     find: jest.Mock<Promise<PartialCoachee[]>, unknown[]>;
     create: jest.Mock<PartialCoachee, [PartialCoachee]>;
     save: jest.Mock<Promise<PartialCoachee>, [PartialCoachee]>;
+    manager: { query: jest.Mock };
   };
   let empresas: { exists: jest.Mock<Promise<boolean>, [string]> };
-  let users: { createUser: jest.Mock; setActivo: jest.Mock };
+  let users: {
+    createUser: jest.Mock;
+    setActivo: jest.Mock;
+    removeById: jest.Mock;
+  };
 
   const buildActor = (
     role: Role,
@@ -38,6 +47,7 @@ describe('CoacheesService', () => {
       save: jest.fn((data: PartialCoachee) =>
         Promise.resolve({ id: 'generated-id', ...data }),
       ),
+      manager: { query: jest.fn().mockResolvedValue([{ total: 0 }]) },
     };
     empresas = { exists: jest.fn<Promise<boolean>, [string]>() };
     users = {
@@ -46,6 +56,7 @@ describe('CoacheesService', () => {
         temporaryPassword: 'temp-pass',
       }),
       setActivo: jest.fn(),
+      removeById: jest.fn().mockResolvedValue(undefined),
     };
     service = new CoacheesService(
       repo as unknown as Repository<Coachee>,
@@ -232,6 +243,33 @@ describe('CoacheesService', () => {
       repo.findOne.mockResolvedValue(null);
 
       await expect(service.setActivo('missing', false)).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+  });
+
+  describe('remove', () => {
+    it('deletes the linked user (cascading to the coachee) when there is no history', async () => {
+      repo.findOne.mockResolvedValue({ id: 'c1', userId: 'user-1' });
+      repo.manager.query.mockResolvedValue([{ total: 0 }]);
+
+      await service.remove('c1');
+
+      expect(users.removeById).toHaveBeenCalledWith('user-1');
+    });
+
+    it('rejects when the coachee already has coaching history', async () => {
+      repo.findOne.mockResolvedValue({ id: 'c1', userId: 'user-1' });
+      repo.manager.query.mockResolvedValue([{ total: 3 }]);
+
+      await expect(service.remove('c1')).rejects.toThrow(ConflictException);
+      expect(users.removeById).not.toHaveBeenCalled();
+    });
+
+    it('throws NotFoundException when the coachee does not exist', async () => {
+      repo.findOne.mockResolvedValue(null);
+
+      await expect(service.remove('missing')).rejects.toThrow(
         NotFoundException,
       );
     });

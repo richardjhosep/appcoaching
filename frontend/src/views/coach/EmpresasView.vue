@@ -4,7 +4,8 @@ import AppShell from '../../components/AppShell.vue'
 import AppModal from '../../components/AppModal.vue'
 import Pagination from '../../components/Pagination.vue'
 import StatusToggle from '../../components/StatusToggle.vue'
-import { createEmpresa, listEmpresas, updateEmpresa, type Empresa } from '../../api/empresas'
+import IconButton from '../../components/IconButton.vue'
+import { createEmpresa, deleteEmpresa, listEmpresas, updateEmpresa, type Empresa } from '../../api/empresas'
 import { ApiError } from '../../api/client'
 import { notifyError, notifySuccess, confirmDialog } from '../../lib/notify'
 
@@ -80,8 +81,8 @@ function validar(): boolean {
   errors.nombre = !form.nombre.trim() || form.nombre.trim().length < 2
     ? 'El nombre debe tener al menos 2 caracteres.'
     : undefined
-  errors.tarifaHora = form.tarifaHora === null || form.tarifaHora < 0 || !Number.isInteger(form.tarifaHora)
-    ? 'La tarifa por hora es obligatoria y debe ser un entero mayor o igual a 0.'
+  errors.tarifaHora = form.tarifaHora === null || form.tarifaHora <= 0 || !Number.isInteger(form.tarifaHora)
+    ? 'La tarifa por hora es obligatoria y debe ser un entero mayor a 0.'
     : undefined
   return !errors.nombre && !errors.tarifaHora
 }
@@ -130,6 +131,23 @@ async function toggleActivo(empresa: Empresa) {
     await notifySuccess(activar ? 'Empresa activada' : 'Empresa desactivada')
   } catch (err) {
     await notifyError('No se pudo cambiar el estado', err instanceof ApiError ? err.message : 'Ocurrió un error inesperado.')
+  }
+}
+
+async function eliminar(empresa: Empresa) {
+  const confirmado = await confirmDialog({
+    title: '¿Eliminar esta empresa?',
+    text: `Esta acción no se puede deshacer. Se eliminará ${empresa.nombre} de forma definitiva.`,
+    confirmText: 'Eliminar',
+    danger: true,
+  })
+  if (!confirmado) return
+  try {
+    await deleteEmpresa(empresa.id)
+    await load()
+    await notifySuccess('Empresa eliminada')
+  } catch (err) {
+    await notifyError('No se pudo eliminar', err instanceof ApiError ? err.message : 'Ocurrió un error inesperado.')
   }
 }
 </script>
@@ -200,7 +218,7 @@ async function toggleActivo(empresa: Empresa) {
       <div class="overflow-x-auto rounded-2xl border border-[var(--color-line)] bg-white">
         <table class="w-full text-left text-sm">
           <thead>
-            <tr class="border-b border-[var(--color-line)] bg-[var(--color-ivory)] text-xs text-[var(--color-ink)]/60">
+            <tr class="border-b border-[var(--color-line)] bg-[var(--color-parchment)] text-xs text-[var(--color-ink)]/60">
               <th class="px-4 py-3">
                 Nombre
               </th>
@@ -263,12 +281,18 @@ async function toggleActivo(empresa: Empresa) {
                 {{ e.createdAt ? new Date(e.createdAt).toLocaleDateString('es-CL') : '—' }}
               </td>
               <td class="px-4 py-3">
-                <button
-                  class="rounded-lg border border-[var(--color-line)] px-2 py-1 text-xs hover:bg-[var(--color-parchment)]/50"
-                  @click="abrirEditar(e)"
-                >
-                  Editar
-                </button>
+                <div class="flex gap-2">
+                  <IconButton
+                    icon="editar"
+                    title="Editar"
+                    @click="abrirEditar(e)"
+                  />
+                  <IconButton
+                    icon="eliminar"
+                    title="Eliminar"
+                    @click="eliminar(e)"
+                  />
+                </div>
               </td>
             </tr>
           </tbody>
@@ -310,7 +334,7 @@ async function toggleActivo(empresa: Empresa) {
           <input
             v-model.number="form.tarifaHora"
             type="number"
-            min="0"
+            min="1"
             class="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
             :class="errors.tarifaHora ? 'border-[var(--color-bronze)]' : 'border-[var(--color-line)]'"
           >

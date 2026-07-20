@@ -24,3 +24,7 @@ export function updateEmpresa(
 ): Promise<Empresa> {
   return apiRequest<Empresa>(`/empresas/${id}`, { method: 'PATCH', body: input })
 }
+
+export function deleteEmpresa(id: string): Promise<{ success: boolean }> {
+  return apiRequest<{ success: boolean }>(`/empresas/${id}`, { method: 'DELETE' })
+}

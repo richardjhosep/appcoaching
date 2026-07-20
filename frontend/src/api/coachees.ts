@@ -65,6 +65,10 @@ export function setCoacheeActivo(id: string, activo: boolean): Promise<CoacheeLi
   return apiRequest<CoacheeListItem>(`/coachees/${id}/estado`, { method: 'PATCH', body: { activo } })
 }
 
+export function deleteCoachee(id: string): Promise<{ success: boolean }> {
+  return apiRequest<{ success: boolean }>(`/coachees/${id}`, { method: 'DELETE' })
+}
+
 export function getMyCoachee(): Promise<Coachee> {
   return apiRequest<Coachee>('/coachees/me')
 }

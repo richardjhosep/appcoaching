@@ -6,6 +6,6 @@ export class CreateEmpresaDto {
   nombre: string;
 
   @IsInt()
-  @Min(0)
+  @Min(1)
   tarifaHora: number;
 }

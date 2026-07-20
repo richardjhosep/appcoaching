@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
-import { RouterLink } from 'vue-router'
 import AppShell from '../../components/AppShell.vue'
 import AppModal from '../../components/AppModal.vue'
 import Pagination from '../../components/Pagination.vue'
 import StatusToggle from '../../components/StatusToggle.vue'
-import { createCoachee, listCoachees, setCoacheeActivo, updateCoachee, type CoacheeListItem } from '../../api/coachees'
+import IconButton from '../../components/IconButton.vue'
+import { createCoachee, deleteCoachee, listCoachees, setCoacheeActivo, updateCoachee, type CoacheeListItem } from '../../api/coachees'
 import { listEmpresas, type Empresa } from '../../api/empresas'
 import { ApiError } from '../../api/client'
 import { notifyError, notifySuccess, confirmDialog, showCredential } from '../../lib/notify'
@@ -70,7 +70,7 @@ const form = reactive({
   tarifaPropia: null as number | null,
   areaGerencia: '',
 })
-const errors = reactive<{ nombre?: string; email?: string }>({})
+const errors = reactive<{ nombre?: string; email?: string; tarifaPropia?: string }>({})
 
 function abrirCrear() {
   editando.value = null
@@ -83,6 +83,7 @@ function abrirCrear() {
   form.areaGerencia = ''
   errors.nombre = undefined
   errors.email = undefined
+  errors.tarifaPropia = undefined
   modalOpen.value = true
 }
 
@@ -97,13 +98,17 @@ function abrirEditar(coachee: CoacheeListItem) {
   form.areaGerencia = coachee.areaGerencia ?? ''
   errors.nombre = undefined
   errors.email = undefined
+  errors.tarifaPropia = undefined
   modalOpen.value = true
 }
 
 function validar(): boolean {
   errors.nombre = form.nombre.trim().length < 2 ? 'El nombre debe tener al menos 2 caracteres.' : undefined
   errors.email = !editando.value && !/.+@.+\..+/.test(form.email.trim()) ? 'Ingresa un email válido.' : undefined
-  return !errors.nombre && !errors.email
+  errors.tarifaPropia = form.tarifaPropia !== null && (form.tarifaPropia <= 0 || !Number.isInteger(form.tarifaPropia))
+    ? 'La tarifa propia debe ser un entero mayor a 0.'
+    : undefined
+  return !errors.nombre && !errors.email && !errors.tarifaPropia
 }
 
 async function guardar() {
@@ -164,6 +169,23 @@ async function toggleActivo(coachee: CoacheeListItem) {
     await notifySuccess(activar ? 'Coachee activado' : 'Coachee desactivado')
   } catch (err) {
     await notifyError('No se pudo cambiar el estado', err instanceof ApiError ? err.message : 'Ocurrió un error inesperado.')
+  }
+}
+
+async function eliminar(coachee: CoacheeListItem) {
+  const confirmado = await confirmDialog({
+    title: '¿Eliminar este coachee?',
+    text: `Esta acción no se puede deshacer. Se eliminará ${coachee.nombre} de forma definitiva.`,
+    confirmText: 'Eliminar',
+    danger: true,
+  })
+  if (!confirmado) return
+  try {
+    await deleteCoachee(coachee.id)
+    await load()
+    await notifySuccess('Coachee eliminado')
+  } catch (err) {
+    await notifyError('No se pudo eliminar', err instanceof ApiError ? err.message : 'Ocurrió un error inesperado.')
   }
 }
 </script>
@@ -250,7 +272,7 @@ async function toggleActivo(coachee: CoacheeListItem) {
       <div class="overflow-x-auto rounded-2xl border border-[var(--color-line)] bg-white">
         <table class="w-full text-left text-sm">
           <thead>
-            <tr class="border-b border-[var(--color-line)] bg-[var(--color-ivory)] text-xs text-[var(--color-ink)]/60">
+            <tr class="border-b border-[var(--color-line)] bg-[var(--color-parchment)] text-xs text-[var(--color-ink)]/60">
               <th class="px-4 py-3">
                 Nombre
               </th>
@@ -313,19 +335,22 @@ async function toggleActivo(coachee: CoacheeListItem) {
                 {{ c.createdAt ? new Date(c.createdAt).toLocaleDateString('es-CL') : '—' }}
               </td>
               <td class="px-4 py-3">
-                <div class="flex flex-wrap gap-2">
-                  <button
-                    class="rounded-lg border border-[var(--color-line)] px-2 py-1 text-xs hover:bg-[var(--color-parchment)]/50"
-                    @click="abrirEditar(c)"
-                  >
-                    Editar
-                  </button>
-                  <RouterLink
+                <div class="flex gap-2">
+                  <IconButton
+                    icon="ver"
+                    title="Ver seguimiento"
                     :to="`/coach/coachees/${c.id}/seguimiento`"
-                    class="rounded-lg border border-[var(--color-line)] px-2 py-1 text-xs hover:bg-[var(--color-parchment)]/50"
-                  >
-                    Ver
-                  </RouterLink>
+                  />
+                  <IconButton
+                    icon="editar"
+                    title="Editar"
+                    @click="abrirEditar(c)"
+                  />
+                  <IconButton
+                    icon="eliminar"
+                    title="Eliminar"
+                    @click="eliminar(c)"
+                  />
                 </div>
               </td>
             </tr>
@@ -422,9 +447,14 @@ async function toggleActivo(coachee: CoacheeListItem) {
           <input
             v-model.number="form.tarifaPropia"
             type="number"
-            min="0"
-            class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+            min="1"
+            class="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+            :class="errors.tarifaPropia ? 'border-[var(--color-bronze)]' : 'border-[var(--color-line)]'"
           >
+          <span
+            v-if="errors.tarifaPropia"
+            class="mt-1 block text-xs text-[var(--color-bronze)]"
+          >{{ errors.tarifaPropia }}</span>
         </label>
 
         <label class="block text-sm">

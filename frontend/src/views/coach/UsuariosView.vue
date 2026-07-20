@@ -4,7 +4,8 @@ import AppShell from '../../components/AppShell.vue'
 import AppModal from '../../components/AppModal.vue'
 import Pagination from '../../components/Pagination.vue'
 import StatusToggle from '../../components/StatusToggle.vue'
-import { createEmpresaUser, listUsers, resetPassword, setUserActivo, type UserAccount } from '../../api/users'
+import IconButton from '../../components/IconButton.vue'
+import { createEmpresaUser, deleteUser, listUsers, resetPassword, setUserActivo, type UserAccount } from '../../api/users'
 import { listEmpresas, type Empresa } from '../../api/empresas'
 import { ApiError } from '../../api/client'
 import { notifyError, notifySuccess, confirmDialog, showCredential } from '../../lib/notify'
@@ -132,6 +133,23 @@ async function restablecer(usuario: UserAccount) {
     restableciendo.value = null
   }
 }
+
+async function eliminar(usuario: UserAccount) {
+  const confirmado = await confirmDialog({
+    title: '¿Eliminar esta cuenta?',
+    text: `Esta acción no se puede deshacer. Se eliminará ${usuario.email} de forma definitiva.`,
+    confirmText: 'Eliminar',
+    danger: true,
+  })
+  if (!confirmado) return
+  try {
+    await deleteUser(usuario.id)
+    await load()
+    await notifySuccess('Cuenta eliminada')
+  } catch (err) {
+    await notifyError('No se pudo eliminar', err instanceof ApiError ? err.message : 'Ocurrió un error inesperado.')
+  }
+}
 </script>
 
 <template>
@@ -218,7 +236,7 @@ async function restablecer(usuario: UserAccount) {
       <div class="overflow-x-auto rounded-2xl border border-[var(--color-line)] bg-white">
         <table class="w-full text-left text-sm">
           <thead>
-            <tr class="border-b border-[var(--color-line)] bg-[var(--color-ivory)] text-xs text-[var(--color-ink)]/60">
+            <tr class="border-b border-[var(--color-line)] bg-[var(--color-parchment)] text-xs text-[var(--color-ink)]/60">
               <th class="px-4 py-3">
                 Email
               </th>
@@ -275,13 +293,20 @@ async function restablecer(usuario: UserAccount) {
                 {{ u.createdAt ? new Date(u.createdAt).toLocaleDateString('es-CL') : '—' }}
               </td>
               <td class="px-4 py-3">
-                <button
-                  :disabled="restableciendo === u.id"
-                  class="rounded-lg border border-[var(--color-line)] px-2 py-1 text-xs hover:bg-[var(--color-parchment)]/50 disabled:opacity-50"
-                  @click="restablecer(u)"
-                >
-                  Restablecer contraseña
-                </button>
+                <div class="flex items-center gap-2">
+                  <button
+                    :disabled="restableciendo === u.id"
+                    class="rounded-lg border border-[var(--color-line)] px-2 py-1 text-xs hover:bg-[var(--color-parchment)]/50 disabled:opacity-50"
+                    @click="restablecer(u)"
+                  >
+                    Restablecer contraseña
+                  </button>
+                  <IconButton
+                    icon="eliminar"
+                    title="Eliminar"
+                    @click="eliminar(u)"
+                  />
+                </div>
               </td>
             </tr>
           </tbody>

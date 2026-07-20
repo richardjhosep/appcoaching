@@ -43,3 +43,7 @@ export function resetPassword(id: string): Promise<{ temporaryPassword: string }
     method: 'POST',
   })
 }
+
+export function deleteUser(id: string): Promise<{ success: boolean }> {
+  return apiRequest<{ success: boolean }>(`/users/${id}`, { method: 'DELETE' })
+}

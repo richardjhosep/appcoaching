@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
@@ -96,6 +97,22 @@ export class UsersController {
       },
     );
     return user;
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.COACH)
+  @Delete(':id')
+  async remove(
+    @Param('id') id: string,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    await this.users.remove(id, actor.id);
+    await this.audit.record('USER_ELIMINADO', {
+      userId: actor.id,
+      targetType: 'User',
+      targetId: id,
+    });
+    return { success: true };
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)

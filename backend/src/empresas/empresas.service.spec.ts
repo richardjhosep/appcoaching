@@ -13,6 +13,8 @@ describe('EmpresasService', () => {
     exists: jest.Mock<Promise<boolean>, unknown[]>;
     create: jest.Mock<PartialEmpresa, [PartialEmpresa]>;
     save: jest.Mock<Promise<PartialEmpresa>, [PartialEmpresa]>;
+    remove: jest.Mock<Promise<PartialEmpresa>, [PartialEmpresa]>;
+    manager: { query: jest.Mock };
   };
 
   beforeEach(() => {
@@ -24,6 +26,8 @@ describe('EmpresasService', () => {
       save: jest.fn((data: PartialEmpresa) =>
         Promise.resolve({ id: 'generated-id', ...data }),
       ),
+      remove: jest.fn((data: PartialEmpresa) => Promise.resolve(data)),
+      manager: { query: jest.fn().mockResolvedValue([{ total: 0 }]) },
     };
     service = new EmpresasService(repo as unknown as Repository<Empresa>);
   });
@@ -73,6 +77,27 @@ describe('EmpresasService', () => {
 
       expect(updated.nombre).toBe('Old Name');
       expect(updated.tarifaHora).toBe(2000);
+    });
+  });
+
+  describe('remove', () => {
+    it('deletes the empresa when it has no coachees or users', async () => {
+      repo.findOne.mockResolvedValue({ id: 'e1', nombre: 'Andes Minerals' });
+      repo.manager.query.mockResolvedValue([{ total: 0 }]);
+
+      await service.remove('e1');
+
+      expect(repo.remove).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'e1' }),
+      );
+    });
+
+    it('rejects when the empresa still has coachees or users associated', async () => {
+      repo.findOne.mockResolvedValue({ id: 'e1', nombre: 'Andes Minerals' });
+      repo.manager.query.mockResolvedValue([{ total: 2 }]);
+
+      await expect(service.remove('e1')).rejects.toThrow(ConflictException);
+      expect(repo.remove).not.toHaveBeenCalled();
     });
   });
 });
