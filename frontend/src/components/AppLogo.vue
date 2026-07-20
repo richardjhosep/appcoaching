@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import iconoUrl from '../assets/icono.jpg'
+
 withDefaults(
   defineProps<{
     size?: number
@@ -11,27 +13,14 @@ withDefaults(
 
 <template>
   <div class="flex items-center gap-2.5">
-    <svg
+    <img
+      :src="iconoUrl"
       :width="size"
       :height="size"
-      viewBox="0 0 32 32"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
+      alt="CoachOS"
+      class="shrink-0 rounded-[22%] object-cover"
+      :style="{ width: `${size}px`, height: `${size}px` }"
     >
-      <rect
-        width="32"
-        height="32"
-        rx="9"
-        fill="var(--color-sage)"
-      />
-      <path
-        d="M9 18.5L13.2 22.5L23 11.5"
-        stroke="var(--color-ivory)"
-        stroke-width="2.6"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-      />
-    </svg>
     <span
       v-if="showWordmark"
       class="font-[family-name:var(--font-heading)] text-lg font-semibold tracking-tight"
