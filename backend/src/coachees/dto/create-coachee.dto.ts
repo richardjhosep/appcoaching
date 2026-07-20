@@ -30,7 +30,7 @@ export class CreateCoacheeDto {
 
   @IsOptional()
   @IsInt()
-  @Min(0)
+  @Min(1)
   tarifaPropia?: number;
 
   @IsOptional()

@@ -6,9 +6,15 @@ import { randomUUID } from 'crypto';
 import { UsersService } from '../users/users.service';
 import { AuditService } from '../audit/audit.service';
 import { RedisService } from '../redis/redis.service';
+import { CoacheesService } from '../coachees/coachees.service';
 import { durationToSeconds } from '../common/duration.util';
 import { User } from '../users/entities/user.entity';
-import { AccessTokenPayload, RefreshTokenPayload } from './auth.types';
+import { Role } from './enums/role.enum';
+import {
+  AccessTokenPayload,
+  AuthenticatedUser,
+  RefreshTokenPayload,
+} from './auth.types';
 
 export interface TokenPair {
   accessToken: string;
@@ -23,7 +29,24 @@ export class AuthService {
     private readonly users: UsersService,
     private readonly redis: RedisService,
     private readonly audit: AuditService,
+    private readonly coachees: CoacheesService,
   ) {}
+
+  /**
+   * Coachee accounts borrow their display name from the linked Coachee
+   * profile (the only place a "nombre" is captured today); coach/empresa
+   * accounts have no name field yet, so they fall back to null.
+   */
+  async getProfile(
+    authUser: AuthenticatedUser,
+  ): Promise<AuthenticatedUser & { nombre: string | null }> {
+    let nombre: string | null = null;
+    if (authUser.role === Role.COACHEE) {
+      const coachee = await this.coachees.findByUserId(authUser.id);
+      nombre = coachee?.nombre ?? null;
+    }
+    return { ...authUser, nombre };
+  }
 
   private refreshKey(userId: string, jti: string): string {
     return `refresh:${userId}:${jti}`;

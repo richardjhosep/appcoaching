@@ -3,7 +3,7 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { ApiError } from '../api/client'
-import AppLogo from '../components/AppLogo.vue'
+import logoUrl from '../assets/logo.jpg'
 
 const auth = useAuthStore()
 const router = useRouter()
@@ -33,11 +33,12 @@ async function handleSubmit() {
     style="background: radial-gradient(circle at 20% 20%, #1c2b20 0%, var(--color-ink) 55%, #0a0a0a 100%);"
   >
     <div class="w-full max-w-sm">
-      <div class="mb-6 flex justify-center">
-        <AppLogo
-          :size="40"
-          dark
-        />
+      <div class="mb-6 overflow-hidden rounded-2xl shadow-xl shadow-black/20">
+        <img
+          :src="logoUrl"
+          alt="CoachOS — Gestiona tu práctica. Multiplica tu impacto."
+          class="block w-full"
+        >
       </div>
 
       <form

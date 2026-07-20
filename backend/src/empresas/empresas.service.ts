@@ -47,4 +47,21 @@ export class EmpresasService {
     assignDefined(empresa, dto);
     return this.empresas.save(empresa);
   }
+
+  async remove(id: string): Promise<void> {
+    const empresa = await this.findById(id);
+    const [{ total }] = (await this.empresas.manager.query(
+      `SELECT (
+        (SELECT COUNT(*) FROM coachees WHERE empresa_id = $1) +
+        (SELECT COUNT(*) FROM users WHERE empresa_id = $1)
+      )::int AS total`,
+      [id],
+    )) as [{ total: number }];
+    if (total > 0) {
+      throw new ConflictException(
+        'No se puede eliminar: la empresa tiene coachees o usuarios asociados. Reasígnalos primero.',
+      );
+    }
+    await this.empresas.remove(empresa);
+  }
 }

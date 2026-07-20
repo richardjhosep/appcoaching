@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
@@ -11,6 +12,7 @@ import { UsersService } from './users.service';
 import { AuditService } from '../audit/audit.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
+import { SetActivoDto } from './dto/set-activo.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -73,6 +75,42 @@ export class UsersController {
       userId: actor.id,
       targetType: 'User',
       targetId: actor.id,
+    });
+    return { success: true };
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.COACH)
+  @Patch(':id/estado')
+  async setActivo(
+    @Param('id') id: string,
+    @Body() dto: SetActivoDto,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    const user = await this.users.setActivo(id, dto.isActive);
+    await this.audit.record(
+      dto.isActive ? 'USER_ACTIVADO' : 'USER_DESACTIVADO',
+      {
+        userId: actor.id,
+        targetType: 'User',
+        targetId: id,
+      },
+    );
+    return user;
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.COACH)
+  @Delete(':id')
+  async remove(
+    @Param('id') id: string,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    await this.users.remove(id, actor.id);
+    await this.audit.record('USER_ELIMINADO', {
+      userId: actor.id,
+      targetType: 'User',
+      targetId: id,
     });
     return { success: true };
   }

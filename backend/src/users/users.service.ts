@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
   UnauthorizedException,
@@ -43,7 +44,19 @@ export class UsersService {
   }
 
   findAll(): Promise<User[]> {
-    return this.users.find({ order: { email: 'ASC' } });
+    return this.users.find({
+      order: { email: 'ASC' },
+      relations: { empresa: true },
+    });
+  }
+
+  async setActivo(id: string, isActive: boolean): Promise<User> {
+    const user = await this.findById(id);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+    user.isActive = isActive;
+    return this.users.save(user);
   }
 
   hasAnyWithRole(role: Role): Promise<boolean> {
@@ -148,5 +161,31 @@ export class UsersService {
     user.mustChangePassword = true;
     await this.users.save(user);
     return temporaryPassword;
+  }
+
+  async remove(id: string, actorId: string): Promise<void> {
+    const user = await this.findById(id);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+    if (user.id === actorId) {
+      throw new ForbiddenException('No puedes eliminar tu propia cuenta.');
+    }
+    if (user.role === Role.COACHEE) {
+      throw new ForbiddenException(
+        'Elimina cuentas de coachee desde el Mantenedor de Coachees.',
+      );
+    }
+    await this.users.remove(user);
+  }
+
+  /**
+   * Deletes a user by id without the actor/role guards from remove(). Used
+   * internally by CoacheesService.remove(), which already ran its own
+   * pre-delete safety checks; deleting the linked user here cascades (FK
+   * ON DELETE CASCADE) to remove the coachee row.
+   */
+  async removeById(id: string): Promise<void> {
+    await this.users.delete(id);
   }
 }

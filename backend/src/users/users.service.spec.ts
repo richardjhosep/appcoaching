@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -22,6 +23,8 @@ describe('UsersService', () => {
     exists: jest.Mock;
     create: jest.Mock<PartialUser, [PartialUser]>;
     save: jest.Mock<Promise<PartialUser>, [PartialUser]>;
+    remove: jest.Mock<Promise<PartialUser>, [PartialUser]>;
+    delete: jest.Mock;
     createQueryBuilder: jest.Mock;
   };
   let config: { get: jest.Mock };
@@ -36,6 +39,8 @@ describe('UsersService', () => {
       save: jest.fn((data: PartialUser) =>
         Promise.resolve({ id: 'generated-id', ...data }),
       ),
+      remove: jest.fn((data: PartialUser) => Promise.resolve(data)),
+      delete: jest.fn().mockResolvedValue(undefined),
       createQueryBuilder: jest.fn(),
     };
     config = { get: jest.fn().mockReturnValue(4) };
@@ -247,7 +252,74 @@ describe('UsersService', () => {
       const users = await service.findAll();
 
       expect(users).toEqual([{ id: 'u1', email: 'a@example.com' }]);
-      expect(repo.find).toHaveBeenCalledWith({ order: { email: 'ASC' } });
+      expect(repo.find).toHaveBeenCalledWith({
+        order: { email: 'ASC' },
+        relations: { empresa: true },
+      });
+    });
+  });
+
+  describe('setActivo', () => {
+    it('throws NotFoundException when the user does not exist', async () => {
+      repo.findOne.mockResolvedValue(null);
+
+      await expect(service.setActivo('missing', false)).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('updates isActive and saves', async () => {
+      repo.findOne.mockResolvedValue({ id: 'u1', isActive: true });
+
+      const user = await service.setActivo('u1', false);
+
+      expect(user.isActive).toBe(false);
+    });
+  });
+
+  describe('remove', () => {
+    it('deletes the user', async () => {
+      repo.findOne.mockResolvedValue({ id: 'u1', role: Role.COACH });
+
+      await service.remove('u1', 'actor-1');
+
+      expect(repo.remove).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'u1' }),
+      );
+    });
+
+    it('rejects deleting your own account', async () => {
+      repo.findOne.mockResolvedValue({ id: 'actor-1', role: Role.COACH });
+
+      await expect(service.remove('actor-1', 'actor-1')).rejects.toThrow(
+        ForbiddenException,
+      );
+      expect(repo.remove).not.toHaveBeenCalled();
+    });
+
+    it('rejects deleting a coachee-role user directly', async () => {
+      repo.findOne.mockResolvedValue({ id: 'u1', role: Role.COACHEE });
+
+      await expect(service.remove('u1', 'actor-1')).rejects.toThrow(
+        ForbiddenException,
+      );
+      expect(repo.remove).not.toHaveBeenCalled();
+    });
+
+    it('throws NotFoundException when the user does not exist', async () => {
+      repo.findOne.mockResolvedValue(null);
+
+      await expect(service.remove('missing', 'actor-1')).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+  });
+
+  describe('removeById', () => {
+    it('deletes the user by id without guards', async () => {
+      await service.removeById('u1');
+
+      expect(repo.delete).toHaveBeenCalledWith('u1');
     });
   });
 });

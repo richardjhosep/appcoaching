@@ -1,4 +1,5 @@
 import {
+  ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -109,6 +110,16 @@ export class CoacheesService {
     return this.coachees.save(coachee);
   }
 
+  async setActivo(id: string, activo: boolean): Promise<Coachee> {
+    const coachee = await this.coachees.findOne({ where: { id } });
+    if (!coachee) {
+      throw new NotFoundException('Coachee not found');
+    }
+    coachee.activo = activo;
+    await this.users.setActivo(coachee.userId, activo);
+    return this.coachees.save(coachee);
+  }
+
   async setConsentimiento(id: string, informado: boolean): Promise<Coachee> {
     const coachee = await this.coachees.findOne({ where: { id } });
     if (!coachee) {
@@ -117,6 +128,31 @@ export class CoacheesService {
     coachee.consentimientoInformado = informado;
     coachee.consentimientoFecha = informado ? new Date() : null;
     return this.coachees.save(coachee);
+  }
+
+  async remove(id: string): Promise<void> {
+    const coachee = await this.coachees.findOne({ where: { id } });
+    if (!coachee) {
+      throw new NotFoundException('Coachee not found');
+    }
+    const [{ total }] = (await this.coachees.manager.query(
+      `SELECT (
+        (SELECT COUNT(*) FROM sesiones WHERE coachee_id = $1) +
+        (SELECT COUNT(*) FROM ciclos_coaching WHERE coachee_id = $1) +
+        (SELECT COUNT(*) FROM planes_desarrollo WHERE coachee_id = $1) +
+        (SELECT COUNT(*) FROM entradas_diario WHERE coachee_id = $1) +
+        (SELECT COUNT(*) FROM logros WHERE coachee_id = $1) +
+        (SELECT COUNT(*) FROM asignaciones_recurso WHERE coachee_id = $1) +
+        (SELECT COUNT(*) FROM aprendizajes_recurso WHERE coachee_id = $1)
+      )::int AS total`,
+      [id],
+    )) as [{ total: number }];
+    if (total > 0) {
+      throw new ConflictException(
+        'No se puede eliminar: el coachee ya tiene historial registrado (sesiones, planes, ciclos, etc.). Usa "Desactivar" en su lugar.',
+      );
+    }
+    await this.users.removeById(coachee.userId);
   }
 
   async updateOwnContact(
