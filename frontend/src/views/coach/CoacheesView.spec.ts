@@ -25,13 +25,15 @@ import { listCoachees, createCoachee, setCoacheeActivo } from '../../api/coachee
 import { listEmpresas } from '../../api/empresas'
 import { confirmDialog } from '../../lib/notify'
 
+const hoyIso = new Date().toISOString()
+
 const empresas: Empresa[] = [
-  { id: 'e1', nombre: 'Orbiflex', tarifaHora: 25000, isActive: true, pagada: true, horasContratadas: 10, createdAt: '2026-01-01T00:00:00.000Z' },
+  { id: 'e1', nombre: 'Orbiflex', tarifaHora: 25000, isActive: true, pagada: true, horasContratadas: 10, createdAt: hoyIso },
 ]
 
 const coachees: CoacheeListItem[] = [
-  { id: 'c1', nombre: 'Ana Soto', empresaId: 'e1', empresa: { id: 'e1', nombre: 'Orbiflex' }, user: { id: 'u1', email: 'ana@example.com' }, activo: true, consentimientoInformado: true, consentimientoFecha: null, createdAt: '2026-01-01T00:00:00.000Z' },
-  { id: 'c2', nombre: 'Beto Ruiz', empresaId: null, user: { id: 'u2', email: 'beto@example.com' }, activo: false, consentimientoInformado: false, consentimientoFecha: null, createdAt: '2026-01-02T00:00:00.000Z' },
+  { id: 'c1', nombre: 'Ana Soto', empresaId: 'e1', empresa: { id: 'e1', nombre: 'Orbiflex' }, user: { id: 'u1', email: 'ana@example.com' }, activo: true, consentimientoInformado: true, consentimientoFecha: null, createdAt: hoyIso },
+  { id: 'c2', nombre: 'Beto Ruiz', empresaId: null, user: { id: 'u2', email: 'beto@example.com' }, activo: false, consentimientoInformado: false, consentimientoFecha: null, createdAt: hoyIso },
 ]
 
 const router = createRouter({ history: createWebHistory(), routes: [{ path: '/coach/coachees/:id/seguimiento', component: { template: '<div />' } }] })

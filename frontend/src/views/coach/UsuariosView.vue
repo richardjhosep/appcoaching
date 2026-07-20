@@ -9,6 +9,7 @@ import { createEmpresaUser, deleteUser, listUsers, resetPassword, setUserActivo,
 import { listEmpresas, type Empresa } from '../../api/empresas'
 import { ApiError } from '../../api/client'
 import { notifyError, notifySuccess, confirmDialog, showCredential } from '../../lib/notify'
+import { primerDiaDelMes, hoy, dentroDeRango } from '../../lib/dateRange'
 
 const PAGE_SIZE = 12
 
@@ -18,11 +19,14 @@ const empresas = ref<Empresa[]>([])
 const search = ref('')
 const filtroRol = ref<'' | 'coach' | 'coachee' | 'empresa'>('')
 const filtroEstado = ref<'' | 'activas' | 'inactivas'>('')
+const fechaDesde = ref(primerDiaDelMes())
+const fechaHasta = ref(hoy())
 const page = ref(1)
 
 async function load() {
   loading.value = true
   const [u, e] = await Promise.all([listUsers(), listEmpresas()])
+  u.sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? ''))
   usuarios.value = u
   empresas.value = e
   loading.value = false
@@ -43,6 +47,7 @@ const filtradas = computed(() => {
     if (filtroRol.value && u.role !== filtroRol.value) return false
     if (filtroEstado.value === 'activas' && !u.isActive) return false
     if (filtroEstado.value === 'inactivas' && u.isActive) return false
+    if (!dentroDeRango(u.createdAt, fechaDesde.value, fechaHasta.value)) return false
     return true
   })
 })
@@ -56,6 +61,8 @@ function limpiarFiltros() {
   search.value = ''
   filtroRol.value = ''
   filtroEstado.value = ''
+  fechaDesde.value = primerDiaDelMes()
+  fechaHasta.value = hoy()
   page.value = 1
 }
 
@@ -215,12 +222,29 @@ async function eliminar(usuario: UserAccount) {
             Inactivos
           </option>
         </select>
+        <label class="flex items-center gap-1.5 text-xs text-[var(--color-ink)]/60">
+          Desde
+          <input
+            v-model="fechaDesde"
+            type="date"
+            class="rounded-lg border border-[var(--color-line)] px-2 py-1.5 text-sm"
+            @change="page = 1"
+          >
+        </label>
+        <label class="flex items-center gap-1.5 text-xs text-[var(--color-ink)]/60">
+          Hasta
+          <input
+            v-model="fechaHasta"
+            type="date"
+            class="rounded-lg border border-[var(--color-line)] px-2 py-1.5 text-sm"
+            @change="page = 1"
+          >
+        </label>
         <button
-          v-if="filtroRol || filtroEstado || search"
           class="rounded-lg border border-[var(--color-line)] px-3 py-1.5 text-xs hover:bg-[var(--color-parchment)]/50"
           @click="limpiarFiltros"
         >
-          × Limpiar
+          × Limpiar filtros
         </button>
         <span class="ml-auto text-xs text-[var(--color-ink)]/50">{{ filtradas.length }} registro(s)</span>
       </div>

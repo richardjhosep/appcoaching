@@ -17,9 +17,11 @@ vi.mock('../../lib/notify', () => ({
 import { listEmpresas, createEmpresa, updateEmpresa } from '../../api/empresas'
 import { notifySuccess, confirmDialog } from '../../lib/notify'
 
+const hoyIso = new Date().toISOString()
+
 const empresas: Empresa[] = [
-  { id: 'e1', nombre: 'Empresa Activa', tarifaHora: 25000, isActive: true, pagada: true, horasContratadas: 10, createdAt: '2026-01-01T00:00:00.000Z' },
-  { id: 'e2', nombre: 'Empresa Inactiva', tarifaHora: 20000, isActive: false, pagada: false, horasContratadas: null, createdAt: '2026-01-02T00:00:00.000Z' },
+  { id: 'e1', nombre: 'Empresa Activa', tarifaHora: 25000, isActive: true, pagada: true, horasContratadas: 10, createdAt: hoyIso },
+  { id: 'e2', nombre: 'Empresa Inactiva', tarifaHora: 20000, isActive: false, pagada: false, horasContratadas: null, createdAt: hoyIso },
 ]
 
 describe('EmpresasView', () => {

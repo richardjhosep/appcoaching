@@ -8,6 +8,7 @@ import IconButton from '../../components/IconButton.vue'
 import { createEmpresa, deleteEmpresa, listEmpresas, updateEmpresa, type Empresa } from '../../api/empresas'
 import { ApiError } from '../../api/client'
 import { notifyError, notifySuccess, confirmDialog } from '../../lib/notify'
+import { primerDiaDelMes, hoy, dentroDeRango } from '../../lib/dateRange'
 
 const PAGE_SIZE = 12
 
@@ -15,11 +16,15 @@ const loading = ref(true)
 const empresas = ref<Empresa[]>([])
 const search = ref('')
 const filtroEstado = ref<'' | 'activas' | 'inactivas'>('')
+const fechaDesde = ref(primerDiaDelMes())
+const fechaHasta = ref(hoy())
 const page = ref(1)
 
 async function load() {
   loading.value = true
-  empresas.value = await listEmpresas()
+  const data = await listEmpresas()
+  data.sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? ''))
+  empresas.value = data
   loading.value = false
 }
 
@@ -31,6 +36,7 @@ const filtradas = computed(() => {
     if (q && !e.nombre.toLowerCase().includes(q)) return false
     if (filtroEstado.value === 'activas' && !e.isActive) return false
     if (filtroEstado.value === 'inactivas' && e.isActive) return false
+    if (!dentroDeRango(e.createdAt, fechaDesde.value, fechaHasta.value)) return false
     return true
   })
 })
@@ -43,6 +49,8 @@ const paginadas = computed(() => {
 function limpiarFiltros() {
   search.value = ''
   filtroEstado.value = ''
+  fechaDesde.value = primerDiaDelMes()
+  fechaHasta.value = hoy()
   page.value = 1
 }
 
@@ -197,12 +205,29 @@ async function eliminar(empresa: Empresa) {
             Inactivas
           </option>
         </select>
+        <label class="flex items-center gap-1.5 text-xs text-[var(--color-ink)]/60">
+          Desde
+          <input
+            v-model="fechaDesde"
+            type="date"
+            class="rounded-lg border border-[var(--color-line)] px-2 py-1.5 text-sm"
+            @change="page = 1"
+          >
+        </label>
+        <label class="flex items-center gap-1.5 text-xs text-[var(--color-ink)]/60">
+          Hasta
+          <input
+            v-model="fechaHasta"
+            type="date"
+            class="rounded-lg border border-[var(--color-line)] px-2 py-1.5 text-sm"
+            @change="page = 1"
+          >
+        </label>
         <button
-          v-if="filtroEstado || search"
           class="rounded-lg border border-[var(--color-line)] px-3 py-1.5 text-xs hover:bg-[var(--color-parchment)]/50"
           @click="limpiarFiltros"
         >
-          × Limpiar
+          × Limpiar filtros
         </button>
         <span class="ml-auto text-xs text-[var(--color-ink)]/50">{{ filtradas.length }} registro(s)</span>
       </div>

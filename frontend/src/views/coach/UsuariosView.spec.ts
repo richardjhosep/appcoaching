@@ -24,13 +24,15 @@ import { listUsers, createEmpresaUser, setUserActivo } from '../../api/users'
 import { listEmpresas } from '../../api/empresas'
 import { confirmDialog, showCredential } from '../../lib/notify'
 
+const hoyIso = new Date().toISOString()
+
 const empresas: Empresa[] = [
-  { id: 'e1', nombre: 'Orbiflex', tarifaHora: 25000, isActive: true, pagada: true, horasContratadas: 10, createdAt: '2026-01-01T00:00:00.000Z' },
+  { id: 'e1', nombre: 'Orbiflex', tarifaHora: 25000, isActive: true, pagada: true, horasContratadas: 10, createdAt: hoyIso },
 ]
 
 const usuarios: UserAccount[] = [
-  { id: 'u1', email: 'coach@example.com', role: 'coach', empresaId: null, mustChangePassword: false, isActive: true, createdAt: '2026-01-01T00:00:00.000Z' },
-  { id: 'u2', email: 'empresa@example.com', role: 'empresa', empresaId: 'e1', empresa: { id: 'e1', nombre: 'Orbiflex' }, mustChangePassword: true, isActive: false, createdAt: '2026-01-02T00:00:00.000Z' },
+  { id: 'u1', email: 'coach@example.com', role: 'coach', empresaId: null, mustChangePassword: false, isActive: true, createdAt: hoyIso },
+  { id: 'u2', email: 'empresa@example.com', role: 'empresa', empresaId: 'e1', empresa: { id: 'e1', nombre: 'Orbiflex' }, mustChangePassword: true, isActive: false, createdAt: hoyIso },
 ]
 
 describe('UsuariosView', () => {
