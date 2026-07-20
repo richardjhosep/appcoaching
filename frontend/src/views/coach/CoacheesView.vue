@@ -72,6 +72,15 @@ const form = reactive({
 })
 const errors = reactive<{ nombre?: string; email?: string; tarifaPropia?: string }>({})
 
+const formatoMiles = new Intl.NumberFormat('es-CL')
+const tarifaPropiaDisplay = computed<string>({
+  get: () => (form.tarifaPropia !== null ? formatoMiles.format(form.tarifaPropia) : ''),
+  set: (value: string) => {
+    const digits = value.replace(/\D/g, '')
+    form.tarifaPropia = digits ? Number(digits) : null
+  },
+})
+
 function abrirCrear() {
   editando.value = null
   form.nombre = ''
@@ -367,7 +376,7 @@ async function eliminar(coachee: CoacheeListItem) {
 
     <AppModal
       v-if="modalOpen"
-      :title="editando ? 'Editar coachee' : 'Nuevo coachee'"
+      :title="editando ? 'Editar Coachee' : 'Nuevo Coachee'"
       @close="modalOpen = false"
     >
       <form
@@ -445,9 +454,9 @@ async function eliminar(coachee: CoacheeListItem) {
         <label class="block text-sm">
           Tarifa propia por hora, CLP (opcional)
           <input
-            v-model.number="form.tarifaPropia"
-            type="number"
-            min="1"
+            v-model="tarifaPropiaDisplay"
+            type="text"
+            inputmode="numeric"
             class="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
             :class="errors.tarifaPropia ? 'border-[var(--color-bronze)]' : 'border-[var(--color-line)]'"
           >
