@@ -102,6 +102,42 @@ describe('AuthService', () => {
         service.login('coach@example.com', 'correct-password'),
       ).rejects.toThrow(UnauthorizedException);
     });
+
+    it('rejects when the temporary password has expired', async () => {
+      const user = await buildUser('correct-password');
+      users.findByEmail.mockResolvedValue({
+        ...user,
+        mustChangePassword: true,
+        tempPasswordExpiresAt: new Date(Date.now() - 1000),
+      });
+
+      await expect(
+        service.login('coach@example.com', 'correct-password'),
+      ).rejects.toThrow(UnauthorizedException);
+      expect(audit.record).toHaveBeenCalledWith('LOGIN_FAILED', {
+        userId: 'user-1',
+        metadata: { reason: 'temp_password_expired' },
+      });
+    });
+
+    it('allows login when the temporary password has not expired yet', async () => {
+      const user = await buildUser('correct-password');
+      users.findByEmail.mockResolvedValue({
+        ...user,
+        mustChangePassword: true,
+        tempPasswordExpiresAt: new Date(Date.now() + 60 * 60 * 1000),
+      });
+
+      const result = await service.login(
+        'coach@example.com',
+        'correct-password',
+      );
+
+      expect(result).toEqual({
+        accessToken: 'signed-token',
+        refreshToken: 'signed-token',
+      });
+    });
   });
 
   describe('refresh', () => {
@@ -205,6 +241,19 @@ describe('AuthService', () => {
       });
 
       expect(profile.nombre).toBeNull();
+    });
+
+    it('includes mustChangePassword from the underlying user record', async () => {
+      users.findById.mockResolvedValue({ mustChangePassword: true });
+
+      const profile = await service.getProfile({
+        id: 'user-1',
+        email: 'coach@example.com',
+        role: Role.COACH,
+        empresaId: null,
+      });
+
+      expect(profile.mustChangePassword).toBe(true);
     });
   });
 });

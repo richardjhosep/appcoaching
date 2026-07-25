@@ -379,8 +379,8 @@ async function eliminar(coachee: CoacheeListItem) {
                 <div class="flex gap-2">
                   <IconButton
                     icon="ver"
-                    title="Ver seguimiento"
-                    :to="`/coach/coachees/${c.id}/seguimiento`"
+                    title="Ver coachee"
+                    :to="`/coach/coachees/${c.id}`"
                   />
                   <IconButton
                     icon="editar"

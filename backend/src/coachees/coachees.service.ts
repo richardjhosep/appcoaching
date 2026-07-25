@@ -43,6 +43,7 @@ export class CoacheesService {
     const { user, temporaryPassword } = await this.users.createUser(
       dto.email,
       Role.COACHEE,
+      { nombre: dto.nombre },
     );
 
     const coachee = await this.coachees.save(
@@ -135,7 +136,7 @@ export class CoacheesService {
     if (!coachee) {
       throw new NotFoundException('Coachee not found');
     }
-    const [{ total }] = (await this.coachees.manager.query(
+    const [{ total }] = await this.coachees.manager.query<[{ total: number }]>(
       `SELECT (
         (SELECT COUNT(*) FROM sesiones WHERE coachee_id = $1) +
         (SELECT COUNT(*) FROM ciclos_coaching WHERE coachee_id = $1) +
@@ -146,7 +147,7 @@ export class CoacheesService {
         (SELECT COUNT(*) FROM aprendizajes_recurso WHERE coachee_id = $1)
       )::int AS total`,
       [id],
-    )) as [{ total: number }];
+    );
     if (total > 0) {
       throw new ConflictException(
         'No se puede eliminar: el coachee ya tiene historial registrado (sesiones, planes, ciclos, etc.). Usa "Desactivar" en su lugar.',

@@ -40,11 +40,11 @@ async function load() {
 onMounted(load)
 
 function verPlan(coacheeId: string) {
-  void router.push({ name: 'coach-plan-detail', params: { coacheeId } })
+  void router.push({ name: 'coach-coachee-detail', params: { coacheeId }, query: { tab: 'plan' } })
 }
 
 function verSeguimiento(coacheeId: string) {
-  void router.push({ name: 'coach-coachee-seguimiento', params: { coacheeId } })
+  void router.push({ name: 'coach-coachee-detail', params: { coacheeId }, query: { tab: 'sesiones' } })
 }
 </script>
 

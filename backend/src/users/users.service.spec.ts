@@ -12,6 +12,7 @@ import { UsersService } from './users.service';
 import { User } from './entities/user.entity';
 import { Role } from '../auth/enums/role.enum';
 import { EmpresasService } from '../empresas/empresas.service';
+import { EmailService } from '../email/email.service';
 
 type PartialUser = Partial<User>;
 
@@ -29,6 +30,7 @@ describe('UsersService', () => {
   };
   let config: { get: jest.Mock };
   let empresas: { exists: jest.Mock<Promise<boolean>, [string]> };
+  let email: { sendTemporaryPassword: jest.Mock };
 
   beforeEach(() => {
     repo = {
@@ -45,10 +47,12 @@ describe('UsersService', () => {
     };
     config = { get: jest.fn().mockReturnValue(4) };
     empresas = { exists: jest.fn<Promise<boolean>, [string]>() };
+    email = { sendTemporaryPassword: jest.fn().mockResolvedValue(undefined) };
     service = new UsersService(
       repo as unknown as Repository<User>,
       config as unknown as ConfigService,
       empresas as unknown as EmpresasService,
+      email as unknown as EmailService,
     );
   });
 
@@ -144,6 +148,37 @@ describe('UsersService', () => {
       expect(user.empresaId).toBeNull();
       expect(empresas.exists).not.toHaveBeenCalled();
     });
+
+    it('sets an expiry and emails the temporary password when none was given', async () => {
+      repo.findOne.mockResolvedValue(null);
+
+      const { user, temporaryPassword } = await service.createUser(
+        'new@example.com',
+        Role.COACHEE,
+      );
+
+      expect(user.tempPasswordExpiresAt).toBeInstanceOf(Date);
+      expect(user.tempPasswordExpiresAt!.getTime()).toBeGreaterThan(Date.now());
+      expect(email.sendTemporaryPassword).toHaveBeenCalledWith(
+        expect.objectContaining({ to: 'new@example.com', temporaryPassword }),
+      );
+    });
+
+    it('does not set an expiry or send an email when an explicit password is given', async () => {
+      repo.findOne.mockResolvedValue(null);
+
+      const { user } = await service.createUser(
+        'coach@example.com',
+        Role.COACH,
+        {
+          password: 'chosen-password',
+          mustChangePassword: false,
+        },
+      );
+
+      expect(user.tempPasswordExpiresAt).toBeNull();
+      expect(email.sendTemporaryPassword).not.toHaveBeenCalled();
+    });
   });
 
   describe('changePassword', () => {
@@ -159,6 +194,7 @@ describe('UsersService', () => {
 
       const saved = repo.save.mock.calls[0][0];
       expect(saved.mustChangePassword).toBe(false);
+      expect(saved.tempPasswordExpiresAt).toBeNull();
       expect(await bcrypt.compare('new-password', saved.passwordHash)).toBe(
         true,
       );
@@ -232,6 +268,7 @@ describe('UsersService', () => {
     it('sets a new temporary password and forces a password change', async () => {
       repo.findOne.mockResolvedValue({
         id: 'user-1',
+        email: 'user1@example.com',
         passwordHash: 'old-hash',
       });
 
@@ -239,8 +276,16 @@ describe('UsersService', () => {
 
       const saved = repo.save.mock.calls[0][0];
       expect(saved.mustChangePassword).toBe(true);
+      expect(saved.tempPasswordExpiresAt).toBeInstanceOf(Date);
       expect(await bcrypt.compare(temporaryPassword, saved.passwordHash)).toBe(
         true,
+      );
+      expect(email.sendTemporaryPassword).toHaveBeenCalledWith(
+        expect.objectContaining({
+          to: 'user1@example.com',
+          temporaryPassword,
+          isNewAccount: false,
+        }),
       );
     });
   });

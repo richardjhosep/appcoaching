@@ -39,13 +39,20 @@ export class AuthService {
    */
   async getProfile(
     authUser: AuthenticatedUser,
-  ): Promise<AuthenticatedUser & { nombre: string | null }> {
+  ): Promise<
+    AuthenticatedUser & { nombre: string | null; mustChangePassword: boolean }
+  > {
     let nombre: string | null = null;
     if (authUser.role === Role.COACHEE) {
       const coachee = await this.coachees.findByUserId(authUser.id);
       nombre = coachee?.nombre ?? null;
     }
-    return { ...authUser, nombre };
+    const user = await this.users.findById(authUser.id);
+    return {
+      ...authUser,
+      nombre,
+      mustChangePassword: user?.mustChangePassword ?? false,
+    };
   }
 
   private refreshKey(userId: string, jti: string): string {
@@ -95,6 +102,20 @@ export class AuthService {
     if (!user || !user.isActive || !valid) {
       await this.audit.record('LOGIN_FAILED', { metadata: { email } });
       throw new UnauthorizedException('Invalid credentials');
+    }
+
+    if (
+      user.mustChangePassword &&
+      user.tempPasswordExpiresAt &&
+      user.tempPasswordExpiresAt.getTime() < Date.now()
+    ) {
+      await this.audit.record('LOGIN_FAILED', {
+        userId: user.id,
+        metadata: { reason: 'temp_password_expired' },
+      });
+      throw new UnauthorizedException(
+        'Tu contraseña temporal expiró. Pide a tu coach que te la restablezca.',
+      );
     }
 
     const tokens = await this.issueTokens(user);

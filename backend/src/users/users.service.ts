@@ -14,8 +14,10 @@ import { randomBytes } from 'crypto';
 import { User } from './entities/user.entity';
 import { Role } from '../auth/enums/role.enum';
 import { EmpresasService } from '../empresas/empresas.service';
+import { EmailService } from '../email/email.service';
 
 const TEMP_PASSWORD_LENGTH = 12;
+const TEMP_PASSWORD_TTL_HOURS = 48;
 
 @Injectable()
 export class UsersService {
@@ -23,7 +25,28 @@ export class UsersService {
     @InjectRepository(User) private readonly users: Repository<User>,
     private readonly config: ConfigService,
     private readonly empresas: EmpresasService,
+    private readonly email: EmailService,
   ) {}
+
+  private tempPasswordExpiry(): Date {
+    return new Date(Date.now() + TEMP_PASSWORD_TTL_HOURS * 60 * 60 * 1000);
+  }
+
+  private notifyTemporaryPassword(
+    to: string,
+    temporaryPassword: string,
+    nombre?: string | null,
+    isNewAccount = true,
+  ): void {
+    const loginUrl = `${this.config.get<string>('frontendUrl')}/login`;
+    void this.email.sendTemporaryPassword({
+      to,
+      nombre,
+      temporaryPassword,
+      loginUrl,
+      isNewAccount,
+    });
+  }
 
   private generateTempPassword(): string {
     return randomBytes(TEMP_PASSWORD_LENGTH)
@@ -94,6 +117,7 @@ export class UsersService {
       password?: string;
       mustChangePassword?: boolean;
       empresaId?: string | null;
+      nombre?: string | null;
     } = {},
   ): Promise<{ user: User; temporaryPassword: string | null }> {
     const existing = await this.findByEmail(email);
@@ -114,6 +138,7 @@ export class UsersService {
       empresaId = options.empresaId;
     }
 
+    const isTemporary = !options.password;
     const temporaryPassword = options.password ?? this.generateTempPassword();
     const passwordHash = await this.hash(temporaryPassword);
 
@@ -123,13 +148,18 @@ export class UsersService {
         role,
         passwordHash,
         empresaId,
-        mustChangePassword: options.mustChangePassword ?? !options.password,
+        mustChangePassword: options.mustChangePassword ?? isTemporary,
+        tempPasswordExpiresAt: isTemporary ? this.tempPasswordExpiry() : null,
       }),
     );
 
+    if (isTemporary) {
+      this.notifyTemporaryPassword(email, temporaryPassword, options.nombre);
+    }
+
     return {
       user,
-      temporaryPassword: options.password ? null : temporaryPassword,
+      temporaryPassword: isTemporary ? temporaryPassword : null,
     };
   }
 
@@ -148,6 +178,7 @@ export class UsersService {
     }
     user.passwordHash = await this.hash(newPassword);
     user.mustChangePassword = false;
+    user.tempPasswordExpiresAt = null;
     await this.users.save(user);
   }
 
@@ -159,7 +190,9 @@ export class UsersService {
     const temporaryPassword = this.generateTempPassword();
     user.passwordHash = await this.hash(temporaryPassword);
     user.mustChangePassword = true;
+    user.tempPasswordExpiresAt = this.tempPasswordExpiry();
     await this.users.save(user);
+    this.notifyTemporaryPassword(user.email, temporaryPassword, null, false);
     return temporaryPassword;
   }
 

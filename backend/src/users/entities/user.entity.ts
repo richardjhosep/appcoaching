@@ -29,6 +29,13 @@ export class User {
   @Column({ name: 'must_change_password', default: true })
   mustChangePassword: boolean;
 
+  @Column({
+    name: 'temp_password_expires_at',
+    type: 'timestamptz',
+    nullable: true,
+  })
+  tempPasswordExpiresAt: Date | null;
+
   @Column({ name: 'is_active', default: true })
   isActive: boolean;
 

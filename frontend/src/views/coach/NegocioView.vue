@@ -49,7 +49,7 @@ async function guardarHorasContratadas(empresaId: string, horas: number) {
 }
 
 function irASeguimiento(coacheeId: string) {
-  void router.push({ name: 'coach-coachee-seguimiento', params: { coacheeId } })
+  void router.push({ name: 'coach-coachee-detail', params: { coacheeId }, query: { tab: 'sesiones' } })
 }
 
 function imprimir() {

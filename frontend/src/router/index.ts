@@ -21,6 +21,11 @@ const routes: RouteRecordRaw[] = [
     component: () => import('../views/HomeRedirectView.vue'),
   },
   {
+    path: '/cambiar-password',
+    name: 'cambiar-password',
+    component: () => import('../views/CambiarPasswordView.vue'),
+  },
+  {
     path: '/coachee/plan',
     name: 'coachee-plan',
     component: () => import('../views/coachee/PlanDesarrolloView.vue'),
@@ -70,23 +75,9 @@ const routes: RouteRecordRaw[] = [
     meta: { roles: ['coach'] },
   },
   {
-    path: '/coach/planes/:coacheeId',
-    name: 'coach-plan-detail',
-    component: () => import('../views/coach/PlanDetailView.vue'),
-    meta: { roles: ['coach'] },
-    props: true,
-  },
-  {
-    path: '/coach/coachees/:coacheeId/seguimiento',
-    name: 'coach-coachee-seguimiento',
-    component: () => import('../views/coach/CoacheeSeguimientoView.vue'),
-    meta: { roles: ['coach'] },
-    props: true,
-  },
-  {
-    path: '/coach/coachees/:coacheeId/ciclo',
-    name: 'coach-ciclo',
-    component: () => import('../views/coach/CicloView.vue'),
+    path: '/coach/coachees/:coacheeId',
+    name: 'coach-coachee-detail',
+    component: () => import('../views/coach/CoacheeDetailView.vue'),
     meta: { roles: ['coach'] },
     props: true,
   },
@@ -180,6 +171,13 @@ router.beforeEach(async (to) => {
 
   if (!auth.isAuthenticated) {
     return { name: 'login' }
+  }
+
+  if (auth.user!.mustChangePassword) {
+    return to.name === 'cambiar-password' ? true : { name: 'cambiar-password' }
+  }
+  if (to.name === 'cambiar-password') {
+    return homeFor(auth.user!.role)
   }
 
   if (to.name === 'home') {

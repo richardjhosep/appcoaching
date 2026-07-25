@@ -24,6 +24,8 @@ describe('useAuthStore', () => {
       email: 'coach@example.com',
       role: 'coach',
       empresaId: null,
+      nombre: null,
+      mustChangePassword: false,
     })
 
     const store = useAuthStore()

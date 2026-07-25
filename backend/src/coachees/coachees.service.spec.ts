@@ -75,6 +75,7 @@ describe('CoacheesService', () => {
       expect(users.createUser).toHaveBeenCalledWith(
         'ignacio@example.com',
         Role.COACHEE,
+        { nombre: 'Ignacio Prieto' },
       );
       expect(coachee.userId).toBe('user-1');
       expect(coachee.empresaId).toBeNull();

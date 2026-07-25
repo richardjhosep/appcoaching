@@ -25,7 +25,7 @@ async function load() {
 onMounted(load)
 
 function verDetalle(coacheeId: string) {
-  void router.push({ name: 'coach-plan-detail', params: { coacheeId } })
+  void router.push({ name: 'coach-coachee-detail', params: { coacheeId }, query: { tab: 'plan' } })
 }
 </script>
 

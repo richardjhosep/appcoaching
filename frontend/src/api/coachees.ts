@@ -47,6 +47,13 @@ export interface Coachee {
   empresa?: { id: string; nombre: string } | null
   telefono: string | null
   emailContacto: string | null
+  jefeDirecto?: string | null
+  objetivoProceso?: string | null
+  tarifaPropia?: number | null
+  areaGerencia?: string | null
+  activo?: boolean
+  consentimientoInformado: boolean
+  consentimientoFecha: string | null
 }
 
 export function listCoachees(): Promise<CoacheeListItem[]> {

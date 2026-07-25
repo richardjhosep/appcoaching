@@ -45,7 +45,7 @@ async function marcarAtendida(id: string) {
 }
 
 function abrirNuevoProceso(coacheeId: string) {
-  void router.push({ name: 'coach-ciclo', params: { coacheeId } })
+  void router.push({ name: 'coach-coachee-detail', params: { coacheeId }, query: { tab: 'ciclo' } })
 }
 </script>
 

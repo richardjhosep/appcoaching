@@ -77,7 +77,10 @@ export class CoacheesController {
 
   @Roles(Role.COACH)
   @Delete(':id')
-  async remove(@Param('id') id: string, @CurrentUser() actor: AuthenticatedUser) {
+  async remove(
+    @Param('id') id: string,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
     await this.coachees.remove(id);
     await this.audit.record('COACHEE_ELIMINADO', {
       userId: actor.id,

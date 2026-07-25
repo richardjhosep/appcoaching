@@ -58,6 +58,13 @@ export function actualizarAsistencia(sesionId: string, asistio: boolean): Promis
   })
 }
 
+export function actualizarNotasPrivadas(sesionId: string, notasPrivadas: string): Promise<Sesion> {
+  return apiRequest<Sesion>(`/sesiones/${sesionId}`, {
+    method: 'PATCH',
+    body: { notasPrivadas },
+  })
+}
+
 export function guardarPostSesion(
   sesionId: string,
   input: UpdatePostSesionInput,

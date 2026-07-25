@@ -36,7 +36,7 @@ const coachees: CoacheeListItem[] = [
   { id: 'c2', nombre: 'Beto Ruiz', empresaId: null, user: { id: 'u2', email: 'beto@example.com' }, activo: false, consentimientoInformado: false, consentimientoFecha: null, createdAt: hoyIso },
 ]
 
-const router = createRouter({ history: createWebHistory(), routes: [{ path: '/coach/coachees/:id/seguimiento', component: { template: '<div />' } }] })
+const router = createRouter({ history: createWebHistory(), routes: [{ path: '/coach/coachees/:id', component: { template: '<div />' } }] })
 
 describe('CoacheesView', () => {
   beforeEach(() => {

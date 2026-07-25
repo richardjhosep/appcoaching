@@ -31,7 +31,7 @@ function cerrar() {
 function irACoachee(id: string) {
   abierto.value = false
   q.value = ''
-  void router.push({ name: 'coach-coachee-seguimiento', params: { coacheeId: id } })
+  void router.push({ name: 'coach-coachee-detail', params: { coacheeId: id }, query: { tab: 'sesiones' } })
 }
 
 function irAEmpresas() {
