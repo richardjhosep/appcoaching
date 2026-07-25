@@ -80,3 +80,22 @@ export function publicarPostSesion(sesionId: string): Promise<PostSesion> {
     method: 'POST',
   })
 }
+
+export interface SolicitudReagendamientoResult {
+  id: string
+  sesionId: string
+  coacheeId: string
+  motivo: string | null
+  estado: 'pendiente' | 'resuelta'
+  createdAt: string
+}
+
+export function solicitarReagendamiento(
+  sesionId: string,
+  motivo?: string,
+): Promise<SolicitudReagendamientoResult> {
+  return apiRequest<SolicitudReagendamientoResult>(`/sesiones/${sesionId}/reagendamiento`, {
+    method: 'POST',
+    body: { motivo: motivo || undefined },
+  })
+}

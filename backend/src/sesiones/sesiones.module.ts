@@ -10,6 +10,9 @@ import { SesionesController } from './sesiones.controller';
 import { SolicitudesReagendamientoService } from './solicitudes-reagendamiento.service';
 import { SolicitudesReagendamientoController } from './solicitudes-reagendamiento.controller';
 import { CoacheesModule } from '../coachees/coachees.module';
+import { UsersModule } from '../users/users.module';
+import { NotificacionesModule } from '../notificaciones/notificaciones.module';
+import { EmailModule } from '../email/email.module';
 
 @Module({
   imports: [
@@ -20,6 +23,9 @@ import { CoacheesModule } from '../coachees/coachees.module';
       CicloCoaching,
     ]),
     CoacheesModule,
+    UsersModule,
+    NotificacionesModule,
+    EmailModule,
   ],
   providers: [
     SesionesService,

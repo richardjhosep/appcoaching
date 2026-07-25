@@ -90,3 +90,12 @@ export function setConsentimiento(id: string, informado: boolean): Promise<Coach
     body: { informado },
   })
 }
+
+export interface UpdateContactoInput {
+  telefono?: string
+  emailContacto?: string
+}
+
+export function updateOwnContact(input: UpdateContactoInput): Promise<Coachee> {
+  return apiRequest<Coachee>('/coachees/me/contact', { method: 'PATCH', body: input })
+}

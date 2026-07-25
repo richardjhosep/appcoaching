@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { mount, flushPromises } from '@vue/test-utils'
+import { mount, flushPromises, DOMWrapper } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import SesionesView from './SesionesView.vue'
 import type { Sesion } from '../../api/sesiones'
@@ -11,10 +11,16 @@ vi.mock('../../api/sesiones', async () => {
     getMisSesiones: vi.fn(),
     guardarPostSesion: vi.fn(),
     publicarPostSesion: vi.fn(),
+    solicitarReagendamiento: vi.fn(),
   }
 })
 
-import { getMisSesiones } from '../../api/sesiones'
+import { getMisSesiones, solicitarReagendamiento } from '../../api/sesiones'
+
+vi.mock('../../lib/notify', () => ({
+  notifySuccess: vi.fn(),
+  notifyError: vi.fn(),
+}))
 
 const sesionPasadaSinPublicar: Sesion = {
   id: 's1',
@@ -91,5 +97,37 @@ describe('SesionesView', () => {
     expect(wrapper.text()).toContain('Programada')
     expect(wrapper.find('textarea').exists()).toBe(false)
     expect(wrapper.find('a[href="https://meet.example.com/x"]').exists()).toBe(true)
+  })
+
+  it('lets the coachee request a reschedule for a future session', async () => {
+    vi.mocked(getMisSesiones).mockResolvedValue([sesionFutura])
+    vi.mocked(solicitarReagendamiento).mockResolvedValue({
+      id: 'sol-1',
+      sesionId: 's3',
+      coacheeId: 'coachee-1',
+      motivo: 'tengo un viaje',
+      estado: 'pendiente',
+      createdAt: '2999-01-01T00:00:00.000Z',
+    })
+
+    const wrapper = mount(SesionesView)
+    await flushPromises()
+
+    const buttons = wrapper.findAll('button')
+    const solicitarBtn = buttons.find((b) => b.text() === 'Solicitar reagendamiento')
+    expect(solicitarBtn).toBeTruthy()
+    await solicitarBtn!.trigger('click')
+    await flushPromises()
+
+    const modal = new DOMWrapper(document.body)
+    const textarea = modal.find('textarea')
+    expect(textarea.exists()).toBe(true)
+    await textarea.setValue('tengo un viaje')
+
+    const enviarBtn = modal.findAll('button').find((b) => b.text() === 'Enviar')
+    await enviarBtn!.trigger('click')
+    await flushPromises()
+
+    expect(solicitarReagendamiento).toHaveBeenCalledWith('s3', 'tengo un viaje')
   })
 })

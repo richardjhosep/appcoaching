@@ -3,12 +3,17 @@ import { computed, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { changeOwnPassword } from '../api/users'
+import { getMyCoachee, updateOwnContact } from '../api/coachees'
 import { ApiError } from '../api/client'
 import { notifyError, notifySuccess } from '../lib/notify'
+import { validateNewPassword } from '../lib/password'
 import AppLogo from './AppLogo.vue'
 import AppModal from './AppModal.vue'
 import NavIcon from './NavIcon.vue'
 import BusquedaGlobal from './BusquedaGlobal.vue'
+import NotificationBell from './NotificationBell.vue'
+import PasswordField from './PasswordField.vue'
+import PasswordStrengthMeter from './PasswordStrengthMeter.vue'
 
 const auth = useAuthStore()
 const router = useRouter()
@@ -29,6 +34,17 @@ const rolLabels: Record<'coach' | 'coachee' | 'empresa', string> = {
   coachee: 'Coachee',
   empresa: 'Empresa',
 }
+
+const avatarInitials = computed(() => {
+  const nombre = auth.user?.nombre
+  if (nombre) {
+    const partes = nombre.trim().split(/\s+/)
+    const primera = partes[0]?.[0] ?? ''
+    const ultima = partes.length > 1 ? partes[partes.length - 1][0] : ''
+    return (primera + ultima).toUpperCase()
+  }
+  return auth.user?.email.slice(0, 2).toUpperCase() ?? '?'
+})
 
 interface NavItem {
   to: string
@@ -75,6 +91,7 @@ function closeOnMobileNav() {
 }
 
 async function handleLogout() {
+  userPanelOpen.value = false
   await auth.logout()
   await router.push({ name: 'login' })
 }
@@ -96,9 +113,7 @@ function abrirCambiarPassword() {
 }
 
 function validarPassword(): boolean {
-  passwordErrors.newPassword = passwordForm.newPassword.length < 8
-    ? 'La nueva contraseña debe tener al menos 8 caracteres.'
-    : undefined
+  passwordErrors.newPassword = validateNewPassword(passwordForm.newPassword)
   passwordErrors.confirmPassword = passwordForm.confirmPassword !== passwordForm.newPassword
     ? 'Las contraseñas no coinciden.'
     : undefined
@@ -118,36 +133,51 @@ async function guardarPassword() {
     guardandoPassword.value = false
   }
 }
+
+// --- Editar mis datos de contacto (coachee) ---
+const contactModalOpen = ref(false)
+const cargandoContacto = ref(false)
+const guardandoContacto = ref(false)
+const contactForm = reactive({ telefono: '', emailContacto: '' })
+
+async function abrirEditarContacto() {
+  userPanelOpen.value = false
+  contactModalOpen.value = true
+  cargandoContacto.value = true
+  try {
+    const coachee = await getMyCoachee()
+    contactForm.telefono = coachee.telefono ?? ''
+    contactForm.emailContacto = coachee.emailContacto ?? ''
+  } catch (err) {
+    contactModalOpen.value = false
+    await notifyError(
+      'No se pudieron cargar tus datos de contacto',
+      err instanceof ApiError ? err.message : 'Ocurrió un error inesperado.',
+    )
+  } finally {
+    cargandoContacto.value = false
+  }
+}
+
+async function guardarContacto() {
+  guardandoContacto.value = true
+  try {
+    await updateOwnContact({
+      telefono: contactForm.telefono || undefined,
+      emailContacto: contactForm.emailContacto || undefined,
+    })
+    contactModalOpen.value = false
+    await notifySuccess('Datos de contacto actualizados')
+  } catch (err) {
+    await notifyError('No se pudo guardar', err instanceof ApiError ? err.message : 'Ocurrió un error inesperado.')
+  } finally {
+    guardandoContacto.value = false
+  }
+}
 </script>
 
 <template>
   <div class="min-h-screen bg-[var(--color-ivory)] text-[var(--color-ink)]">
-    <div
-      v-if="!sidebarOpen"
-      class="flex items-center justify-between border-b border-[var(--color-line)] bg-[var(--color-ink)] px-4 py-3 text-[var(--color-parchment)] print:hidden"
-    >
-      <button
-        aria-label="Abrir menú"
-        class="rounded-lg p-1.5 hover:bg-white/10"
-        @click="sidebarOpen = true"
-      >
-        <svg
-          width="22"
-          height="22"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-        ><path d="M4 6h16M4 12h16M4 18h16" /></svg>
-      </button>
-      <AppLogo
-        :size="26"
-        dark
-      />
-      <div class="w-[30px]" />
-    </div>
-
     <div
       v-if="sidebarOpen"
       class="fixed inset-0 z-30 bg-black/40 sm:hidden"
@@ -180,7 +210,14 @@ async function guardarPassword() {
         </button>
       </div>
 
-      <nav class="flex-1 space-y-0.5 overflow-y-auto px-3">
+      <div
+        v-if="auth.user?.role === 'coach'"
+        class="border-b border-white/10 px-4 py-3"
+      >
+        <BusquedaGlobal />
+      </div>
+
+      <nav class="flex-1 space-y-0.5 overflow-y-auto px-3 py-3">
         <RouterLink
           v-for="item in navItems"
           :key="item.to"
@@ -193,74 +230,82 @@ async function guardarPassword() {
           {{ item.label }}
         </RouterLink>
       </nav>
+    </aside>
 
-      <div
-        v-if="auth.user"
-        class="relative border-t border-white/10 px-3 py-4"
-      >
-        <BusquedaGlobal
-          v-if="auth.user.role === 'coach'"
-          class="mb-3 px-1"
-        />
-
-        <div
-          v-if="userPanelOpen"
-          class="absolute bottom-full left-3 right-3 z-10 mb-2 rounded-xl border border-white/10 bg-[var(--color-ink)] p-4 shadow-xl"
-        >
-          <p class="font-[family-name:var(--font-heading)] text-sm font-semibold text-[var(--color-parchment)]">
-            {{ auth.user.nombre || rolLabels[auth.user.role] }}
-          </p>
-          <p class="mt-0.5 truncate text-xs text-[var(--color-parchment)]/60">
-            {{ auth.user.email }}
-          </p>
-          <span class="mt-2 inline-block rounded-full bg-white/10 px-2 py-0.5 text-[10px] uppercase tracking-wide text-[var(--color-parchment)]/70">
-            {{ rolLabels[auth.user.role] }}
-          </span>
-          <button
-            type="button"
-            class="mt-3 w-full rounded-lg border border-white/10 px-3 py-2 text-left text-xs text-[var(--color-parchment)]/80 hover:bg-white/10"
-            @click="abrirCambiarPassword"
-          >
-            Cambiar contraseña
-          </button>
-        </div>
+    <main :class="{ 'sm:pl-64': sidebarOpen }">
+      <header class="sticky top-0 z-20 flex items-center gap-3 border-b border-[var(--color-line)] bg-[var(--color-ivory)] px-4 py-3 sm:px-8 print:hidden">
         <button
-          v-if="userPanelOpen"
-          aria-label="Cerrar panel de usuario"
-          class="fixed inset-0 z-0 cursor-default"
-          @click="userPanelOpen = false"
-        />
-
-        <button
-          type="button"
-          class="flex w-full items-center justify-between gap-2 rounded-lg px-3 py-1.5 text-left hover:bg-white/10"
-          @click="userPanelOpen = !userPanelOpen"
+          aria-label="Alternar menú"
+          class="rounded-lg p-1.5 hover:bg-[var(--color-parchment)]/60"
+          @click="sidebarOpen = !sidebarOpen"
         >
-          <span class="truncate text-xs text-[var(--color-parchment)]/60">{{ auth.user.email }}</span>
           <svg
-            width="14"
-            height="14"
+            width="20"
+            height="20"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
             stroke-width="2"
             stroke-linecap="round"
-            stroke-linejoin="round"
-            class="shrink-0 transition-transform"
-            :class="{ 'rotate-180': userPanelOpen }"
-          ><path d="M6 9l6 6 6-6" /></svg>
+          ><path d="M4 6h16M4 12h16M4 18h16" /></svg>
         </button>
-        <button
-          class="mt-2 flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-[var(--color-parchment)]/80 transition-colors hover:bg-white/10 hover:text-[var(--color-parchment)]"
-          @click="handleLogout"
-        >
-          <NavIcon name="logout" />
-          Cerrar sesión
-        </button>
-      </div>
-    </aside>
-
-    <main :class="{ 'sm:pl-64': sidebarOpen }">
+        <div class="flex-1" />
+        <template v-if="auth.user">
+          <NotificationBell />
+          <div class="relative">
+            <button
+              type="button"
+              aria-label="Cuenta"
+              class="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--color-ink)] text-xs font-semibold text-[var(--color-parchment)]"
+              @click="userPanelOpen = !userPanelOpen"
+            >
+              {{ avatarInitials }}
+            </button>
+            <button
+              v-if="userPanelOpen"
+              aria-label="Cerrar panel de cuenta"
+              class="fixed inset-0 z-20 cursor-default"
+              @click="userPanelOpen = false"
+            />
+            <div
+              v-if="userPanelOpen"
+              class="absolute right-0 top-full z-30 mt-2 w-64 rounded-xl border border-[var(--color-line)] bg-white p-4 shadow-xl"
+            >
+              <p class="font-[family-name:var(--font-heading)] text-sm font-semibold">
+                {{ auth.user.nombre || rolLabels[auth.user.role] }}
+              </p>
+              <p class="mt-0.5 truncate text-xs text-[var(--color-ink)]/60">
+                {{ auth.user.email }}
+              </p>
+              <span class="mt-2 inline-block rounded-full bg-[var(--color-parchment)] px-2 py-0.5 text-[10px] uppercase tracking-wide text-[var(--color-ink)]/70">
+                {{ rolLabels[auth.user.role] }}
+              </span>
+              <button
+                type="button"
+                class="mt-3 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-left text-xs hover:bg-[var(--color-parchment)]/50"
+                @click="abrirCambiarPassword"
+              >
+                Cambiar contraseña
+              </button>
+              <button
+                v-if="auth.user.role === 'coachee'"
+                type="button"
+                class="mt-2 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-left text-xs hover:bg-[var(--color-parchment)]/50"
+                @click="abrirEditarContacto"
+              >
+                Editar mis datos de contacto
+              </button>
+              <button
+                type="button"
+                class="mt-2 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-left text-xs hover:bg-[var(--color-parchment)]/50"
+                @click="handleLogout"
+              >
+                Cerrar sesión
+              </button>
+            </div>
+          </div>
+        </template>
+      </header>
       <div class="max-w-[1600px] px-4 py-6 sm:px-8 sm:py-8">
         <slot />
       </div>
@@ -275,48 +320,40 @@ async function guardarPassword() {
         class="space-y-4"
         @submit.prevent="guardarPassword"
       >
-        <label class="block text-sm">
-          Contraseña actual
-          <input
-            v-model="passwordForm.currentPassword"
-            type="password"
-            required
-            autocomplete="current-password"
-            class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
-          >
-        </label>
+        <PasswordField
+          v-model="passwordForm.currentPassword"
+          label="Contraseña actual"
+          autocomplete="current-password"
+        />
 
-        <label class="block text-sm">
-          Nueva contraseña
-          <input
+        <div>
+          <PasswordField
             v-model="passwordForm.newPassword"
-            type="password"
-            required
+            label="Nueva contraseña"
             autocomplete="new-password"
-            class="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
-            :class="passwordErrors.newPassword ? 'border-[var(--color-bronze)]' : 'border-[var(--color-line)]'"
+            :minlength="12"
+            :invalid="!!passwordErrors.newPassword"
           >
-          <span
-            v-if="passwordErrors.newPassword"
-            class="mt-1 block text-xs text-[var(--color-bronze)]"
-          >{{ passwordErrors.newPassword }}</span>
-        </label>
+            <span
+              v-if="passwordErrors.newPassword"
+              class="mt-1 block text-xs text-[var(--color-bronze)]"
+            >{{ passwordErrors.newPassword }}</span>
+          </PasswordField>
+          <PasswordStrengthMeter :password="passwordForm.newPassword" />
+        </div>
 
-        <label class="block text-sm">
-          Confirmar nueva contraseña
-          <input
-            v-model="passwordForm.confirmPassword"
-            type="password"
-            required
-            autocomplete="new-password"
-            class="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
-            :class="passwordErrors.confirmPassword ? 'border-[var(--color-bronze)]' : 'border-[var(--color-line)]'"
-          >
+        <PasswordField
+          v-model="passwordForm.confirmPassword"
+          label="Confirmar nueva contraseña"
+          autocomplete="new-password"
+          :minlength="12"
+          :invalid="!!passwordErrors.confirmPassword"
+        >
           <span
             v-if="passwordErrors.confirmPassword"
             class="mt-1 block text-xs text-[var(--color-bronze)]"
           >{{ passwordErrors.confirmPassword }}</span>
-        </label>
+        </PasswordField>
 
         <div class="flex justify-end gap-2 pt-2">
           <button
@@ -332,6 +369,59 @@ async function guardarPassword() {
             class="rounded-lg bg-[var(--color-ink)] px-4 py-2 text-sm text-[var(--color-parchment)] disabled:opacity-60"
           >
             {{ guardandoPassword ? 'Guardando…' : 'Guardar' }}
+          </button>
+        </div>
+      </form>
+    </AppModal>
+
+    <AppModal
+      v-if="contactModalOpen"
+      title="Editar mis datos de contacto"
+      @close="contactModalOpen = false"
+    >
+      <p
+        v-if="cargandoContacto"
+        class="text-sm text-[var(--color-ink)]/60"
+      >
+        Cargando…
+      </p>
+      <form
+        v-else
+        class="space-y-4"
+        @submit.prevent="guardarContacto"
+      >
+        <label class="block text-sm">
+          Teléfono
+          <input
+            v-model="contactForm.telefono"
+            type="tel"
+            class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+          >
+        </label>
+
+        <label class="block text-sm">
+          Email de contacto
+          <input
+            v-model="contactForm.emailContacto"
+            type="email"
+            class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+          >
+        </label>
+
+        <div class="flex justify-end gap-2 pt-2">
+          <button
+            type="button"
+            class="rounded-lg border border-[var(--color-line)] px-4 py-2 text-sm"
+            @click="contactModalOpen = false"
+          >
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            :disabled="guardandoContacto"
+            class="rounded-lg bg-[var(--color-ink)] px-4 py-2 text-sm text-[var(--color-parchment)] disabled:opacity-60"
+          >
+            {{ guardandoContacto ? 'Guardando…' : 'Guardar' }}
           </button>
         </div>
       </form>

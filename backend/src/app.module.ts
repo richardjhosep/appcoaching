@@ -22,6 +22,7 @@ import { NegocioModule } from './negocio/negocio.module';
 import { LegalModule } from './legal/legal.module';
 import { BusquedaModule } from './busqueda/busqueda.module';
 import { SatisfaccionModule } from './satisfaccion/satisfaccion.module';
+import { NotificacionesModule } from './notificaciones/notificaciones.module';
 
 @Module({
   imports: [
@@ -61,6 +62,7 @@ import { SatisfaccionModule } from './satisfaccion/satisfaccion.module';
     LegalModule,
     BusquedaModule,
     SatisfaccionModule,
+    NotificacionesModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

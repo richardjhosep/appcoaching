@@ -304,6 +304,17 @@ describe('UsersService', () => {
     });
   });
 
+  describe('findAllByRole', () => {
+    it('lists users filtered by role', async () => {
+      repo.find.mockResolvedValue([{ id: 'coach-1', role: Role.COACH }]);
+
+      const users = await service.findAllByRole(Role.COACH);
+
+      expect(users).toEqual([{ id: 'coach-1', role: Role.COACH }]);
+      expect(repo.find).toHaveBeenCalledWith({ where: { role: Role.COACH } });
+    });
+  });
+
   describe('setActivo', () => {
     it('throws NotFoundException when the user does not exist', async () => {
       repo.findOne.mockResolvedValue(null);

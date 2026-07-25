@@ -86,6 +86,10 @@ export class UsersService {
     return this.users.exists({ where: { role } });
   }
 
+  findAllByRole(role: Role): Promise<User[]> {
+    return this.users.find({ where: { role } });
+  }
+
   /**
    * Atomic upsert-if-absent for the bootstrap coach seed: several app instances
    * can start concurrently against the same database (e.g. parallel e2e suites),

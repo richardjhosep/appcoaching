@@ -17,6 +17,35 @@ function escapeHtml(value: string): string {
     .replace(/'/g, '&#39;');
 }
 
+function formatFechaHora(iso: string): string {
+  return new Date(iso).toLocaleString('es-CL', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  });
+}
+
+function renderInfoBox(label: string, content: string): string {
+  return `
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f1ebdd;border:1px solid #e4dcc9;border-radius:8px;margin:0 0 8px;">
+      <tr>
+        <td style="padding:16px 20px;font-size:14px;line-height:1.6;">
+          <span style="color:#6b6b6b;">${label}</span><br>
+          ${content}
+        </td>
+      </tr>
+    </table>
+  `;
+}
+
+function renderFallbackLink(url: string): string {
+  return `
+    <p style="margin:0;font-size:13px;line-height:1.6;color:#6b6b6b;">
+      Si el botón no funciona, copia y pega este enlace en tu navegador:<br>
+      <a href="${url}" style="color:#b08d57;">${url}</a>
+    </p>
+  `;
+}
+
 @Injectable()
 export class EmailService {
   private readonly logger = new Logger(EmailService.name);
@@ -88,10 +117,7 @@ export class EmailService {
         Por tu seguridad, esta contraseña es válida por 48 horas y deberás cambiarla la primera vez que inicies sesión.
       </p>
       ${renderButton(options.loginUrl, 'Ingresar a CoachOS')}
-      <p style="margin:0;font-size:13px;line-height:1.6;color:#6b6b6b;">
-        Si el botón no funciona, copia y pega este enlace en tu navegador:<br>
-        <a href="${options.loginUrl}" style="color:#b08d57;">${options.loginUrl}</a>
-      </p>
+      ${renderFallbackLink(options.loginUrl)}
     `;
 
     const text = [
@@ -105,6 +131,96 @@ export class EmailService {
       'Esta contraseña es válida por 48 horas y deberás cambiarla la primera vez que inicies sesión.',
       '',
       `Ingresa aquí: ${options.loginUrl}`,
+      '',
+      'Este es un mensaje automático enviado desde una casilla no-reply — por favor no respondas a este correo.',
+    ].join('\n');
+
+    await this.send({
+      to: options.to,
+      subject,
+      html: renderEmailLayout(body),
+      text,
+    });
+  }
+
+  async sendReagendamientoSolicitado(options: {
+    to: string;
+    nombreCoachee: string;
+    fechaHoraSesion: string;
+    motivo?: string | null;
+    verUrl: string;
+  }): Promise<void> {
+    const subject = 'Nueva solicitud de reagendamiento';
+    const nombreCoachee = escapeHtml(options.nombreCoachee);
+    const fecha = formatFechaHora(options.fechaHoraSesion);
+    const intro = `${nombreCoachee} solicitó reagendar su sesión del ${fecha}.`;
+    const motivoBox = options.motivo
+      ? renderInfoBox('Motivo', escapeHtml(options.motivo))
+      : '';
+
+    const body = `
+      <h1 style="margin:0 0 16px;font-family:'Poppins',Arial,sans-serif;font-size:22px;color:#121212;">Nueva solicitud de reagendamiento</h1>
+      <p style="margin:0 0 16px;font-size:15px;line-height:1.6;">${intro}</p>
+      ${motivoBox}
+      ${renderButton(options.verUrl, 'Ver en CoachOS')}
+      ${renderFallbackLink(options.verUrl)}
+    `;
+
+    const text = [
+      'Nueva solicitud de reagendamiento',
+      '',
+      `${options.nombreCoachee} solicitó reagendar su sesión del ${fecha}.`,
+      ...(options.motivo ? ['', `Motivo: ${options.motivo}`] : []),
+      '',
+      `Ver en CoachOS: ${options.verUrl}`,
+      '',
+      'Este es un mensaje automático enviado desde una casilla no-reply — por favor no respondas a este correo.',
+    ].join('\n');
+
+    await this.send({
+      to: options.to,
+      subject,
+      html: renderEmailLayout(body),
+      text,
+    });
+  }
+
+  async sendReagendamientoResuelto(options: {
+    to: string;
+    fechaHoraSesion: string;
+    nuevaFechaHora?: string | null;
+    respuestaCoach?: string | null;
+    verUrl: string;
+  }): Promise<void> {
+    const subject = 'Tu reagendamiento fue resuelto';
+    const fechaOriginal = formatFechaHora(options.fechaHoraSesion);
+    const nuevaFecha = options.nuevaFechaHora
+      ? formatFechaHora(options.nuevaFechaHora)
+      : null;
+    const intro = nuevaFecha
+      ? `Tu coach respondió tu solicitud de reagendamiento. La sesión del ${fechaOriginal} ahora quedó agendada para el ${nuevaFecha}.`
+      : `Tu coach respondió tu solicitud de reagendamiento sobre la sesión del ${fechaOriginal}.`;
+    const respuestaBox = options.respuestaCoach
+      ? renderInfoBox('Mensaje de tu coach', escapeHtml(options.respuestaCoach))
+      : '';
+
+    const body = `
+      <h1 style="margin:0 0 16px;font-family:'Poppins',Arial,sans-serif;font-size:22px;color:#121212;">Tu reagendamiento fue resuelto</h1>
+      <p style="margin:0 0 16px;font-size:15px;line-height:1.6;">${intro}</p>
+      ${respuestaBox}
+      ${renderButton(options.verUrl, 'Ver mis sesiones')}
+      ${renderFallbackLink(options.verUrl)}
+    `;
+
+    const text = [
+      'Tu reagendamiento fue resuelto',
+      '',
+      intro,
+      ...(options.respuestaCoach
+        ? ['', `Mensaje de tu coach: ${options.respuestaCoach}`]
+        : []),
+      '',
+      `Ver mis sesiones: ${options.verUrl}`,
       '',
       'Este es un mensaje automático enviado desde una casilla no-reply — por favor no respondas a este correo.',
     ].join('\n');

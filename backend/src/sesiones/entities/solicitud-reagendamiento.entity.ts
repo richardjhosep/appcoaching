@@ -8,6 +8,7 @@ import {
 } from 'typeorm';
 import { Sesion } from './sesion.entity';
 import { EstadoSolicitud } from '../enums/estado-solicitud.enum';
+import { Coachee } from '../../coachees/entities/coachee.entity';
 
 @Entity('solicitudes_reagendamiento')
 export class SolicitudReagendamiento {
@@ -23,6 +24,10 @@ export class SolicitudReagendamiento {
 
   @Column({ name: 'coachee_id', type: 'uuid' })
   coacheeId: string;
+
+  @ManyToOne(() => Coachee, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'coachee_id' })
+  coachee?: Coachee;
 
   @Column({ type: 'text', nullable: true })
   motivo: string | null;

@@ -1,18 +1,50 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import AppShell from '../../components/AppShell.vue'
+import AppModal from '../../components/AppModal.vue'
 import {
   getMisSesiones,
   guardarPostSesion,
   publicarPostSesion,
+  solicitarReagendamiento,
   type Sesion,
 } from '../../api/sesiones'
 import { ApiError } from '../../api/client'
+import { notifySuccess, notifyError } from '../../lib/notify'
 
 const sesiones = ref<Sesion[]>([])
 const loading = ref(true)
 const savingId = ref<string | null>(null)
 const errorPorSesion = reactive<Record<string, string>>({})
+
+const reagendarModalOpen = ref(false)
+const sesionParaReagendar = ref<Sesion | null>(null)
+const motivoReagendamiento = ref('')
+const enviandoReagendamiento = ref(false)
+
+function abrirSolicitarReagendamiento(sesion: Sesion) {
+  sesionParaReagendar.value = sesion
+  motivoReagendamiento.value = ''
+  reagendarModalOpen.value = true
+}
+
+async function enviarSolicitudReagendamiento() {
+  const sesion = sesionParaReagendar.value
+  if (!sesion) return
+  enviandoReagendamiento.value = true
+  try {
+    await solicitarReagendamiento(sesion.id, motivoReagendamiento.value || undefined)
+    reagendarModalOpen.value = false
+    await notifySuccess('Solicitud enviada', 'Tu coach recibió tu solicitud de reagendamiento.')
+  } catch (err) {
+    await notifyError(
+      'No se pudo enviar la solicitud',
+      err instanceof ApiError ? err.message : 'Ocurrió un error inesperado.',
+    )
+  } finally {
+    enviandoReagendamiento.value = false
+  }
+}
 
 const forms = reactive<
   Record<string, { aprendizaje: string; utilidad: number | null; cercaniaObjetivo: number | null; recomendacion: string; temasProximaSesion: string }>
@@ -220,17 +252,70 @@ async function publicar(sesion: Sesion) {
             </div>
           </div>
         </template>
-        <p
-          v-else-if="sesion.linkVideollamada"
-          class="text-sm"
+        <div
+          v-else
+          class="space-y-2"
         >
-          <a
-            :href="sesion.linkVideollamada"
-            target="_blank"
-            class="text-[var(--color-sage)] underline"
-          >Link de la videollamada</a>
-        </p>
+          <p
+            v-if="sesion.linkVideollamada"
+            class="text-sm"
+          >
+            <a
+              :href="sesion.linkVideollamada"
+              target="_blank"
+              class="text-[var(--color-sage)] underline"
+            >Link de la videollamada</a>
+          </p>
+          <button
+            class="rounded-lg border border-[var(--color-line)] px-3 py-2 text-xs hover:bg-[var(--color-parchment)]/50"
+            @click="abrirSolicitarReagendamiento(sesion)"
+          >
+            Solicitar reagendamiento
+          </button>
+        </div>
       </div>
     </div>
+
+    <AppModal
+      v-if="reagendarModalOpen"
+      title="Solicitar reagendamiento"
+      @close="reagendarModalOpen = false"
+    >
+      <form
+        class="space-y-4"
+        @submit.prevent="enviarSolicitudReagendamiento"
+      >
+        <p
+          v-if="sesionParaReagendar"
+          class="font-[family-name:var(--font-mono)] text-sm text-[var(--color-ink)]/70"
+        >
+          Sesión actual: {{ new Date(sesionParaReagendar.fechaHora).toLocaleString('es-CL') }}
+        </p>
+        <label class="block text-sm">
+          Motivo (opcional)
+          <textarea
+            v-model="motivoReagendamiento"
+            rows="3"
+            class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+          />
+        </label>
+        <div class="flex justify-end gap-2 pt-2">
+          <button
+            type="button"
+            class="rounded-lg border border-[var(--color-line)] px-4 py-2 text-sm"
+            @click="reagendarModalOpen = false"
+          >
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            :disabled="enviandoReagendamiento"
+            class="rounded-lg bg-[var(--color-ink)] px-4 py-2 text-sm text-[var(--color-parchment)] disabled:opacity-60"
+          >
+            {{ enviandoReagendamiento ? 'Enviando…' : 'Enviar' }}
+          </button>
+        </div>
+      </form>
+    </AppModal>
   </AppShell>
 </template>

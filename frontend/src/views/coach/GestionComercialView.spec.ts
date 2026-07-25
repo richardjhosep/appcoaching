@@ -1,9 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { mount, flushPromises } from '@vue/test-utils'
+import { mount, flushPromises, DOMWrapper } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import GestionComercialView from './GestionComercialView.vue'
 import type { SolicitudProceso } from '../../api/satisfaccion'
 import type { CicloCerrado } from '../../api/ciclos'
+import type { SolicitudReagendamiento } from '../../api/solicitudes-reagendamiento'
 
 vi.mock('../../api/satisfaccion', async () => {
   const actual = await vi.importActual<typeof import('../../api/satisfaccion')>('../../api/satisfaccion')
@@ -20,9 +21,25 @@ vi.mock('../../api/ciclos', async () => {
     getCiclosCerrados: vi.fn(),
   }
 })
+vi.mock('../../api/solicitudes-reagendamiento', async () => {
+  const actual = await vi.importActual<typeof import('../../api/solicitudes-reagendamiento')>('../../api/solicitudes-reagendamiento')
+  return {
+    ...actual,
+    getSolicitudesReagendamiento: vi.fn(),
+    responderSolicitudReagendamiento: vi.fn(),
+  }
+})
+vi.mock('../../lib/notify', () => ({
+  notifySuccess: vi.fn(),
+  notifyError: vi.fn(),
+}))
 
 import { getSolicitudes, atenderSolicitud } from '../../api/satisfaccion'
 import { getCiclosCerrados } from '../../api/ciclos'
+import {
+  getSolicitudesReagendamiento,
+  responderSolicitudReagendamiento,
+} from '../../api/solicitudes-reagendamiento'
 
 const solicitudes: SolicitudProceso[] = [
   {
@@ -55,12 +72,32 @@ const cerrados: CicloCerrado[] = [
   },
 ]
 
+const solicitudesReagendamiento: SolicitudReagendamiento[] = [
+  {
+    id: 'reag-1',
+    sesionId: 'sesion-1',
+    coacheeId: 'coachee-1',
+    motivo: 'tengo un viaje',
+    estado: 'pendiente',
+    respuestaCoach: null,
+    createdAt: '2026-07-02T00:00:00.000Z',
+    resolvedAt: null,
+    sesion: { id: 'sesion-1', fechaHora: '2026-08-05T15:00:00.000Z' },
+    coachee: { id: 'coachee-1', nombre: 'Ana' },
+  },
+]
+
 describe('GestionComercialView', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     vi.mocked(getSolicitudes).mockResolvedValue(solicitudes)
     vi.mocked(getCiclosCerrados).mockResolvedValue(cerrados)
     vi.mocked(atenderSolicitud).mockResolvedValue({ ...solicitudes[0], estado: 'atendida' })
+    vi.mocked(getSolicitudesReagendamiento).mockResolvedValue(solicitudesReagendamiento)
+    vi.mocked(responderSolicitudReagendamiento).mockResolvedValue({
+      ...solicitudesReagendamiento[0],
+      estado: 'resuelta',
+    })
   })
 
   it('shows pending solicitudes with their empresa name', async () => {
@@ -88,5 +125,33 @@ describe('GestionComercialView', () => {
     await flushPromises()
 
     expect(wrapper.text()).toContain('Abrir nuevo proceso con Coachee Uno')
+  })
+
+  it('shows pending reagendamiento requests with coachee nombre and fecha', async () => {
+    const wrapper = mount(GestionComercialView)
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Ana')
+    expect(wrapper.text()).toContain('tengo un viaje')
+  })
+
+  it('responds to a reagendamiento request and removes it from the queue', async () => {
+    const wrapper = mount(GestionComercialView)
+    await flushPromises()
+
+    const responderBtn = wrapper.findAll('button').find((b) => b.text() === 'Responder')
+    await responderBtn!.trigger('click')
+    await flushPromises()
+
+    const modal = new DOMWrapper(document.body)
+    await modal.find('textarea').setValue('Nos vemos el jueves')
+    await modal.find('form').trigger('submit')
+    await flushPromises()
+
+    expect(responderSolicitudReagendamiento).toHaveBeenCalledWith('reag-1', {
+      nuevaFechaHora: undefined,
+      respuestaCoach: 'Nos vemos el jueves',
+    })
+    expect(wrapper.text()).not.toContain('tengo un viaje')
   })
 })

@@ -82,6 +82,68 @@ describe('EmailService', () => {
     expect(call.html).not.toContain('Bienvenido');
   });
 
+  it('sends the reagendamiento-solicitado email to the coach', async () => {
+    const service = new EmailService(
+      makeConfig({
+        'smtp.host': 'smtp.gmail.com',
+        'smtp.port': 587,
+        'smtp.user': 'coach@gmail.com',
+        'smtp.pass': 'app-password',
+        'smtp.from': 'coach@gmail.com',
+      }),
+    );
+
+    await service.sendReagendamientoSolicitado({
+      to: 'coach@example.com',
+      nombreCoachee: 'Ana',
+      fechaHoraSesion: '2026-08-05T15:00:00.000Z',
+      motivo: 'tengo un viaje',
+      verUrl: 'http://localhost/coach/comercial',
+    });
+
+    expect(sendMail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: 'coach@example.com',
+        subject: expect.stringContaining('reagendamiento') as string,
+      }),
+    );
+    const [[call]] = sendMail.mock.calls as [[{ html: string; text: string }]];
+    expect(call.html).toContain('Ana');
+    expect(call.html).toContain('tengo un viaje');
+    expect(call.text).toContain('Ana');
+    expect(call.text).toContain('tengo un viaje');
+  });
+
+  it('sends the reagendamiento-resuelto email to the coachee', async () => {
+    const service = new EmailService(
+      makeConfig({
+        'smtp.host': 'smtp.gmail.com',
+        'smtp.port': 587,
+        'smtp.user': 'coach@gmail.com',
+        'smtp.pass': 'app-password',
+        'smtp.from': 'coach@gmail.com',
+      }),
+    );
+
+    await service.sendReagendamientoResuelto({
+      to: 'coachee@example.com',
+      fechaHoraSesion: '2026-08-05T15:00:00.000Z',
+      nuevaFechaHora: '2026-08-06T15:00:00.000Z',
+      respuestaCoach: 'Nos vemos el jueves',
+      verUrl: 'http://localhost/coachee/sesiones',
+    });
+
+    expect(sendMail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: 'coachee@example.com',
+        subject: expect.stringContaining('resuelto') as string,
+      }),
+    );
+    const [[call]] = sendMail.mock.calls as [[{ html: string; text: string }]];
+    expect(call.html).toContain('Nos vemos el jueves');
+    expect(call.text).toContain('Nos vemos el jueves');
+  });
+
   it('does nothing (and does not throw) when SMTP credentials are missing', async () => {
     const service = new EmailService(makeConfig({}));
 

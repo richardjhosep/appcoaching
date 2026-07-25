@@ -4,6 +4,9 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { changeOwnPassword } from '../api/users'
 import { ApiError } from '../api/client'
+import { validateNewPassword } from '../lib/password'
+import PasswordField from '../components/PasswordField.vue'
+import PasswordStrengthMeter from '../components/PasswordStrengthMeter.vue'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -22,8 +25,9 @@ function homeFor(role: string): string {
 
 async function guardar() {
   error.value = null
-  if (newPassword.value.length < 8) {
-    error.value = 'La nueva contraseña debe tener al menos 8 caracteres.'
+  const complejidad = validateNewPassword(newPassword.value)
+  if (complejidad) {
+    error.value = complejidad
     return
   }
   if (newPassword.value !== confirmPassword.value) {
@@ -63,37 +67,28 @@ async function guardar() {
         {{ error }}
       </p>
 
-      <label class="block text-sm">
-        Contraseña temporal actual
-        <input
-          v-model="currentPassword"
-          type="password"
-          required
-          class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
-        >
-      </label>
+      <PasswordField
+        v-model="currentPassword"
+        label="Contraseña temporal actual"
+        autocomplete="current-password"
+      />
 
-      <label class="block text-sm">
-        Nueva contraseña
-        <input
+      <div>
+        <PasswordField
           v-model="newPassword"
-          type="password"
-          required
-          minlength="8"
-          class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
-        >
-      </label>
+          label="Nueva contraseña"
+          autocomplete="new-password"
+          :minlength="12"
+        />
+        <PasswordStrengthMeter :password="newPassword" />
+      </div>
 
-      <label class="block text-sm">
-        Confirmar nueva contraseña
-        <input
-          v-model="confirmPassword"
-          type="password"
-          required
-          minlength="8"
-          class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
-        >
-      </label>
+      <PasswordField
+        v-model="confirmPassword"
+        label="Confirmar nueva contraseña"
+        autocomplete="new-password"
+        :minlength="12"
+      />
 
       <button
         type="submit"
