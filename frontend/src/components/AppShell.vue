@@ -269,39 +269,55 @@ async function guardarContacto() {
             />
             <div
               v-if="userPanelOpen"
-              class="absolute right-0 top-full z-30 mt-2 w-64 rounded-xl border border-[var(--color-line)] bg-white p-4 shadow-xl"
+              class="absolute right-0 top-full z-30 mt-2 w-72 rounded-xl border border-[var(--color-line)] bg-white p-4 shadow-xl"
             >
-              <p class="font-[family-name:var(--font-heading)] text-sm font-semibold">
-                {{ auth.user.nombre || rolLabels[auth.user.role] }}
-              </p>
-              <p class="mt-0.5 truncate text-xs text-[var(--color-ink)]/60">
+              <div class="flex items-center gap-3">
+                <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--color-ink)] text-sm font-semibold text-[var(--color-parchment)]">
+                  {{ avatarInitials }}
+                </div>
+                <div class="min-w-0">
+                  <p class="truncate font-[family-name:var(--font-heading)] text-sm font-semibold">
+                    {{ auth.user.nombre || rolLabels[auth.user.role] }}
+                  </p>
+                  <span class="mt-0.5 inline-block rounded-full bg-[var(--color-parchment)] px-2 py-0.5 text-[10px] uppercase tracking-wide text-[var(--color-ink)]/70">
+                    {{ rolLabels[auth.user.role] }}
+                  </span>
+                </div>
+              </div>
+              <p class="mt-2 truncate text-xs text-[var(--color-ink)]/60">
                 {{ auth.user.email }}
               </p>
-              <span class="mt-2 inline-block rounded-full bg-[var(--color-parchment)] px-2 py-0.5 text-[10px] uppercase tracking-wide text-[var(--color-ink)]/70">
-                {{ rolLabels[auth.user.role] }}
-              </span>
-              <button
-                type="button"
-                class="mt-3 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-left text-xs hover:bg-[var(--color-parchment)]/50"
-                @click="abrirCambiarPassword"
-              >
-                Cambiar contraseña
-              </button>
-              <button
-                v-if="auth.user.role === 'coachee'"
-                type="button"
-                class="mt-2 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-left text-xs hover:bg-[var(--color-parchment)]/50"
-                @click="abrirEditarContacto"
-              >
-                Editar mis datos de contacto
-              </button>
-              <button
-                type="button"
-                class="mt-2 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-left text-xs hover:bg-[var(--color-parchment)]/50"
-                @click="handleLogout"
-              >
-                Cerrar sesión
-              </button>
+
+              <div class="mt-3 space-y-0.5 border-t border-[var(--color-line)] pt-2">
+                <button
+                  type="button"
+                  class="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left text-sm hover:bg-[var(--color-parchment)]/50"
+                  @click="abrirCambiarPassword"
+                >
+                  <NavIcon name="password" />
+                  Cambiar contraseña
+                </button>
+                <button
+                  v-if="auth.user.role === 'coachee'"
+                  type="button"
+                  class="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left text-sm hover:bg-[var(--color-parchment)]/50"
+                  @click="abrirEditarContacto"
+                >
+                  <NavIcon name="contacto" />
+                  Editar mis datos de contacto
+                </button>
+              </div>
+
+              <div class="mt-2 space-y-0.5 border-t border-[var(--color-line)] pt-2">
+                <button
+                  type="button"
+                  class="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left text-sm text-[var(--color-bronze)] hover:bg-[var(--color-bronze)]/10"
+                  @click="handleLogout"
+                >
+                  <NavIcon name="logout" />
+                  Cerrar sesión
+                </button>
+              </div>
             </div>
           </div>
         </template>
