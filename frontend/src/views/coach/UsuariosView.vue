@@ -8,7 +8,7 @@ import IconButton from '../../components/IconButton.vue'
 import { createEmpresaUser, deleteUser, listUsers, resetPassword, setUserActivo, type UserAccount } from '../../api/users'
 import { listEmpresas, type Empresa } from '../../api/empresas'
 import { ApiError } from '../../api/client'
-import { notifyError, notifySuccess, confirmDialog, showCredential } from '../../lib/notify'
+import { notifyError, notifySuccess, confirmDialog } from '../../lib/notify'
 import { primerDiaDelMes, hoy, dentroDeRango } from '../../lib/dateRange'
 
 const PAGE_SIZE = 12
@@ -93,7 +93,7 @@ async function guardar() {
     const resultado = await createEmpresaUser(form.email, form.empresaId)
     modalOpen.value = false
     await load()
-    await showCredential(resultado.email, resultado.temporaryPassword)
+    await notifySuccess('Cuenta creada', `Se envió un correo a ${resultado.email} con las instrucciones de acceso.`)
   } catch (err) {
     await notifyError('No se pudo crear la cuenta', err instanceof ApiError ? err.message : 'Ocurrió un error inesperado.')
   } finally {
@@ -132,8 +132,8 @@ async function restablecer(usuario: UserAccount) {
   if (!confirmado) return
   restableciendo.value = usuario.id
   try {
-    const { temporaryPassword } = await resetPassword(usuario.id)
-    await showCredential(usuario.email, temporaryPassword)
+    await resetPassword(usuario.id)
+    await notifySuccess('Contraseña restablecida', `Se envió un correo a ${usuario.email} con la nueva contraseña.`)
   } catch (err) {
     await notifyError('No se pudo restablecer la contraseña', err instanceof ApiError ? err.message : 'Ocurrió un error inesperado.')
   } finally {

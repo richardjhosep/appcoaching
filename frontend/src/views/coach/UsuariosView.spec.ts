@@ -17,12 +17,11 @@ vi.mock('../../lib/notify', () => ({
   notifySuccess: vi.fn(),
   notifyError: vi.fn(),
   confirmDialog: vi.fn().mockResolvedValue(true),
-  showCredential: vi.fn(),
 }))
 
 import { listUsers, createEmpresaUser, setUserActivo } from '../../api/users'
 import { listEmpresas } from '../../api/empresas'
-import { confirmDialog, showCredential } from '../../lib/notify'
+import { confirmDialog, notifySuccess } from '../../lib/notify'
 
 const hoyIso = new Date().toISOString()
 
@@ -77,7 +76,10 @@ describe('UsuariosView', () => {
     await flushPromises()
 
     expect(createEmpresaUser).toHaveBeenCalledWith('nueva@example.com', 'e1')
-    expect(showCredential).toHaveBeenCalledWith('nueva@example.com', 'temp-pass')
+    expect(notifySuccess).toHaveBeenCalledWith(
+      'Cuenta creada',
+      expect.stringContaining('nueva@example.com') as string,
+    )
   })
 
   it('toggles estado after confirmation', async () => {

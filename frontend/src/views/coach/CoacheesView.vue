@@ -8,7 +8,7 @@ import IconButton from '../../components/IconButton.vue'
 import { createCoachee, deleteCoachee, listCoachees, setCoacheeActivo, updateCoachee, type CoacheeListItem } from '../../api/coachees'
 import { listEmpresas, type Empresa } from '../../api/empresas'
 import { ApiError } from '../../api/client'
-import { notifyError, notifySuccess, confirmDialog, showCredential } from '../../lib/notify'
+import { notifyError, notifySuccess, confirmDialog } from '../../lib/notify'
 import { primerDiaDelMes, hoy, dentroDeRango } from '../../lib/dateRange'
 
 const PAGE_SIZE = 12
@@ -158,7 +158,7 @@ async function guardar() {
       modalOpen.value = false
       await load()
       if (resultado.temporaryPassword) {
-        await showCredential(form.email, resultado.temporaryPassword)
+        await notifySuccess('Coachee creado', `Se envió un correo a ${form.email} con las instrucciones de acceso.`)
       } else {
         await notifySuccess('Coachee creado', `${form.nombre} ya está disponible en el sistema.`)
       }

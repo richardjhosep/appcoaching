@@ -18,12 +18,11 @@ vi.mock('../../lib/notify', () => ({
   notifySuccess: vi.fn(),
   notifyError: vi.fn(),
   confirmDialog: vi.fn().mockResolvedValue(true),
-  showCredential: vi.fn(),
 }))
 
 import { listCoachees, createCoachee, setCoacheeActivo } from '../../api/coachees'
 import { listEmpresas } from '../../api/empresas'
-import { confirmDialog } from '../../lib/notify'
+import { confirmDialog, notifySuccess } from '../../lib/notify'
 
 const hoyIso = new Date().toISOString()
 
@@ -95,6 +94,27 @@ describe('CoacheesView', () => {
     await flushPromises()
 
     expect(createCoachee).toHaveBeenCalledWith(expect.objectContaining({ nombre: 'Carla Nueva', email: 'carla@example.com' }))
+  })
+
+  it('confirms by email instead of showing the password on screen when one was generated', async () => {
+    vi.mocked(createCoachee).mockResolvedValue({ coachee: coachees[0], temporaryPassword: 'temp-pass' })
+    const wrapper = mount(CoacheesView, { global: { plugins: [router] } })
+    await flushPromises()
+
+    const nuevoBtn = wrapper.findAll('button').find((b) => b.text() === '+ Nuevo Coachee')
+    await nuevoBtn!.trigger('click')
+    await flushPromises()
+    const modal = new DOMWrapper(document.body)
+    await modal.find('input[type="text"]').setValue('Carla Nueva')
+    await modal.find('input[type="email"]').setValue('carla@example.com')
+    await modal.find('form').trigger('submit')
+    await flushPromises()
+
+    expect(notifySuccess).toHaveBeenCalledWith(
+      'Coachee creado',
+      expect.stringContaining('carla@example.com') as string,
+    )
+    expect(wrapper.text()).not.toContain('temp-pass')
   })
 
   it('toggles estado after confirmation', async () => {
