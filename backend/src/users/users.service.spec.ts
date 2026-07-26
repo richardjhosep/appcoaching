@@ -284,7 +284,6 @@ describe('UsersService', () => {
         expect.objectContaining({
           to: 'user1@example.com',
           temporaryPassword,
-          isNewAccount: false,
         }),
       );
     });

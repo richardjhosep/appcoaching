@@ -55,7 +55,7 @@ describe('EmailService', () => {
     expect(call.text).toContain('Ana');
   });
 
-  it('uses reset copy instead of welcome copy when isNewAccount is false', async () => {
+  it('uses the same welcome copy for a password reset as for a new account', async () => {
     const service = new EmailService(
       makeConfig({
         'smtp.host': 'smtp.gmail.com',
@@ -70,16 +70,15 @@ describe('EmailService', () => {
       to: 'nuevo@example.com',
       temporaryPassword: 'temp-123',
       loginUrl: 'http://localhost/login',
-      isNewAccount: false,
     });
 
     expect(sendMail).toHaveBeenCalledWith(
       expect.objectContaining({
-        subject: expect.stringContaining('restablecida') as string,
+        subject: expect.stringContaining('Bienvenido') as string,
       }),
     );
     const [[call]] = sendMail.mock.calls as [[{ html: string }]];
-    expect(call.html).not.toContain('Bienvenido');
+    expect(call.html).toContain('Bienvenido');
   });
 
   it('sends the reagendamiento-solicitado email to the coach', async () => {

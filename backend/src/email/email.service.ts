@@ -80,23 +80,14 @@ export class EmailService {
     nombre?: string | null;
     temporaryPassword: string;
     loginUrl: string;
-    isNewAccount?: boolean;
   }): Promise<void> {
-    const isNewAccount = options.isNewAccount ?? true;
     const nombre = options.nombre ? escapeHtml(options.nombre) : null;
-    const saludo = isNewAccount
-      ? nombre
-        ? `¡Bienvenido/a a CoachOS, ${nombre}!`
-        : '¡Bienvenido/a a CoachOS!'
-      : nombre
-        ? `Hola, ${nombre}`
-        : 'Hola';
-    const intro = isNewAccount
-      ? 'Gracias por confiar en nosotros para acompañar tu proceso de coaching. Ya creamos tu cuenta y está lista para que ingreses.'
-      : 'Generamos una nueva contraseña temporal para tu cuenta en CoachOS. Usa estos datos para ingresar:';
-    const subject = isNewAccount
-      ? 'Bienvenido/a a CoachOS — tu cuenta ya está lista'
-      : 'Tu contraseña de CoachOS fue restablecida';
+    const saludo = nombre
+      ? `¡Bienvenido/a a CoachOS, ${nombre}!`
+      : '¡Bienvenido/a a CoachOS!';
+    const intro =
+      'Gracias por confiar en nosotros para acompañar tu proceso de coaching. Ya creamos tu cuenta y está lista para que ingreses.';
+    const subject = 'Bienvenido/a a CoachOS — tu cuenta ya está lista';
 
     const body = `
       <h1 style="margin:0 0 16px;font-family:'Poppins',Arial,sans-serif;font-size:22px;color:#121212;">${saludo}</h1>

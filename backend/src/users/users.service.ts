@@ -36,7 +36,6 @@ export class UsersService {
     to: string,
     temporaryPassword: string,
     nombre?: string | null,
-    isNewAccount = true,
   ): void {
     const loginUrl = `${this.config.get<string>('frontendUrl')}/login`;
     void this.email.sendTemporaryPassword({
@@ -44,7 +43,6 @@ export class UsersService {
       nombre,
       temporaryPassword,
       loginUrl,
-      isNewAccount,
     });
   }
 
@@ -196,7 +194,7 @@ export class UsersService {
     user.mustChangePassword = true;
     user.tempPasswordExpiresAt = this.tempPasswordExpiry();
     await this.users.save(user);
-    this.notifyTemporaryPassword(user.email, temporaryPassword, null, false);
+    this.notifyTemporaryPassword(user.email, temporaryPassword);
     return temporaryPassword;
   }
 
