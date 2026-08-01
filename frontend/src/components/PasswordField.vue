@@ -24,7 +24,7 @@ const visible = ref(false)
         :minlength="minlength"
         :autocomplete="autocomplete"
         class="w-full rounded-lg border px-3 py-2 pr-10 text-sm"
-        :class="invalid ? 'border-[var(--color-bronze)]' : 'border-[var(--color-line)]'"
+        :class="invalid ? 'border-[var(--color-danger)]' : 'border-[var(--color-line)]'"
         @input="emit('update:modelValue', ($event.target as HTMLInputElement).value)"
       >
       <button

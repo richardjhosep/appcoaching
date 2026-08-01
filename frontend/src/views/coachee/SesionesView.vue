@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, type ComponentPublicInstance } from 'vue'
 import AppShell from '../../components/AppShell.vue'
 import AppModal from '../../components/AppModal.vue'
+import WeekCalendar from '../../components/WeekCalendar.vue'
 import {
   getMisSesiones,
   guardarPostSesion,
@@ -113,6 +114,21 @@ async function publicar(sesion: Sesion) {
     savingId.value = null
   }
 }
+
+const sesionRefs = ref<Record<string, HTMLElement | null>>({})
+const highlightedId = ref<string | null>(null)
+
+function setSesionRef(id: string, el: Element | ComponentPublicInstance | null) {
+  sesionRefs.value[id] = el as HTMLElement | null
+}
+
+function onSelectSesion(id: string) {
+  sesionRefs.value[id]?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  highlightedId.value = id
+  setTimeout(() => {
+    if (highlightedId.value === id) highlightedId.value = null
+  }, 2000)
+}
 </script>
 
 <template>
@@ -120,6 +136,12 @@ async function publicar(sesion: Sesion) {
     <h1 class="mb-4 font-[family-name:var(--font-heading)] text-xl font-semibold">
       Mis sesiones
     </h1>
+    <WeekCalendar
+      v-if="!loading"
+      class="mb-4"
+      :sesiones="sesiones"
+      @select="onSelectSesion"
+    />
     <div
       v-if="loading"
       class="text-sm text-[var(--color-ink)]/60"
@@ -139,7 +161,9 @@ async function publicar(sesion: Sesion) {
       <div
         v-for="sesion in sesionesOrdenadas"
         :key="sesion.id"
-        class="rounded-2xl border border-[var(--color-line)] bg-white p-4"
+        :ref="(el) => setSesionRef(sesion.id, el)"
+        class="rounded-2xl border border-[var(--color-line)] bg-white p-4 transition-shadow"
+        :class="highlightedId === sesion.id ? 'ring-2 ring-[var(--color-sage)]' : ''"
       >
         <div class="mb-2 flex items-center justify-between">
           <span class="font-[family-name:var(--font-mono)] text-sm">
@@ -184,7 +208,7 @@ async function publicar(sesion: Sesion) {
             </p>
             <p
               v-if="errorPorSesion[sesion.id]"
-              class="text-sm text-[var(--color-bronze)]"
+              class="text-sm text-[var(--color-danger)]"
             >
               {{ errorPorSesion[sesion.id] }}
             </p>

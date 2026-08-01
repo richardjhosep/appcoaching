@@ -80,6 +80,7 @@ const form = reactive({
   areaGerencia: '',
 })
 const errors = reactive<{ nombre?: string; email?: string; tarifaPropia?: string }>({})
+const serverErrors = ref<Record<string, string>>({})
 
 const formatoMiles = new Intl.NumberFormat('es-CL')
 const tarifaPropiaDisplay = computed<string>({
@@ -102,6 +103,7 @@ function abrirCrear() {
   errors.nombre = undefined
   errors.email = undefined
   errors.tarifaPropia = undefined
+  serverErrors.value = {}
   modalOpen.value = true
 }
 
@@ -117,6 +119,7 @@ function abrirEditar(coachee: CoacheeListItem) {
   errors.nombre = undefined
   errors.email = undefined
   errors.tarifaPropia = undefined
+  serverErrors.value = {}
   modalOpen.value = true
 }
 
@@ -132,6 +135,7 @@ function validar(): boolean {
 async function guardar() {
   if (!validar()) return
   guardando.value = true
+  serverErrors.value = {}
   try {
     if (editando.value) {
       await updateCoachee(editando.value.id, {
@@ -164,6 +168,7 @@ async function guardar() {
       }
     }
   } catch (err) {
+    serverErrors.value = err instanceof ApiError ? (err.fieldErrors ?? {}) : {}
     await notifyError('No se pudo guardar', err instanceof ApiError ? err.message : 'Ocurrió un error inesperado.')
   } finally {
     guardando.value = false
@@ -421,12 +426,12 @@ async function eliminar(coachee: CoacheeListItem) {
             v-model="form.nombre"
             type="text"
             class="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
-            :class="errors.nombre ? 'border-[var(--color-bronze)]' : 'border-[var(--color-line)]'"
+            :class="errors.nombre || serverErrors.nombre ? 'border-[var(--color-danger)]' : 'border-[var(--color-line)]'"
           >
           <span
-            v-if="errors.nombre"
-            class="mt-1 block text-xs text-[var(--color-bronze)]"
-          >{{ errors.nombre }}</span>
+            v-if="errors.nombre || serverErrors.nombre"
+            class="mt-1 block text-xs text-[var(--color-danger)]"
+          >{{ errors.nombre || serverErrors.nombre }}</span>
         </label>
 
         <label
@@ -438,12 +443,12 @@ async function eliminar(coachee: CoacheeListItem) {
             v-model="form.email"
             type="email"
             class="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
-            :class="errors.email ? 'border-[var(--color-bronze)]' : 'border-[var(--color-line)]'"
+            :class="errors.email || serverErrors.email ? 'border-[var(--color-danger)]' : 'border-[var(--color-line)]'"
           >
           <span
-            v-if="errors.email"
-            class="mt-1 block text-xs text-[var(--color-bronze)]"
-          >{{ errors.email }}</span>
+            v-if="errors.email || serverErrors.email"
+            class="mt-1 block text-xs text-[var(--color-danger)]"
+          >{{ errors.email || serverErrors.email }}</span>
         </label>
 
         <label class="block text-sm">
@@ -490,12 +495,12 @@ async function eliminar(coachee: CoacheeListItem) {
             type="text"
             inputmode="numeric"
             class="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
-            :class="errors.tarifaPropia ? 'border-[var(--color-bronze)]' : 'border-[var(--color-line)]'"
+            :class="errors.tarifaPropia || serverErrors.tarifaPropia ? 'border-[var(--color-danger)]' : 'border-[var(--color-line)]'"
           >
           <span
-            v-if="errors.tarifaPropia"
-            class="mt-1 block text-xs text-[var(--color-bronze)]"
-          >{{ errors.tarifaPropia }}</span>
+            v-if="errors.tarifaPropia || serverErrors.tarifaPropia"
+            class="mt-1 block text-xs text-[var(--color-danger)]"
+          >{{ errors.tarifaPropia || serverErrors.tarifaPropia }}</span>
         </label>
 
         <label class="block text-sm">

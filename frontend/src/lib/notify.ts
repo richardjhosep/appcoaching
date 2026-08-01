@@ -32,7 +32,7 @@ export async function confirmDialog(options: {
     showCancelButton: true,
     confirmButtonText: options.confirmText ?? 'Confirmar',
     cancelButtonText: 'Cancelar',
-    confirmButtonColor: options.danger ? '#b08d57' : '#121212',
+    confirmButtonColor: options.danger ? '#dc2626' : '#121212',
     reverseButtons: true,
   })
   return result.isConfirmed

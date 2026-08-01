@@ -71,12 +71,14 @@ const modalOpen = ref(false)
 const guardando = ref(false)
 const form = reactive({ email: '', empresaId: '' })
 const errors = reactive<{ email?: string; empresaId?: string }>({})
+const serverErrors = ref<Record<string, string>>({})
 
 function abrirCrear() {
   form.email = ''
   form.empresaId = ''
   errors.email = undefined
   errors.empresaId = undefined
+  serverErrors.value = {}
   modalOpen.value = true
 }
 
@@ -89,12 +91,14 @@ function validar(): boolean {
 async function guardar() {
   if (!validar()) return
   guardando.value = true
+  serverErrors.value = {}
   try {
     const resultado = await createEmpresaUser(form.email, form.empresaId)
     modalOpen.value = false
     await load()
     await notifySuccess('Cuenta creada', `Se envió un correo a ${resultado.email} con las instrucciones de acceso.`)
   } catch (err) {
+    serverErrors.value = err instanceof ApiError ? (err.fieldErrors ?? {}) : {}
     await notifyError('No se pudo crear la cuenta', err instanceof ApiError ? err.message : 'Ocurrió un error inesperado.')
   } finally {
     guardando.value = false
@@ -359,12 +363,12 @@ async function eliminar(usuario: UserAccount) {
             v-model="form.email"
             type="email"
             class="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
-            :class="errors.email ? 'border-[var(--color-bronze)]' : 'border-[var(--color-line)]'"
+            :class="errors.email || serverErrors.email ? 'border-[var(--color-danger)]' : 'border-[var(--color-line)]'"
           >
           <span
-            v-if="errors.email"
-            class="mt-1 block text-xs text-[var(--color-bronze)]"
-          >{{ errors.email }}</span>
+            v-if="errors.email || serverErrors.email"
+            class="mt-1 block text-xs text-[var(--color-danger)]"
+          >{{ errors.email || serverErrors.email }}</span>
         </label>
 
         <label class="block text-sm">
@@ -372,7 +376,7 @@ async function eliminar(usuario: UserAccount) {
           <select
             v-model="form.empresaId"
             class="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
-            :class="errors.empresaId ? 'border-[var(--color-bronze)]' : 'border-[var(--color-line)]'"
+            :class="errors.empresaId || serverErrors.empresaId ? 'border-[var(--color-danger)]' : 'border-[var(--color-line)]'"
           >
             <option value="">
               Selecciona…
@@ -386,9 +390,9 @@ async function eliminar(usuario: UserAccount) {
             </option>
           </select>
           <span
-            v-if="errors.empresaId"
-            class="mt-1 block text-xs text-[var(--color-bronze)]"
-          >{{ errors.empresaId }}</span>
+            v-if="errors.empresaId || serverErrors.empresaId"
+            class="mt-1 block text-xs text-[var(--color-danger)]"
+          >{{ errors.empresaId || serverErrors.empresaId }}</span>
         </label>
 
         <div class="flex justify-end gap-2 pt-2">

@@ -9,6 +9,7 @@ import {
 import { ApiError } from '../../../api/client'
 
 const props = defineProps<{ coacheeId: string }>()
+const emit = defineEmits<{ 'plan-changed': [PlanDesarrollo] }>()
 
 const plan = ref<PlanDesarrollo | null>(null)
 const loading = ref(true)
@@ -48,6 +49,7 @@ async function aprobar() {
   error.value = null
   try {
     plan.value = await aprobarPlan(props.coacheeId)
+    emit('plan-changed', plan.value)
   } catch (err) {
     error.value = err instanceof ApiError ? err.message : 'No se pudo aprobar.'
   } finally {
@@ -61,6 +63,7 @@ async function enviarSolicitudCambios() {
   error.value = null
   try {
     plan.value = await solicitarCambios(props.coacheeId, comentario.value.trim())
+    emit('plan-changed', plan.value)
     comentario.value = ''
   } catch (err) {
     error.value = err instanceof ApiError ? err.message : 'No se pudo enviar el comentario.'
@@ -92,7 +95,7 @@ async function enviarSolicitudCambios() {
     </p>
     <p
       v-if="error"
-      class="mb-3 text-sm text-[var(--color-bronze)]"
+      class="mb-3 text-sm text-[var(--color-danger)]"
     >
       {{ error }}
     </p>

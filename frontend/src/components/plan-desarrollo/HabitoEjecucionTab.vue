@@ -10,6 +10,7 @@ import {
   type EstadoActividad,
 } from '../../api/planesDesarrollo'
 import { ApiError } from '../../api/client'
+import { notifyError, notifySuccess } from '../../lib/notify'
 
 const props = defineProps<{ plan: PlanDesarrollo }>()
 const emit = defineEmits<{ updated: [PlanDesarrollo] }>()
@@ -50,8 +51,10 @@ async function guardarHabito() {
       habitoSatisfactorio: form.habitoSatisfactorio || undefined,
     })
     emit('updated', updated)
+    await notifySuccess('Hábito guardado')
   } catch (err) {
     error.value = err instanceof ApiError ? err.message : 'No se pudo guardar.'
+    await notifyError('No se pudo guardar el hábito', error.value)
   } finally {
     saving.value = false
   }
@@ -94,7 +97,7 @@ function objetivoDescripcion(objetivoId: string): string {
   <div class="space-y-4">
     <p
       v-if="error"
-      class="text-sm text-[var(--color-bronze)]"
+      class="text-sm text-[var(--color-danger)]"
     >
       {{ error }}
     </p>

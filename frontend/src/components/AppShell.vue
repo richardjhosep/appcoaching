@@ -235,9 +235,10 @@ async function guardarContacto() {
     <main :class="{ 'sm:pl-64': sidebarOpen }">
       <header class="sticky top-0 z-20 flex items-center gap-3 border-b border-[var(--color-line)] bg-[var(--color-ivory)] px-4 py-3 sm:px-8 print:hidden">
         <button
-          aria-label="Alternar menú"
+          v-if="!sidebarOpen"
+          aria-label="Abrir menú"
           class="rounded-lg p-1.5 hover:bg-[var(--color-parchment)]/60"
-          @click="sidebarOpen = !sidebarOpen"
+          @click="sidebarOpen = true"
         >
           <svg
             width="20"
@@ -352,7 +353,7 @@ async function guardarContacto() {
           >
             <span
               v-if="passwordErrors.newPassword"
-              class="mt-1 block text-xs text-[var(--color-bronze)]"
+              class="mt-1 block text-xs text-[var(--color-danger)]"
             >{{ passwordErrors.newPassword }}</span>
           </PasswordField>
           <PasswordStrengthMeter :password="passwordForm.newPassword" />
@@ -367,7 +368,7 @@ async function guardarContacto() {
         >
           <span
             v-if="passwordErrors.confirmPassword"
-            class="mt-1 block text-xs text-[var(--color-bronze)]"
+            class="mt-1 block text-xs text-[var(--color-danger)]"
           >{{ passwordErrors.confirmPassword }}</span>
         </PasswordField>
 

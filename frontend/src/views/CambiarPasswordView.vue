@@ -62,7 +62,7 @@ async function guardar() {
     >
       <p
         v-if="error"
-        class="rounded-lg bg-[var(--color-bronze)]/10 p-3 text-sm text-[var(--color-bronze)]"
+        class="rounded-lg bg-[var(--color-danger)]/10 p-3 text-sm text-[var(--color-danger)]"
       >
         {{ error }}
       </p>

@@ -4,10 +4,12 @@ const BASE_URL = (import.meta.env.VITE_API_URL as string | undefined) ?? '/api'
 
 export class ApiError extends Error {
   status: number
+  fieldErrors?: Record<string, string>
 
-  constructor(status: number, message: string) {
+  constructor(status: number, message: string, fieldErrors?: Record<string, string>) {
     super(message)
     this.status = status
+    this.fieldErrors = fieldErrors
   }
 }
 
@@ -24,9 +26,10 @@ async function handleJsonResponse<T>(res: Response): Promise<T> {
   const data: unknown = await res.json().catch(() => null)
 
   if (!res.ok) {
-    const message = (data as { message?: string | string[] } | null)?.message
+    const body = data as { message?: string | string[]; fieldErrors?: Record<string, string> } | null
+    const message = body?.message
     const text = Array.isArray(message) ? message.join(', ') : (message ?? res.statusText)
-    throw new ApiError(res.status, text)
+    throw new ApiError(res.status, text, body?.fieldErrors)
   }
 
   return data as T

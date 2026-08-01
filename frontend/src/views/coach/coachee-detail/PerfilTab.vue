@@ -54,7 +54,7 @@ async function cambiarConsentimiento(event: Event) {
   >
     <p
       v-if="error"
-      class="text-sm text-[var(--color-bronze)]"
+      class="text-sm text-[var(--color-danger)]"
     >
       {{ error }}
     </p>

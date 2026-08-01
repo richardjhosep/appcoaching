@@ -1,14 +1,17 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import AppShell from '../../components/AppShell.vue'
+import CicloStepper from '../../components/CicloStepper.vue'
 import DefinicionTab from '../../components/plan-desarrollo/DefinicionTab.vue'
 import HabitoEjecucionTab from '../../components/plan-desarrollo/HabitoEjecucionTab.vue'
 import FormacionTab from '../../components/plan-desarrollo/FormacionTab.vue'
 import { getOwnPlan, type PlanDesarrollo } from '../../api/planesDesarrollo'
 import { listCompetencias, type Competencia } from '../../api/competencias'
+import { getMiCicloActual, type Ciclo } from '../../api/ciclos'
 
 const plan = ref<PlanDesarrollo | null>(null)
 const competencias = ref<Competencia[]>([])
+const cicloActual = ref<Ciclo | null>(null)
 const loading = ref(true)
 const tab = ref<'definicion' | 'habito' | 'formacion'>('definicion')
 
@@ -22,9 +25,10 @@ const tabs = [
 
 async function load() {
   loading.value = true
-  const [p, c] = await Promise.all([getOwnPlan(), listCompetencias()])
+  const [p, c, ciclo] = await Promise.all([getOwnPlan(), listCompetencias(), getMiCicloActual()])
   plan.value = p
   competencias.value = c
+  cicloActual.value = ciclo
   loading.value = false
 }
 
@@ -40,13 +44,6 @@ function handleUpdated(updated: PlanDesarrollo) {
   }
   plan.value = updated
 }
-
-const estadoLabel: Record<string, string> = {
-  sin_enviar: 'Sin enviar',
-  pendiente_aprobacion: 'Pendiente de aprobación',
-  aprobado: 'Aprobado',
-  cambios_solicitados: 'Cambios solicitados',
-}
 </script>
 
 <template>
@@ -58,15 +55,14 @@ const estadoLabel: Record<string, string> = {
       Cargando…
     </div>
     <div v-else-if="plan">
-      <h1 class="mb-1 font-[family-name:var(--font-heading)] text-xl font-semibold">
+      <h1 class="mb-4 font-[family-name:var(--font-heading)] text-xl font-semibold">
         Mi plan de desarrollo
       </h1>
-      <p class="mb-4 text-sm text-[var(--color-ink)]/70">
-        Estado:
-        <span class="font-[family-name:var(--font-mono)] text-[var(--color-sage)]">
-          {{ estadoLabel[plan.estado] }}
-        </span>
-      </p>
+      <CicloStepper
+        class="mb-4"
+        :ciclo="cicloActual"
+        :plan="plan"
+      />
       <p
         v-if="plan.comentarioCoach"
         class="mb-4 rounded-lg border border-[var(--color-bronze)]/40 bg-[var(--color-bronze)]/10 p-3 text-sm"

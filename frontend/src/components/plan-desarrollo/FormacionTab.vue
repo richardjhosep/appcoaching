@@ -2,6 +2,7 @@
 import { reactive, ref } from 'vue'
 import { updateOwnPlan, type PlanDesarrollo } from '../../api/planesDesarrollo'
 import { ApiError } from '../../api/client'
+import { notifyError, notifySuccess } from '../../lib/notify'
 
 const props = defineProps<{ plan: PlanDesarrollo }>()
 const emit = defineEmits<{ updated: [PlanDesarrollo] }>()
@@ -30,8 +31,10 @@ async function guardar() {
       formacionPracticaGuiada: form.formacionPracticaGuiada || undefined,
     })
     emit('updated', updated)
+    await notifySuccess('Formación guardada')
   } catch (err) {
     error.value = err instanceof ApiError ? err.message : 'No se pudo guardar.'
+    await notifyError('No se pudo guardar la formación', error.value)
   } finally {
     saving.value = false
   }
@@ -42,7 +45,7 @@ async function guardar() {
   <div class="space-y-4">
     <p
       v-if="error"
-      class="text-sm text-[var(--color-bronze)]"
+      class="text-sm text-[var(--color-danger)]"
     >
       {{ error }}
     </p>

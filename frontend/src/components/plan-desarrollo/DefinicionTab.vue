@@ -11,6 +11,7 @@ import {
 } from '../../api/planesDesarrollo'
 import type { Competencia } from '../../api/competencias'
 import { ApiError } from '../../api/client'
+import { notifyError, notifySuccess } from '../../lib/notify'
 
 const props = defineProps<{
   plan: PlanDesarrollo
@@ -38,6 +39,7 @@ const form = reactive({
 const saving = ref(false)
 const enviando = ref(false)
 const error = ref<string | null>(null)
+const serverErrors = ref<Record<string, string>>({})
 const nuevoObjetivo = ref('')
 
 async function refetch() {
@@ -47,6 +49,7 @@ async function refetch() {
 async function guardar() {
   saving.value = true
   error.value = null
+  serverErrors.value = {}
   try {
     const updated = await updateOwnPlan({
       competenciaId: form.competenciaId || undefined,
@@ -57,8 +60,11 @@ async function guardar() {
       objetivoGeneral: form.objetivoGeneral || undefined,
     })
     emit('updated', updated)
+    await notifySuccess('Definición guardada')
   } catch (err) {
     error.value = err instanceof ApiError ? err.message : 'No se pudo guardar.'
+    serverErrors.value = err instanceof ApiError ? (err.fieldErrors ?? {}) : {}
+    await notifyError('No se pudo guardar la definición', error.value)
   } finally {
     saving.value = false
   }
@@ -111,14 +117,14 @@ async function enviar() {
   <div class="space-y-4">
     <p
       v-if="locked"
-      class="rounded-lg border border-[var(--color-line)] bg-[var(--color-parchment)]/60 p-3 text-xs text-[var(--color-ink)]/70"
+      class="rounded-lg border border-[var(--color-bronze)]/40 bg-[var(--color-bronze)]/10 p-3 text-xs text-[var(--color-bronze)]"
     >
       El plan está pendiente de aprobación: la competencia, el nivel objetivo, el objetivo general y
       los objetivos específicos quedan bloqueados hasta que el coach responda.
     </p>
     <p
       v-if="error"
-      class="text-sm text-[var(--color-bronze)]"
+      class="text-sm text-[var(--color-danger)]"
     >
       {{ error }}
     </p>
@@ -129,7 +135,8 @@ async function enviar() {
         <select
           v-model="form.competenciaId"
           :disabled="locked"
-          class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm disabled:bg-[var(--color-parchment)]/50"
+          class="mt-1 w-full rounded-lg border px-3 py-2 text-sm disabled:bg-[var(--color-parchment)]/50"
+          :class="serverErrors.competenciaId ? 'border-[var(--color-danger)]' : 'border-[var(--color-line)]'"
         >
           <option
             value=""
@@ -141,6 +148,10 @@ async function enviar() {
             :value="c.id"
           >{{ c.nombre }}</option>
         </select>
+        <span
+          v-if="serverErrors.competenciaId"
+          class="mt-1 block text-xs text-[var(--color-danger)]"
+        >{{ serverErrors.competenciaId }}</span>
       </label>
 
       <label class="text-sm">
@@ -149,8 +160,13 @@ async function enviar() {
           v-model.number="form.nivelActual"
           type="number"
           min="1"
-          class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+          class="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+          :class="serverErrors.nivelActual ? 'border-[var(--color-danger)]' : 'border-[var(--color-line)]'"
         >
+        <span
+          v-if="serverErrors.nivelActual"
+          class="mt-1 block text-xs text-[var(--color-danger)]"
+        >{{ serverErrors.nivelActual }}</span>
       </label>
 
       <label class="text-sm">
@@ -160,8 +176,13 @@ async function enviar() {
           type="number"
           min="1"
           :disabled="locked"
-          class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm disabled:bg-[var(--color-parchment)]/50"
+          class="mt-1 w-full rounded-lg border px-3 py-2 text-sm disabled:bg-[var(--color-parchment)]/50"
+          :class="serverErrors.nivelObjetivo ? 'border-[var(--color-danger)]' : 'border-[var(--color-line)]'"
         >
+        <span
+          v-if="serverErrors.nivelObjetivo"
+          class="mt-1 block text-xs text-[var(--color-danger)]"
+        >{{ serverErrors.nivelObjetivo }}</span>
       </label>
 
       <label class="text-sm sm:col-span-2">

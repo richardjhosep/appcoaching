@@ -62,6 +62,7 @@ const editando = ref<Empresa | null>(null)
 const guardando = ref(false)
 const form = reactive({ nombre: '', tarifaHora: null as number | null, horasContratadas: null as number | null, pagada: false })
 const errors = reactive<{ nombre?: string; tarifaHora?: string }>({})
+const serverErrors = ref<Record<string, string>>({})
 
 function abrirCrear() {
   editando.value = null
@@ -71,6 +72,7 @@ function abrirCrear() {
   form.pagada = false
   errors.nombre = undefined
   errors.tarifaHora = undefined
+  serverErrors.value = {}
   modalOpen.value = true
 }
 
@@ -82,6 +84,7 @@ function abrirEditar(empresa: Empresa) {
   form.pagada = empresa.pagada
   errors.nombre = undefined
   errors.tarifaHora = undefined
+  serverErrors.value = {}
   modalOpen.value = true
 }
 
@@ -98,6 +101,7 @@ function validar(): boolean {
 async function guardar() {
   if (!validar()) return
   guardando.value = true
+  serverErrors.value = {}
   try {
     if (editando.value) {
       await updateEmpresa(editando.value.id, {
@@ -116,6 +120,7 @@ async function guardar() {
       await notifySuccess('Empresa creada', `${form.nombre} ya está disponible para asignar coachees.`)
     }
   } catch (err) {
+    serverErrors.value = err instanceof ApiError ? (err.fieldErrors ?? {}) : {}
     await notifyError('No se pudo guardar', err instanceof ApiError ? err.message : 'Ocurrió un error inesperado.')
   } finally {
     guardando.value = false
@@ -346,12 +351,12 @@ async function eliminar(empresa: Empresa) {
             v-model="form.nombre"
             type="text"
             class="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
-            :class="errors.nombre ? 'border-[var(--color-bronze)]' : 'border-[var(--color-line)]'"
+            :class="errors.nombre || serverErrors.nombre ? 'border-[var(--color-danger)]' : 'border-[var(--color-line)]'"
           >
           <span
-            v-if="errors.nombre"
-            class="mt-1 block text-xs text-[var(--color-bronze)]"
-          >{{ errors.nombre }}</span>
+            v-if="errors.nombre || serverErrors.nombre"
+            class="mt-1 block text-xs text-[var(--color-danger)]"
+          >{{ errors.nombre || serverErrors.nombre }}</span>
         </label>
 
         <label class="block text-sm">
@@ -361,12 +366,12 @@ async function eliminar(empresa: Empresa) {
             type="number"
             min="1"
             class="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
-            :class="errors.tarifaHora ? 'border-[var(--color-bronze)]' : 'border-[var(--color-line)]'"
+            :class="errors.tarifaHora || serverErrors.tarifaHora ? 'border-[var(--color-danger)]' : 'border-[var(--color-line)]'"
           >
           <span
-            v-if="errors.tarifaHora"
-            class="mt-1 block text-xs text-[var(--color-bronze)]"
-          >{{ errors.tarifaHora }}</span>
+            v-if="errors.tarifaHora || serverErrors.tarifaHora"
+            class="mt-1 block text-xs text-[var(--color-danger)]"
+          >{{ errors.tarifaHora || serverErrors.tarifaHora }}</span>
         </label>
 
         <label

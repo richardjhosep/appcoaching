@@ -1,6 +1,8 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch, type ComponentPublicInstance } from 'vue'
 import ProgresoLineaTiempo from '../../../components/ProgresoLineaTiempo.vue'
+import WeekCalendar from '../../../components/WeekCalendar.vue'
+import AppModal from '../../../components/AppModal.vue'
 import {
   actualizarAsistencia,
   actualizarNotasPrivadas,
@@ -36,20 +38,22 @@ const sesionesPasadas = computed(() => {
     .sort((a, b) => new Date(b.fechaHora).getTime() - new Date(a.fechaHora).getTime())
 })
 
-const sesionesProximas = computed(() => {
-  const ahora = Date.now()
-  return [...sesiones.value]
-    .filter((s) => new Date(s.fechaHora).getTime() > ahora)
-    .sort((a, b) => new Date(a.fechaHora).getTime() - new Date(b.fechaHora).getTime())
-})
-
 const nuevaFecha = ref('')
 const nuevoLink = ref('')
 const agendando = ref(false)
+const modalAgendarOpen = ref(false)
+const errorAgendar = ref<string | null>(null)
+
+function abrirModalAgendar() {
+  nuevaFecha.value = ''
+  nuevoLink.value = ''
+  errorAgendar.value = null
+  modalAgendarOpen.value = true
+}
 
 async function agendar() {
   if (!nuevaFecha.value) return
-  error.value = null
+  errorAgendar.value = null
   agendando.value = true
   try {
     const sesion = await agendarSesion(
@@ -58,10 +62,9 @@ async function agendar() {
       nuevoLink.value || undefined,
     )
     sesiones.value = [...sesiones.value, sesion]
-    nuevaFecha.value = ''
-    nuevoLink.value = ''
+    modalAgendarOpen.value = false
   } catch (err) {
-    error.value = err instanceof ApiError ? err.message : 'No se pudo agendar la sesión.'
+    errorAgendar.value = err instanceof ApiError ? err.message : 'No se pudo agendar la sesión.'
   } finally {
     agendando.value = false
   }
@@ -122,6 +125,21 @@ async function load() {
 
 onMounted(load)
 watch(() => props.coacheeId, load)
+
+const sesionRefs = ref<Record<string, HTMLElement | null>>({})
+const highlightedId = ref<string | null>(null)
+
+function setSesionRef(id: string, el: Element | ComponentPublicInstance | null) {
+  sesionRefs.value[id] = el as HTMLElement | null
+}
+
+function onSelectSesion(id: string) {
+  sesionRefs.value[id]?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  highlightedId.value = id
+  setTimeout(() => {
+    if (highlightedId.value === id) highlightedId.value = null
+  }, 2000)
+}
 </script>
 
 <template>
@@ -172,71 +190,13 @@ watch(() => props.coacheeId, load)
       </p>
     </div>
 
-    <div class="mb-4 rounded-2xl border border-[var(--color-line)] bg-white p-4">
-      <h2 class="mb-3 text-sm font-medium">
-        Próximas sesiones
-      </h2>
-      <p
-        v-if="error"
-        class="mb-2 text-sm text-[var(--color-bronze)]"
-      >
-        {{ error }}
-      </p>
-      <p
-        v-if="sesionesProximas.length === 0"
-        class="mb-3 text-sm text-[var(--color-ink)]/60"
-      >
-        No hay sesiones agendadas.
-      </p>
-      <ul
-        v-else
-        class="mb-3 space-y-1 text-sm"
-      >
-        <li
-          v-for="s in sesionesProximas"
-          :key="s.id"
-        >
-          {{ new Date(s.fechaHora).toLocaleString('es-CL') }}
-          <a
-            v-if="s.linkVideollamada"
-            :href="s.linkVideollamada"
-            target="_blank"
-            rel="noopener"
-            class="text-[var(--color-sage)] underline"
-          >enlace</a>
-        </li>
-      </ul>
-      <form
-        class="flex flex-wrap items-end gap-2"
-        @submit.prevent="agendar"
-      >
-        <label class="text-xs text-[var(--color-ink)]/60">
-          Fecha y hora
-          <input
-            v-model="nuevaFecha"
-            type="datetime-local"
-            required
-            class="mt-1 block rounded border border-[var(--color-line)] px-2 py-1 text-sm"
-          >
-        </label>
-        <label class="text-xs text-[var(--color-ink)]/60">
-          Link de videollamada (opcional)
-          <input
-            v-model="nuevoLink"
-            type="url"
-            placeholder="https://…"
-            class="mt-1 block w-56 rounded border border-[var(--color-line)] px-2 py-1 text-sm"
-          >
-        </label>
-        <button
-          type="submit"
-          :disabled="agendando"
-          class="rounded-lg bg-[var(--color-ink)] px-3 py-2 text-xs text-[var(--color-parchment)] disabled:opacity-50"
-        >
-          Agendar sesión
-        </button>
-      </form>
-    </div>
+    <WeekCalendar
+      class="mb-4"
+      :sesiones="sesiones"
+      puede-agendar
+      @select="onSelectSesion"
+      @nueva-sesion="abrirModalAgendar"
+    />
 
     <div class="mb-4 rounded-2xl border border-[var(--color-line)] bg-white p-4">
       <h2 class="mb-3 text-sm font-medium">
@@ -244,6 +204,12 @@ watch(() => props.coacheeId, load)
       </h2>
       <p class="mb-3 text-xs text-[var(--color-ink)]/50">
         Las notas privadas nunca son visibles para el coachee ni la empresa.
+      </p>
+      <p
+        v-if="error"
+        class="mb-3 text-sm text-[var(--color-danger)]"
+      >
+        {{ error }}
       </p>
       <p
         v-if="sesionesPasadas.length === 0"
@@ -258,7 +224,9 @@ watch(() => props.coacheeId, load)
         <li
           v-for="s in sesionesPasadas"
           :key="s.id"
-          class="rounded-xl border border-[var(--color-line)]/60 p-3"
+          :ref="(el) => setSesionRef(s.id, el)"
+          class="rounded-xl border border-[var(--color-line)]/60 p-3 transition-shadow"
+          :class="highlightedId === s.id ? 'ring-2 ring-[var(--color-sage)]' : ''"
         >
           <div class="mb-2 flex items-center justify-between gap-3">
             <span class="font-[family-name:var(--font-mono)] text-[var(--color-ink)]/60">
@@ -321,5 +289,57 @@ watch(() => props.coacheeId, load)
         Sin logros registrados todavía.
       </p>
     </div>
+
+    <AppModal
+      v-if="modalAgendarOpen"
+      title="Agendar sesión"
+      @close="modalAgendarOpen = false"
+    >
+      <form
+        class="space-y-4"
+        @submit.prevent="agendar"
+      >
+        <p
+          v-if="errorAgendar"
+          class="text-sm text-[var(--color-danger)]"
+        >
+          {{ errorAgendar }}
+        </p>
+        <label class="block text-sm">
+          Fecha y hora
+          <input
+            v-model="nuevaFecha"
+            type="datetime-local"
+            required
+            class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+          >
+        </label>
+        <label class="block text-sm">
+          Link de videollamada (opcional)
+          <input
+            v-model="nuevoLink"
+            type="url"
+            placeholder="https://…"
+            class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+          >
+        </label>
+        <div class="flex justify-end gap-2 pt-2">
+          <button
+            type="button"
+            class="rounded-lg border border-[var(--color-line)] px-4 py-2 text-sm"
+            @click="modalAgendarOpen = false"
+          >
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            :disabled="agendando"
+            class="rounded-lg bg-[var(--color-ink)] px-4 py-2 text-sm text-[var(--color-parchment)] disabled:opacity-60"
+          >
+            {{ agendando ? 'Agendando…' : 'Agendar sesión' }}
+          </button>
+        </div>
+      </form>
+    </AppModal>
   </div>
 </template>

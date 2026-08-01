@@ -116,7 +116,7 @@ async function toggleAsignacion(recursoId: string, coacheeId: string, activa: bo
     </h1>
     <p
       v-if="error"
-      class="mb-3 text-sm text-[var(--color-bronze)]"
+      class="mb-3 text-sm text-[var(--color-danger)]"
     >
       {{ error }}
     </p>

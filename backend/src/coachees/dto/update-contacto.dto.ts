@@ -7,7 +7,7 @@ const PHONE_REGEX = /^\+?[0-9\s()-]{7,20}$/;
 
 export class UpdateContactoDto {
   @IsOptional()
-  @Matches(PHONE_REGEX, { message: 'telefono must be a valid phone number' })
+  @Matches(PHONE_REGEX, { message: 'El teléfono no tiene un formato válido.' })
   telefono?: string;
 
   @IsOptional()

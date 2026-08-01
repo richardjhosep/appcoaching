@@ -16,6 +16,7 @@ import {
 import { ApiError } from '../../../api/client'
 
 const props = defineProps<{ coacheeId: string }>()
+const emit = defineEmits<{ 'ciclo-changed': [Ciclo | null] }>()
 
 const loading = ref(true)
 const cicloActual = ref<Ciclo | null>(null)
@@ -59,6 +60,7 @@ async function abrir() {
       nuevoResumen.value.trim() || undefined,
     )
     resumenEdit.value = cicloActual.value.resumenReunionInicial ?? ''
+    emit('ciclo-changed', cicloActual.value)
   } catch (err) {
     error.value = err instanceof ApiError ? err.message : 'No se pudo abrir el ciclo.'
   } finally {
@@ -72,6 +74,7 @@ async function guardarResumen() {
   error.value = null
   try {
     cicloActual.value = await actualizarResumen(cicloActual.value.id, resumenEdit.value)
+    emit('ciclo-changed', cicloActual.value)
   } catch (err) {
     error.value = err instanceof ApiError ? err.message : 'No se pudo guardar el resumen.'
   } finally {
@@ -86,6 +89,7 @@ async function generarBorrador() {
   try {
     cicloActual.value = await generarBorradorInforme(cicloActual.value.id)
     informeEdit.value = cicloActual.value.informeFinal ?? ''
+    emit('ciclo-changed', cicloActual.value)
   } catch (err) {
     error.value = err instanceof ApiError ? err.message : 'No se pudo generar el borrador.'
   } finally {
@@ -99,6 +103,7 @@ async function guardarInforme() {
   error.value = null
   try {
     cicloActual.value = await actualizarInformeFinal(cicloActual.value.id, informeEdit.value)
+    emit('ciclo-changed', cicloActual.value)
   } catch (err) {
     error.value = err instanceof ApiError ? err.message : 'No se pudo guardar el informe.'
   } finally {
@@ -118,6 +123,7 @@ async function subirPdf() {
   try {
     cicloActual.value = await subirInformePdf(cicloActual.value.id, archivoPdf.value)
     archivoPdf.value = null
+    emit('ciclo-changed', cicloActual.value)
   } catch (err) {
     error.value = err instanceof ApiError ? err.message : 'No se pudo subir el PDF.'
   } finally {
@@ -134,6 +140,7 @@ async function cerrar() {
     historial.value = [cerrado, ...historial.value.filter((c) => c.id !== cerrado.id)]
     cicloActual.value = null
     resultadoSeleccionado.value = ''
+    emit('ciclo-changed', null)
   } catch (err) {
     error.value = err instanceof ApiError ? err.message : 'No se pudo cerrar el ciclo.'
   } finally {
@@ -152,7 +159,7 @@ async function cerrar() {
   <div v-else>
     <p
       v-if="error"
-      class="mb-3 text-sm text-[var(--color-bronze)]"
+      class="mb-3 text-sm text-[var(--color-danger)]"
     >
       {{ error }}
     </p>

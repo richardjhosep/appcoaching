@@ -82,7 +82,7 @@ async function toggleConsentimiento(coacheeId: string, informado: boolean) {
     >
       <p
         v-if="error"
-        class="text-sm text-[var(--color-bronze)]"
+        class="text-sm text-[var(--color-danger)]"
       >
         {{ error }}
       </p>

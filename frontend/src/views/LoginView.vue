@@ -80,7 +80,7 @@ async function handleSubmit() {
 
         <p
           v-if="error"
-          class="mb-4 rounded-lg bg-[var(--color-bronze)]/10 px-3 py-2 text-sm text-[var(--color-bronze)]"
+          class="mb-4 rounded-lg bg-[var(--color-danger)]/10 px-3 py-2 text-sm text-[var(--color-danger)]"
         >
           {{ error }}
         </p>

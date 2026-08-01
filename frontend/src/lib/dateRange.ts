@@ -12,6 +12,18 @@ export function hoy(): string {
 }
 
 /**
+ * Lunes (00:00 hora local) de la semana que contiene `fecha`.
+ */
+export function inicioDeSemana(fecha: Date = new Date()): Date {
+  const copia = new Date(fecha)
+  const dia = copia.getDay() // 0=Dom..6=Sáb
+  const offset = dia === 0 ? -6 : 1 - dia
+  copia.setDate(copia.getDate() + offset)
+  copia.setHours(0, 0, 0, 0)
+  return copia
+}
+
+/**
  * Compares against the viewer's local calendar day, not the raw UTC date
  * embedded in the ISO string — a timestamp like "2026-01-01T00:00:00Z"
  * (medianoche UTC) is still "31 de diciembre" in Chile (UTC-4), so slicing
