@@ -15,7 +15,9 @@ const cicloActual = ref<Ciclo | null>(null)
 const loading = ref(true)
 const tab = ref<'definicion' | 'habito' | 'formacion'>('definicion')
 
-const isLocked = computed(() => plan.value?.estado === 'pendiente_aprobacion')
+const isLocked = computed(() =>
+  plan.value?.estado === 'pendiente_aprobacion' || plan.value?.estado === 'aprobado',
+)
 
 const tabs = [
   { id: 'definicion', label: 'Definición' },

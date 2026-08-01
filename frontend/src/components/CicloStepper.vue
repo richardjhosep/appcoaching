@@ -40,11 +40,16 @@ const etapas = computed<Etapa[]>(() => {
     'Cierre',
   ]
 
+  // Waterfall estricto: una etapa solo puede verse "done" si todas las anteriores
+  // también lo están. Por ejemplo, el informe final se puede redactar como borrador
+  // antes de que terminen las sesiones — eso no debe mostrarse como si el ciclo
+  // hubiera saltado la etapa de sesiones.
   const primeraPendiente = done.findIndex((d) => !d)
-  return labels.map((label, i) => ({
-    label,
-    estado: done[i] ? 'done' : i === primeraPendiente ? 'current' : 'pending',
-  }))
+  return labels.map((label, i) => {
+    if (primeraPendiente === -1 || i < primeraPendiente) return { label, estado: 'done' as const }
+    if (i === primeraPendiente) return { label, estado: 'current' as const }
+    return { label, estado: 'pending' as const }
+  })
 })
 
 const completadas = computed(() => etapas.value.filter((e) => e.estado === 'done').length)

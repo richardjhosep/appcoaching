@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { reactive, ref } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import {
   updateOwnPlan,
   enviarPlan,
@@ -41,6 +41,13 @@ const enviando = ref(false)
 const error = ref<string | null>(null)
 const serverErrors = ref<Record<string, string>>({})
 const nuevoObjetivo = ref('')
+
+const aprobado = computed(() => props.plan.estado === 'aprobado')
+const mensajeBloqueo = computed(() =>
+  aprobado.value
+    ? 'El plan ya fue aprobado por tu coach: la competencia, el nivel objetivo, el objetivo general y los objetivos específicos quedan bloqueados.'
+    : 'El plan está pendiente de aprobación: la competencia, el nivel objetivo, el objetivo general y los objetivos específicos quedan bloqueados hasta que el coach responda.',
+)
 
 async function refetch() {
   emit('updated', await getOwnPlan())
@@ -117,10 +124,12 @@ async function enviar() {
   <div class="space-y-4">
     <p
       v-if="locked"
-      class="rounded-lg border border-[var(--color-bronze)]/40 bg-[var(--color-bronze)]/10 p-3 text-xs text-[var(--color-bronze)]"
+      class="rounded-lg border p-3 text-xs"
+      :class="aprobado
+        ? 'border-[var(--color-sage)]/40 bg-[var(--color-sage)]/10 text-[var(--color-sage)]'
+        : 'border-[var(--color-bronze)]/40 bg-[var(--color-bronze)]/10 text-[var(--color-bronze)]'"
     >
-      El plan está pendiente de aprobación: la competencia, el nivel objetivo, el objetivo general y
-      los objetivos específicos quedan bloqueados hasta que el coach responda.
+      {{ mensajeBloqueo }}
     </p>
     <p
       v-if="error"
