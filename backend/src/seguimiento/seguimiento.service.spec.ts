@@ -18,7 +18,7 @@ describe('SeguimientoService', () => {
     delete: jest.Mock<Promise<{ affected: number }>, unknown[]>;
   };
   let diariosRepo: {
-    findOne: jest.Mock<Promise<PartialDiario | null>, unknown[]>;
+    find: jest.Mock<Promise<PartialDiario[]>, unknown[]>;
     create: jest.Mock<PartialDiario, [PartialDiario]>;
     save: jest.Mock<Promise<PartialDiario>, [PartialDiario]>;
   };
@@ -38,10 +38,10 @@ describe('SeguimientoService', () => {
       delete: jest.fn<Promise<{ affected: number }>, unknown[]>(),
     };
     diariosRepo = {
-      findOne: jest.fn<Promise<PartialDiario | null>, unknown[]>(),
+      find: jest.fn<Promise<PartialDiario[]>, unknown[]>(),
       create: jest.fn((data: PartialDiario) => data),
       save: jest.fn((data: PartialDiario) =>
-        Promise.resolve({ id: 'generated-id', contenido: '', ...data }),
+        Promise.resolve({ id: 'generated-id', ...data }),
       ),
     };
     coachees = { findByUserId: jest.fn() };
@@ -90,28 +90,32 @@ describe('SeguimientoService', () => {
     });
   });
 
-  describe('getDiarioOwn / updateDiarioOwn', () => {
-    it('auto-creates a blank diario the first time', async () => {
+  describe('addEntradaDiarioOwn / listEntradasDiarioOwn', () => {
+    it('creates a new entrada scoped to the actor coachee', async () => {
       coachees.findByUserId.mockResolvedValue({ id: 'coachee-1' });
-      diariosRepo.findOne.mockResolvedValue(null);
 
-      const diario = await service.getDiarioOwn('user-1');
-
-      expect(diario.coacheeId).toBe('coachee-1');
-      expect(diariosRepo.save).toHaveBeenCalled();
-    });
-
-    it('updates the existing diario contenido', async () => {
-      coachees.findByUserId.mockResolvedValue({ id: 'coachee-1' });
-      diariosRepo.findOne.mockResolvedValue({
-        id: 'd1',
-        coacheeId: 'coachee-1',
-        contenido: 'viejo',
+      const entrada = await service.addEntradaDiarioOwn('user-1', {
+        contenido: 'reflexión de hoy',
       });
 
-      const diario = await service.updateDiarioOwn('user-1', 'nuevo contenido');
+      expect(entrada.coacheeId).toBe('coachee-1');
+      expect(entrada.contenido).toBe('reflexión de hoy');
+    });
 
-      expect(diario.contenido).toBe('nuevo contenido');
+    it('lists entradas ordered by most recent first', async () => {
+      coachees.findByUserId.mockResolvedValue({ id: 'coachee-1' });
+      diariosRepo.find.mockResolvedValue([
+        { id: 'd2', coacheeId: 'coachee-1', contenido: 'nueva' },
+        { id: 'd1', coacheeId: 'coachee-1', contenido: 'vieja' },
+      ]);
+
+      const entradas = await service.listEntradasDiarioOwn('user-1');
+
+      expect(diariosRepo.find).toHaveBeenCalledWith({
+        where: { coacheeId: 'coachee-1' },
+        order: { createdAt: 'DESC' },
+      });
+      expect(entradas.map((e) => e.id)).toEqual(['d2', 'd1']);
     });
   });
 

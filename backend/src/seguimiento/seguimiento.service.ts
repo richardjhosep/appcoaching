@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { Logro } from './entities/logro.entity';
 import { EntradaDiario } from './entities/entrada-diario.entity';
 import { CreateLogroDto } from './dto/create-logro.dto';
+import { CreateEntradaDiarioDto } from './dto/create-entrada-diario.dto';
 import { CoacheesService } from '../coachees/coachees.service';
 import { PostSesionesService } from '../sesiones/post-sesiones.service';
 
@@ -56,27 +57,22 @@ export class SeguimientoService {
     }
   }
 
-  private async findOrCreateDiario(coacheeId: string): Promise<EntradaDiario> {
-    let diario = await this.diarios.findOne({ where: { coacheeId } });
-    if (!diario) {
-      diario = await this.diarios.save(this.diarios.create({ coacheeId }));
-    }
-    return diario;
-  }
-
-  async getDiarioOwn(actorUserId: string): Promise<EntradaDiario> {
-    const coacheeId = await this.resolveCoacheeId(actorUserId);
-    return this.findOrCreateDiario(coacheeId);
-  }
-
-  async updateDiarioOwn(
+  async addEntradaDiarioOwn(
     actorUserId: string,
-    contenido: string,
+    dto: CreateEntradaDiarioDto,
   ): Promise<EntradaDiario> {
     const coacheeId = await this.resolveCoacheeId(actorUserId);
-    const diario = await this.findOrCreateDiario(coacheeId);
-    diario.contenido = contenido;
-    return this.diarios.save(diario);
+    return this.diarios.save(
+      this.diarios.create({ coacheeId, contenido: dto.contenido }),
+    );
+  }
+
+  async listEntradasDiarioOwn(actorUserId: string): Promise<EntradaDiario[]> {
+    const coacheeId = await this.resolveCoacheeId(actorUserId);
+    return this.diarios.find({
+      where: { coacheeId },
+      order: { createdAt: 'DESC' },
+    });
   }
 
   async avanceGeneralOwn(actorUserId: string): Promise<number | null> {

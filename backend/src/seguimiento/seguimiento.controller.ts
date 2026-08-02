@@ -4,14 +4,13 @@ import {
   Delete,
   Get,
   Param,
-  Patch,
   Post,
   UseGuards,
 } from '@nestjs/common';
 import { SeguimientoService } from './seguimiento.service';
 import { CoacheesService } from '../coachees/coachees.service';
 import { CreateLogroDto } from './dto/create-logro.dto';
-import { UpdateDiarioDto } from './dto/update-diario.dto';
+import { CreateEntradaDiarioDto } from './dto/create-entrada-diario.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -63,17 +62,17 @@ export class SeguimientoController {
 
   @Roles(Role.COACHEE)
   @Get('diario/me')
-  getMyDiario(@CurrentUser() actor: AuthenticatedUser) {
-    return this.seguimiento.getDiarioOwn(actor.id);
+  listMyDiario(@CurrentUser() actor: AuthenticatedUser) {
+    return this.seguimiento.listEntradasDiarioOwn(actor.id);
   }
 
   @Roles(Role.COACHEE)
-  @Patch('diario/me')
-  updateMyDiario(
-    @Body() dto: UpdateDiarioDto,
+  @Post('diario')
+  addDiario(
+    @Body() dto: CreateEntradaDiarioDto,
     @CurrentUser() actor: AuthenticatedUser,
   ) {
-    return this.seguimiento.updateDiarioOwn(actor.id, dto.contenido);
+    return this.seguimiento.addEntradaDiarioOwn(actor.id, dto);
   }
 
   @Roles(Role.COACHEE)

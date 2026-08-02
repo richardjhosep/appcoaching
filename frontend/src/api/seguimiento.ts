@@ -12,7 +12,7 @@ export interface Diario {
   id: string
   coacheeId: string
   contenido: string
-  updatedAt: string
+  createdAt: string
 }
 
 export interface PuntoProgreso {
@@ -40,13 +40,13 @@ export function removeLogro(id: string): Promise<void> {
   return apiRequest<void>(`/seguimiento/logros/me/${id}`, { method: 'DELETE' })
 }
 
-export function getMiDiario(): Promise<Diario> {
-  return apiRequest<Diario>('/seguimiento/diario/me')
+export function getMisEntradasDiario(): Promise<Diario[]> {
+  return apiRequest<Diario[]>('/seguimiento/diario/me')
 }
 
-export function updateMiDiario(contenido: string): Promise<Diario> {
-  return apiRequest<Diario>('/seguimiento/diario/me', {
-    method: 'PATCH',
+export function addEntradaDiario(contenido: string): Promise<Diario> {
+  return apiRequest<Diario>('/seguimiento/diario', {
+    method: 'POST',
     body: { contenido },
   })
 }

@@ -3,18 +3,20 @@ import { onMounted, ref } from 'vue'
 import AppShell from '../../components/AppShell.vue'
 import ProgresoLineaTiempo from '../../components/ProgresoLineaTiempo.vue'
 import {
+  addEntradaDiario,
   addLogro,
   getMiAvance,
-  getMiDiario,
+  getMisEntradasDiario,
   getMiLineaProgreso,
   getMisLogros,
   removeLogro,
-  updateMiDiario,
+  type Diario,
   type Logro,
   type PuntoProgreso,
 } from '../../api/seguimiento'
 import { getMisCiclos, type Ciclo } from '../../api/ciclos'
 import { ApiError } from '../../api/client'
+import { notifyError, notifySuccess } from '../../lib/notify'
 
 const loading = ref(true)
 const avance = ref<number | null>(null)
@@ -23,9 +25,9 @@ const logros = ref<Logro[]>([])
 const certificados = ref<Ciclo[]>([])
 const nuevaFecha = ref('')
 const nuevaDescripcion = ref('')
-const diarioContenido = ref('')
+const diarioEntradas = ref<Diario[]>([])
+const nuevaEntradaDiario = ref('')
 const guardandoDiario = ref(false)
-const toastVisible = ref(false)
 const error = ref<string | null>(null)
 
 async function load() {
@@ -34,13 +36,13 @@ async function load() {
     getMiAvance(),
     getMiLineaProgreso(),
     getMisLogros(),
-    getMiDiario(),
+    getMisEntradasDiario(),
     getMisCiclos(),
   ])
   avance.value = a.avance
   puntos.value = p
   logros.value = l
-  diarioContenido.value = d.contenido
+  diarioEntradas.value = d
   certificados.value = ciclos.filter((c) => c.fechaCierre && c.resultado)
   loading.value = false
 }
@@ -68,16 +70,16 @@ async function borrarLogro(id: string) {
   }
 }
 
-async function guardarDiario() {
+async function agregarEntradaDiario() {
+  if (!nuevaEntradaDiario.value.trim()) return
   guardandoDiario.value = true
   try {
-    await updateMiDiario(diarioContenido.value)
-    toastVisible.value = true
-    setTimeout(() => {
-      toastVisible.value = false
-    }, 2000)
+    const entrada = await addEntradaDiario(nuevaEntradaDiario.value.trim())
+    diarioEntradas.value = [entrada, ...diarioEntradas.value]
+    nuevaEntradaDiario.value = ''
+    await notifySuccess('Reflexión guardada')
   } catch (err) {
-    error.value = err instanceof ApiError ? err.message : 'No se pudo guardar el diario.'
+    await notifyError('No se pudo guardar la reflexión', err instanceof ApiError ? err.message : 'Ocurrió un error inesperado.')
   } finally {
     guardandoDiario.value = false
   }
@@ -201,26 +203,43 @@ async function guardarDiario() {
         <h2 class="mb-3 text-sm font-medium">
           Diario de reflexión
         </h2>
+        <p
+          v-if="diarioEntradas.length === 0"
+          class="mb-3 text-sm text-[var(--color-ink)]/60"
+        >
+          Todavía no has escrito ninguna reflexión.
+        </p>
+        <ul
+          v-else
+          class="mb-4 space-y-2"
+        >
+          <li
+            v-for="entrada in diarioEntradas"
+            :key="entrada.id"
+            class="rounded-xl border border-[var(--color-line)]/60 bg-[var(--color-parchment)]/40 p-3 text-sm"
+          >
+            <p class="mb-1 font-[family-name:var(--font-mono)] text-xs text-[var(--color-ink)]/50">
+              {{ new Date(entrada.createdAt).toLocaleString('es-CL', { dateStyle: 'medium', timeStyle: 'short' }) }}
+            </p>
+            <p class="whitespace-pre-wrap">
+              {{ entrada.contenido }}
+            </p>
+          </li>
+        </ul>
         <textarea
-          v-model="diarioContenido"
-          rows="6"
+          v-model="nuevaEntradaDiario"
+          rows="4"
+          placeholder="Escribe una nueva reflexión…"
           class="mb-3 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
         />
         <button
           class="rounded-lg bg-[var(--color-ink)] px-4 py-2 text-sm text-[var(--color-parchment)] disabled:opacity-60"
-          :disabled="guardandoDiario"
-          @click="guardarDiario"
+          :disabled="guardandoDiario || !nuevaEntradaDiario.trim()"
+          @click="agregarEntradaDiario"
         >
           {{ guardandoDiario ? 'Guardando…' : 'Guardar' }}
         </button>
       </div>
-    </div>
-
-    <div
-      v-if="toastVisible"
-      class="fixed bottom-6 left-1/2 -translate-x-1/2 rounded-full bg-[var(--color-ink)] px-4 py-2 text-sm text-[var(--color-parchment)] shadow-lg"
-    >
-      Diario guardado
     </div>
   </AppShell>
 </template>

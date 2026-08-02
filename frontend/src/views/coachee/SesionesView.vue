@@ -185,6 +185,19 @@ function onSelectSesion(id: string) {
         </p>
 
         <template v-if="yaRealizada(sesion)">
+          <p class="mb-3 text-sm">
+            <a
+              v-if="sesion.linkVideollamada"
+              :href="sesion.linkVideollamada"
+              target="_blank"
+              rel="noopener"
+              class="text-[var(--color-sage)] underline"
+            >Ver grabación de la sesión</a>
+            <span
+              v-else
+              class="text-[var(--color-ink)]/50"
+            >Esta sesión no fue grabada.</span>
+          </p>
           <div
             v-if="sesion.postSesion?.publicada"
             class="space-y-2 rounded-lg bg-[var(--color-parchment)]/50 p-3 text-sm"
