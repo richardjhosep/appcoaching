@@ -249,6 +249,19 @@ function onSelectSesion(id: string) {
               </option>
             </select>
           </div>
+          <p class="mb-2">
+            <a
+              v-if="s.linkVideollamada"
+              :href="s.linkVideollamada"
+              target="_blank"
+              rel="noopener"
+              class="text-[var(--color-sage)] underline"
+            >Ver grabación de la sesión</a>
+            <span
+              v-else
+              class="text-[var(--color-ink)]/50"
+            >Esta sesión no fue grabada.</span>
+          </p>
           <textarea
             v-model="notasEdit[s.id]"
             rows="2"
