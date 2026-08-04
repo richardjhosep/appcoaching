@@ -164,13 +164,25 @@ describe('PostSesionesService', () => {
       const fecha = new Date('2026-05-01');
       repo.createQueryBuilder.mockReturnValue(
         makeQueryBuilder([
-          { sesionId: 's1', cercaniaObjetivo: 5, sesion: { fechaHora: fecha } },
+          {
+            sesionId: 's1',
+            cercaniaObjetivo: 5,
+            aprendizaje: 'algo aprendido',
+            sesion: { fechaHora: fecha },
+          },
         ]),
       );
 
       const result = await service.findAllPublicadasForCoachee('coachee-1');
 
-      expect(result).toEqual([{ sesionId: 's1', fecha, cercaniaObjetivo: 5 }]);
+      expect(result).toEqual([
+        {
+          sesionId: 's1',
+          fecha,
+          cercaniaObjetivo: 5,
+          aprendizaje: 'algo aprendido',
+        },
+      ]);
     });
   });
 });

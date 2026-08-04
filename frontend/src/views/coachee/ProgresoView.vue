@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import AppShell from '../../components/AppShell.vue'
 import ProgresoLineaTiempo from '../../components/ProgresoLineaTiempo.vue'
 import {
@@ -17,6 +17,7 @@ import {
 import { getMisCiclos, type Ciclo } from '../../api/ciclos'
 import { ApiError } from '../../api/client'
 import { notifyError, notifySuccess } from '../../lib/notify'
+import { nivelProgreso, coloresNivel } from '../../lib/nivelProgreso'
 
 const loading = ref(true)
 const avance = ref<number | null>(null)
@@ -29,6 +30,8 @@ const diarioEntradas = ref<Diario[]>([])
 const nuevaEntradaDiario = ref('')
 const guardandoDiario = ref(false)
 const error = ref<string | null>(null)
+
+const coloresAvance = computed(() => coloresNivel[nivelProgreso(avance.value ?? 0)])
 
 async function load() {
   loading.value = true
@@ -118,12 +121,27 @@ async function agregarEntradaDiario() {
         >
           Aún no te has autoevaluado en ningún post-sesión.
         </p>
-        <p
-          v-else
-          class="font-[family-name:var(--font-mono)] text-3xl text-[var(--color-sage)]"
-        >
-          {{ avance }}%
-        </p>
+        <template v-else>
+          <p
+            class="mb-2 font-[family-name:var(--font-mono)] text-3xl"
+            :class="coloresAvance.texto"
+          >
+            {{ avance }}%
+          </p>
+          <div
+            class="h-2.5 w-full overflow-hidden rounded-full"
+            :style="{ backgroundColor: coloresAvance.suave }"
+            role="progressbar"
+            :aria-valuenow="avance ?? 0"
+            aria-valuemin="0"
+            aria-valuemax="100"
+          >
+            <div
+              class="h-full rounded-full transition-all"
+              :style="{ width: `${avance}%`, backgroundColor: coloresAvance.fuerte }"
+            />
+          </div>
+        </template>
       </div>
 
       <div class="rounded-2xl border border-[var(--color-line)] bg-white p-4">

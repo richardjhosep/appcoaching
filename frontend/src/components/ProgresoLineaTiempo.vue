@@ -1,24 +1,25 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { PuntoProgreso } from '../api/seguimiento'
+import { nivelProgreso, coloresNivel } from '../lib/nivelProgreso'
 
 const props = defineProps<{ puntos: PuntoProgreso[] }>()
 
-const WIDTH = 300
-const HEIGHT = 100
-const PAD = 10
+const RADIO = 22
+const CIRCUNFERENCIA = 2 * Math.PI * RADIO
 
-const coords = computed(() => {
-  const n = props.puntos.length
-  if (n === 0) return []
-  return props.puntos.map((p, i) => {
-    const x = n === 1 ? WIDTH / 2 : PAD + (i * (WIDTH - 2 * PAD)) / (n - 1)
-    const y = HEIGHT - PAD - ((p.cercaniaObjetivo - 1) / 9) * (HEIGHT - 2 * PAD)
-    return { x, y, valor: p.cercaniaObjetivo, fecha: p.fecha }
-  })
-})
-
-const polylinePoints = computed(() => coords.value.map((c) => `${c.x},${c.y}`).join(' '))
+const entradas = computed(() =>
+  [...props.puntos]
+    .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime())
+    .map((p) => {
+      const colores = coloresNivel[nivelProgreso(p.cercaniaObjetivo * 10)]
+      return {
+        ...p,
+        colores,
+        arcoLength: (p.cercaniaObjetivo / 10) * CIRCUNFERENCIA,
+      }
+    }),
+)
 </script>
 
 <template>
@@ -28,28 +29,74 @@ const polylinePoints = computed(() => coords.value.map((c) => `${c.x},${c.y}`).j
   >
     Aún no hay datos de progreso (se completan al publicar un post-sesión).
   </div>
-  <svg
+  <ul
     v-else
-    :viewBox="`0 0 ${WIDTH} ${HEIGHT}`"
-    class="w-full"
-    role="img"
-    aria-label="Línea de tiempo de progreso"
+    class="space-y-3"
   >
-    <polyline
-      :points="polylinePoints"
-      fill="none"
-      stroke="var(--color-sage)"
-      stroke-width="2"
-    />
-    <circle
-      v-for="(c, i) in coords"
-      :key="i"
-      :cx="c.x"
-      :cy="c.y"
-      r="3"
-      fill="var(--color-bronze)"
+    <li
+      v-for="entrada in entradas"
+      :key="entrada.sesionId"
+      class="flex items-center gap-4 rounded-xl border border-[var(--color-line)]/60 bg-[var(--color-parchment)]/40 p-3"
     >
-      <title>{{ new Date(c.fecha).toLocaleDateString('es-CL') }}: {{ c.valor }}/10</title>
-    </circle>
-  </svg>
+      <div class="flex shrink-0 flex-col items-center gap-1">
+        <svg
+          width="56"
+          height="56"
+          viewBox="0 0 56 56"
+          class="-rotate-90"
+          role="img"
+          :aria-label="`Cercanía al objetivo: ${entrada.cercaniaObjetivo} de 10`"
+        >
+          <circle
+            cx="28"
+            cy="28"
+            :r="RADIO"
+            fill="none"
+            :stroke="entrada.colores.suave"
+            stroke-width="6"
+          />
+          <circle
+            cx="28"
+            cy="28"
+            :r="RADIO"
+            fill="none"
+            :stroke="entrada.colores.fuerte"
+            stroke-width="6"
+            stroke-linecap="round"
+            :stroke-dasharray="`${entrada.arcoLength} ${CIRCUNFERENCIA}`"
+          />
+          <text
+            x="28"
+            y="28"
+            text-anchor="middle"
+            dominant-baseline="middle"
+            transform="rotate(90 28 28)"
+            font-size="15"
+            font-weight="700"
+            fill="var(--color-ink)"
+          >{{ entrada.cercaniaObjetivo }}</text>
+        </svg>
+        <span
+          class="rounded-full px-2 py-0.5 text-[9px] font-semibold"
+          :class="entrada.colores.texto"
+          :style="{ backgroundColor: entrada.colores.suave }"
+        >Puntaje {{ entrada.cercaniaObjetivo }}/10</span>
+      </div>
+      <div class="min-w-0 flex-1">
+        <p
+          class="text-xs font-medium"
+          :class="entrada.colores.texto"
+        >
+          {{ new Date(entrada.fecha).toLocaleDateString('es-CL', { day: '2-digit', month: 'short', year: 'numeric' }) }}
+        </p>
+        <p
+          v-if="entrada.aprendizaje"
+          class="mt-0.5 truncate text-sm text-[var(--color-ink)]/70"
+          :title="entrada.aprendizaje"
+        >
+          {{ entrada.aprendizaje }}
+        </p>
+      </div>
+    </li>
+  </ul>
 </template>

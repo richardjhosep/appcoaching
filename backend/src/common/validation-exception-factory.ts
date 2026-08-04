@@ -79,9 +79,7 @@ const FIELD_LABELS: Record<string, string> = {
 };
 
 function humanizeLabel(property: string): string {
-  const spaced = property
-    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
-    .toLowerCase();
+  const spaced = property.replace(/([a-z0-9])([A-Z])/g, '$1 $2').toLowerCase();
   return `El campo "${spaced}"`;
 }
 
@@ -106,14 +104,19 @@ const TRANSLATORS: Record<
   isString: (label) => `${label} debe ser texto.`,
   isInt: (label) => `${label} debe ser un número entero.`,
   isNumber: (label) => `${label} debe ser un número.`,
-  min: (label, raw) => `${label} debe ser mayor o igual a ${extractNumber(raw)}.`,
-  max: (label, raw) => `${label} debe ser menor o igual a ${extractNumber(raw)}.`,
-  minLength: (label, raw) => `${label} debe tener al menos ${extractNumber(raw)} caracteres.`,
-  maxLength: (label, raw) => `${label} debe tener como máximo ${extractNumber(raw)} caracteres.`,
+  min: (label, raw) =>
+    `${label} debe ser mayor o igual a ${extractNumber(raw)}.`,
+  max: (label, raw) =>
+    `${label} debe ser menor o igual a ${extractNumber(raw)}.`,
+  minLength: (label, raw) =>
+    `${label} debe tener al menos ${extractNumber(raw)} caracteres.`,
+  maxLength: (label, raw) =>
+    `${label} debe tener como máximo ${extractNumber(raw)} caracteres.`,
   isEmail: (label) => `${label} debe ser un correo electrónico válido.`,
   isBoolean: (label) => `${label} debe ser verdadero o falso.`,
   isUuid: (label) => `${label} no es válido.`,
-  isEnum: (label, raw) => `${label} debe ser uno de los siguientes valores: ${extractEnumValues(raw)}.`,
+  isEnum: (label, raw) =>
+    `${label} debe ser uno de los siguientes valores: ${extractEnumValues(raw)}.`,
   isDateString: (label) => `${label} debe ser una fecha válida.`,
   isUrl: (label) => `${label} debe ser una URL válida.`,
   matches: (label) => `${label} no tiene un formato válido.`,

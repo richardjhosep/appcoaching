@@ -19,6 +19,7 @@ export interface PuntoProgreso {
   sesionId: string
   fecha: string
   cercaniaObjetivo: number
+  aprendizaje: string | null
 }
 
 export function addLogro(fecha: string, descripcion: string): Promise<Logro> {

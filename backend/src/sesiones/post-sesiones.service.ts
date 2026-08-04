@@ -91,10 +91,13 @@ export class PostSesionesService {
     return this.sesiones.resolveCoacheeIdForActor(actorUserId);
   }
 
-  async findAllPublicadasForCoachee(
-    coacheeId: string,
-  ): Promise<
-    Array<{ sesionId: string; fecha: Date; cercaniaObjetivo: number }>
+  async findAllPublicadasForCoachee(coacheeId: string): Promise<
+    Array<{
+      sesionId: string;
+      fecha: Date;
+      cercaniaObjetivo: number;
+      aprendizaje: string | null;
+    }>
   > {
     const rows = await this.postSesiones
       .createQueryBuilder('post')
@@ -110,6 +113,7 @@ export class PostSesionesService {
       sesionId: r.sesionId,
       fecha: r.sesion!.fechaHora,
       cercaniaObjetivo: r.cercaniaObjetivo!,
+      aprendizaje: r.aprendizaje,
     }));
   }
 

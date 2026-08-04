@@ -18,6 +18,7 @@ import {
   type PuntoProgreso,
 } from '../../../api/seguimiento'
 import { ApiError } from '../../../api/client'
+import { nivelProgreso, coloresNivel } from '../../../lib/nivelProgreso'
 
 const props = defineProps<{ coacheeId: string }>()
 
@@ -30,6 +31,8 @@ const error = ref<string | null>(null)
 const guardandoAsistencia = ref<string | null>(null)
 const guardandoNotas = ref<string | null>(null)
 const notasEdit = ref<Record<string, string>>({})
+
+const coloresAvance = computed(() => coloresNivel[nivelProgreso(avance.value ?? 0)])
 
 const sesionesPasadas = computed(() => {
   const ahora = Date.now()
@@ -160,12 +163,27 @@ function onSelectSesion(id: string) {
       >
         El coachee aún no se ha autoevaluado en ningún post-sesión.
       </p>
-      <p
-        v-else
-        class="font-[family-name:var(--font-mono)] text-3xl text-[var(--color-sage)]"
-      >
-        {{ avance }}%
-      </p>
+      <template v-else>
+        <p
+          class="mb-2 font-[family-name:var(--font-mono)] text-3xl"
+          :class="coloresAvance.texto"
+        >
+          {{ avance }}%
+        </p>
+        <div
+          class="h-2.5 w-full overflow-hidden rounded-full"
+          :style="{ backgroundColor: coloresAvance.suave }"
+          role="progressbar"
+          :aria-valuenow="avance ?? 0"
+          aria-valuemin="0"
+          aria-valuemax="100"
+        >
+          <div
+            class="h-full rounded-full transition-all"
+            :style="{ width: `${avance}%`, backgroundColor: coloresAvance.fuerte }"
+          />
+        </div>
+      </template>
     </div>
 
     <div class="mb-4 rounded-2xl border border-[var(--color-line)] bg-white p-4">
