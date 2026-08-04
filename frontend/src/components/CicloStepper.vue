@@ -94,22 +94,28 @@ const lineClass: Record<EstadoEtapa, string> = {
         :key="etapa.label"
       >
         <div class="flex shrink-0 flex-col items-center gap-1.5 px-1">
-          <div
-            class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold"
-            :class="circleClass[etapa.estado]"
-          >
-            <svg
-              v-if="etapa.estado === 'done'"
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="3"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            ><path d="M5 13l4 4L19 7" /></svg>
-            <span v-else>{{ i + 1 }}</span>
+          <div class="relative flex h-8 w-8 shrink-0 items-center justify-center">
+            <span
+              v-if="etapa.estado === 'current'"
+              class="absolute inset-0 animate-ping rounded-full bg-[var(--color-bronze)] opacity-75"
+            />
+            <div
+              class="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold"
+              :class="circleClass[etapa.estado]"
+            >
+              <svg
+                v-if="etapa.estado === 'done'"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="3"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              ><path d="M5 13l4 4L19 7" /></svg>
+              <span v-else>{{ i + 1 }}</span>
+            </div>
           </div>
           <span
             class="w-20 text-center text-[11px] leading-tight"

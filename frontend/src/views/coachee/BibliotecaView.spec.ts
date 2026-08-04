@@ -18,7 +18,7 @@ vi.mock('../../api/recursos', async () => {
   }
 })
 
-import { listRecursos, getMisRecursos } from '../../api/recursos'
+import { listRecursos, getMisRecursos, getMisAprendizajes } from '../../api/recursos'
 
 const asignado: Recurso = {
   id: 'r1',
@@ -49,17 +49,26 @@ describe('BibliotecaView', () => {
     setActivePinia(createPinia())
     vi.mocked(listRecursos).mockResolvedValue([asignado, noAsignado])
     vi.mocked(getMisRecursos).mockResolvedValue([asignado])
+    vi.mocked(getMisAprendizajes).mockResolvedValue([])
   })
 
-  it('shows only the assigned resource under "Mi biblioteca"', async () => {
+  it('shows only the assigned resource\'s topic under "Mi biblioteca", and its title once opened', async () => {
     const wrapper = mount(BibliotecaView)
+    await flushPromises()
+
+    // Asignado has no etiquetas, so it falls into the "Sin categoría" topic card.
+    expect(wrapper.text()).toContain('Sin categoría')
+    expect(wrapper.text()).not.toContain('liderazgo')
+
+    const topicoCard = wrapper.findAll('button').find((b) => b.text().includes('Sin categoría'))
+    await topicoCard!.trigger('click')
     await flushPromises()
 
     expect(wrapper.text()).toContain('Recurso asignado')
     expect(wrapper.text()).not.toContain('Recurso del catálogo')
   })
 
-  it('shows the full catalog with correct membership state when switching tabs', async () => {
+  it('shows the full catalog with correct membership state when opening a resource', async () => {
     const wrapper = mount(BibliotecaView)
     await flushPromises()
 
@@ -69,7 +78,28 @@ describe('BibliotecaView', () => {
     await catalogoTab!.trigger('click')
     await flushPromises()
 
-    expect(wrapper.text()).toContain('Ya en tu biblioteca')
-    expect(wrapper.text()).toContain('Agregar a mi biblioteca')
+    const topicoLiderazgo = wrapper.findAll('button').find((b) => b.text().includes('liderazgo'))
+    await topicoLiderazgo!.trigger('click')
+    await flushPromises()
+    const itemNoAsignado = wrapper.findAll('button').find((b) => b.text().includes('Recurso del catálogo'))
+    await itemNoAsignado!.trigger('click')
+    await flushPromises()
+    // AppModal renders via <Teleport to="body">, so its content lands outside
+    // the mounted wrapper's own subtree — assert against document.body instead.
+    expect(document.body.textContent).toContain('Agregar a mi biblioteca')
+
+    await (document.querySelector('[aria-label="Cerrar"]') as HTMLElement).click()
+    await flushPromises()
+    const volver = wrapper.findAll('button').find((b) => b.text().includes('Volver a tópicos'))
+    await volver!.trigger('click')
+    await flushPromises()
+
+    const topicoSinCategoria = wrapper.findAll('button').find((b) => b.text().includes('Sin categoría'))
+    await topicoSinCategoria!.trigger('click')
+    await flushPromises()
+    const itemAsignado = wrapper.findAll('button').find((b) => b.text().includes('Recurso asignado'))
+    await itemAsignado!.trigger('click')
+    await flushPromises()
+    expect(document.body.textContent).toContain('Ya en tu biblioteca')
   })
 })

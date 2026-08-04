@@ -273,11 +273,19 @@ function onSelectSesion(id: string) {
               :href="s.linkVideollamada"
               target="_blank"
               rel="noopener"
-              class="text-[var(--color-sage)] underline"
-            >Ver grabación de la sesión</a>
+              class="inline-flex items-center gap-1.5 rounded-full bg-[var(--color-saltup)]/10 px-3 py-1 text-xs text-[var(--color-saltup)] hover:bg-[var(--color-saltup)]/20"
+            >
+              <svg
+                width="11"
+                height="11"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+              ><path d="M8 5v14l11-7z" /></svg>
+              Ver grabación de la sesión
+            </a>
             <span
               v-else
-              class="text-[var(--color-ink)]/50"
+              class="text-xs text-[var(--color-ink)]/50"
             >Esta sesión no fue grabada.</span>
           </p>
           <textarea

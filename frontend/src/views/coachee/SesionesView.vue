@@ -12,6 +12,11 @@ import {
 } from '../../api/sesiones'
 import { ApiError } from '../../api/client'
 import { notifySuccess, notifyError } from '../../lib/notify'
+import { nivelProgreso, coloresNivel } from '../../lib/nivelProgreso'
+
+function coloresCercania(valor: number) {
+  return coloresNivel[nivelProgreso(valor * 10)]
+}
 
 const sesiones = ref<Sesion[]>([])
 const loading = ref(true)
@@ -165,14 +170,25 @@ function onSelectSesion(id: string) {
         class="rounded-2xl border border-[var(--color-line)] bg-white p-4 transition-shadow"
         :class="highlightedId === sesion.id ? 'ring-2 ring-[var(--color-sage)]' : ''"
       >
-        <div class="mb-2 flex items-center justify-between">
-          <span class="font-[family-name:var(--font-mono)] text-sm">
-            {{ new Date(sesion.fechaHora).toLocaleString('es-CL') }}
+        <div class="mb-3 flex items-center justify-between">
+          <span class="text-sm font-medium text-[var(--color-ink)]">
+            {{ new Date(sesion.fechaHora).toLocaleString('es-CL', { dateStyle: 'medium', timeStyle: 'short' }) }}
           </span>
           <span
-            class="rounded-full px-2 py-0.5 text-xs"
-            :class="yaRealizada(sesion) ? 'bg-[var(--color-parchment)]' : 'bg-[var(--color-sage)]/20 text-[var(--color-sage)]'"
+            class="flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold"
+            :class="yaRealizada(sesion) ? 'bg-[var(--color-sage)] text-white' : 'bg-[var(--color-sage)]/15 text-[var(--color-sage)]'"
           >
+            <svg
+              v-if="yaRealizada(sesion)"
+              width="11"
+              height="11"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="3"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            ><path d="M5 13l4 4L19 7" /></svg>
             {{ yaRealizada(sesion) ? 'Realizada' : 'Programada' }}
           </span>
         </div>
@@ -191,8 +207,16 @@ function onSelectSesion(id: string) {
               :href="sesion.linkVideollamada"
               target="_blank"
               rel="noopener"
-              class="text-[var(--color-sage)] underline"
-            >Ver grabación de la sesión</a>
+              class="inline-flex items-center gap-1.5 rounded-full bg-[var(--color-saltup)]/10 px-3 py-1 text-[var(--color-saltup)] hover:bg-[var(--color-saltup)]/20"
+            >
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+              ><path d="M8 5v14l11-7z" /></svg>
+              Ver grabación de la sesión
+            </a>
             <span
               v-else
               class="text-[var(--color-ink)]/50"
@@ -200,17 +224,42 @@ function onSelectSesion(id: string) {
           </p>
           <div
             v-if="sesion.postSesion?.publicada"
-            class="space-y-2 rounded-lg bg-[var(--color-parchment)]/50 p-3 text-sm"
+            class="space-y-4 rounded-xl border border-[var(--color-line)]/60 bg-[var(--color-parchment)]/40 p-4 text-sm"
           >
-            <p><strong>Aprendizaje:</strong> {{ sesion.postSesion.aprendizaje }}</p>
-            <p><strong>Utilidad:</strong> {{ sesion.postSesion.utilidad }}/5</p>
-            <p><strong>Cercanía al objetivo:</strong> {{ sesion.postSesion.cercaniaObjetivo }}/10</p>
-            <p v-if="sesion.postSesion.recomendacion">
-              <strong>Mi recomendación:</strong> {{ sesion.postSesion.recomendacion }}
-            </p>
-            <p v-if="sesion.postSesion.temasProximaSesion">
-              <strong>Temas para la próxima sesión:</strong> {{ sesion.postSesion.temasProximaSesion }}
-            </p>
+            <div class="flex flex-wrap gap-2">
+              <span
+                class="rounded-full px-3 py-1 text-xs font-semibold"
+                :class="coloresCercania(sesion.postSesion.cercaniaObjetivo).texto"
+                :style="{ backgroundColor: coloresCercania(sesion.postSesion.cercaniaObjetivo).suave }"
+              >Cercanía al objetivo: {{ sesion.postSesion.cercaniaObjetivo }}/10</span>
+              <span class="rounded-full bg-[var(--color-ink)]/5 px-3 py-1 text-xs font-semibold text-[var(--color-ink)]/70">
+                Utilidad: {{ sesion.postSesion.utilidad }}/5
+              </span>
+            </div>
+            <div>
+              <p class="text-xs font-medium uppercase tracking-wide text-[var(--color-ink)]/45">
+                Aprendizaje
+              </p>
+              <p class="mt-0.5 text-[var(--color-ink)]/90">
+                {{ sesion.postSesion.aprendizaje }}
+              </p>
+            </div>
+            <div v-if="sesion.postSesion.recomendacion">
+              <p class="text-xs font-medium uppercase tracking-wide text-[var(--color-ink)]/45">
+                Mi recomendación
+              </p>
+              <p class="mt-0.5 text-[var(--color-ink)]/90">
+                {{ sesion.postSesion.recomendacion }}
+              </p>
+            </div>
+            <div v-if="sesion.postSesion.temasProximaSesion">
+              <p class="text-xs font-medium uppercase tracking-wide text-[var(--color-ink)]/45">
+                Temas para la próxima sesión
+              </p>
+              <p class="mt-0.5 text-[var(--color-ink)]/90">
+                {{ sesion.postSesion.temasProximaSesion }}
+              </p>
+            </div>
           </div>
           <div
             v-else
