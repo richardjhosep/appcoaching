@@ -6,7 +6,7 @@ export interface Recurso {
   id: string
   titulo: string
   descripcion: string | null
-  etiquetas: string[] | null
+  carpetaId: string
   tipo: TipoRecurso
   url: string | null
   archivoNombre: string | null
@@ -19,7 +19,7 @@ export interface Asignacion {
   recursoId: string
   coacheeId: string
   activa: boolean
-  origen: 'coach' | 'autoasignado'
+  expiraEn: string | null
 }
 
 export interface Aprendizaje {
@@ -33,7 +33,7 @@ export interface Aprendizaje {
 export interface CreateRecursoInput {
   titulo: string
   descripcion?: string
-  etiquetas?: string
+  carpetaId: string
   tipo: TipoRecurso
   url?: string
   archivo?: File
@@ -43,17 +43,17 @@ export function crearRecurso(input: CreateRecursoInput): Promise<Recurso> {
   const form = new FormData()
   form.set('titulo', input.titulo)
   form.set('tipo', input.tipo)
+  form.set('carpetaId', input.carpetaId)
   if (input.descripcion) form.set('descripcion', input.descripcion)
-  if (input.etiquetas) form.set('etiquetas', input.etiquetas)
   if (input.url) form.set('url', input.url)
   if (input.archivo) form.set('archivo', input.archivo)
   return apiUpload<Recurso>('/recursos', form)
 }
 
-export function listRecursos(search?: string, etiqueta?: string): Promise<Recurso[]> {
+export function listRecursos(carpetaId?: string, search?: string): Promise<Recurso[]> {
   const params = new URLSearchParams()
+  if (carpetaId) params.set('carpetaId', carpetaId)
   if (search) params.set('search', search)
-  if (etiqueta) params.set('etiqueta', etiqueta)
   const query = params.toString() ? `?${params.toString()}` : ''
   return apiRequest<Recurso[]>(`/recursos${query}`)
 }
@@ -70,10 +70,11 @@ export function asignarRecurso(
   recursoId: string,
   coacheeId: string,
   activa: boolean,
+  expiraEn?: string | null,
 ): Promise<Asignacion> {
   return apiRequest<Asignacion>(`/recursos/${recursoId}/asignaciones/${coacheeId}`, {
     method: 'PUT',
-    body: { activa },
+    body: { activa, expiraEn },
   })
 }
 
@@ -83,14 +84,6 @@ export function getAsignacionesDeRecurso(recursoId: string): Promise<Asignacion[
 
 export function getAprendizajesDeRecurso(recursoId: string): Promise<Aprendizaje[]> {
   return apiRequest<Aprendizaje[]>(`/recursos/${recursoId}/aprendizajes`)
-}
-
-export function autoasignarRecurso(recursoId: string): Promise<Asignacion> {
-  return apiRequest<Asignacion>(`/recursos/${recursoId}/autoasignar`, { method: 'POST' })
-}
-
-export function quitarAutoasignacion(recursoId: string): Promise<void> {
-  return apiRequest<void>(`/recursos/${recursoId}/autoasignar`, { method: 'DELETE' })
 }
 
 export function addAprendizaje(recursoId: string, contenido: string): Promise<Aprendizaje> {

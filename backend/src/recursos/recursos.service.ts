@@ -5,24 +5,15 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { IsNull, MoreThan, Repository } from 'typeorm';
 import { Recurso } from './entities/recurso.entity';
 import { AsignacionRecurso } from './entities/asignacion-recurso.entity';
 import { CreateRecursoDto } from './dto/create-recurso.dto';
 import { UpdateRecursoDto } from './dto/update-recurso.dto';
 import { TipoRecurso } from './enums/tipo-recurso.enum';
-import { OrigenAsignacion } from './enums/origen-asignacion.enum';
 import { CoacheesService } from '../coachees/coachees.service';
+import { CarpetasService } from './carpetas.service';
 import { assignDefined } from '../common/assign-defined.util';
-
-function parseEtiquetas(etiquetas?: string): string[] | null {
-  if (!etiquetas) return null;
-  const parsed = etiquetas
-    .split(',')
-    .map((e) => e.trim())
-    .filter((e) => e.length > 0);
-  return parsed.length > 0 ? parsed : null;
-}
 
 @Injectable()
 export class RecursosService {
@@ -31,6 +22,7 @@ export class RecursosService {
     @InjectRepository(AsignacionRecurso)
     private readonly asignaciones: Repository<AsignacionRecurso>,
     private readonly coachees: CoacheesService,
+    private readonly carpetas: CarpetasService,
   ) {}
 
   async create(
@@ -47,11 +39,12 @@ export class RecursosService {
         'Un recurso de tipo archivo requiere un archivo.',
       );
     }
+    await this.carpetas.findOne(dto.carpetaId);
     return this.recursos.save(
       this.recursos.create({
         titulo: dto.titulo,
         descripcion: dto.descripcion ?? null,
-        etiquetas: parseEtiquetas(dto.etiquetas),
+        carpetaId: dto.carpetaId,
         tipo: dto.tipo,
         url: dto.tipo === TipoRecurso.LINK ? dto.url! : null,
         archivoNombre: archivo?.originalname ?? null,
@@ -60,19 +53,15 @@ export class RecursosService {
     );
   }
 
-  findAll(search?: string, etiqueta?: string): Promise<Recurso[]> {
+  findAll(carpetaId?: string, search?: string): Promise<Recurso[]> {
     const query = this.recursos
       .createQueryBuilder('recurso')
       .orderBy('recurso.created_at', 'DESC');
+    if (carpetaId) {
+      query.andWhere('recurso.carpeta_id = :carpetaId', { carpetaId });
+    }
     if (search) {
       query.andWhere('recurso.titulo ILIKE :search', { search: `%${search}%` });
-    }
-    if (etiqueta) {
-      // simple-array se guarda como texto separado por comas; ILIKE sobre el valor
-      // crudo alcanza para el MVP sin necesitar una tabla de etiquetas aparte.
-      query.andWhere('recurso.etiquetas ILIKE :etiqueta', {
-        etiqueta: `%${etiqueta}%`,
-      });
     }
     return query.getMany();
   }
@@ -87,11 +76,13 @@ export class RecursosService {
 
   async update(id: string, dto: UpdateRecursoDto): Promise<Recurso> {
     const recurso = await this.findOne(id);
+    if (dto.carpetaId) {
+      await this.carpetas.findOne(dto.carpetaId);
+    }
     assignDefined(recurso, {
       titulo: dto.titulo,
       descripcion: dto.descripcion,
-      etiquetas:
-        dto.etiquetas !== undefined ? parseEtiquetas(dto.etiquetas) : undefined,
+      carpetaId: dto.carpetaId,
     });
     return this.recursos.save(recurso);
   }
@@ -107,6 +98,7 @@ export class RecursosService {
     recursoId: string,
     coacheeId: string,
     activa: boolean,
+    expiraEn: string | undefined,
   ): Promise<AsignacionRecurso> {
     await this.findOne(recursoId);
     if (!(await this.coachees.exists(coacheeId))) {
@@ -116,13 +108,10 @@ export class RecursosService {
       where: { recursoId, coacheeId },
     });
     if (!asignacion) {
-      asignacion = this.asignaciones.create({
-        recursoId,
-        coacheeId,
-        origen: OrigenAsignacion.COACH,
-      });
+      asignacion = this.asignaciones.create({ recursoId, coacheeId });
     }
     asignacion.activa = activa;
+    asignacion.expiraEn = expiraEn ? new Date(expiraEn) : null;
     return this.asignaciones.save(asignacion);
   }
 
@@ -134,71 +123,59 @@ export class RecursosService {
     return coachee.id;
   }
 
-  async autoasignar(
-    actorUserId: string,
-    recursoId: string,
-  ): Promise<AsignacionRecurso> {
-    await this.findOne(recursoId);
-    const coacheeId = await this.resolveCoacheeId(actorUserId);
-    let asignacion = await this.asignaciones.findOne({
-      where: { recursoId, coacheeId },
-    });
-    if (!asignacion) {
-      asignacion = this.asignaciones.create({
-        recursoId,
-        coacheeId,
-        origen: OrigenAsignacion.AUTOASIGNADO,
-      });
-    }
-    asignacion.activa = true;
-    return this.asignaciones.save(asignacion);
-  }
-
-  async quitarAutoasignacion(
-    actorUserId: string,
-    recursoId: string,
-  ): Promise<void> {
-    const coacheeId = await this.resolveCoacheeId(actorUserId);
-    const asignacion = await this.asignaciones.findOne({
-      where: { recursoId, coacheeId },
-    });
-    if (!asignacion || !asignacion.activa) {
-      throw new NotFoundException('Asignación not found');
-    }
-    if (asignacion.origen !== OrigenAsignacion.AUTOASIGNADO) {
-      throw new ForbiddenException(
-        'Este recurso fue asignado por tu coach; solo tu coach puede quitarlo.',
-      );
-    }
-    asignacion.activa = false;
-    await this.asignaciones.save(asignacion);
-  }
-
+  /**
+   * Un recurso es visible para un coachee si su carpeta es pública o le
+   * otorgaron acceso a la carpeta, o si le compartieron el recurso puntual
+   * (sin necesidad de abrir toda la carpeta) — en ambos casos el acceso
+   * puede tener vencimiento.
+   */
   async misRecursos(actorUserId: string): Promise<Recurso[]> {
     const coacheeId = await this.resolveCoacheeId(actorUserId);
-    const asignaciones = await this.asignaciones.find({
-      where: { coacheeId, activa: true },
-    });
-    if (asignaciones.length === 0) return [];
-    return this.recursos.find({
-      where: { id: In(asignaciones.map((a) => a.recursoId)) },
-      order: { createdAt: 'DESC' },
-    });
+    const ahora = new Date();
+    const [carpetasVisibles, asignacionesDirectas] = await Promise.all([
+      this.carpetas.carpetasVisiblesIds(coacheeId),
+      this.asignaciones.find({
+        where: [
+          { coacheeId, activa: true, expiraEn: IsNull() },
+          { coacheeId, activa: true, expiraEn: MoreThan(ahora) },
+        ],
+      }),
+    ]);
+    const recursoIdsDirectos = new Set(
+      asignacionesDirectas.map((a) => a.recursoId),
+    );
+    if (carpetasVisibles.size === 0 && recursoIdsDirectos.size === 0) return [];
+
+    const todos = await this.recursos.find({ order: { createdAt: 'DESC' } });
+    return todos.filter(
+      (r) => carpetasVisibles.has(r.carpetaId) || recursoIdsDirectos.has(r.id),
+    );
   }
 
   async asignacionesDeRecurso(recursoId: string): Promise<AsignacionRecurso[]> {
     return this.asignaciones.find({ where: { recursoId, activa: true } });
   }
 
+  /** Verifica visibilidad y devuelve el coacheeId, para que el llamador no tenga que resolverlo dos veces. */
   async assertEnBibliotecaDeCoachee(
     actorUserId: string,
     recursoId: string,
   ): Promise<string> {
     const coacheeId = await this.resolveCoacheeId(actorUserId);
-    const asignacion = await this.asignaciones.findOne({
-      where: { recursoId, coacheeId, activa: true },
-    });
-    if (!asignacion) {
+    const recurso = await this.findOne(recursoId);
+    const ahora = new Date();
+
+    const [carpetaVisible, asignacionDirecta] = await Promise.all([
+      this.carpetas.carpetaVisible(recurso.carpetaId, coacheeId),
+      this.asignaciones.findOne({
+        where: [
+          { recursoId, coacheeId, activa: true, expiraEn: IsNull() },
+          { recursoId, coacheeId, activa: true, expiraEn: MoreThan(ahora) },
+        ],
+      }),
+    ]);
+
+    if (!carpetaVisible && !asignacionDirecta) {
       throw new ForbiddenException('Este recurso no está en tu biblioteca.');
     }
     return coacheeId;

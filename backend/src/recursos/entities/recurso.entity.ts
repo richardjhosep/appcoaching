@@ -2,9 +2,12 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  JoinColumn,
+  ManyToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { TipoRecurso } from '../enums/tipo-recurso.enum';
+import { Carpeta } from './carpeta.entity';
 
 @Entity('recursos')
 export class Recurso {
@@ -17,8 +20,12 @@ export class Recurso {
   @Column({ type: 'text', nullable: true })
   descripcion: string | null;
 
-  @Column({ type: 'simple-array', nullable: true })
-  etiquetas: string[] | null;
+  @Column({ name: 'carpeta_id', type: 'uuid' })
+  carpetaId: string;
+
+  @ManyToOne(() => Carpeta)
+  @JoinColumn({ name: 'carpeta_id' })
+  carpeta?: Carpeta;
 
   @Column({ type: 'enum', enum: TipoRecurso })
   tipo: TipoRecurso;

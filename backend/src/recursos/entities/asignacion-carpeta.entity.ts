@@ -8,21 +8,21 @@ import {
   Unique,
   UpdateDateColumn,
 } from 'typeorm';
-import { Recurso } from './recurso.entity';
+import { Carpeta } from './carpeta.entity';
 import { Coachee } from '../../coachees/entities/coachee.entity';
 
-@Entity('asignaciones_recurso')
-@Unique(['recursoId', 'coacheeId'])
-export class AsignacionRecurso {
+@Entity('asignaciones_carpeta')
+@Unique(['carpetaId', 'coacheeId'])
+export class AsignacionCarpeta {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ name: 'recurso_id', type: 'uuid' })
-  recursoId: string;
+  @Column({ name: 'carpeta_id', type: 'uuid' })
+  carpetaId: string;
 
-  @ManyToOne(() => Recurso, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'recurso_id' })
-  recurso?: Recurso;
+  @ManyToOne(() => Carpeta, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'carpeta_id' })
+  carpeta?: Carpeta;
 
   @Column({ name: 'coachee_id', type: 'uuid' })
   coacheeId: string;

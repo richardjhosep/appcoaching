@@ -2,6 +2,7 @@ import {
   IsEnum,
   IsOptional,
   IsString,
+  IsUUID,
   IsUrl,
   MinLength,
   ValidateIf,
@@ -17,9 +18,8 @@ export class CreateRecursoDto {
   @IsString()
   descripcion?: string;
 
-  @IsOptional()
-  @IsString()
-  etiquetas?: string;
+  @IsUUID()
+  carpetaId: string;
 
   @IsEnum(TipoRecurso)
   tipo: TipoRecurso;

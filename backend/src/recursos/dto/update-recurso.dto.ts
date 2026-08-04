@@ -1,4 +1,4 @@
-import { IsOptional, IsString, MinLength } from 'class-validator';
+import { IsOptional, IsString, IsUUID, MinLength } from 'class-validator';
 
 export class UpdateRecursoDto {
   @IsOptional()
@@ -11,6 +11,6 @@ export class UpdateRecursoDto {
   descripcion?: string;
 
   @IsOptional()
-  @IsString()
-  etiquetas?: string;
+  @IsUUID()
+  carpetaId?: string;
 }

@@ -1,6 +1,6 @@
 import { IsBoolean } from 'class-validator';
 
-export class AsignarRecursoDto {
+export class SetPublicaCarpetaDto {
   @IsBoolean()
-  activa: boolean;
+  publica: boolean;
 }

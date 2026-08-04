@@ -8,8 +8,8 @@ import { RecursosService } from './recursos.service';
 import { Recurso } from './entities/recurso.entity';
 import { AsignacionRecurso } from './entities/asignacion-recurso.entity';
 import { TipoRecurso } from './enums/tipo-recurso.enum';
-import { OrigenAsignacion } from './enums/origen-asignacion.enum';
 import { CoacheesService } from '../coachees/coachees.service';
+import { CarpetasService } from './carpetas.service';
 
 type PartialRecurso = Partial<Recurso>;
 type PartialAsignacion = Partial<AsignacionRecurso>;
@@ -39,6 +39,11 @@ describe('RecursosService', () => {
     save: jest.Mock<Promise<PartialAsignacion>, [PartialAsignacion]>;
   };
   let coachees: { exists: jest.Mock; findByUserId: jest.Mock };
+  let carpetas: {
+    findOne: jest.Mock;
+    carpetasVisiblesIds: jest.Mock;
+    carpetaVisible: jest.Mock;
+  };
 
   beforeEach(() => {
     recursosRepo = {
@@ -60,41 +65,55 @@ describe('RecursosService', () => {
       ),
     };
     coachees = { exists: jest.fn(), findByUserId: jest.fn() };
+    carpetas = {
+      findOne: jest.fn().mockResolvedValue({ id: 'carpeta-1' }),
+      carpetasVisiblesIds: jest.fn(),
+      carpetaVisible: jest.fn(),
+    };
     service = new RecursosService(
       recursosRepo as unknown as Repository<Recurso>,
       asignacionesRepo as unknown as Repository<AsignacionRecurso>,
       coachees as unknown as CoacheesService,
+      carpetas as unknown as CarpetasService,
     );
   });
 
   describe('create', () => {
     it('rejects a link resource without url', async () => {
       await expect(
-        service.create({ titulo: 'x', tipo: TipoRecurso.LINK }),
+        service.create({
+          titulo: 'x',
+          tipo: TipoRecurso.LINK,
+          carpetaId: 'carpeta-1',
+        }),
       ).rejects.toThrow(BadRequestException);
     });
 
     it('rejects an archivo resource without a file', async () => {
       await expect(
-        service.create({ titulo: 'x', tipo: TipoRecurso.ARCHIVO }),
+        service.create({
+          titulo: 'x',
+          tipo: TipoRecurso.ARCHIVO,
+          carpetaId: 'carpeta-1',
+        }),
       ).rejects.toThrow(BadRequestException);
     });
 
-    it('creates a link resource, parsing comma-separated etiquetas', async () => {
+    it('creates a link resource in the given carpeta', async () => {
       const recurso = await service.create({
         titulo: 'Artículo',
         tipo: TipoRecurso.LINK,
         url: 'https://example.com',
-        etiquetas: 'liderazgo, comunicación',
+        carpetaId: 'carpeta-1',
       });
 
       expect(recurso.url).toBe('https://example.com');
-      expect(recurso.etiquetas).toEqual(['liderazgo', 'comunicación']);
+      expect(recurso.carpetaId).toBe('carpeta-1');
     });
 
     it('creates an archivo resource from the uploaded file', async () => {
       const recurso = await service.create(
-        { titulo: 'PDF', tipo: TipoRecurso.ARCHIVO },
+        { titulo: 'PDF', tipo: TipoRecurso.ARCHIVO, carpetaId: 'carpeta-1' },
         { originalname: 'manual.pdf', filename: 'uuid-generado.pdf' },
       );
 
@@ -109,7 +128,7 @@ describe('RecursosService', () => {
       coachees.exists.mockResolvedValue(false);
 
       await expect(
-        service.assignForCoachee('r1', 'missing', true),
+        service.assignForCoachee('r1', 'missing', true, undefined),
       ).rejects.toThrow(NotFoundException);
     });
 
@@ -118,10 +137,30 @@ describe('RecursosService', () => {
       coachees.exists.mockResolvedValue(true);
       asignacionesRepo.findOne.mockResolvedValue(null);
 
-      const asignacion = await service.assignForCoachee('r1', 'c1', true);
+      const asignacion = await service.assignForCoachee(
+        'r1',
+        'c1',
+        true,
+        undefined,
+      );
 
-      expect(asignacion.origen).toBe(OrigenAsignacion.COACH);
       expect(asignacion.activa).toBe(true);
+      expect(asignacion.expiraEn).toBeNull();
+    });
+
+    it('sets an expiration date when provided', async () => {
+      recursosRepo.findOne.mockResolvedValue({ id: 'r1' });
+      coachees.exists.mockResolvedValue(true);
+      asignacionesRepo.findOne.mockResolvedValue(null);
+
+      const asignacion = await service.assignForCoachee(
+        'r1',
+        'c1',
+        true,
+        '2026-12-31T00:00:00.000Z',
+      );
+
+      expect(asignacion.expiraEn).toEqual(new Date('2026-12-31T00:00:00.000Z'));
     });
 
     it('toggles an existing assignment', async () => {
@@ -132,58 +171,23 @@ describe('RecursosService', () => {
         recursoId: 'r1',
         coacheeId: 'c1',
         activa: true,
-        origen: OrigenAsignacion.COACH,
       });
 
-      const asignacion = await service.assignForCoachee('r1', 'c1', false);
-
-      expect(asignacion.activa).toBe(false);
-    });
-  });
-
-  describe('autoasignar / quitarAutoasignacion', () => {
-    it('creates a self-assignment', async () => {
-      recursosRepo.findOne.mockResolvedValue({ id: 'r1' });
-      coachees.findByUserId.mockResolvedValue({ id: 'c1' });
-      asignacionesRepo.findOne.mockResolvedValue(null);
-
-      const asignacion = await service.autoasignar('user-1', 'r1');
-
-      expect(asignacion.origen).toBe(OrigenAsignacion.AUTOASIGNADO);
-      expect(asignacion.activa).toBe(true);
-    });
-
-    it('rejects removing a coach-assigned resource from the coachee side', async () => {
-      coachees.findByUserId.mockResolvedValue({ id: 'c1' });
-      asignacionesRepo.findOne.mockResolvedValue({
-        id: 'a1',
-        activa: true,
-        origen: OrigenAsignacion.COACH,
-      });
-
-      await expect(
-        service.quitarAutoasignacion('user-1', 'r1'),
-      ).rejects.toThrow(ForbiddenException);
-    });
-
-    it('deactivates a self-assignment', async () => {
-      coachees.findByUserId.mockResolvedValue({ id: 'c1' });
-      const asignacion = {
-        id: 'a1',
-        activa: true,
-        origen: OrigenAsignacion.AUTOASIGNADO,
-      };
-      asignacionesRepo.findOne.mockResolvedValue(asignacion);
-
-      await service.quitarAutoasignacion('user-1', 'r1');
+      const asignacion = await service.assignForCoachee(
+        'r1',
+        'c1',
+        false,
+        undefined,
+      );
 
       expect(asignacion.activa).toBe(false);
     });
   });
 
   describe('misRecursos', () => {
-    it('returns an empty list when there are no active assignments', async () => {
+    it('returns an empty list when nothing is visible', async () => {
       coachees.findByUserId.mockResolvedValue({ id: 'c1' });
+      carpetas.carpetasVisiblesIds.mockResolvedValue(new Set());
       asignacionesRepo.find.mockResolvedValue([]);
 
       const result = await service.misRecursos('user-1');
@@ -192,23 +196,43 @@ describe('RecursosService', () => {
       expect(recursosRepo.find).not.toHaveBeenCalled();
     });
 
-    it('returns the resources for the active assignments', async () => {
+    it('returns resources whose carpeta is visible', async () => {
       coachees.findByUserId.mockResolvedValue({ id: 'c1' });
-      asignacionesRepo.find.mockResolvedValue([
-        { recursoId: 'r1' },
-        { recursoId: 'r2' },
+      carpetas.carpetasVisiblesIds.mockResolvedValue(new Set(['carpeta-1']));
+      asignacionesRepo.find.mockResolvedValue([]);
+      recursosRepo.find.mockResolvedValue([
+        { id: 'r1', carpetaId: 'carpeta-1' },
+        { id: 'r2', carpetaId: 'carpeta-otra' },
       ]);
-      recursosRepo.find.mockResolvedValue([{ id: 'r1' }, { id: 'r2' }]);
 
       const result = await service.misRecursos('user-1');
 
-      expect(result).toHaveLength(2);
+      expect(result).toEqual([{ id: 'r1', carpetaId: 'carpeta-1' }]);
+    });
+
+    it('also returns resources shared directly, regardless of their carpeta', async () => {
+      coachees.findByUserId.mockResolvedValue({ id: 'c1' });
+      carpetas.carpetasVisiblesIds.mockResolvedValue(new Set());
+      asignacionesRepo.find.mockResolvedValue([{ recursoId: 'r2' }]);
+      recursosRepo.find.mockResolvedValue([
+        { id: 'r1', carpetaId: 'carpeta-privada' },
+        { id: 'r2', carpetaId: 'carpeta-privada' },
+      ]);
+
+      const result = await service.misRecursos('user-1');
+
+      expect(result).toEqual([{ id: 'r2', carpetaId: 'carpeta-privada' }]);
     });
   });
 
   describe('assertEnBibliotecaDeCoachee', () => {
-    it('rejects when the resource is not in the biblioteca', async () => {
+    it('rejects when neither the carpeta nor the recurso are shared', async () => {
       coachees.findByUserId.mockResolvedValue({ id: 'c1' });
+      recursosRepo.findOne.mockResolvedValue({
+        id: 'r1',
+        carpetaId: 'carpeta-1',
+      });
+      carpetas.carpetaVisible.mockResolvedValue(false);
       asignacionesRepo.findOne.mockResolvedValue(null);
 
       await expect(
@@ -216,9 +240,14 @@ describe('RecursosService', () => {
       ).rejects.toThrow(ForbiddenException);
     });
 
-    it('resolves the coacheeId when the resource is in the biblioteca', async () => {
+    it('resolves the coacheeId when the carpeta is visible', async () => {
       coachees.findByUserId.mockResolvedValue({ id: 'c1' });
-      asignacionesRepo.findOne.mockResolvedValue({ activa: true });
+      recursosRepo.findOne.mockResolvedValue({
+        id: 'r1',
+        carpetaId: 'carpeta-1',
+      });
+      carpetas.carpetaVisible.mockResolvedValue(true);
+      asignacionesRepo.findOne.mockResolvedValue(null);
 
       await expect(
         service.assertEnBibliotecaDeCoachee('user-1', 'r1'),
@@ -227,11 +256,11 @@ describe('RecursosService', () => {
   });
 
   describe('findAll', () => {
-    it('applies both search and etiqueta filters', async () => {
+    it('applies both carpetaId and search filters', async () => {
       const qb = makeQueryBuilder([{ id: 'r1' }]);
       recursosRepo.createQueryBuilder.mockReturnValue(qb);
 
-      const result = await service.findAll('manual', 'liderazgo');
+      const result = await service.findAll('carpeta-1', 'manual');
 
       expect(qb.andWhere).toHaveBeenCalledTimes(2);
       expect(result).toEqual([{ id: 'r1' }]);

@@ -1,13 +1,11 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import AppShell from '../../components/AppShell.vue'
 import AppModal from '../../components/AppModal.vue'
 import RecursoIcono from '../../components/RecursoIcono.vue'
+import { getMisCarpetas, type Carpeta } from '../../api/carpetas'
 import {
-  listRecursos,
   getMisRecursos,
-  autoasignarRecurso,
-  quitarAutoasignacion,
   addAprendizaje,
   getMisAprendizajes,
   descargarArchivo,
@@ -15,90 +13,67 @@ import {
   type Aprendizaje,
 } from '../../api/recursos'
 import { ApiError } from '../../api/client'
+import { buildArbol, breadcrumbDe, idsDescendientes } from '../../lib/carpetaArbol'
 
-const tab = ref<'mia' | 'catalogo'>('mia')
-const misRecursos = ref<Recurso[]>([])
-const catalogo = ref<Recurso[]>([])
-const search = ref('')
 const loading = ref(true)
 const error = ref<string | null>(null)
+const carpetas = ref<Carpeta[]>([])
+const misRecursos = ref<Recurso[]>([])
+const seleccionadaId = ref<string | null>(null)
 
-const topicoActivo = ref<string | null>(null)
 const recursoAbierto = ref<Recurso | null>(null)
 const aprendizajesDelAbierto = ref<Aprendizaje[]>([])
 const nuevoAprendizaje = ref('')
 const guardandoAprendizaje = ref(false)
 
-const misRecursosIds = computed(() => new Set(misRecursos.value.map((r) => r.id)))
+const arbol = computed(() => buildArbol(carpetas.value))
+const migas = computed(() => breadcrumbDe(carpetas.value, seleccionadaId.value))
+const carpetaActual = computed(() => migas.value.at(-1) ?? null)
+const subcarpetas = computed(() =>
+  [...carpetas.value]
+    .filter((c) => c.parentId === seleccionadaId.value)
+    .sort((a, b) => a.nombre.localeCompare(b.nombre)),
+)
+const recursosDeCarpeta = computed(() =>
+  seleccionadaId.value ? misRecursos.value.filter((r) => r.carpetaId === seleccionadaId.value) : [],
+)
 
-async function loadMia() {
-  misRecursos.value = await getMisRecursos()
-}
+/**
+ * Archivos compartidos puntualmente cuya carpeta no es visible (ni pública ni con acceso
+ * otorgado): no tienen una carpeta navegable donde mostrarse, así que aparecen sueltos en la raíz.
+ */
+const recursosSueltos = computed(() => {
+  const idsDeCarpetasVisibles = new Set(carpetas.value.map((c) => c.id))
+  return misRecursos.value.filter((r) => !idsDeCarpetasVisibles.has(r.carpetaId))
+})
 
-async function loadCatalogo() {
-  catalogo.value = await listRecursos(search.value || undefined)
+function totalRecursosEn(carpetaId: string): number {
+  const ids = idsDescendientes(carpetas.value, carpetaId)
+  return misRecursos.value.filter((r) => ids.has(r.carpetaId)).length
 }
 
 async function loadAll() {
   loading.value = true
-  await Promise.all([loadMia(), loadCatalogo()])
+  const [cs, rs] = await Promise.all([getMisCarpetas(), getMisRecursos()])
+  carpetas.value = cs
+  misRecursos.value = rs
   loading.value = false
 }
 
 onMounted(loadAll)
-watch(search, loadCatalogo)
-watch(tab, () => {
-  topicoActivo.value = null
-  recursoAbierto.value = null
-})
 
-const recursosDelTab = computed(() => (tab.value === 'mia' ? misRecursos.value : catalogo.value))
-
-interface Grupo { topico: string; recursos: Recurso[] }
-
-const grupos = computed<Grupo[]>(() => {
-  const porTopico = new Map<string, Recurso[]>()
-  for (const r of recursosDelTab.value) {
-    const topico = r.etiquetas?.[0]?.trim() || 'Sin categoría'
-    if (!porTopico.has(topico)) porTopico.set(topico, [])
-    porTopico.get(topico)!.push(r)
-  }
-  return [...porTopico.entries()]
-    .map(([topico, recursos]) => ({ topico, recursos }))
-    .sort((a, b) => a.topico.localeCompare(b.topico))
-})
-
-const itemsTopicoActivo = computed(
-  () => grupos.value.find((g) => g.topico === topicoActivo.value)?.recursos ?? [],
-)
+function seleccionar(id: string | null) {
+  seleccionadaId.value = id
+}
 
 async function abrirRecurso(r: Recurso) {
   recursoAbierto.value = r
   nuevoAprendizaje.value = ''
-  aprendizajesDelAbierto.value = tab.value === 'mia' ? await getMisAprendizajes(r.id) : []
+  aprendizajesDelAbierto.value = await getMisAprendizajes(r.id)
 }
 
 function cerrarModal() {
   recursoAbierto.value = null
-}
-
-async function agregar(recursoId: string) {
-  try {
-    await autoasignarRecurso(recursoId)
-    await loadMia()
-  } catch (err) {
-    error.value = err instanceof ApiError ? err.message : 'No se pudo agregar a tu biblioteca.'
-  }
-}
-
-async function quitar(recursoId: string) {
-  try {
-    await quitarAutoasignacion(recursoId)
-    await loadMia()
-    cerrarModal()
-  } catch (err) {
-    error.value = err instanceof ApiError ? err.message : 'No se pudo quitar de tu biblioteca.'
-  }
 }
 
 async function guardarAprendizaje() {
@@ -134,31 +109,6 @@ async function descargar(r: Recurso) {
       {{ error }}
     </p>
 
-    <div class="mb-4 flex w-fit gap-1 rounded-full bg-[var(--color-parchment)] p-1">
-      <button
-        class="rounded-full px-3.5 py-1.5 text-sm transition-colors"
-        :class="tab === 'mia' ? 'bg-[var(--color-ink)] text-[var(--color-parchment)]' : 'text-[var(--color-ink)]/70'"
-        @click="tab = 'mia'"
-      >
-        Mi biblioteca
-      </button>
-      <button
-        class="rounded-full px-3.5 py-1.5 text-sm transition-colors"
-        :class="tab === 'catalogo' ? 'bg-[var(--color-ink)] text-[var(--color-parchment)]' : 'text-[var(--color-ink)]/70'"
-        @click="tab = 'catalogo'"
-      >
-        Catálogo general
-      </button>
-    </div>
-
-    <input
-      v-if="tab === 'catalogo'"
-      v-model="search"
-      type="text"
-      placeholder="Buscar por título…"
-      class="mb-4 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
-    >
-
     <div
       v-if="loading"
       class="text-sm text-[var(--color-ink)]/60"
@@ -166,55 +116,140 @@ async function descargar(r: Recurso) {
       Cargando…
     </div>
 
-    <p
-      v-else-if="recursosDelTab.length === 0"
-      class="text-sm text-[var(--color-ink)]/60"
-    >
-      {{ tab === 'mia' ? 'Todavía no tienes recursos en tu biblioteca.' : 'No se encontraron recursos.' }}
-    </p>
-
-    <template v-else-if="!topicoActivo">
-      <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-        <button
-          v-for="g in grupos"
-          :key="g.topico"
-          class="flex flex-col items-start gap-3 rounded-2xl border border-[var(--color-line)] bg-white p-4 text-left transition-all hover:-translate-y-0.5 hover:border-[var(--color-sage)] hover:shadow-md"
-          @click="topicoActivo = g.topico"
+    <template v-else-if="!carpetaActual">
+      <p
+        v-if="arbol.length === 0 && recursosSueltos.length === 0"
+        class="text-sm text-[var(--color-ink)]/60"
+      >
+        Todavía no tienes acceso a ninguna carpeta.
+      </p>
+      <template v-else>
+        <div
+          v-if="arbol.length"
+          class="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4"
         >
-          <div class="flex items-center gap-1.5">
-            <RecursoIcono
-              v-for="r in g.recursos.slice(0, 3)"
+          <button
+            v-for="c in arbol"
+            :key="c.id"
+            class="flex flex-col items-start gap-3 rounded-2xl border border-[var(--color-line)] bg-white p-4 text-left transition-all hover:-translate-y-0.5 hover:border-[var(--color-sage)] hover:shadow-md"
+            @click="seleccionar(c.id)"
+          >
+            <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-[var(--color-parchment)] text-[var(--color-ink)]/70">
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              ><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /></svg>
+            </div>
+            <div>
+              <p class="text-sm font-medium">
+                {{ c.nombre }}
+              </p>
+              <p class="text-xs text-[var(--color-ink)]/50">
+                {{ totalRecursosEn(c.id) }} recurso{{ totalRecursosEn(c.id) === 1 ? '' : 's' }}
+              </p>
+            </div>
+          </button>
+        </div>
+
+        <template v-if="recursosSueltos.length">
+          <p class="mb-2 text-xs font-medium uppercase tracking-wide text-[var(--color-ink)]/45">
+            Compartidos contigo directamente
+          </p>
+          <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+            <button
+              v-for="r in recursosSueltos"
               :key="r.id"
-              :recurso="r"
-              size="xs"
-            />
-            <span
-              v-if="g.recursos.length > 3"
-              class="flex h-7 items-center rounded-lg bg-[var(--color-parchment)] px-1.5 text-[11px] font-medium text-[var(--color-ink)]/60"
-            >+{{ g.recursos.length - 3 }}</span>
+              class="flex flex-col items-center gap-2 rounded-2xl border border-[var(--color-line)] bg-white p-4 text-center transition-all hover:-translate-y-0.5 hover:border-[var(--color-sage)] hover:shadow-md"
+              @click="abrirRecurso(r)"
+            >
+              <RecursoIcono
+                :recurso="r"
+                size="lg"
+              />
+              <p class="line-clamp-2 text-xs font-medium">
+                {{ r.titulo }}
+              </p>
+            </button>
+          </div>
+        </template>
+      </template>
+    </template>
+
+    <template v-else>
+      <nav class="mb-4 flex flex-wrap items-center gap-1 text-sm text-[var(--color-ink)]/60">
+        <button
+          class="hover:text-[var(--color-ink)] hover:underline"
+          @click="seleccionar(null)"
+        >
+          Mi biblioteca
+        </button>
+        <template
+          v-for="(m, i) in migas"
+          :key="m.id"
+        >
+          <span class="opacity-40">/</span>
+          <button
+            class="hover:underline"
+            :class="i === migas.length - 1 ? 'font-medium text-[var(--color-ink)]' : 'hover:text-[var(--color-ink)]'"
+            @click="seleccionar(m.id)"
+          >
+            {{ m.nombre }}
+          </button>
+        </template>
+      </nav>
+
+      <div
+        v-if="subcarpetas.length"
+        class="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4"
+      >
+        <button
+          v-for="s in subcarpetas"
+          :key="s.id"
+          class="flex flex-col items-start gap-3 rounded-2xl border border-[var(--color-line)] bg-white p-4 text-left transition-all hover:-translate-y-0.5 hover:border-[var(--color-sage)] hover:shadow-md"
+          @click="seleccionar(s.id)"
+        >
+          <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-[var(--color-parchment)] text-[var(--color-ink)]/70">
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            ><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /></svg>
           </div>
           <div>
             <p class="text-sm font-medium">
-              {{ g.topico }}
+              {{ s.nombre }}
             </p>
             <p class="text-xs text-[var(--color-ink)]/50">
-              {{ g.recursos.length }} recurso{{ g.recursos.length === 1 ? '' : 's' }}
+              {{ totalRecursosEn(s.id) }} recurso{{ totalRecursosEn(s.id) === 1 ? '' : 's' }}
             </p>
           </div>
         </button>
       </div>
-    </template>
 
-    <template v-else>
-      <button
-        class="mb-4 text-sm text-[var(--color-sage)] underline"
-        @click="topicoActivo = null"
+      <p
+        v-if="recursosDeCarpeta.length === 0 && subcarpetas.length === 0"
+        class="text-sm text-[var(--color-ink)]/50"
       >
-        ← Volver a tópicos
-      </button>
-      <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+        Esta carpeta está vacía.
+      </p>
+
+      <div
+        v-if="recursosDeCarpeta.length"
+        class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4"
+      >
         <button
-          v-for="r in itemsTopicoActivo"
+          v-for="r in recursosDeCarpeta"
           :key="r.id"
           class="flex flex-col items-center gap-2 rounded-2xl border border-[var(--color-line)] bg-white p-4 text-center transition-all hover:-translate-y-0.5 hover:border-[var(--color-sage)] hover:shadow-md"
           @click="abrirRecurso(r)"
@@ -264,31 +299,7 @@ async function descargar(r: Recurso) {
         </div>
       </div>
 
-      <div class="mt-4 flex justify-end">
-        <button
-          v-if="tab === 'mia'"
-          class="text-xs text-[var(--color-bronze)] hover:underline"
-          @click="quitar(recursoAbierto.id)"
-        >
-          Quitar de mi biblioteca
-        </button>
-        <button
-          v-else-if="!misRecursosIds.has(recursoAbierto.id)"
-          class="rounded-lg border border-[var(--color-line)] px-3 py-1.5 text-xs hover:bg-[var(--color-parchment)]/50"
-          @click="agregar(recursoAbierto.id)"
-        >
-          Agregar a mi biblioteca
-        </button>
-        <span
-          v-else
-          class="text-xs text-[var(--color-sage)]"
-        >Ya en tu biblioteca</span>
-      </div>
-
-      <div
-        v-if="tab === 'mia'"
-        class="mt-4 space-y-2 border-t border-[var(--color-line)] pt-4"
-      >
+      <div class="mt-4 space-y-2 border-t border-[var(--color-line)] pt-4">
         <p class="text-xs font-medium uppercase tracking-wide text-[var(--color-ink)]/45">
           Mis aprendizajes
         </p>

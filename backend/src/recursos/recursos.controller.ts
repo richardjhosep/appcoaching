@@ -23,7 +23,7 @@ import { RecursosService } from './recursos.service';
 import { AprendizajesRecursoService } from './aprendizajes-recurso.service';
 import { CreateRecursoDto } from './dto/create-recurso.dto';
 import { UpdateRecursoDto } from './dto/update-recurso.dto';
-import { AsignarRecursoDto } from './dto/asignar-recurso.dto';
+import { AsignarAccesoDto } from './dto/asignar-acceso.dto';
 import { CreateAprendizajeDto } from './dto/create-aprendizaje.dto';
 import { UPLOADS_DIR } from './uploads-dir.util';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -61,13 +61,13 @@ export class RecursosController {
     return this.recursos.create(dto, archivo);
   }
 
-  @Roles(Role.COACH, Role.COACHEE)
+  @Roles(Role.COACH)
   @Get()
   findAll(
+    @Query('carpetaId') carpetaId?: string,
     @Query('search') search?: string,
-    @Query('etiqueta') etiqueta?: string,
   ) {
-    return this.recursos.findAll(search, etiqueta);
+    return this.recursos.findAll(carpetaId, search);
   }
 
   @Roles(Role.COACHEE)
@@ -93,33 +93,20 @@ export class RecursosController {
   asignar(
     @Param('id') id: string,
     @Param('coacheeId') coacheeId: string,
-    @Body() dto: AsignarRecursoDto,
+    @Body() dto: AsignarAccesoDto,
   ) {
-    return this.recursos.assignForCoachee(id, coacheeId, dto.activa);
+    return this.recursos.assignForCoachee(
+      id,
+      coacheeId,
+      dto.activa,
+      dto.expiraEn,
+    );
   }
 
   @Roles(Role.COACH)
   @Get(':id/asignaciones')
   asignacionesDeRecurso(@Param('id') id: string) {
     return this.recursos.asignacionesDeRecurso(id);
-  }
-
-  @Roles(Role.COACHEE)
-  @Post(':id/autoasignar')
-  autoasignar(
-    @Param('id') id: string,
-    @CurrentUser() actor: AuthenticatedUser,
-  ) {
-    return this.recursos.autoasignar(actor.id, id);
-  }
-
-  @Roles(Role.COACHEE)
-  @Delete(':id/autoasignar')
-  quitarAutoasignacion(
-    @Param('id') id: string,
-    @CurrentUser() actor: AuthenticatedUser,
-  ) {
-    return this.recursos.quitarAutoasignacion(actor.id, id);
   }
 
   @Roles(Role.COACHEE)
