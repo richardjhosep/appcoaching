@@ -1,93 +1,45 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
+import { createRouter, createWebHistory } from 'vue-router'
 import NegocioView from './NegocioView.vue'
-import type { ResumenNegocio, Alertas, AvancePorArea } from '../../api/negocio'
+import ResumenTab from './negocio/ResumenTab.vue'
+import ComercialTab from './negocio/ComercialTab.vue'
 
-vi.mock('../../api/negocio', async () => {
-  const actual = await vi.importActual<typeof import('../../api/negocio')>('../../api/negocio')
-  return {
-    ...actual,
-    getResumenNegocio: vi.fn(),
-    getAlertas: vi.fn(),
-    getAvancePorArea: vi.fn(),
-  }
+const router = createRouter({
+  history: createWebHistory(),
+  routes: [{ path: '/coach/negocio', component: NegocioView }],
 })
-vi.mock('../../api/empresas', () => ({ updateEmpresa: vi.fn() }))
-
-import { getResumenNegocio, getAlertas, getAvancePorArea } from '../../api/negocio'
-
-const resumen: ResumenNegocio = {
-  porEmpresa: [
-    {
-      empresaId: 'e1',
-      nombre: 'Empresa Uno',
-      pagada: true,
-      horasContratadas: 10,
-      horasConsumidas: 4,
-      ingresoDelPeriodo: 120000,
-      ingresoProyectado: 60000,
-    },
-  ],
-  horasRealizadasTotal: 4,
-  ingresoDelPeriodoTotal: 120000,
-  ingresoProyectadoTotal: 60000,
-  coacheesActivos: 2,
-  satisfaccionPromedio: 4.5,
-}
-
-const alertas: Alertas = {
-  ciclosPorVencer: [{ coacheeId: 'c1', nombre: 'Coachee Uno', sesionesRestantes: 1 }],
-  coacheesSinLogros: [{ coacheeId: 'c1', nombre: 'Coachee Uno' }],
-  coacheesSinProximaSesion: [],
-}
-
-const avancePorArea: AvancePorArea[] = [
-  { area: 'Comercial', avancePromedio: 80, coacheesCount: 2 },
-]
 
 describe('NegocioView', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     setActivePinia(createPinia())
-    vi.mocked(getResumenNegocio).mockResolvedValue(resumen)
-    vi.mocked(getAlertas).mockResolvedValue(alertas)
-    vi.mocked(getAvancePorArea).mockResolvedValue(avancePorArea)
+    await router.push('/coach/negocio')
+    await router.isReady()
   })
 
-  it('shows the KPI cards with formatted currency and satisfaction', async () => {
-    const wrapper = mount(NegocioView)
+  it('defaults to the "Resumen" tab', async () => {
+    const wrapper = mount(NegocioView, {
+      global: { plugins: [router], stubs: { ResumenTab: true, ComercialTab: true } },
+    })
     await flushPromises()
 
-    expect(wrapper.text()).toContain('4') // horas realizadas
-    expect(wrapper.text()).toContain('$120.000')
-    expect(wrapper.text()).toContain('4.5 ★')
+    expect(wrapper.findComponent(ResumenTab).exists()).toBe(true)
+    expect(wrapper.findComponent(ComercialTab).exists()).toBe(false)
   })
 
-  it('shows the seguimiento alerts grouped by type', async () => {
-    const wrapper = mount(NegocioView)
+  it('switches to "Comercial" on click, without a full reload', async () => {
+    const wrapper = mount(NegocioView, {
+      global: { plugins: [router], stubs: { ResumenTab: true, ComercialTab: true } },
+    })
     await flushPromises()
 
-    expect(wrapper.text()).toContain('Ciclos por vencer (1)')
-    expect(wrapper.text()).toContain('Sin próxima sesión (0)')
-    expect(wrapper.text()).toContain('Coachee Uno')
-  })
-
-  it('shows the empresa row with its pagada state and horas contratadas', async () => {
-    const wrapper = mount(NegocioView)
+    const comercialBtn = wrapper.findAll('button').find((b) => b.text() === 'Comercial')
+    await comercialBtn!.trigger('click')
     await flushPromises()
 
-    expect(wrapper.text()).toContain('Empresa Uno')
-    const checkbox = wrapper.find('input[type="checkbox"]')
-    expect((checkbox.element as HTMLInputElement).checked).toBe(true)
-    const horasInput = wrapper.find('input[type="number"]')
-    expect((horasInput.element as HTMLInputElement).value).toBe('10')
-  })
-
-  it('renders the avance por área bar chart', async () => {
-    const wrapper = mount(NegocioView)
-    await flushPromises()
-
-    expect(wrapper.text()).toContain('Comercial')
-    expect(wrapper.text()).toContain('80%')
+    expect(wrapper.findComponent(ComercialTab).exists()).toBe(true)
+    expect(wrapper.findComponent(ResumenTab).exists()).toBe(false)
+    expect(router.currentRoute.value.query.tab).toBe('comercial')
   })
 })

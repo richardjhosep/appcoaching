@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch, type ComponentPublicInstance } from 'vue'
+import { computed, onMounted, reactive, ref, watch, type ComponentPublicInstance } from 'vue'
 import ProgresoLineaTiempo from '../../../components/ProgresoLineaTiempo.vue'
 import WeekCalendar from '../../../components/WeekCalendar.vue'
 import AppModal from '../../../components/AppModal.vue'
@@ -17,6 +17,11 @@ import {
   type Logro,
   type PuntoProgreso,
 } from '../../../api/seguimiento'
+import {
+  getSolicitudesReagendamiento,
+  responderSolicitudReagendamiento,
+  type SolicitudReagendamiento,
+} from '../../../api/solicitudes-reagendamiento'
 import { ApiError } from '../../../api/client'
 import { nivelProgreso, coloresNivel } from '../../../lib/nivelProgreso'
 
@@ -27,6 +32,7 @@ const avance = ref<number | null>(null)
 const puntos = ref<PuntoProgreso[]>([])
 const logros = ref<Logro[]>([])
 const sesiones = ref<Sesion[]>([])
+const solicitudesReagendamiento = ref<SolicitudReagendamiento[]>([])
 const error = ref<string | null>(null)
 const guardandoAsistencia = ref<string | null>(null)
 const guardandoNotas = ref<string | null>(null)
@@ -73,6 +79,43 @@ async function agendar() {
   }
 }
 
+const responderModalOpen = ref(false)
+const solicitudSeleccionada = ref<SolicitudReagendamiento | null>(null)
+const responderForm = reactive({ nuevaFechaHora: '', respuestaCoach: '' })
+const guardandoRespuesta = ref(false)
+const errorResponder = ref<string | null>(null)
+
+function abrirResponder(s: SolicitudReagendamiento) {
+  solicitudSeleccionada.value = s
+  responderForm.nuevaFechaHora = ''
+  responderForm.respuestaCoach = ''
+  errorResponder.value = null
+  responderModalOpen.value = true
+}
+
+async function guardarRespuesta() {
+  const solicitud = solicitudSeleccionada.value
+  if (!solicitud) return
+  errorResponder.value = null
+  guardandoRespuesta.value = true
+  try {
+    await responderSolicitudReagendamiento(solicitud.id, {
+      nuevaFechaHora: responderForm.nuevaFechaHora
+        ? new Date(responderForm.nuevaFechaHora).toISOString()
+        : undefined,
+      respuestaCoach: responderForm.respuestaCoach || undefined,
+    })
+    solicitudesReagendamiento.value = solicitudesReagendamiento.value.filter(
+      (s) => s.id !== solicitud.id,
+    )
+    responderModalOpen.value = false
+  } catch (err) {
+    errorResponder.value = err instanceof ApiError ? err.message : 'No se pudo enviar la respuesta.'
+  } finally {
+    guardandoRespuesta.value = false
+  }
+}
+
 async function cambiarAsistencia(sesion: Sesion, valor: string) {
   if (valor === '') return
   error.value = null
@@ -112,17 +155,19 @@ const ultimaPostSesionPublicada = computed(() => {
 
 async function load() {
   loading.value = true
-  const [a, p, l, s] = await Promise.all([
+  const [a, p, l, s, r] = await Promise.all([
     getAvanceDeCoachee(props.coacheeId),
     getLineaProgresoDeCoachee(props.coacheeId),
     getLogrosDeCoachee(props.coacheeId),
     getSesionesDeCoachee(props.coacheeId),
+    getSolicitudesReagendamiento(),
   ])
   avance.value = a.avance
   puntos.value = p
   logros.value = l
   sesiones.value = s
   notasEdit.value = Object.fromEntries(s.map((sesion) => [sesion.id, sesion.notasPrivadas ?? '']))
+  solicitudesReagendamiento.value = r.filter((sol) => sol.coacheeId === props.coacheeId)
   loading.value = false
 }
 
@@ -153,6 +198,40 @@ function onSelectSesion(id: string) {
     Cargando…
   </div>
   <div v-else>
+    <div
+      v-if="solicitudesReagendamiento.length"
+      class="mb-4 rounded-2xl border border-[var(--color-bronze)]/40 bg-white p-4"
+    >
+      <h2 class="mb-3 text-sm font-medium">
+        Solicitudes de reagendamiento ({{ solicitudesReagendamiento.length }})
+      </h2>
+      <ul class="space-y-2 text-sm">
+        <li
+          v-for="s in solicitudesReagendamiento"
+          :key="s.id"
+          class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--color-line)] p-3"
+        >
+          <div>
+            <p class="font-medium">
+              Sesión del {{ s.sesion ? new Date(s.sesion.fechaHora).toLocaleString('es-CL') : '—' }}
+            </p>
+            <p
+              v-if="s.motivo"
+              class="text-[var(--color-ink)]/60"
+            >
+              {{ s.motivo }}
+            </p>
+          </div>
+          <button
+            class="shrink-0 rounded-lg bg-[var(--color-ink)] px-3 py-2 text-xs text-[var(--color-parchment)]"
+            @click="abrirResponder(s)"
+          >
+            Responder
+          </button>
+        </li>
+      </ul>
+    </div>
+
     <div class="mb-4 rounded-2xl border border-[var(--color-line)] bg-white p-4">
       <h2 class="mb-1 text-sm font-medium">
         Avance general
@@ -376,6 +455,70 @@ function onSelectSesion(id: string) {
             class="rounded-lg bg-[var(--color-ink)] px-4 py-2 text-sm text-[var(--color-parchment)] disabled:opacity-60"
           >
             {{ agendando ? 'Agendando…' : 'Agendar sesión' }}
+          </button>
+        </div>
+      </form>
+    </AppModal>
+
+    <AppModal
+      v-if="responderModalOpen"
+      title="Responder solicitud de reagendamiento"
+      @close="responderModalOpen = false"
+    >
+      <form
+        class="space-y-4"
+        @submit.prevent="guardarRespuesta"
+      >
+        <p
+          v-if="errorResponder"
+          class="text-sm text-[var(--color-danger)]"
+        >
+          {{ errorResponder }}
+        </p>
+        <div
+          v-if="solicitudSeleccionada"
+          class="rounded-lg bg-[var(--color-parchment)]/50 p-3 text-sm"
+        >
+          <p class="text-[var(--color-ink)]/60">
+            Sesión actual: {{ solicitudSeleccionada.sesion ? new Date(solicitudSeleccionada.sesion.fechaHora).toLocaleString('es-CL') : '—' }}
+          </p>
+          <p
+            v-if="solicitudSeleccionada.motivo"
+            class="text-[var(--color-ink)]/60"
+          >
+            Motivo: {{ solicitudSeleccionada.motivo }}
+          </p>
+        </div>
+        <label class="block text-sm">
+          Nueva fecha y hora (opcional)
+          <input
+            v-model="responderForm.nuevaFechaHora"
+            type="datetime-local"
+            class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+          >
+        </label>
+        <label class="block text-sm">
+          Mensaje para el coachee (opcional)
+          <textarea
+            v-model="responderForm.respuestaCoach"
+            rows="3"
+            class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+          />
+        </label>
+        <div class="flex justify-end gap-2 pt-2">
+          <button
+            type="button"
+            class="rounded-lg border border-[var(--color-line)] px-4 py-2 text-sm"
+            @click="responderModalOpen = false"
+          >
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            :disabled="guardandoRespuesta"
+            class="rounded-lg bg-[var(--color-ink)] px-4 py-2 text-sm text-[var(--color-parchment)] disabled:opacity-60"
+          >
+            {{ guardandoRespuesta ? 'Guardando…' : 'Guardar' }}
           </button>
         </div>
       </form>

@@ -101,9 +101,7 @@ const routes: RouteRecordRaw[] = [
   },
   {
     path: '/coach/comercial',
-    name: 'coach-comercial',
-    component: () => import('../views/coach/GestionComercialView.vue'),
-    meta: { roles: ['coach'] },
+    redirect: '/coach/negocio?tab=comercial',
   },
   {
     path: '/coach/empresas',

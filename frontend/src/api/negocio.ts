@@ -1,4 +1,5 @@
 import { apiRequest } from './client'
+import type { ResultadoCiclo } from './ciclos'
 
 export interface EmpresaCobro {
   empresaId: string
@@ -46,4 +47,51 @@ export function getAlertas(): Promise<Alertas> {
 
 export function getAvancePorArea(): Promise<AvancePorArea[]> {
   return apiRequest<AvancePorArea[]>('/negocio/avance-por-area')
+}
+
+export type PeriodoComercial = 'mes' | 'semestre' | 'anio'
+
+export interface CoacheeCobro {
+  coacheeId: string
+  nombre: string
+  empresaNombre: string | null
+  horasRealizadas: number
+  ingresoDelPeriodo: number
+  ingresoProyectado: number
+}
+
+export interface ResumenComercial {
+  periodo: PeriodoComercial
+  ingresoDelPeriodo: number
+  ingresoProyectado: number
+  horasRealizadas: number
+  solicitudesNuevas: number
+  solicitudesAtendidas: number
+  solicitudesPendientes: number
+  procesosIniciados: number
+  procesosCerrados: number
+  procesosCerradosPorResultado: Record<ResultadoCiclo, number>
+  reagendamientosSolicitados: number
+  porCoachee: CoacheeCobro[]
+}
+
+export function getResumenComercial(periodo: PeriodoComercial): Promise<ResumenComercial> {
+  return apiRequest<ResumenComercial>(`/negocio/comercial?periodo=${periodo}`)
+}
+
+export interface ContribuyenteMes {
+  nombre: string
+  monto: number
+}
+
+export interface ProyeccionMes {
+  mes: string
+  etiqueta: string
+  total: number
+  porEmpresa: ContribuyenteMes[]
+  porCoachee: ContribuyenteMes[]
+}
+
+export function getProyeccionMensual(): Promise<ProyeccionMes[]> {
+  return apiRequest<ProyeccionMes[]>('/negocio/proyeccion-mensual')
 }

@@ -1,5 +1,5 @@
-import { Controller, Get, UseGuards } from '@nestjs/common';
-import { NegocioService } from './negocio.service';
+import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import { NegocioService, type PeriodoComercial } from './negocio.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -14,6 +14,18 @@ export class NegocioController {
   @Get('resumen')
   resumen() {
     return this.negocio.resumenNegocio();
+  }
+
+  @Roles(Role.COACH)
+  @Get('comercial')
+  comercial(@Query('periodo') periodo: PeriodoComercial = 'mes') {
+    return this.negocio.resumenComercial(periodo);
+  }
+
+  @Roles(Role.COACH)
+  @Get('proyeccion-mensual')
+  proyeccionMensual() {
+    return this.negocio.proyeccionMensual();
   }
 
   @Roles(Role.COACH)
