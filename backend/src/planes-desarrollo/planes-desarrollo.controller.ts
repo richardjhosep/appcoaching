@@ -123,6 +123,15 @@ export class PlanesDesarrolloController {
   }
 
   @Roles(Role.COACH)
+  @Post(':coacheeId/recordatorio')
+  enviarRecordatorio(
+    @Param('coacheeId') coacheeId: string,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.planes.enviarRecordatorio(coacheeId, actor);
+  }
+
+  @Roles(Role.COACH)
   @Post(':coacheeId/aprobar')
   async aprobar(
     @Param('coacheeId') coacheeId: string,

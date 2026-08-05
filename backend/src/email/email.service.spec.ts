@@ -143,6 +143,34 @@ describe('EmailService', () => {
     expect(call.text).toContain('Nos vemos el jueves');
   });
 
+  it('sends the plan-desarrollo reminder email to the coachee', async () => {
+    const service = new EmailService(
+      makeConfig({
+        'smtp.host': 'smtp.gmail.com',
+        'smtp.port': 587,
+        'smtp.user': 'coach@gmail.com',
+        'smtp.pass': 'app-password',
+        'smtp.from': 'coach@gmail.com',
+      }),
+    );
+
+    await service.sendRecordatorioPlan({
+      to: 'coachee@example.com',
+      nombreCoachee: 'Ana',
+      verUrl: 'http://localhost/coachee/plan',
+    });
+
+    expect(sendMail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: 'coachee@example.com',
+        subject: expect.stringContaining('Recordatorio') as string,
+      }),
+    );
+    const [[call]] = sendMail.mock.calls as [[{ html: string; text: string }]];
+    expect(call.html).toContain('Ana');
+    expect(call.text).toContain('Ana');
+  });
+
   it('does nothing (and does not throw) when SMTP credentials are missing', async () => {
     const service = new EmailService(makeConfig({}));
 

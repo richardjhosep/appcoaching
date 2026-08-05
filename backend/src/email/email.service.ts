@@ -224,6 +224,40 @@ export class EmailService {
     });
   }
 
+  async sendRecordatorioPlan(options: {
+    to: string;
+    nombreCoachee: string;
+    verUrl: string;
+  }): Promise<void> {
+    const subject = 'Recordatorio: tu plan de desarrollo sigue sin enviarse';
+    const nombreCoachee = escapeHtml(options.nombreCoachee);
+    const intro = `Hola ${nombreCoachee}, tu coach notó que todavía no envías tu plan de desarrollo para aprobación. Complétalo cuando puedas para seguir avanzando en tu proceso.`;
+
+    const body = `
+      <h1 style="margin:0 0 16px;font-family:'Poppins',Arial,sans-serif;font-size:22px;color:#121212;">Recordatorio de tu plan de desarrollo</h1>
+      <p style="margin:0 0 16px;font-size:15px;line-height:1.6;">${intro}</p>
+      ${renderButton(options.verUrl, 'Ir a mi plan de desarrollo')}
+      ${renderFallbackLink(options.verUrl)}
+    `;
+
+    const text = [
+      'Recordatorio de tu plan de desarrollo',
+      '',
+      `Hola ${options.nombreCoachee}, tu coach notó que todavía no envías tu plan de desarrollo para aprobación. Complétalo cuando puedas para seguir avanzando en tu proceso.`,
+      '',
+      `Ir a mi plan de desarrollo: ${options.verUrl}`,
+      '',
+      'Este es un mensaje automático enviado desde una casilla no-reply — por favor no respondas a este correo.',
+    ].join('\n');
+
+    await this.send({
+      to: options.to,
+      subject,
+      html: renderEmailLayout(body),
+      text,
+    });
+  }
+
   private async send(options: {
     to: string;
     subject: string;

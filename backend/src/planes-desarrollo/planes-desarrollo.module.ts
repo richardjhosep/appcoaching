@@ -8,6 +8,7 @@ import { PlanesDesarrolloController } from './planes-desarrollo.controller';
 import { CoacheesModule } from '../coachees/coachees.module';
 import { CompetenciasModule } from '../competencias/competencias.module';
 import { AuditModule } from '../audit/audit.module';
+import { EmailModule } from '../email/email.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { AuditModule } from '../audit/audit.module';
     CoacheesModule,
     CompetenciasModule,
     AuditModule,
+    EmailModule,
   ],
   providers: [PlanesDesarrolloService],
   controllers: [PlanesDesarrolloController],

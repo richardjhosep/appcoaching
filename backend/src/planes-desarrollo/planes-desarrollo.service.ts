@@ -6,6 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { ConfigService } from '@nestjs/config';
 import { Repository } from 'typeorm';
 import { PlanDesarrollo } from './entities/plan-desarrollo.entity';
 import { ObjetivoEspecifico } from './entities/objetivo-especifico.entity';
@@ -18,7 +19,9 @@ import { CreateActividadDto } from './dto/create-actividad.dto';
 import { UpdateActividadDto } from './dto/update-actividad.dto';
 import { CoacheesService } from '../coachees/coachees.service';
 import { CompetenciasService } from '../competencias/competencias.service';
+import { EmailService } from '../email/email.service';
 import { assignDefined } from '../common/assign-defined.util';
+import type { AuthenticatedUser } from '../auth/auth.types';
 
 const GATED_FIELDS = [
   'competenciaId',
@@ -37,6 +40,8 @@ export class PlanesDesarrolloService {
     private readonly actividades: Repository<ActividadEjecucion>,
     private readonly coachees: CoacheesService,
     private readonly competencias: CompetenciasService,
+    private readonly email: EmailService,
+    private readonly config: ConfigService,
   ) {}
 
   private async resolveCoacheeId(actorUserId: string): Promise<string> {
@@ -93,8 +98,31 @@ export class PlanesDesarrolloService {
   findAll(estado?: EstadoPlan): Promise<PlanDesarrollo[]> {
     return this.planes.find({
       where: estado ? { estado } : {},
-      relations: { coachee: true },
+      relations: {
+        coachee: { empresa: true, user: true },
+        competencia: true,
+        objetivos: true,
+        actividades: true,
+      },
       order: { updatedAt: 'DESC' },
+    });
+  }
+
+  async enviarRecordatorio(
+    coacheeId: string,
+    actor: AuthenticatedUser,
+  ): Promise<void> {
+    const coachee = await this.coachees.findOneForActor(coacheeId, actor);
+    if (!coachee.user?.email) {
+      throw new NotFoundException(
+        'Este coachee no tiene una cuenta con correo asociada.',
+      );
+    }
+    const verUrl = `${this.config.get<string>('frontendUrl')}/coachee/plan`;
+    await this.email.sendRecordatorioPlan({
+      to: coachee.user.email,
+      nombreCoachee: coachee.nombre,
+      verUrl,
     });
   }
 
@@ -149,6 +177,7 @@ export class PlanesDesarrolloService {
 
     plan.estado = EstadoPlan.PENDIENTE_APROBACION;
     plan.comentarioCoach = null;
+    plan.enviadoEn = new Date();
     await this.planes.save(plan);
     return this.withObjetivos(plan);
   }

@@ -21,6 +21,15 @@ export interface ActividadEjecucion {
 export interface CoacheeResumen {
   id: string
   nombre: string
+  empresa?: { id: string; nombre: string } | null
+  telefono: string | null
+  user?: { id: string; email: string } | null
+  createdAt: string
+}
+
+export interface CompetenciaResumen {
+  id: string
+  nombre: string
 }
 
 export interface PlanDesarrollo {
@@ -28,12 +37,14 @@ export interface PlanDesarrollo {
   coacheeId: string
   coachee?: CoacheeResumen
   competenciaId: string | null
+  competencia?: CompetenciaResumen | null
   nivelActual: number | null
   nivelObjetivo: number | null
   plazo: string | null
   descripcionEstadoActual: string | null
   objetivoGeneral: string | null
   estado: EstadoPlan
+  enviadoEn: string | null
   comentarioCoach: string | null
   habitoCuando: string | null
   habitoEnVezDe: string | null
@@ -143,6 +154,10 @@ export function listPlanes(estado?: EstadoPlan): Promise<PlanDesarrollo[]> {
 
 export function getPlanByCoachee(coacheeId: string): Promise<PlanDesarrollo> {
   return apiRequest<PlanDesarrollo>(`/planes-desarrollo/${coacheeId}`)
+}
+
+export function enviarRecordatorio(coacheeId: string): Promise<void> {
+  return apiRequest<void>(`/planes-desarrollo/${coacheeId}/recordatorio`, { method: 'POST' })
 }
 
 export function aprobarPlan(coacheeId: string): Promise<PlanDesarrollo> {

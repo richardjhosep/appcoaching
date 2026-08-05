@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Repository } from 'typeorm';
+import { ConfigService } from '@nestjs/config';
 import { PlanesDesarrolloService } from './planes-desarrollo.service';
 import { PlanDesarrollo } from './entities/plan-desarrollo.entity';
 import { ObjetivoEspecifico } from './entities/objetivo-especifico.entity';
@@ -12,6 +13,7 @@ import { ActividadEjecucion } from './entities/actividad-ejecucion.entity';
 import { EstadoPlan } from './enums/estado-plan.enum';
 import { CoacheesService } from '../coachees/coachees.service';
 import { CompetenciasService } from '../competencias/competencias.service';
+import { EmailService } from '../email/email.service';
 
 type PartialPlan = Partial<PlanDesarrollo>;
 type PartialObjetivo = Partial<ObjetivoEspecifico>;
@@ -43,8 +45,11 @@ describe('PlanesDesarrolloService', () => {
   };
   let coachees: {
     findByUserId: jest.Mock<Promise<{ id: string } | null>, [string]>;
+    findOneForActor: jest.Mock<Promise<Record<string, unknown>>, unknown[]>;
   };
   let competencias: { exists: jest.Mock<Promise<boolean>, [string]> };
+  let email: { sendRecordatorioPlan: jest.Mock<Promise<void>, unknown[]> };
+  let config: { get: jest.Mock };
 
   const ACTOR_USER_ID = 'user-1';
   const COACHEE_ID = 'coachee-1';
@@ -80,8 +85,11 @@ describe('PlanesDesarrolloService', () => {
     };
     coachees = {
       findByUserId: jest.fn<Promise<{ id: string } | null>, [string]>(),
+      findOneForActor: jest.fn<Promise<Record<string, unknown>>, unknown[]>(),
     };
     competencias = { exists: jest.fn<Promise<boolean>, [string]>() };
+    email = { sendRecordatorioPlan: jest.fn<Promise<void>, unknown[]>() };
+    config = { get: jest.fn(() => 'http://localhost:5183') };
 
     coachees.findByUserId.mockResolvedValue({ id: COACHEE_ID });
     objetivos.find.mockResolvedValue([]);
@@ -94,7 +102,38 @@ describe('PlanesDesarrolloService', () => {
       actividades as unknown as Repository<ActividadEjecucion>,
       coachees as unknown as CoacheesService,
       competencias as unknown as CompetenciasService,
+      email as unknown as EmailService,
+      config as unknown as ConfigService,
     );
+  });
+
+  describe('findAll', () => {
+    it('loads coachee+empresa+user, competencia, objetivos and actividades for the list view', async () => {
+      planes.find.mockResolvedValue([]);
+
+      await service.findAll();
+
+      expect(planes.find).toHaveBeenCalledWith(
+        expect.objectContaining({
+          relations: {
+            coachee: { empresa: true, user: true },
+            competencia: true,
+            objetivos: true,
+            actividades: true,
+          },
+        }),
+      );
+    });
+
+    it('filters by estado when provided', async () => {
+      planes.find.mockResolvedValue([]);
+
+      await service.findAll(EstadoPlan.APROBADO);
+
+      expect(planes.find).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { estado: EstadoPlan.APROBADO } }),
+      );
+    });
   });
 
   describe('getOwn', () => {
@@ -210,6 +249,42 @@ describe('PlanesDesarrolloService', () => {
 
       expect(plan.estado).toBe(EstadoPlan.PENDIENTE_APROBACION);
       expect(plan.comentarioCoach).toBeNull();
+      expect(plan.enviadoEn).toBeInstanceOf(Date);
+    });
+  });
+
+  describe('enviarRecordatorio', () => {
+    const ACTOR = { id: 'coach-1' } as never;
+
+    it("sends the reminder email to the coachee's account email", async () => {
+      coachees.findOneForActor.mockResolvedValue({
+        id: COACHEE_ID,
+        nombre: 'Ana',
+        user: { email: 'ana@example.com' },
+      });
+
+      await service.enviarRecordatorio(COACHEE_ID, ACTOR);
+
+      expect(coachees.findOneForActor).toHaveBeenCalledWith(COACHEE_ID, ACTOR);
+      expect(email.sendRecordatorioPlan).toHaveBeenCalledWith(
+        expect.objectContaining({
+          to: 'ana@example.com',
+          nombreCoachee: 'Ana',
+        }),
+      );
+    });
+
+    it('throws NotFoundException when the coachee has no linked account email', async () => {
+      coachees.findOneForActor.mockResolvedValue({
+        id: COACHEE_ID,
+        nombre: 'Ana',
+        user: undefined,
+      });
+
+      await expect(
+        service.enviarRecordatorio(COACHEE_ID, ACTOR),
+      ).rejects.toThrow(NotFoundException);
+      expect(email.sendRecordatorioPlan).not.toHaveBeenCalled();
     });
   });
 

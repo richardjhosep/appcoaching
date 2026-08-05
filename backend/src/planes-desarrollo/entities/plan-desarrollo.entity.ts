@@ -52,6 +52,11 @@ export class PlanDesarrollo {
   @Column({ type: 'enum', enum: EstadoPlan, default: EstadoPlan.SIN_ENVIAR })
   estado: EstadoPlan;
 
+  // Fecha del envío más reciente a aprobación — distinto de updatedAt, que se sigue moviendo
+  // aunque el plan ya esté pendiente (hábito/formación quedan siempre editables).
+  @Column({ name: 'enviado_en', type: 'timestamptz', nullable: true })
+  enviadoEn: Date | null;
+
   @Column({ name: 'comentario_coach', type: 'text', nullable: true })
   comentarioCoach: string | null;
 

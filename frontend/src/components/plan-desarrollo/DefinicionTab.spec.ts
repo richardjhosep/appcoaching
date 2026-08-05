@@ -28,6 +28,7 @@ const basePlan: PlanDesarrollo = {
   descripcionEstadoActual: null,
   objetivoGeneral: null,
   estado: 'pendiente_aprobacion',
+  enviadoEn: null,
   comentarioCoach: null,
   habitoCuando: null,
   habitoEnVezDe: null,
