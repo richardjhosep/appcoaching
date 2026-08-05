@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
 import AppShell from '../../components/AppShell.vue'
 import AppModal from '../../components/AppModal.vue'
 import CarpetaArbol from '../../components/CarpetaArbol.vue'
@@ -133,11 +133,31 @@ async function borrarCarpeta() {
 
 const form = reactive({ titulo: '', tipo: 'link' as TipoRecurso, url: '', descripcion: '' })
 const archivoSeleccionado = ref<File | null>(null)
+const archivoInput = ref<HTMLInputElement | null>(null)
 const creando = ref(false)
+const mostrarSubirModal = ref(false)
 
 function onArchivoChange(event: Event) {
   const input = event.target as HTMLInputElement
   archivoSeleccionado.value = input.files?.[0] ?? null
+}
+
+function quitarArchivo() {
+  archivoSeleccionado.value = null
+  if (archivoInput.value) archivoInput.value.value = ''
+}
+
+function abrirSubirModal() {
+  form.titulo = ''
+  form.tipo = 'link'
+  form.url = ''
+  form.descripcion = ''
+  quitarArchivo()
+  mostrarSubirModal.value = true
+}
+
+function cerrarSubirModal() {
+  mostrarSubirModal.value = false
 }
 
 async function crear() {
@@ -153,10 +173,7 @@ async function crear() {
       archivo: form.tipo === 'archivo' ? (archivoSeleccionado.value ?? undefined) : undefined,
     })
     recursos.value = [recurso, ...recursos.value]
-    form.titulo = ''
-    form.url = ''
-    form.descripcion = ''
-    archivoSeleccionado.value = null
+    cerrarSubirModal()
   } catch (err) {
     await notifyError('No se pudo subir el archivo', err instanceof ApiError ? err.message : undefined)
   } finally {
@@ -187,7 +204,15 @@ type AccesoTarget = { tipo: 'carpeta'; carpeta: Carpeta } | { tipo: 'recurso'; r
 const accesoAbierto = ref<AccesoTarget | null>(null)
 const accesoLista = ref<{ coacheeId: string; expiraEn: string | null }[]>([])
 const personaBusqueda = ref('')
+const personaBusquedaInput = ref<HTMLInputElement | null>(null)
+const mostrandoBuscador = ref(false)
 const vencimientoPorCoachee = reactive<Record<string, string>>({})
+
+async function abrirBuscador() {
+  mostrandoBuscador.value = true
+  await nextTick()
+  personaBusquedaInput.value?.focus()
+}
 
 const accesoTitulo = computed(() => {
   if (!accesoAbierto.value) return ''
@@ -196,12 +221,25 @@ const accesoTitulo = computed(() => {
     : `Compartir archivo — ${accesoAbierto.value.recurso.titulo}`
 })
 
+// Personas que ya tienen acceso, con su coachee resuelto, para el listado principal.
+const coacheesConAcceso = computed(() => {
+  const porId = new Map(coachees.value.map((c) => [c.id, c]))
+  return accesoLista.value
+    .map((a) => ({ acceso: a, coachee: porId.get(a.coacheeId) }))
+    .filter((x): x is { acceso: (typeof accesoLista.value)[number]; coachee: CoacheeListItem } => !!x.coachee)
+    .sort((a, b) => a.coachee.nombre.localeCompare(b.coachee.nombre))
+})
+
+// Candidatos para otorgar acceso nuevo: todos menos quienes ya lo tienen, filtrados por
+// búsqueda. Vacío hasta que el coach escribe algo — con muchos coachees, listarlos todos de
+// entrada haría crecer el modal y forzaría scroll.
 const coacheesFiltrados = computed(() => {
   const q = personaBusqueda.value.trim().toLowerCase()
-  if (!q) return coachees.value
-  return coachees.value.filter(
-    (c) => c.nombre.toLowerCase().includes(q) || c.user?.email?.toLowerCase().includes(q),
-  )
+  if (!q) return []
+  return coachees.value.filter((c) => {
+    if (accesoOtorgadaA(c.id)) return false
+    return c.nombre.toLowerCase().includes(q) || c.user?.email?.toLowerCase().includes(q)
+  })
 })
 
 async function abrirAccesoCarpeta() {
@@ -209,6 +247,7 @@ async function abrirAccesoCarpeta() {
   if (!carpeta) return
   accesoAbierto.value = { tipo: 'carpeta', carpeta }
   personaBusqueda.value = ''
+  mostrandoBuscador.value = false
   const asignaciones = await getAsignacionesDeCarpeta(carpeta.id)
   accesoLista.value = asignaciones.map((a) => ({ coacheeId: a.coacheeId, expiraEn: a.expiraEn }))
 }
@@ -216,6 +255,7 @@ async function abrirAccesoCarpeta() {
 async function abrirAccesoRecurso(recurso: Recurso) {
   accesoAbierto.value = { tipo: 'recurso', recurso }
   personaBusqueda.value = ''
+  mostrandoBuscador.value = false
   const asignaciones = await getAsignacionesDeRecurso(recurso.id)
   accesoLista.value = asignaciones.map((a) => ({ coacheeId: a.coacheeId, expiraEn: a.expiraEn }))
 }
@@ -384,6 +424,12 @@ async function alternarPublica() {
             </div>
             <div class="flex flex-wrap items-center gap-2 text-xs">
               <button
+                class="rounded-lg bg-[var(--color-ink)] px-3 py-1.5 text-[var(--color-parchment)]"
+                @click="abrirSubirModal"
+              >
+                + Archivo
+              </button>
+              <button
                 class="rounded-lg border border-[var(--color-line)] px-3 py-1.5 hover:bg-[var(--color-parchment)]/50"
                 @click="crearSub"
               >
@@ -408,68 +454,6 @@ async function alternarPublica() {
                 Eliminar
               </button>
             </div>
-          </div>
-
-          <div class="mb-4 grid gap-3 rounded-2xl border border-[var(--color-line)] bg-white p-4 sm:grid-cols-2">
-            <label class="text-sm sm:col-span-2">
-              Título
-              <input
-                v-model="form.titulo"
-                type="text"
-                class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
-              >
-            </label>
-            <label class="text-sm">
-              Tipo
-              <select
-                v-model="form.tipo"
-                class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
-              >
-                <option value="link">
-                  Link
-                </option>
-                <option value="archivo">
-                  Archivo
-                </option>
-              </select>
-            </label>
-            <label
-              v-if="form.tipo === 'link'"
-              class="text-sm"
-            >
-              URL
-              <input
-                v-model="form.url"
-                type="url"
-                class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
-              >
-            </label>
-            <label
-              v-else
-              class="text-sm"
-            >
-              Archivo
-              <input
-                type="file"
-                class="mt-1 w-full text-sm"
-                @change="onArchivoChange"
-              >
-            </label>
-            <label class="text-sm sm:col-span-2">
-              Descripción (opcional)
-              <input
-                v-model="form.descripcion"
-                type="text"
-                class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
-              >
-            </label>
-            <button
-              class="w-fit rounded-lg bg-[var(--color-ink)] px-4 py-2 text-sm text-[var(--color-parchment)] disabled:opacity-60 sm:col-span-2"
-              :disabled="creando || !form.titulo.trim()"
-              @click="crear"
-            >
-              {{ creando ? 'Subiendo…' : `Subir a «${carpetaActual.nombre}»` }}
-            </button>
           </div>
 
           <div
@@ -569,6 +553,106 @@ async function alternarPublica() {
     </div>
 
     <AppModal
+      v-if="mostrarSubirModal && carpetaActual"
+      :title="`Subir archivo a «${carpetaActual.nombre}»`"
+      @close="cerrarSubirModal"
+    >
+      <div class="grid gap-3 sm:grid-cols-2">
+        <label class="text-sm sm:col-span-2">
+          Título
+          <input
+            v-model="form.titulo"
+            type="text"
+            class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+          >
+        </label>
+        <label class="text-sm">
+          Tipo
+          <select
+            v-model="form.tipo"
+            class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+          >
+            <option value="link">
+              Link
+            </option>
+            <option value="archivo">
+              Archivo
+            </option>
+          </select>
+        </label>
+        <label
+          v-if="form.tipo === 'link'"
+          class="text-sm"
+        >
+          URL
+          <input
+            v-model="form.url"
+            type="url"
+            class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+          >
+        </label>
+        <div
+          v-else
+          class="text-sm"
+        >
+          Archivo
+          <div class="mt-1 flex items-center gap-2">
+            <label class="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border border-[var(--color-line)] bg-white px-3 py-2 text-xs font-medium hover:bg-[var(--color-parchment)]/50">
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              ><path d="M12 15V3" /><path d="M7 8l5-5 5 5" /><path d="M5 21h14" /></svg>
+              Elegir archivo
+              <input
+                ref="archivoInput"
+                type="file"
+                class="hidden"
+                @change="onArchivoChange"
+              >
+            </label>
+            <span
+              v-if="archivoSeleccionado"
+              class="min-w-0 flex-1 truncate text-xs text-[var(--color-ink)]/70"
+            >{{ archivoSeleccionado.name }}</span>
+            <span
+              v-else
+              class="text-xs text-[var(--color-ink)]/40"
+            >Ningún archivo seleccionado</span>
+            <button
+              v-if="archivoSeleccionado"
+              type="button"
+              class="shrink-0 text-xs text-[var(--color-danger)] hover:underline"
+              @click="quitarArchivo"
+            >
+              Quitar
+            </button>
+          </div>
+        </div>
+        <label class="text-sm sm:col-span-2">
+          Descripción (opcional)
+          <input
+            v-model="form.descripcion"
+            type="text"
+            class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+          >
+        </label>
+        <button
+          class="w-fit rounded-lg bg-[var(--color-ink)] px-4 py-2 text-sm text-[var(--color-parchment)] disabled:opacity-60 sm:col-span-2"
+          :disabled="creando || !form.titulo.trim()"
+          @click="crear"
+        >
+          {{ creando ? 'Subiendo…' : 'Subir' }}
+        </button>
+      </div>
+    </AppModal>
+
+    <AppModal
       v-if="accesoAbierto"
       :title="accesoTitulo"
       @close="cerrarAcceso"
@@ -606,43 +690,87 @@ async function alternarPublica() {
         Comparte este archivo puntualmente, aunque su carpeta sea privada.
       </p>
 
-      <input
-        v-model="personaBusqueda"
-        type="text"
-        placeholder="Buscar coachee por nombre o correo…"
-        class="mb-3 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+      <p class="mb-2 text-xs font-medium uppercase tracking-wide text-[var(--color-ink)]/45">
+        Personas con acceso
+      </p>
+      <p
+        v-if="coacheesConAcceso.length === 0"
+        class="mb-4 text-sm text-[var(--color-ink)]/50"
       >
-
-      <ul class="max-h-72 space-y-1 overflow-y-auto">
+        Todavía nadie tiene acceso otorgado.
+      </p>
+      <ul
+        v-else
+        class="mb-4 max-h-56 space-y-1 overflow-y-auto"
+      >
         <li
-          v-for="c in coacheesFiltrados"
-          :key="c.id"
+          v-for="{ acceso, coachee } in coacheesConAcceso"
+          :key="coachee.id"
           class="flex flex-wrap items-center justify-between gap-2 rounded-lg px-2 py-2 text-sm hover:bg-[var(--color-parchment)]/40"
         >
           <div class="min-w-0">
             <p class="truncate font-medium">
-              {{ c.nombre }}
+              {{ coachee.nombre }}
             </p>
             <p class="truncate text-xs text-[var(--color-ink)]/50">
-              {{ c.user?.email }}
+              {{ coachee.user?.email }}
             </p>
           </div>
           <div class="flex shrink-0 items-center gap-2">
-            <template v-if="accesoOtorgadaA(c.id)">
-              <span
-                class="text-xs"
-                :class="accesoExpirada(c.id) ? 'text-[var(--color-danger)]' : 'text-[var(--color-sage)]'"
-              >
-                {{ accesoTextoVencimiento(c.id) }}
-              </span>
-              <button
-                class="text-xs text-[var(--color-danger)] hover:underline"
-                @click="quitarAcceso(c.id)"
-              >
-                Quitar
-              </button>
-            </template>
-            <template v-else>
+            <span
+              class="text-xs"
+              :class="accesoExpirada(coachee.id) ? 'text-[var(--color-danger)]' : 'text-[var(--color-sage)]'"
+            >
+              {{ accesoTextoVencimiento(coachee.id) }}
+            </span>
+            <button
+              class="text-xs text-[var(--color-danger)] hover:underline"
+              @click="quitarAcceso(acceso.coacheeId)"
+            >
+              Quitar
+            </button>
+          </div>
+        </li>
+      </ul>
+
+      <button
+        v-if="!mostrandoBuscador"
+        type="button"
+        class="text-xs text-[var(--color-sage)] hover:underline"
+        @click="abrirBuscador"
+      >
+        + Otorgar acceso a alguien más
+      </button>
+
+      <div
+        v-else
+        class="border-t border-[var(--color-line)] pt-3"
+      >
+        <input
+          ref="personaBusquedaInput"
+          v-model="personaBusqueda"
+          type="text"
+          placeholder="Buscar coachee por nombre o correo…"
+          class="w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+        >
+        <ul
+          v-if="personaBusqueda.trim()"
+          class="mt-3 max-h-56 space-y-1 overflow-y-auto"
+        >
+          <li
+            v-for="c in coacheesFiltrados"
+            :key="c.id"
+            class="flex flex-wrap items-center justify-between gap-2 rounded-lg px-2 py-2 text-sm hover:bg-[var(--color-parchment)]/40"
+          >
+            <div class="min-w-0">
+              <p class="truncate font-medium">
+                {{ c.nombre }}
+              </p>
+              <p class="truncate text-xs text-[var(--color-ink)]/50">
+                {{ c.user?.email }}
+              </p>
+            </div>
+            <div class="flex shrink-0 items-center gap-2">
               <input
                 v-model="vencimientoPorCoachee[c.id]"
                 type="datetime-local"
@@ -655,16 +783,16 @@ async function alternarPublica() {
               >
                 Dar acceso
               </button>
-            </template>
-          </div>
-        </li>
-      </ul>
-      <p
-        v-if="coacheesFiltrados.length === 0"
-        class="py-2 text-center text-sm text-[var(--color-ink)]/50"
-      >
-        No se encontraron coachees.
-      </p>
+            </div>
+          </li>
+        </ul>
+        <p
+          v-if="personaBusqueda.trim() && coacheesFiltrados.length === 0"
+          class="py-2 text-center text-sm text-[var(--color-ink)]/50"
+        >
+          No se encontraron coachees.
+        </p>
+      </div>
     </AppModal>
   </AppShell>
 </template>
