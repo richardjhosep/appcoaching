@@ -95,3 +95,15 @@ export interface ProyeccionMes {
 export function getProyeccionMensual(): Promise<ProyeccionMes[]> {
   return apiRequest<ProyeccionMes[]>('/negocio/proyeccion-mensual')
 }
+
+export function enviarRecordatorioSesion(coacheeId: string): Promise<{ success: boolean }> {
+  return apiRequest<{ success: boolean }>(`/negocio/coachees/${coacheeId}/recordatorio-sesion`, {
+    method: 'POST',
+  })
+}
+
+export function enviarRecordatorioLogro(coacheeId: string): Promise<{ success: boolean }> {
+  return apiRequest<{ success: boolean }>(`/negocio/coachees/${coacheeId}/recordatorio-logro`, {
+    method: 'POST',
+  })
+}

@@ -198,7 +198,7 @@ export class UsersService {
     return temporaryPassword;
   }
 
-  async remove(id: string, actorId: string): Promise<void> {
+  async remove(id: string, actorId: string): Promise<string> {
     const user = await this.findById(id);
     if (!user) {
       throw new NotFoundException('User not found');
@@ -211,7 +211,9 @@ export class UsersService {
         'Elimina cuentas de coachee desde el Mantenedor de Coachees.',
       );
     }
+    const email = user.email;
     await this.users.remove(user);
+    return email;
   }
 
   /**

@@ -18,7 +18,12 @@ const PAGE_SIZE = 5
 const router = useRouter()
 const planes = ref<PlanDesarrollo[]>([])
 const loading = ref(true)
-const filtro = ref<EstadoPlan | ''>('pendiente_aprobacion')
+// "Todos los estados" por defecto: si se parte filtrado a pendiente_aprobacion y no hay
+// ninguno en ese estado (el caso normal, no es lo más común), la vista se ve vacía aunque
+// existan planes sin enviar/aprobados que sí necesitan atención del coach. Los pendientes de
+// aprobación igual quedan siempre fijados primero (ver planesVisibles), así que no se pierde
+// la prioridad — sólo se deja de esconder todo lo demás por defecto.
+const filtro = ref<EstadoPlan | ''>('')
 const page = ref(1)
 const enviandoRecordatorio = reactive<Record<string, boolean>>({})
 
@@ -187,7 +192,7 @@ async function recordar(coacheeId: string) {
       v-else-if="planesVisibles.length === 0"
       class="text-sm text-[var(--color-ink)]/60"
     >
-      No hay planes con este filtro.
+      {{ planes.length === 0 ? 'Aún no hay planes de desarrollo creados.' : 'No hay planes con este filtro.' }}
     </p>
     <template v-else>
       <div class="mb-4 space-y-3">

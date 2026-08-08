@@ -57,9 +57,14 @@ async function rawFetch<T>(path: string, options: RequestOptions, token: string 
   return handleJsonResponse<T>(res)
 }
 
-async function rawUpload<T>(path: string, formData: FormData, token: string | null): Promise<T> {
+async function rawUpload<T>(
+  path: string,
+  formData: FormData,
+  token: string | null,
+  method: 'POST' | 'PUT',
+): Promise<T> {
   const res = await fetch(`${BASE_URL}${path}`, {
-    method: 'POST',
+    method,
     headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
     body: formData,
   })
@@ -96,16 +101,20 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
   }
 }
 
-export async function apiUpload<T>(path: string, formData: FormData): Promise<T> {
+export async function apiUpload<T>(
+  path: string,
+  formData: FormData,
+  method: 'POST' | 'PUT' = 'POST',
+): Promise<T> {
   const auth = useAuthStore()
 
   try {
-    return await rawUpload<T>(path, formData, auth.accessToken)
+    return await rawUpload<T>(path, formData, auth.accessToken, method)
   } catch (err) {
     if (err instanceof ApiError && err.status === 401 && auth.refreshToken) {
       const refreshed = await auth.refresh()
       if (refreshed) {
-        return rawUpload<T>(path, formData, auth.accessToken)
+        return rawUpload<T>(path, formData, auth.accessToken, method)
       }
     }
     if (err instanceof ApiError && err.status === 401) {

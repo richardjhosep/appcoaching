@@ -48,7 +48,7 @@ export class EmpresasService {
     return this.empresas.save(empresa);
   }
 
-  async remove(id: string): Promise<void> {
+  async remove(id: string): Promise<string> {
     const empresa = await this.findById(id);
     const [{ total }] = await this.empresas.manager.query<[{ total: number }]>(
       `SELECT (
@@ -62,6 +62,8 @@ export class EmpresasService {
         'No se puede eliminar: la empresa tiene coachees o usuarios asociados. Reasígnalos primero.',
       );
     }
+    const nombre = empresa.nombre;
     await this.empresas.remove(empresa);
+    return nombre;
   }
 }

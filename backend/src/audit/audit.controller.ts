@@ -12,7 +12,13 @@ export class AuditController {
 
   @Roles(Role.COACH)
   @Get()
-  find(@Query('targetId') targetId?: string, @Query('action') action?: string) {
-    return this.audit.find({ targetId, action });
+  find(
+    @Query('targetId') targetId?: string,
+    @Query('action') action?: string,
+    @Query('scope') scope?: 'coaching' | 'todo',
+    @Query('desde') desde?: string,
+    @Query('hasta') hasta?: string,
+  ) {
+    return this.audit.find({ targetId, action, scope, desde, hasta });
   }
 }

@@ -39,6 +39,18 @@ describe('EmpresasView', () => {
     expect(wrapper.text()).toContain('2 registro(s)')
   })
 
+  it('shows empresas created before the current month by default — regresión del filtro de fecha que las ocultaba', async () => {
+    vi.mocked(listEmpresas).mockResolvedValue([
+      { id: 'e3', nombre: 'Empresa Antigua', tarifaHora: 15000, isActive: true, pagada: true, horasContratadas: null, createdAt: '2020-01-01T00:00:00.000Z' },
+    ])
+
+    const wrapper = mount(EmpresasView)
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Empresa Antigua')
+    expect(wrapper.text()).toContain('1 registro(s)')
+  })
+
   it('filters by search text', async () => {
     const wrapper = mount(EmpresasView)
     await flushPromises()

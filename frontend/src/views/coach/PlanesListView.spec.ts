@@ -171,14 +171,28 @@ describe('PlanesListView', () => {
     const wrapper = mount(PlanesListView)
     await flushPromises()
 
-    // Default filtro is already 'pendiente_aprobacion', so switch it away and confirm the
-    // pendiente plan (Felipe) is still shown alongside the now-matching aprobado one (Ana).
+    // Filter down to 'aprobado' and confirm the pendiente plan (Felipe) is still shown
+    // alongside the now-matching aprobado one (Ana) — pendientes are always pinned first.
     await wrapper.find('select').setValue('aprobado')
     await flushPromises()
 
     const text = wrapper.text()
     expect(text).toContain('Felipe Cortes')
     expect(text).toContain('Ana Reagenda')
+  })
+
+  it('defaults to "Todos los estados" so a coachee with no pendiente_aprobacion plans is not hidden', async () => {
+    // Regression: the view used to default its filter to 'pendiente_aprobacion', so if nobody
+    // happened to have a plan in exactly that state, the page rendered completely empty even
+    // though there were real sin_enviar/aprobado plans that need the coach's attention.
+    vi.mocked(listPlanes).mockResolvedValue([{ ...plan, estado: 'sin_enviar', enviadoEn: null }])
+
+    const wrapper = mount(PlanesListView)
+    await flushPromises()
+
+    expect(wrapper.find('select').element.value).toBe('')
+    expect(wrapper.text()).toContain('Felipe Cortes')
+    expect(wrapper.text()).not.toContain('No hay planes con este filtro.')
   })
 
   it('caps the list at 5 cards per page and paginates the rest', async () => {

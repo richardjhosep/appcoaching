@@ -22,6 +22,12 @@ export class AuditLog {
   @Column({ name: 'target_id', type: 'varchar', nullable: true })
   targetId: string | null;
 
+  @Column({ name: 'actor_label', type: 'varchar', nullable: true })
+  actorLabel: string | null;
+
+  @Column({ name: 'target_label', type: 'varchar', nullable: true })
+  targetLabel: string | null;
+
   @Column({ type: 'jsonb', nullable: true })
   metadata: Record<string, unknown> | null;
 

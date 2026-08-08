@@ -1,82 +1,57 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
+import { createRouter, createWebHistory } from 'vue-router'
 import LegalView from './LegalView.vue'
-import type { EmpresaLegal, MedidaCumplimiento } from '../../api/legal'
-import type { CoacheeListItem } from '../../api/coachees'
+import ContratosTab from './legal/ContratosTab.vue'
+import PrivacidadTab from './legal/PrivacidadTab.vue'
+import AuditoriaTab from './legal/AuditoriaTab.vue'
 
-vi.mock('../../api/legal', async () => {
-  const actual = await vi.importActual<typeof import('../../api/legal')>('../../api/legal')
-  return {
-    ...actual,
-    getResumenLegal: vi.fn(),
-    getCumplimiento: vi.fn(),
-    upsertDocumentoLegal: vi.fn(),
-  }
-})
-vi.mock('../../api/coachees', async () => {
-  const actual = await vi.importActual<typeof import('../../api/coachees')>('../../api/coachees')
-  return { ...actual, listCoachees: vi.fn(), setConsentimiento: vi.fn() }
+const router = createRouter({
+  history: createWebHistory(),
+  routes: [{ path: '/coach/legal', component: LegalView }],
 })
 
-import { getResumenLegal, getCumplimiento } from '../../api/legal'
-import { listCoachees } from '../../api/coachees'
-
-const resumen: EmpresaLegal[] = [
-  {
-    empresaId: 'e1',
-    nombre: 'Empresa Uno',
-    contrato: { estado: 'firmado', fecha: '2026-01-01', vigencia: '2027-01-01' },
-    nda: { estado: 'pendiente', fecha: null, vigencia: null },
-    coacheesConConsentimiento: 1,
-    coacheesTotal: 2,
-  },
-]
-
-const cumplimiento: MedidaCumplimiento[] = [
-  { id: 'notas_privadas', descripcion: 'Las notas privadas nunca son visibles.', activa: true },
-  { id: 'consentimiento_informado', descripcion: '1 de 2 coachees.', activa: false },
-]
-
-const coachees: CoacheeListItem[] = [
-  { id: 'c1', nombre: 'Coachee Uno', empresaId: 'e1', consentimientoInformado: true, consentimientoFecha: '2026-01-01' },
-  { id: 'c2', nombre: 'Coachee Dos', empresaId: 'e1', consentimientoInformado: false, consentimientoFecha: null },
-  { id: 'c3', nombre: 'Independiente Uno', empresaId: null, consentimientoInformado: false, consentimientoFecha: null },
-]
+const stubs = { ContratosTab: true, PrivacidadTab: true, AuditoriaTab: true }
 
 describe('LegalView', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     setActivePinia(createPinia())
-    vi.mocked(getResumenLegal).mockResolvedValue(resumen)
-    vi.mocked(getCumplimiento).mockResolvedValue(cumplimiento)
-    vi.mocked(listCoachees).mockResolvedValue(coachees)
+    await router.push('/coach/legal')
+    await router.isReady()
   })
 
-  it('shows contrato/NDA state and the consentimiento count per empresa', async () => {
-    const wrapper = mount(LegalView)
+  it('defaults to the "Contratos" tab', async () => {
+    const wrapper = mount(LegalView, { global: { plugins: [router], stubs } })
     await flushPromises()
 
-    expect(wrapper.text()).toContain('Empresa Uno')
-    expect(wrapper.text()).toContain('Consentimiento informado: 1 de 2')
-    const select = wrapper.find('select')
-    expect((select.element as HTMLSelectElement).value).toBe('firmado')
+    expect(wrapper.findComponent(ContratosTab).exists()).toBe(true)
+    expect(wrapper.findComponent(PrivacidadTab).exists()).toBe(false)
+    expect(wrapper.findComponent(AuditoriaTab).exists()).toBe(false)
   })
 
-  it('lists coachees scoped to their empresa, plus a separate independientes section', async () => {
-    const wrapper = mount(LegalView)
+  it('switches to "Privacidad" on click, without a full reload', async () => {
+    const wrapper = mount(LegalView, { global: { plugins: [router], stubs } })
     await flushPromises()
 
-    expect(wrapper.text()).toContain('Coachee Uno')
-    expect(wrapper.text()).toContain('Coachee Dos')
-    expect(wrapper.text()).toContain('Independientes')
-    expect(wrapper.text()).toContain('Independiente Uno')
+    const privacidadBtn = wrapper.findAll('button').find((b) => b.text() === 'Privacidad')
+    await privacidadBtn!.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.findComponent(PrivacidadTab).exists()).toBe(true)
+    expect(wrapper.findComponent(ContratosTab).exists()).toBe(false)
+    expect(router.currentRoute.value.query.tab).toBe('privacidad')
   })
 
-  it('renders the cumplimiento checklist with active/inactive markers', async () => {
-    const wrapper = mount(LegalView)
+  it('switches to "Auditoría" on click', async () => {
+    const wrapper = mount(LegalView, { global: { plugins: [router], stubs } })
     await flushPromises()
 
-    expect(wrapper.text()).toContain('Panel de cumplimiento LPDP')
-    expect(wrapper.text()).toContain('Las notas privadas nunca son visibles.')
+    const auditoriaBtn = wrapper.findAll('button').find((b) => b.text() === 'Auditoría')
+    await auditoriaBtn!.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.findComponent(AuditoriaTab).exists()).toBe(true)
+    expect(router.currentRoute.value.query.tab).toBe('auditoria')
   })
 })

@@ -12,6 +12,9 @@ import { CicloCoaching } from '../ciclos/entities/ciclo-coaching.entity';
 import { ResultadoCiclo } from '../ciclos/enums/resultado-ciclo.enum';
 import { CiclosService } from '../ciclos/ciclos.service';
 import { SeguimientoService } from '../seguimiento/seguimiento.service';
+import { EmailService } from '../email/email.service';
+import { ConfigService } from '@nestjs/config';
+import { NotFoundException } from '@nestjs/common';
 
 function makeAvgQueryBuilder(avg: string | null) {
   const qb: Record<string, jest.Mock> = {};
@@ -29,13 +32,18 @@ describe('NegocioService', () => {
   };
   let postSesionesRepo: { createQueryBuilder: jest.Mock };
   let empresasRepo: { find: jest.Mock };
-  let coacheesRepo: { find: jest.Mock };
+  let coacheesRepo: { find: jest.Mock; findOne: jest.Mock };
   let logrosRepo: { exists: jest.Mock };
   let solicitudesProcesoRepo: { find: jest.Mock };
   let solicitudesReagendamientoRepo: { count: jest.Mock };
   let ciclosCoachingRepo: { count: jest.Mock; find: jest.Mock };
   let ciclosService: { findAllAbiertosConEstado: jest.Mock };
   let seguimiento: { avanceGeneralForCoachee: jest.Mock };
+  let email: {
+    sendRecordatorioSesion: jest.Mock;
+    sendRecordatorioLogro: jest.Mock;
+  };
+  let config: { get: jest.Mock };
 
   const hace1h = new Date(Date.now() - 60 * 60 * 1000);
   const en1h = new Date(Date.now() + 60 * 60 * 1000);
@@ -46,7 +54,10 @@ describe('NegocioService', () => {
       createQueryBuilder: jest.fn(() => makeAvgQueryBuilder(null)),
     };
     empresasRepo = { find: jest.fn().mockResolvedValue([]) };
-    coacheesRepo = { find: jest.fn().mockResolvedValue([]) };
+    coacheesRepo = {
+      find: jest.fn().mockResolvedValue([]),
+      findOne: jest.fn(),
+    };
     logrosRepo = { exists: jest.fn() };
     solicitudesProcesoRepo = { find: jest.fn().mockResolvedValue([]) };
     solicitudesReagendamientoRepo = { count: jest.fn().mockResolvedValue(0) };
@@ -58,6 +69,11 @@ describe('NegocioService', () => {
       findAllAbiertosConEstado: jest.fn().mockResolvedValue([]),
     };
     seguimiento = { avanceGeneralForCoachee: jest.fn() };
+    email = {
+      sendRecordatorioSesion: jest.fn().mockResolvedValue(undefined),
+      sendRecordatorioLogro: jest.fn().mockResolvedValue(undefined),
+    };
+    config = { get: jest.fn().mockReturnValue('http://localhost:5183') };
 
     service = new NegocioService(
       sesionesRepo as unknown as Repository<Sesion>,
@@ -70,6 +86,8 @@ describe('NegocioService', () => {
       ciclosCoachingRepo as unknown as Repository<CicloCoaching>,
       ciclosService as unknown as CiclosService,
       seguimiento as unknown as SeguimientoService,
+      email as unknown as EmailService,
+      config as unknown as ConfigService,
     );
   });
 
@@ -533,6 +551,63 @@ describe('NegocioService', () => {
         { area: 'Comercial', avancePromedio: 70, coacheesCount: 2 },
         { area: 'Sin área asignada', avancePromedio: 50, coacheesCount: 1 },
       ]);
+    });
+  });
+
+  describe('enviarRecordatorioSesion', () => {
+    it('emails the coachee with a link to their sesiones view', async () => {
+      coacheesRepo.findOne.mockResolvedValue({
+        id: 'c1',
+        nombre: 'Rodrigo Peña',
+        user: { email: 'rodrigo@test.com' },
+      });
+
+      await service.enviarRecordatorioSesion('c1');
+
+      expect(email.sendRecordatorioSesion).toHaveBeenCalledWith({
+        to: 'rodrigo@test.com',
+        nombreCoachee: 'Rodrigo Peña',
+        verUrl: 'http://localhost:5183/coachee/sesiones',
+      });
+    });
+
+    it('throws NotFoundException when the coachee has no linked email', async () => {
+      coacheesRepo.findOne.mockResolvedValue({
+        id: 'c1',
+        nombre: 'Rodrigo Peña',
+        user: undefined,
+      });
+
+      await expect(service.enviarRecordatorioSesion('c1')).rejects.toThrow(
+        NotFoundException,
+      );
+      expect(email.sendRecordatorioSesion).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('enviarRecordatorioLogro', () => {
+    it('emails the coachee with a link to their progreso view', async () => {
+      coacheesRepo.findOne.mockResolvedValue({
+        id: 'c1',
+        nombre: 'Rodrigo Peña',
+        user: { email: 'rodrigo@test.com' },
+      });
+
+      await service.enviarRecordatorioLogro('c1');
+
+      expect(email.sendRecordatorioLogro).toHaveBeenCalledWith({
+        to: 'rodrigo@test.com',
+        nombreCoachee: 'Rodrigo Peña',
+        verUrl: 'http://localhost:5183/coachee/progreso',
+      });
+    });
+
+    it('throws NotFoundException when the coachee does not exist', async () => {
+      coacheesRepo.findOne.mockResolvedValue(null);
+
+      await expect(service.enviarRecordatorioLogro('missing')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 });

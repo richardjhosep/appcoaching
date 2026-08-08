@@ -5,6 +5,7 @@ import * as XLSX from 'xlsx'
 import { getResumenNegocio, getAlertas, getAvancePorArea, type ResumenNegocio, type Alertas, type AvancePorArea } from '../../../api/negocio'
 import { updateEmpresa } from '../../../api/empresas'
 import { ApiError } from '../../../api/client'
+import NavIcon from '../../../components/NavIcon.vue'
 
 const router = useRouter()
 
@@ -155,49 +156,100 @@ function exportarExcel() {
       <h2 class="mb-3 text-sm font-medium">
         Alertas de seguimiento
       </h2>
-      <div class="grid gap-4 sm:grid-cols-3">
-        <div>
-          <p class="mb-1 text-xs font-medium text-[var(--color-bronze)]">
+      <div class="grid gap-3 sm:grid-cols-3">
+        <div class="rounded-xl border border-[var(--color-line)] p-3">
+          <div class="mb-2 flex items-center gap-1.5 text-xs font-medium text-[var(--color-bronze)]">
+            <NavIcon
+              name="auditoria"
+              :size="14"
+            />
             Ciclos por vencer ({{ alertas.ciclosPorVencer.length }})
+          </div>
+          <p
+            v-if="alertas.ciclosPorVencer.length === 0"
+            class="text-xs italic text-[var(--color-ink)]/40"
+          >
+            Sin pendientes.
           </p>
-          <ul class="space-y-1 text-sm">
+          <ul
+            v-else
+            class="space-y-0.5"
+          >
             <li
               v-for="c in alertas.ciclosPorVencer"
               :key="c.coacheeId"
-              class="cursor-pointer hover:underline"
-              @click="irASeguimiento(c.coacheeId)"
             >
-              {{ c.nombre }} ({{ c.sesionesRestantes }} rest.)
+              <button
+                type="button"
+                class="w-full rounded-lg px-2 py-1 text-left text-sm hover:bg-[var(--color-parchment)]/60"
+                @click="irASeguimiento(c.coacheeId)"
+              >
+                {{ c.nombre }} <span class="text-xs text-[var(--color-ink)]/50">({{ c.sesionesRestantes }} rest.)</span>
+              </button>
             </li>
           </ul>
         </div>
-        <div>
-          <p class="mb-1 text-xs font-medium text-[var(--color-bronze)]">
+        <div class="rounded-xl border border-[var(--color-line)] p-3">
+          <div class="mb-2 flex items-center gap-1.5 text-xs font-medium text-[var(--color-danger)]">
+            <NavIcon
+              name="progreso"
+              :size="14"
+            />
             Sin logros recientes ({{ alertas.coacheesSinLogros.length }})
+          </div>
+          <p
+            v-if="alertas.coacheesSinLogros.length === 0"
+            class="text-xs italic text-[var(--color-ink)]/40"
+          >
+            Sin pendientes.
           </p>
-          <ul class="space-y-1 text-sm">
+          <ul
+            v-else
+            class="space-y-0.5"
+          >
             <li
               v-for="c in alertas.coacheesSinLogros"
               :key="c.coacheeId"
-              class="cursor-pointer hover:underline"
-              @click="irASeguimiento(c.coacheeId)"
             >
-              {{ c.nombre }}
+              <button
+                type="button"
+                class="w-full rounded-lg px-2 py-1 text-left text-sm hover:bg-[var(--color-parchment)]/60"
+                @click="irASeguimiento(c.coacheeId)"
+              >
+                {{ c.nombre }}
+              </button>
             </li>
           </ul>
         </div>
-        <div>
-          <p class="mb-1 text-xs font-medium text-[var(--color-bronze)]">
+        <div class="rounded-xl border border-[var(--color-line)] p-3">
+          <div class="mb-2 flex items-center gap-1.5 text-xs font-medium text-[var(--color-danger)]">
+            <NavIcon
+              name="sesiones"
+              :size="14"
+            />
             Sin próxima sesión ({{ alertas.coacheesSinProximaSesion.length }})
+          </div>
+          <p
+            v-if="alertas.coacheesSinProximaSesion.length === 0"
+            class="text-xs italic text-[var(--color-ink)]/40"
+          >
+            Sin pendientes.
           </p>
-          <ul class="space-y-1 text-sm">
+          <ul
+            v-else
+            class="space-y-0.5"
+          >
             <li
               v-for="c in alertas.coacheesSinProximaSesion"
               :key="c.coacheeId"
-              class="cursor-pointer hover:underline"
-              @click="irASeguimiento(c.coacheeId)"
             >
-              {{ c.nombre }}
+              <button
+                type="button"
+                class="w-full rounded-lg px-2 py-1 text-left text-sm hover:bg-[var(--color-parchment)]/60"
+                @click="irASeguimiento(c.coacheeId)"
+              >
+                {{ c.nombre }}
+              </button>
             </li>
           </ul>
         </div>

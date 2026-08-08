@@ -1,14 +1,12 @@
 <script setup lang="ts">
 import { onMounted, ref, watch } from 'vue'
-import { getCoachee, setConsentimiento, type Coachee } from '../../../api/coachees'
-import { ApiError } from '../../../api/client'
+import { getCoachee, type Coachee } from '../../../api/coachees'
+import ConsentimientoInformado from '../../../components/ConsentimientoInformado.vue'
 
 const props = defineProps<{ coacheeId: string }>()
 
 const coachee = ref<Coachee | null>(null)
 const loading = ref(true)
-const error = ref<string | null>(null)
-const guardandoConsentimiento = ref(false)
 
 const formatoCLP = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 })
 
@@ -21,23 +19,9 @@ async function load() {
 onMounted(load)
 watch(() => props.coacheeId, load)
 
-async function cambiarConsentimiento(event: Event) {
+function onConsentimientoActualizado(actualizado: { consentimientoInformado: boolean; consentimientoFecha: string | null }) {
   if (!coachee.value) return
-  const informado = (event.target as HTMLInputElement).checked
-  error.value = null
-  guardandoConsentimiento.value = true
-  try {
-    const actualizado = await setConsentimiento(coachee.value.id, informado)
-    coachee.value = {
-      ...coachee.value,
-      consentimientoInformado: actualizado.consentimientoInformado,
-      consentimientoFecha: actualizado.consentimientoFecha,
-    }
-  } catch (err) {
-    error.value = err instanceof ApiError ? err.message : 'No se pudo actualizar el consentimiento.'
-  } finally {
-    guardandoConsentimiento.value = false
-  }
+  coachee.value = { ...coachee.value, ...actualizado }
 }
 </script>
 
@@ -52,13 +36,6 @@ async function cambiarConsentimiento(event: Event) {
     v-else-if="coachee"
     class="space-y-4"
   >
-    <p
-      v-if="error"
-      class="text-sm text-[var(--color-danger)]"
-    >
-      {{ error }}
-    </p>
-
     <div class="rounded-2xl border border-[var(--color-line)] bg-white p-4 text-sm">
       <h2 class="mb-3 text-sm font-medium">
         Datos del proceso
@@ -120,19 +97,12 @@ async function cambiarConsentimiento(event: Event) {
       </dl>
     </div>
 
-    <div class="rounded-2xl border border-[var(--color-line)] bg-white p-4 text-sm">
-      <h2 class="mb-2 text-sm font-medium">
-        Consentimiento informado
-      </h2>
-      <label class="flex items-center gap-2">
-        <input
-          type="checkbox"
-          :checked="coachee.consentimientoInformado"
-          :disabled="guardandoConsentimiento"
-          @change="cambiarConsentimiento"
-        >
-        Firmado{{ coachee.consentimientoFecha ? ` el ${new Date(coachee.consentimientoFecha).toLocaleDateString('es-CL')}` : '' }}
-      </label>
-    </div>
+    <ConsentimientoInformado
+      :coachee-id="coachee.id"
+      :nombre="coachee.nombre"
+      :informado="coachee.consentimientoInformado"
+      :fecha="coachee.consentimientoFecha"
+      @actualizado="onConsentimientoActualizado"
+    />
   </div>
 </template>

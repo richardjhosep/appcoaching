@@ -258,6 +258,108 @@ export class EmailService {
     });
   }
 
+  async sendRecordatorioSesion(options: {
+    to: string;
+    nombreCoachee: string;
+    verUrl: string;
+  }): Promise<void> {
+    const subject = 'Recordatorio: agenda tu próxima sesión';
+    const nombreCoachee = escapeHtml(options.nombreCoachee);
+    const intro = `Hola ${nombreCoachee}, tu coach notó que todavía no tienes una próxima sesión agendada. Agenda cuando puedas para seguir avanzando en tu proceso.`;
+
+    const body = `
+      <h1 style="margin:0 0 16px;font-family:'Poppins',Arial,sans-serif;font-size:22px;color:#121212;">Agenda tu próxima sesión</h1>
+      <p style="margin:0 0 16px;font-size:15px;line-height:1.6;">${intro}</p>
+      ${renderButton(options.verUrl, 'Agendar mi próxima sesión')}
+      ${renderFallbackLink(options.verUrl)}
+    `;
+
+    const text = [
+      'Agenda tu próxima sesión',
+      '',
+      `Hola ${options.nombreCoachee}, tu coach notó que todavía no tienes una próxima sesión agendada. Agenda cuando puedas para seguir avanzando en tu proceso.`,
+      '',
+      `Agendar mi próxima sesión: ${options.verUrl}`,
+      '',
+      'Este es un mensaje automático enviado desde una casilla no-reply — por favor no respondas a este correo.',
+    ].join('\n');
+
+    await this.send({
+      to: options.to,
+      subject,
+      html: renderEmailLayout(body),
+      text,
+    });
+  }
+
+  async sendRecordatorioLogro(options: {
+    to: string;
+    nombreCoachee: string;
+    verUrl: string;
+  }): Promise<void> {
+    const subject = 'Recordatorio: registra tu progreso';
+    const nombreCoachee = escapeHtml(options.nombreCoachee);
+    const intro = `Hola ${nombreCoachee}, tu coach notó que no has registrado avances recientes. Cuéntale cómo vas para que pueda acompañarte mejor.`;
+
+    const body = `
+      <h1 style="margin:0 0 16px;font-family:'Poppins',Arial,sans-serif;font-size:22px;color:#121212;">Registra tu progreso</h1>
+      <p style="margin:0 0 16px;font-size:15px;line-height:1.6;">${intro}</p>
+      ${renderButton(options.verUrl, 'Registrar mi progreso')}
+      ${renderFallbackLink(options.verUrl)}
+    `;
+
+    const text = [
+      'Registra tu progreso',
+      '',
+      `Hola ${options.nombreCoachee}, tu coach notó que no has registrado avances recientes. Cuéntale cómo vas para que pueda acompañarte mejor.`,
+      '',
+      `Registrar mi progreso: ${options.verUrl}`,
+      '',
+      'Este es un mensaje automático enviado desde una casilla no-reply — por favor no respondas a este correo.',
+    ].join('\n');
+
+    await this.send({
+      to: options.to,
+      subject,
+      html: renderEmailLayout(body),
+      text,
+    });
+  }
+
+  async sendSolicitudConsentimiento(options: {
+    to: string;
+    nombreCoachee: string;
+    verUrl: string;
+  }): Promise<void> {
+    const subject = 'Necesitamos tu consentimiento informado';
+    const nombreCoachee = escapeHtml(options.nombreCoachee);
+    const intro = `Hola ${nombreCoachee}, tu coach te pide confirmar tu consentimiento informado para participar del proceso de coaching y el uso de tus datos personales en la plataforma. Revisa el detalle y responde cuando quieras — solo tú puedes hacerlo.`;
+
+    const body = `
+      <h1 style="margin:0 0 16px;font-family:'Poppins',Arial,sans-serif;font-size:22px;color:#121212;">Confirma tu consentimiento informado</h1>
+      <p style="margin:0 0 16px;font-size:15px;line-height:1.6;">${intro}</p>
+      ${renderButton(options.verUrl, 'Revisar y responder')}
+      ${renderFallbackLink(options.verUrl)}
+    `;
+
+    const text = [
+      'Confirma tu consentimiento informado',
+      '',
+      `Hola ${options.nombreCoachee}, tu coach te pide confirmar tu consentimiento informado para participar del proceso de coaching y el uso de tus datos personales en la plataforma. Revisa el detalle y responde cuando quieras — solo tú puedes hacerlo.`,
+      '',
+      `Revisar y responder: ${options.verUrl}`,
+      '',
+      'Este es un mensaje automático enviado desde una casilla no-reply — por favor no respondas a este correo.',
+    ].join('\n');
+
+    await this.send({
+      to: options.to,
+      subject,
+      html: renderEmailLayout(body),
+      text,
+    });
+  }
+
   private async send(options: {
     to: string;
     subject: string;

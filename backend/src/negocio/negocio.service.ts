@@ -1,5 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { ConfigService } from '@nestjs/config';
 import { Between, MoreThan, MoreThanOrEqual, Repository } from 'typeorm';
 import { Sesion } from '../sesiones/entities/sesion.entity';
 import { PostSesion } from '../sesiones/entities/post-sesion.entity';
@@ -13,6 +14,7 @@ import { CicloCoaching } from '../ciclos/entities/ciclo-coaching.entity';
 import { ResultadoCiclo } from '../ciclos/enums/resultado-ciclo.enum';
 import { CiclosService } from '../ciclos/ciclos.service';
 import { SeguimientoService } from '../seguimiento/seguimiento.service';
+import { EmailService } from '../email/email.service';
 
 const DIAS_SIN_LOGRO_ALERTA = 30;
 
@@ -105,6 +107,8 @@ export class NegocioService {
     private readonly ciclosCoaching: Repository<CicloCoaching>,
     private readonly ciclos: CiclosService,
     private readonly seguimiento: SeguimientoService,
+    private readonly email: EmailService,
+    private readonly config: ConfigService,
   ) {}
 
   private tarifaEfectiva(coachee: Coachee): number {
@@ -456,5 +460,38 @@ export class NegocioService {
         coacheesCount: valores.length,
       }))
       .sort((a, b) => b.avancePromedio - a.avancePromedio);
+  }
+
+  private async coacheeConEmail(coacheeId: string): Promise<Coachee> {
+    const coachee = await this.coachees.findOne({
+      where: { id: coacheeId },
+      relations: { user: true },
+    });
+    if (!coachee?.user?.email) {
+      throw new NotFoundException(
+        'Este coachee no tiene una cuenta con correo asociada.',
+      );
+    }
+    return coachee;
+  }
+
+  async enviarRecordatorioSesion(coacheeId: string): Promise<void> {
+    const coachee = await this.coacheeConEmail(coacheeId);
+    const verUrl = `${this.config.get<string>('frontendUrl')}/coachee/sesiones`;
+    await this.email.sendRecordatorioSesion({
+      to: coachee.user!.email,
+      nombreCoachee: coachee.nombre,
+      verUrl,
+    });
+  }
+
+  async enviarRecordatorioLogro(coacheeId: string): Promise<void> {
+    const coachee = await this.coacheeConEmail(coacheeId);
+    const verUrl = `${this.config.get<string>('frontendUrl')}/coachee/progreso`;
+    await this.email.sendRecordatorioLogro({
+      to: coachee.user!.email,
+      nombreCoachee: coachee.nombre,
+      verUrl,
+    });
   }
 }

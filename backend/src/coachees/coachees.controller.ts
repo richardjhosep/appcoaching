@@ -81,21 +81,45 @@ export class CoacheesController {
     @Param('id') id: string,
     @CurrentUser() actor: AuthenticatedUser,
   ) {
-    await this.coachees.remove(id);
+    const nombre = await this.coachees.remove(id);
     await this.audit.record('COACHEE_ELIMINADO', {
       userId: actor.id,
       targetType: 'Coachee',
       targetId: id,
+      targetLabel: nombre,
     });
     return { success: true };
   }
 
   @Roles(Role.COACH)
   @Patch(':id/consentimiento')
-  setConsentimiento(
+  async setConsentimiento(
     @Param('id') id: string,
     @Body() dto: SetConsentimientoDto,
+    @CurrentUser() actor: AuthenticatedUser,
   ) {
-    return this.coachees.setConsentimiento(id, dto.informado);
+    const coachee = await this.coachees.setConsentimiento(id, dto.informado);
+    await this.audit.record('CONSENTIMIENTO_ACTUALIZADO', {
+      userId: actor.id,
+      targetType: 'Coachee',
+      targetId: id,
+      metadata: { informado: dto.informado, via: 'manual' },
+    });
+    return coachee;
+  }
+
+  @Roles(Role.COACH)
+  @Post(':id/consentimiento/solicitar')
+  async solicitarConsentimiento(
+    @Param('id') id: string,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    await this.coachees.solicitarConsentimiento(id);
+    await this.audit.record('SOLICITUD_CONSENTIMIENTO_ENVIADA', {
+      userId: actor.id,
+      targetType: 'Coachee',
+      targetId: id,
+    });
+    return { success: true };
   }
 }

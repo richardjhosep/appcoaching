@@ -9,7 +9,7 @@ import { createEmpresaUser, deleteUser, listUsers, resetPassword, setUserActivo,
 import { listEmpresas, type Empresa } from '../../api/empresas'
 import { ApiError } from '../../api/client'
 import { notifyError, notifySuccess, confirmDialog } from '../../lib/notify'
-import { primerDiaDelMes, hoy, dentroDeRango } from '../../lib/dateRange'
+import { dentroDeRango } from '../../lib/dateRange'
 
 const PAGE_SIZE = 12
 
@@ -19,8 +19,10 @@ const empresas = ref<Empresa[]>([])
 const search = ref('')
 const filtroRol = ref<'' | 'coach' | 'coachee' | 'empresa'>('')
 const filtroEstado = ref<'' | 'activas' | 'inactivas'>('')
-const fechaDesde = ref(primerDiaDelMes())
-const fechaHasta = ref(hoy())
+// Vacío por defecto — un mantenedor debe mostrar todo hasta que el coach acote, nunca ocultar
+// registros existentes solo porque se creó antes del 1° del mes actual.
+const fechaDesde = ref('')
+const fechaHasta = ref('')
 const page = ref(1)
 
 async function load() {
@@ -61,8 +63,8 @@ function limpiarFiltros() {
   search.value = ''
   filtroRol.value = ''
   filtroEstado.value = ''
-  fechaDesde.value = primerDiaDelMes()
-  fechaHasta.value = hoy()
+  fechaDesde.value = ''
+  fechaHasta.value = ''
   page.value = 1
 }
 

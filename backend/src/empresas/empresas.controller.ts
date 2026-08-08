@@ -53,11 +53,12 @@ export class EmpresasController {
     @Param('id') id: string,
     @CurrentUser() actor: AuthenticatedUser,
   ) {
-    await this.empresas.remove(id);
+    const nombre = await this.empresas.remove(id);
     await this.audit.record('EMPRESA_ELIMINADA', {
       userId: actor.id,
       targetType: 'Empresa',
       targetId: id,
+      targetLabel: nombre,
     });
     return { success: true };
   }

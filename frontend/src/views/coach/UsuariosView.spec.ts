@@ -50,6 +50,18 @@ describe('UsuariosView', () => {
     expect(wrapper.text()).toContain('2 registro(s)')
   })
 
+  it('shows usuarios created before the current month by default — regresión del filtro de fecha que los ocultaba', async () => {
+    vi.mocked(listUsers).mockResolvedValue([
+      { id: 'u3', email: 'viejo@example.com', role: 'coachee', empresaId: null, mustChangePassword: false, isActive: true, createdAt: '2020-01-01T00:00:00.000Z' },
+    ])
+
+    const wrapper = mount(UsuariosView)
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('viejo@example.com')
+    expect(wrapper.text()).toContain('1 registro(s)')
+  })
+
   it('filters by search text', async () => {
     const wrapper = mount(UsuariosView)
     await flushPromises()

@@ -1,4 +1,4 @@
-import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { NegocioService, type PeriodoComercial } from './negocio.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -38,5 +38,19 @@ export class NegocioController {
   @Get('avance-por-area')
   avancePorArea() {
     return this.negocio.avancePorArea();
+  }
+
+  @Roles(Role.COACH)
+  @Post('coachees/:coacheeId/recordatorio-sesion')
+  async recordatorioSesion(@Param('coacheeId') coacheeId: string) {
+    await this.negocio.enviarRecordatorioSesion(coacheeId);
+    return { success: true };
+  }
+
+  @Roles(Role.COACH)
+  @Post('coachees/:coacheeId/recordatorio-logro')
+  async recordatorioLogro(@Param('coacheeId') coacheeId: string) {
+    await this.negocio.enviarRecordatorioLogro(coacheeId);
+    return { success: true };
   }
 }

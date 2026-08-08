@@ -1,11 +1,11 @@
 <script setup lang="ts">
-defineProps<{ name: string }>()
+withDefaults(defineProps<{ name: string; size?: number }>(), { size: 18 })
 </script>
 
 <template>
   <svg
-    width="18"
-    height="18"
+    :width="size"
+    :height="size"
     viewBox="0 0 24 24"
     fill="none"
     stroke="currentColor"
@@ -132,6 +132,18 @@ defineProps<{ name: string }>()
         height="9"
         rx="1.5"
       /><path d="M8 11V7a4 4 0 0 1 8 0v4" />
+    </template>
+    <template v-else-if="name === 'flecha-izquierda'">
+      <path d="M19 12H5" /><path d="M11 18l-6-6 6-6" />
+    </template>
+    <template v-else-if="name === 'correo'">
+      <rect
+        x="3"
+        y="5"
+        width="18"
+        height="14"
+        rx="2"
+      /><path d="m4 7 8 6 8-6" />
     </template>
     <template v-else-if="name === 'contacto'">
       <rect

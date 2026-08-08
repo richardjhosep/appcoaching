@@ -106,11 +106,12 @@ export class UsersController {
     @Param('id') id: string,
     @CurrentUser() actor: AuthenticatedUser,
   ) {
-    await this.users.remove(id, actor.id);
+    const email = await this.users.remove(id, actor.id);
     await this.audit.record('USER_ELIMINADO', {
       userId: actor.id,
       targetType: 'User',
       targetId: id,
+      targetLabel: email,
     });
     return { success: true };
   }

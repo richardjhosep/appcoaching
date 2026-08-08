@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   NotFoundException,
@@ -6,12 +7,17 @@ import {
 import { Repository } from 'typeorm';
 import { CoacheesService } from './coachees.service';
 import { Coachee } from './entities/coachee.entity';
+import { SolicitudConsentimiento } from './entities/solicitud-consentimiento.entity';
+import { EstadoSolicitudConsentimiento } from './enums/estado-solicitud-consentimiento.enum';
 import { EmpresasService } from '../empresas/empresas.service';
 import { UsersService } from '../users/users.service';
+import { EmailService } from '../email/email.service';
+import { ConfigService } from '@nestjs/config';
 import { Role } from '../auth/enums/role.enum';
 import type { AuthenticatedUser } from '../auth/auth.types';
 
 type PartialCoachee = Partial<Coachee>;
+type PartialSolicitud = Partial<SolicitudConsentimiento>;
 
 describe('CoacheesService', () => {
   let service: CoacheesService;
@@ -22,12 +28,19 @@ describe('CoacheesService', () => {
     save: jest.Mock<Promise<PartialCoachee>, [PartialCoachee]>;
     manager: { query: jest.Mock };
   };
+  let solicitudesRepo: {
+    findOne: jest.Mock<Promise<PartialSolicitud | null>, unknown[]>;
+    create: jest.Mock<PartialSolicitud, [PartialSolicitud]>;
+    save: jest.Mock<Promise<PartialSolicitud>, [PartialSolicitud]>;
+  };
   let empresas: { exists: jest.Mock<Promise<boolean>, [string]> };
   let users: {
     createUser: jest.Mock;
     setActivo: jest.Mock;
     removeById: jest.Mock;
   };
+  let email: { sendSolicitudConsentimiento: jest.Mock };
+  let config: { get: jest.Mock };
 
   const buildActor = (
     role: Role,
@@ -49,6 +62,13 @@ describe('CoacheesService', () => {
       ),
       manager: { query: jest.fn().mockResolvedValue([{ total: 0 }]) },
     };
+    solicitudesRepo = {
+      findOne: jest.fn<Promise<PartialSolicitud | null>, unknown[]>(),
+      create: jest.fn((data: PartialSolicitud) => data),
+      save: jest.fn((data: PartialSolicitud) =>
+        Promise.resolve({ id: 'solicitud-generated-id', ...data }),
+      ),
+    };
     empresas = { exists: jest.fn<Promise<boolean>, [string]>() };
     users = {
       createUser: jest.fn().mockResolvedValue({
@@ -58,10 +78,17 @@ describe('CoacheesService', () => {
       setActivo: jest.fn(),
       removeById: jest.fn().mockResolvedValue(undefined),
     };
+    email = {
+      sendSolicitudConsentimiento: jest.fn().mockResolvedValue(undefined),
+    };
+    config = { get: jest.fn().mockReturnValue('http://localhost:5183') };
     service = new CoacheesService(
       repo as unknown as Repository<Coachee>,
+      solicitudesRepo as unknown as Repository<SolicitudConsentimiento>,
       empresas as unknown as EmpresasService,
       users as unknown as UsersService,
+      email as unknown as EmailService,
+      config as unknown as ConfigService,
     );
   });
 
@@ -271,6 +298,133 @@ describe('CoacheesService', () => {
       repo.findOne.mockResolvedValue(null);
 
       await expect(service.remove('missing')).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+  });
+
+  describe('solicitarConsentimiento', () => {
+    it('creates a solicitud with a random token and emails the coachee', async () => {
+      repo.findOne.mockResolvedValue({
+        id: 'c1',
+        nombre: 'Rodrigo Peña',
+        emailContacto: null,
+        user: { email: 'rodrigo@test.com' },
+      } as unknown as PartialCoachee);
+
+      await service.solicitarConsentimiento('c1');
+
+      expect(solicitudesRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ coacheeId: 'c1' }),
+      );
+      const [creado] = solicitudesRepo.create.mock.calls[0];
+      expect(typeof creado.token).toBe('string');
+      expect(creado.token!.length).toBeGreaterThan(20);
+      expect(creado.expiraEn).toBeInstanceOf(Date);
+
+      expect(email.sendSolicitudConsentimiento).toHaveBeenCalledWith(
+        expect.objectContaining({
+          to: 'rodrigo@test.com',
+          nombreCoachee: 'Rodrigo Peña',
+        }),
+      );
+    });
+
+    it('prefers emailContacto over the login email when both exist', async () => {
+      repo.findOne.mockResolvedValue({
+        id: 'c1',
+        nombre: 'Rodrigo Peña',
+        emailContacto: 'rodrigo.personal@test.com',
+        user: { email: 'rodrigo@test.com' },
+      } as unknown as PartialCoachee);
+
+      await service.solicitarConsentimiento('c1');
+
+      expect(email.sendSolicitudConsentimiento).toHaveBeenCalledWith(
+        expect.objectContaining({ to: 'rodrigo.personal@test.com' }),
+      );
+    });
+
+    it('throws NotFoundException when the coachee does not exist', async () => {
+      repo.findOne.mockResolvedValue(null);
+
+      await expect(service.solicitarConsentimiento('missing')).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+  });
+
+  describe('responderSolicitud', () => {
+    // Fábrica (no un objeto compartido): responderSolicitud() muta la solicitud y el
+    // coachee en el lugar, así que reusar la misma instancia entre tests haría que un
+    // test contaminara el estado inicial del siguiente.
+    function solicitudPendiente(
+      overrides: Record<string, unknown> = {},
+    ): PartialSolicitud {
+      return {
+        id: 's1',
+        coacheeId: 'c1',
+        token: 'tok-123',
+        estado: EstadoSolicitudConsentimiento.PENDIENTE,
+        expiraEn: new Date(Date.now() + 60_000),
+        respondidoEn: null,
+        coachee: {
+          id: 'c1',
+          userId: 'user-1',
+          consentimientoInformado: false,
+          consentimientoFecha: null,
+        },
+        ...overrides,
+      } as unknown as PartialSolicitud;
+    }
+
+    it('accepting marks the coachee as consentido and the solicitud as aceptado', async () => {
+      solicitudesRepo.findOne.mockResolvedValue(solicitudPendiente());
+
+      const coachee = await service.responderSolicitud('tok-123', true);
+
+      expect(coachee.consentimientoInformado).toBe(true);
+      expect(coachee.consentimientoFecha).toBeInstanceOf(Date);
+      expect(solicitudesRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          estado: EstadoSolicitudConsentimiento.ACEPTADO,
+        }),
+      );
+    });
+
+    it('rejecting marks the coachee as no consentido', async () => {
+      solicitudesRepo.findOne.mockResolvedValue(solicitudPendiente());
+
+      const coachee = await service.responderSolicitud('tok-123', false);
+
+      expect(coachee.consentimientoInformado).toBe(false);
+      expect(coachee.consentimientoFecha).toBeNull();
+    });
+
+    it('rejects responding twice to the same solicitud', async () => {
+      solicitudesRepo.findOne.mockResolvedValue(
+        solicitudPendiente({ estado: EstadoSolicitudConsentimiento.ACEPTADO }),
+      );
+
+      await expect(service.responderSolicitud('tok-123', true)).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it('rejects responding to an expired solicitud', async () => {
+      solicitudesRepo.findOne.mockResolvedValue(
+        solicitudPendiente({ expiraEn: new Date(Date.now() - 60_000) }),
+      );
+
+      await expect(service.responderSolicitud('tok-123', true)).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it('throws NotFoundException for an unknown token', async () => {
+      solicitudesRepo.findOne.mockResolvedValue(null);
+
+      await expect(service.responderSolicitud('gone', true)).rejects.toThrow(
         NotFoundException,
       );
     });

@@ -171,6 +171,62 @@ describe('EmailService', () => {
     expect(call.text).toContain('Ana');
   });
 
+  it('sends the sesión reminder email to the coachee', async () => {
+    const service = new EmailService(
+      makeConfig({
+        'smtp.host': 'smtp.gmail.com',
+        'smtp.port': 587,
+        'smtp.user': 'coach@gmail.com',
+        'smtp.pass': 'app-password',
+        'smtp.from': 'coach@gmail.com',
+      }),
+    );
+
+    await service.sendRecordatorioSesion({
+      to: 'coachee@example.com',
+      nombreCoachee: 'Ana',
+      verUrl: 'http://localhost/coachee/sesiones',
+    });
+
+    expect(sendMail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: 'coachee@example.com',
+        subject: expect.stringContaining('agenda tu próxima sesión') as string,
+      }),
+    );
+    const [[call]] = sendMail.mock.calls as [[{ html: string; text: string }]];
+    expect(call.html).toContain('Ana');
+    expect(call.text).toContain('Ana');
+  });
+
+  it('sends the logro reminder email to the coachee', async () => {
+    const service = new EmailService(
+      makeConfig({
+        'smtp.host': 'smtp.gmail.com',
+        'smtp.port': 587,
+        'smtp.user': 'coach@gmail.com',
+        'smtp.pass': 'app-password',
+        'smtp.from': 'coach@gmail.com',
+      }),
+    );
+
+    await service.sendRecordatorioLogro({
+      to: 'coachee@example.com',
+      nombreCoachee: 'Ana',
+      verUrl: 'http://localhost/coachee/progreso',
+    });
+
+    expect(sendMail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: 'coachee@example.com',
+        subject: expect.stringContaining('registra tu progreso') as string,
+      }),
+    );
+    const [[call]] = sendMail.mock.calls as [[{ html: string; text: string }]];
+    expect(call.html).toContain('Ana');
+    expect(call.text).toContain('Ana');
+  });
+
   it('does nothing (and does not throw) when SMTP credentials are missing', async () => {
     const service = new EmailService(makeConfig({}));
 

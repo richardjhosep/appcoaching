@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { getMyCoachee, type Coachee } from '../../api/coachees'
 import { getOwnPlan, type PlanDesarrollo } from '../../api/planesDesarrollo'
 import { getMisCiclos, type Ciclo } from '../../api/ciclos'
+import BackLink from '../../components/BackLink.vue'
 
 const props = defineProps<{ cicloId: string }>()
 const router = useRouter()
@@ -44,27 +45,23 @@ function imprimir() {
       v-else-if="!ciclo || !ciclo.fechaCierre || !ciclo.resultado"
       class="mx-auto max-w-lg rounded-2xl border border-[var(--color-line)] bg-white p-6 text-center"
     >
-      <p class="text-sm text-[var(--color-ink)]/70">
+      <p class="mb-4 text-sm text-[var(--color-ink)]/70">
         Este certificado todavía no está disponible: el ciclo debe estar cerrado con un resultado.
       </p>
-      <button
-        class="mt-4 text-sm text-[var(--color-sage)] underline"
+      <BackLink
+        label="Volver"
         @click="router.push({ name: 'coachee-progreso' })"
-      >
-        Volver
-      </button>
+      />
     </div>
     <div
       v-else
       class="mx-auto max-w-2xl"
     >
-      <div class="mb-4 flex justify-between print:hidden">
-        <button
-          class="text-sm text-[var(--color-ink)]/70 hover:underline"
+      <div class="mb-4 flex items-center justify-between print:hidden">
+        <BackLink
+          label="Volver"
           @click="router.push({ name: 'coachee-progreso' })"
-        >
-          ← Volver
-        </button>
+        />
         <button
           class="rounded-lg bg-[var(--color-ink)] px-4 py-2 text-sm text-[var(--color-parchment)]"
           @click="imprimir"

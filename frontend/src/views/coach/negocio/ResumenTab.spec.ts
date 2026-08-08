@@ -72,6 +72,14 @@ describe('ResumenTab', () => {
     expect(wrapper.text()).toContain('Coachee Uno')
   })
 
+  it('shows a muted empty state for an alert category with nothing pending, instead of a blank column', async () => {
+    const wrapper = mount(ResumenTab)
+    await flushPromises()
+
+    // coacheesSinProximaSesion is empty in the fixture — its card must say so explicitly.
+    expect(wrapper.text()).toContain('Sin pendientes.')
+  })
+
   it('shows the empresa row with its pagada state and horas contratadas', async () => {
     const wrapper = mount(ResumenTab)
     await flushPromises()

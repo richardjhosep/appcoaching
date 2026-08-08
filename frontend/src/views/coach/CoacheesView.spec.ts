@@ -53,6 +53,18 @@ describe('CoacheesView', () => {
     expect(wrapper.text()).toContain('2 registro(s)')
   })
 
+  it('shows coachees created before the current month by default — regresión del filtro de fecha que los ocultaba', async () => {
+    vi.mocked(listCoachees).mockResolvedValue([
+      { id: 'c3', nombre: 'Coachee Antiguo', empresaId: null, activo: true, consentimientoInformado: false, consentimientoFecha: null, createdAt: '2020-01-01T00:00:00.000Z' },
+    ])
+
+    const wrapper = mount(CoacheesView, { global: { plugins: [router] } })
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Coachee Antiguo')
+    expect(wrapper.text()).toContain('1 registro(s)')
+  })
+
   it('filters by search text', async () => {
     const wrapper = mount(CoacheesView, { global: { plugins: [router] } })
     await flushPromises()

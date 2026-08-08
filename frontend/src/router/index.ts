@@ -4,6 +4,8 @@ import { useAuthStore } from '../stores/auth'
 declare module 'vue-router' {
   interface RouteMeta {
     public?: boolean
+    /** Página que se ve igual estando o no logueado — sin AppShell, sin rebote de auth. */
+    standalone?: boolean
     roles?: Array<'coach' | 'coachee' | 'empresa'>
   }
 }
@@ -14,6 +16,13 @@ const routes: RouteRecordRaw[] = [
     name: 'login',
     component: () => import('../views/LoginView.vue'),
     meta: { public: true },
+  },
+  {
+    path: '/consentimiento/:token',
+    name: 'consentimiento-publico',
+    component: () => import('../views/public/ConsentimientoView.vue'),
+    meta: { standalone: true },
+    props: true,
   },
   {
     path: '/',
@@ -95,9 +104,7 @@ const routes: RouteRecordRaw[] = [
   },
   {
     path: '/coach/auditoria',
-    name: 'coach-auditoria',
-    component: () => import('../views/coach/AuditoriaView.vue'),
-    meta: { roles: ['coach'] },
+    redirect: '/coach/legal?tab=auditoria',
   },
   {
     path: '/coach/comercial',
@@ -154,6 +161,10 @@ function homeFor(role: string): string {
 }
 
 router.beforeEach(async (to) => {
+  if (to.meta.standalone) {
+    return true
+  }
+
   const auth = useAuthStore()
 
   if (auth.accessToken && !auth.user) {

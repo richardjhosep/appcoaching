@@ -2,6 +2,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppShell from '../../components/AppShell.vue'
+import BackLink from '../../components/BackLink.vue'
 import CicloStepper from '../../components/CicloStepper.vue'
 import PerfilTab from './coachee-detail/PerfilTab.vue'
 import PlanTab from './coachee-detail/PlanTab.vue'
@@ -70,12 +71,10 @@ watch(() => props.coacheeId, load)
 <template>
   <AppShell>
     <div class="mb-4">
-      <RouterLink
+      <BackLink
         to="/coach/coachees"
-        class="text-sm text-[var(--color-sage)] underline"
-      >
-        ← Volver a Coachees
-      </RouterLink>
+        label="Volver a Coachees"
+      />
     </div>
 
     <div
