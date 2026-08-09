@@ -6,7 +6,7 @@ import NavIcon from '../../components/NavIcon.vue'
 import { getResumenNegocio, getAlertas, enviarRecordatorioSesion, enviarRecordatorioLogro, type ResumenNegocio, type Alertas } from '../../api/negocio'
 import { listPlanes, enviarRecordatorio, type PlanDesarrollo } from '../../api/planesDesarrollo'
 import { getSolicitudes, type SolicitudProceso } from '../../api/satisfaccion'
-import { listCoachees } from '../../api/coachees'
+import { listCoachees, type CoacheeListItem } from '../../api/coachees'
 import { getResumenLegal, type ResumenLegal } from '../../api/legal'
 import { estadoVisual } from '../../lib/legalFormat'
 import { coacheesQueNecesitanAlgo, type CoacheeAtencion } from '../../lib/dashboardAtencion'
@@ -21,6 +21,7 @@ const planesSinEnviar = ref<PlanDesarrollo[]>([])
 const planesPendientesAprobacion = ref<PlanDesarrollo[]>([])
 const solicitudesPendientes = ref<SolicitudProceso[]>([])
 const resumenLegal = ref<ResumenLegal>({ empresas: [], independientes: [] })
+const coacheesLista = ref<CoacheeListItem[]>([])
 const sinCoacheesAun = ref(false)
 
 type Tab = 'coachees' | 'empresas' | 'solicitudes'
@@ -45,6 +46,12 @@ const empresasLegalPendientes = computed(() =>
   ),
 )
 
+// Nombre de empresa (o "Independiente") por coachee, disponible aunque no haya facturado
+// nada este período — a diferencia de porCoachee, que solo trae actividad con cobro.
+const empresaDeCoachee = computed(() => new Map(coacheesLista.value.map((c) => [c.id, c.empresa?.nombre ?? null])))
+const cobroPorCoachee = computed(() => new Map((resumen.value?.porCoachee ?? []).map((c) => [c.coacheeId, c])))
+const empresaPagadaPorNombre = computed(() => new Map((resumen.value?.porEmpresa ?? []).map((e) => [e.nombre, e.pagada])))
+
 async function load() {
   loading.value = true
   const [r, a, sinEnviar, pendientesAprobacion, solicitudes, coachees, legal] = await Promise.all([
@@ -62,6 +69,7 @@ async function load() {
   planesPendientesAprobacion.value = pendientesAprobacion
   solicitudesPendientes.value = solicitudes
   resumenLegal.value = legal
+  coacheesLista.value = coachees
   sinCoacheesAun.value = coachees.length === 0
   loading.value = false
 }
@@ -141,6 +149,70 @@ function itemsDe(c: CoacheeAtencion): ItemAtencion[] {
   }
   return items
 }
+
+// Lo más urgente/accionable va arriba con su botón (así siempre hay un único CTA claro
+// por tarjeta); el resto queda como recordatorio compacto debajo, sin repetir botones —
+// para eso ya está el perfil completo a un clic.
+function desglose(c: CoacheeAtencion): { primario: ItemAtencion | null; secundarios: ItemAtencion[] } {
+  const items = itemsDe(c)
+  const primario = items.find((i) => i.accion) ?? items[0] ?? null
+  return { primario, secundarios: items.filter((i) => i !== primario) }
+}
+
+function iniciales(nombre: string): string {
+  const partes = nombre.trim().split(/\s+/)
+  const primera = partes[0]?.[0] ?? ''
+  const ultima = partes.length > 1 ? partes[partes.length - 1][0] : ''
+  return (primera + ultima).toUpperCase()
+}
+
+interface InfoCobro {
+  texto: string
+  severidad: 'danger' | 'sage' | 'neutral'
+}
+
+// Sólo dice lo que la plataforma realmente sabe: si el coachee es de una empresa que no
+// ha marcado como pagada, eso es literalmente "me deben". Para independientes no existe
+// (todavía) un registro de cobro por sesión — se muestra el ingreso generado o agendado,
+// sin inventar un estado de pago que el sistema no rastrea.
+function cobroDe(c: CoacheeAtencion): InfoCobro | null {
+  const cobro = cobroPorCoachee.value.get(c.coacheeId)
+  if (!cobro) return null
+  const empresaSinPagar = cobro.empresaNombre !== null && empresaPagadaPorNombre.value.get(cobro.empresaNombre) === false
+
+  if (cobro.ingresoDelPeriodo > 0) {
+    return empresaSinPagar
+      ? { texto: `${formatoCLP.format(cobro.ingresoDelPeriodo)} sin pagar`, severidad: 'danger' }
+      : { texto: `${formatoCLP.format(cobro.ingresoDelPeriodo)} este mes`, severidad: 'sage' }
+  }
+  if (cobro.ingresoProyectado > 0) {
+    return { texto: `${formatoCLP.format(cobro.ingresoProyectado)} agendado`, severidad: 'neutral' }
+  }
+  return null
+}
+
+interface FilaAtencion {
+  coachee: CoacheeAtencion
+  empresaNombre: string | null
+  cobro: InfoCobro | null
+  primario: ItemAtencion | null
+  secundarios: ItemAtencion[]
+}
+
+// Una sola pasada por coachee con todo lo que la tarjeta necesita — evita recalcular
+// desglose()/cobroDe() varias veces dentro del template.
+const filasAtencion = computed<FilaAtencion[]>(() =>
+  coacheesAtencion.value.map((c) => {
+    const { primario, secundarios } = desglose(c)
+    return {
+      coachee: c,
+      empresaNombre: empresaDeCoachee.value.get(c.coacheeId) ?? null,
+      cobro: cobroDe(c),
+      primario,
+      secundarios,
+    }
+  }),
+)
 </script>
 
 <template>
@@ -253,47 +325,83 @@ function itemsDe(c: CoacheeAtencion): ItemAtencion[] {
           </p>
           <ul
             v-else
-            class="space-y-2 text-sm"
+            class="grid gap-3 text-sm md:grid-cols-2 2xl:grid-cols-3"
           >
             <li
-              v-for="c in coacheesAtencion"
-              :key="c.coacheeId"
-              class="rounded-lg border border-[var(--color-line)] p-3"
+              v-for="fila in filasAtencion"
+              :key="fila.coachee.coacheeId"
+              class="rounded-xl border border-[var(--color-line)] p-3"
             >
-              <button
-                type="button"
-                class="font-medium hover:underline"
-                @click="verPerfil(c.coacheeId)"
-              >
-                {{ c.nombre }}
-              </button>
-
-              <ul class="mt-1 divide-y divide-[var(--color-line)]/70">
-                <li
-                  v-for="item in itemsDe(c)"
-                  :key="item.id"
-                  class="flex items-center justify-between gap-3 py-1.5"
+              <div class="mb-2 flex items-start gap-2.5">
+                <div
+                  class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--color-ink)] text-xs font-semibold text-[var(--color-parchment)]"
+                  aria-hidden="true"
                 >
-                  <span
-                    class="text-xs font-medium"
-                    :class="textoSeveridad[item.severidad]"
-                  >
-                    {{ item.label }}
-                  </span>
+                  {{ iniciales(fila.coachee.nombre) }}
+                </div>
+                <div class="min-w-0 flex-1">
                   <button
-                    v-if="item.accion"
                     type="button"
-                    class="inline-flex shrink-0 items-center gap-1 rounded-full border border-[var(--color-line)] px-2 py-0.5 text-xs text-[var(--color-ink)]/70 hover:bg-[var(--color-parchment)]/60 hover:text-[var(--color-ink)]"
-                    @click="item.accion"
+                    class="block truncate text-left font-medium hover:underline"
+                    @click="verPerfil(fila.coachee.coacheeId)"
                   >
-                    <NavIcon
-                      v-if="item.id !== 'plan-revisar'"
-                      name="correo"
-                      :size="11"
-                    /> {{ item.accionLabel }}
+                    {{ fila.coachee.nombre }}
                   </button>
-                </li>
-              </ul>
+                  <p class="truncate text-xs text-[var(--color-ink)]/50">
+                    {{ fila.empresaNombre ?? 'Independiente' }}
+                    <template v-if="fila.cobro">
+                      ·
+                      <span
+                        :class="{
+                          'text-[var(--color-danger)]': fila.cobro.severidad === 'danger',
+                          'text-[var(--color-sage)]': fila.cobro.severidad === 'sage',
+                        }"
+                      >{{ fila.cobro.texto }}</span>
+                    </template>
+                  </p>
+                </div>
+              </div>
+
+              <div
+                v-if="fila.primario"
+                class="flex items-center justify-between gap-2 rounded-lg bg-[var(--color-parchment)]/50 px-2.5 py-1.5"
+              >
+                <span
+                  class="text-xs font-medium"
+                  :class="textoSeveridad[fila.primario.severidad]"
+                >
+                  {{ fila.primario.label }}
+                </span>
+                <button
+                  v-if="fila.primario.accion"
+                  type="button"
+                  class="inline-flex shrink-0 items-center gap-1 rounded-full border border-[var(--color-line)] bg-white px-2 py-0.5 text-xs text-[var(--color-ink)]/70 hover:bg-[var(--color-parchment)] hover:text-[var(--color-ink)]"
+                  @click="fila.primario.accion"
+                >
+                  <NavIcon
+                    v-if="fila.primario.id !== 'plan-revisar'"
+                    name="correo"
+                    :size="11"
+                  /> {{ fila.primario.accionLabel }}
+                </button>
+              </div>
+
+              <div
+                v-if="fila.secundarios.length > 0"
+                class="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 px-0.5"
+              >
+                <button
+                  v-for="item in fila.secundarios"
+                  :key="item.id"
+                  type="button"
+                  class="text-[11px] font-medium disabled:cursor-default"
+                  :class="[textoSeveridad[item.severidad], item.accion ? 'hover:underline' : '']"
+                  :disabled="!item.accion"
+                  @click="item.accion"
+                >
+                  {{ item.label }}
+                </button>
+              </div>
             </li>
           </ul>
         </div>

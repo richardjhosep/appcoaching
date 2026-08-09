@@ -327,18 +327,21 @@ function exportarExcel() {
               <td class="py-2">
                 <input
                   type="checkbox"
+                  class="print:hidden"
                   :checked="e.pagada"
                   @change="togglePagada(e.empresaId, ($event.target as HTMLInputElement).checked)"
                 >
+                <span class="hidden print:inline">{{ e.pagada ? 'Sí' : 'No' }}</span>
               </td>
               <td class="py-2">
                 <input
                   type="number"
                   min="0"
                   :value="e.horasContratadas ?? ''"
-                  class="w-16 rounded border border-[var(--color-line)] px-1 py-0.5 text-xs"
+                  class="w-16 rounded border border-[var(--color-line)] px-1 py-0.5 text-xs print:hidden"
                   @change="guardarHorasContratadas(e.empresaId, Number(($event.target as HTMLInputElement).value))"
                 >
+                <span class="hidden print:inline">{{ e.horasContratadas ?? '—' }}</span>
               </td>
               <td class="py-2">
                 {{ e.horasConsumidas }}

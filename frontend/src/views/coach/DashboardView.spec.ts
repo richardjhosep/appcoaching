@@ -47,6 +47,7 @@ import { notifySuccess, notifyError } from '../../lib/notify'
 
 const resumen: ResumenNegocio = {
   porEmpresa: [],
+  porCoachee: [],
   horasRealizadasTotal: 1,
   ingresoDelPeriodoTotal: 0,
   ingresoProyectadoTotal: 0,
@@ -129,17 +130,55 @@ describe('DashboardView', () => {
     expect(fila.text()).toContain('Plan sin enviar')
     expect(fila.text()).toContain('Sin próxima sesión')
 
-    const recordarPlanBtn = fila.findAll('button').find((b) => b.text().includes('Recordar plan'))!
-    await recordarPlanBtn.trigger('click')
-    await flushPromises()
-    expect(enviarRecordatorio).toHaveBeenCalledWith('c1')
-
+    // "Sin próxima sesión" es lo más urgente (danger) → queda como acción primaria con botón.
     const recordarSesionBtn = fila.findAll('button').find((b) => b.text().includes('Recordar sesión'))!
     await recordarSesionBtn.trigger('click')
     await flushPromises()
     expect(enviarRecordatorioSesion).toHaveBeenCalledWith('c1')
 
+    // "Plan sin enviar" queda como recordatorio secundario compacto: el propio texto es el botón.
+    const planSinEnviarBtn = fila.findAll('button').find((b) => b.text().trim() === 'Plan sin enviar')!
+    await planSinEnviarBtn.trigger('click')
+    await flushPromises()
+    expect(enviarRecordatorio).toHaveBeenCalledWith('c1')
+
     expect(notifySuccess).toHaveBeenCalledTimes(2)
+  })
+
+  it('shows initials, empresa (or Independiente) and what the coachee owes/generated this period', async () => {
+    vi.mocked(listCoachees).mockResolvedValue([
+      { id: 'c1', nombre: 'Rodrigo Peña', empresaId: 'e1', empresa: { id: 'e1', nombre: 'Andes Minerals' }, consentimientoInformado: true, consentimientoFecha: null },
+      { id: 'c2', nombre: 'Ana Reagenda', empresaId: null, consentimientoInformado: true, consentimientoFecha: null },
+    ])
+    vi.mocked(getAlertas).mockResolvedValue({
+      ciclosPorVencer: [],
+      coacheesSinLogros: [
+        { coacheeId: 'c1', nombre: 'Rodrigo Peña' },
+        { coacheeId: 'c2', nombre: 'Ana Reagenda' },
+      ],
+      coacheesSinProximaSesion: [],
+    })
+    vi.mocked(getResumenNegocio).mockResolvedValue({
+      ...resumen,
+      porEmpresa: [{ empresaId: 'e1', nombre: 'Andes Minerals', pagada: false, horasContratadas: null, horasConsumidas: 1, ingresoDelPeriodo: 50000, ingresoProyectado: 0 }],
+      porCoachee: [
+        { coacheeId: 'c1', nombre: 'Rodrigo Peña', empresaNombre: 'Andes Minerals', horasRealizadas: 1, ingresoDelPeriodo: 50000, ingresoProyectado: 0 },
+        { coacheeId: 'c2', nombre: 'Ana Reagenda', empresaNombre: null, horasRealizadas: 1, ingresoDelPeriodo: 45000, ingresoProyectado: 0 },
+      ],
+    })
+
+    const wrapper = mount(DashboardView, { global: { plugins: [router] } })
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('RP') // iniciales de "Rodrigo Peña"
+
+    const filaRodrigo = wrapper.findAll('li').find((r) => r.text().includes('Rodrigo Peña'))!
+    expect(filaRodrigo.text()).toContain('Andes Minerals')
+    expect(filaRodrigo.text()).toContain('$50.000 sin pagar') // empresa marcada como no pagada
+
+    const filaAna = wrapper.findAll('li').find((r) => r.text().includes('Ana Reagenda'))!
+    expect(filaAna.text()).toContain('Independiente')
+    expect(filaAna.text()).toContain('$45.000 este mes') // independiente: ingreso confirmado, sin concepto de "deuda"
   })
 
   it('shows an error toast when a reminder fails to send', async () => {

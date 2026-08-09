@@ -11,8 +11,19 @@ export interface EmpresaCobro {
   ingresoProyectado: number
 }
 
+export interface CoacheeCobro {
+  coacheeId: string
+  nombre: string
+  empresaNombre: string | null
+  horasRealizadas: number
+  ingresoDelPeriodo: number
+  ingresoProyectado: number
+}
+
 export interface ResumenNegocio {
   porEmpresa: EmpresaCobro[]
+  // El backend ya lo incluye (calcularResumenCobros() completo) — sólo faltaba declararlo acá.
+  porCoachee: CoacheeCobro[]
   horasRealizadasTotal: number
   ingresoDelPeriodoTotal: number
   ingresoProyectadoTotal: number
@@ -50,15 +61,6 @@ export function getAvancePorArea(): Promise<AvancePorArea[]> {
 }
 
 export type PeriodoComercial = 'mes' | 'semestre' | 'anio'
-
-export interface CoacheeCobro {
-  coacheeId: string
-  nombre: string
-  empresaNombre: string | null
-  horasRealizadas: number
-  ingresoDelPeriodo: number
-  ingresoProyectado: number
-}
 
 export interface ResumenComercial {
   periodo: PeriodoComercial

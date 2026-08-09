@@ -230,7 +230,10 @@ async function guardarContacto() {
       </nav>
     </aside>
 
-    <main :class="{ 'sm:pl-64': sidebarOpen }">
+    <main
+      class="print:pl-0!"
+      :class="{ 'sm:pl-64': sidebarOpen }"
+    >
       <header class="sticky top-0 z-20 flex items-center gap-3 border-b border-[var(--color-line)] bg-[var(--color-ivory)] px-4 py-3 sm:px-8 print:hidden">
         <button
           v-if="!sidebarOpen"
