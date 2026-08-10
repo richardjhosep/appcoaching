@@ -57,7 +57,7 @@ async function responder(aceptado: boolean) {
   <div class="flex min-h-screen items-center justify-center bg-[var(--color-parchment)] p-4">
     <div class="w-full max-w-md rounded-2xl border border-[var(--color-line)] bg-white p-6 shadow-sm">
       <h1 class="mb-4 font-[family-name:var(--font-heading)] text-lg font-semibold">
-        CoachOS
+        Coach<span class="text-[var(--color-bronze)]">Nexus</span>
       </h1>
 
       <div
@@ -90,7 +90,7 @@ async function responder(aceptado: boolean) {
       <div v-else-if="vista === 'formulario'">
         <p class="mb-3 text-sm text-[var(--color-ink)]/80">
           Hola {{ solicitud?.nombre }}, tu coach te pide confirmar tu <strong>consentimiento informado</strong>
-          para participar del proceso de coaching en CoachOS.
+          para participar del proceso de coaching en CoachNexus.
         </p>
         <div class="mb-4 rounded-xl border border-[var(--color-line)] bg-[var(--color-parchment)]/40 p-4 text-xs text-[var(--color-ink)]/70">
           <p class="mb-2">

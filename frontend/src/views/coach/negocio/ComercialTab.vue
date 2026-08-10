@@ -201,14 +201,6 @@ function abrirNuevoProceso(coacheeId: string) {
           {{ resumen.procesosCerrados }}
         </p>
       </div>
-      <div class="rounded-2xl border border-[var(--color-line)] bg-white p-4">
-        <p class="text-xs text-[var(--color-ink)]/60">
-          Reagendamientos solicitados
-        </p>
-        <p class="font-[family-name:var(--font-mono)] text-2xl">
-          {{ resumen.reagendamientosSolicitados }}
-        </p>
-      </div>
     </div>
 
     <div class="rounded-2xl border border-[var(--color-line)] bg-white p-4">

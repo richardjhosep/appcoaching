@@ -133,6 +133,13 @@ withDefaults(defineProps<{ name: string; size?: number }>(), { size: 18 })
         rx="1.5"
       /><path d="M8 11V7a4 4 0 0 1 8 0v4" />
     </template>
+    <template v-else-if="name === 'buscar'">
+      <circle
+        cx="11"
+        cy="11"
+        r="7"
+      /><path d="m20 20-3.5-3.5" />
+    </template>
     <template v-else-if="name === 'flecha-izquierda'">
       <path d="M19 12H5" /><path d="M11 18l-6-6 6-6" />
     </template>
@@ -144,6 +151,9 @@ withDefaults(defineProps<{ name: string; size?: number }>(), { size: 18 })
         height="14"
         rx="2"
       /><path d="m4 7 8 6 8-6" />
+    </template>
+    <template v-else-if="name === 'telefono'">
+      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z" />
     </template>
     <template v-else-if="name === 'contacto'">
       <rect

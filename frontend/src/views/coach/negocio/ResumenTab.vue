@@ -52,13 +52,19 @@ function irASeguimiento(coacheeId: string) {
   void router.push({ name: 'coach-coachee-detail', params: { coacheeId }, query: { tab: 'sesiones' } })
 }
 
+function verCoachee(coacheeId: string) {
+  void router.push({ name: 'coach-coachee-detail', params: { coacheeId } })
+}
+
 function imprimir() {
   window.print()
 }
 
 function exportarExcel() {
   if (!resumen.value) return
-  const filas = resumen.value.porEmpresa.map((e) => ({
+  const libro = XLSX.utils.book_new()
+
+  const filasEmpresa = resumen.value.porEmpresa.map((e) => ({
     Empresa: e.nombre,
     Pagada: e.pagada ? 'Sí' : 'No',
     'Horas contratadas': e.horasContratadas ?? '',
@@ -66,9 +72,19 @@ function exportarExcel() {
     'Ingreso del período': e.ingresoDelPeriodo,
     'Ingreso proyectado': e.ingresoProyectado,
   }))
-  const hoja = XLSX.utils.json_to_sheet(filas)
-  const libro = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(libro, hoja, 'Cobros por empresa')
+  XLSX.utils.book_append_sheet(libro, XLSX.utils.json_to_sheet(filasEmpresa), 'Cobros por empresa')
+
+  // Una fila por coachee con actividad de cobro este período — incluye tanto a los de
+  // empresa como a los independientes, que la hoja de arriba (por diseño) no cubre.
+  const filasCoachee = resumen.value.porCoachee.map((c) => ({
+    Coachee: c.nombre,
+    Empresa: c.empresaNombre ?? 'Independiente',
+    'Horas realizadas': c.horasRealizadas,
+    'Ingreso del período': c.ingresoDelPeriodo,
+    'Ingreso proyectado': c.ingresoProyectado,
+  }))
+  XLSX.utils.book_append_sheet(libro, XLSX.utils.json_to_sheet(filasCoachee), 'Cobros por coachee')
+
   XLSX.writeFile(libro, `reporte-negocio-${new Date().toISOString().slice(0, 10)}.xlsx`)
 }
 </script>
@@ -351,6 +367,76 @@ function exportarExcel() {
               </td>
               <td class="py-2">
                 {{ formatoCLP.format(e.ingresoProyectado) }}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="rounded-2xl border border-[var(--color-line)] bg-white p-4">
+      <h2 class="mb-3 text-sm font-medium">
+        Ingresos por coachee
+      </h2>
+      <p class="mb-3 text-xs text-[var(--color-ink)]/50">
+        Incluye tanto a los de empresa como a los independientes — estos últimos no aparecen en la tabla de arriba, que es por empresa.
+      </p>
+      <p
+        v-if="resumen.porCoachee.length === 0"
+        class="text-sm text-[var(--color-ink)]/60"
+      >
+        Nadie tuvo actividad de cobro este período.
+      </p>
+      <div
+        v-else
+        class="overflow-x-auto"
+      >
+        <table class="w-full text-left text-sm">
+          <thead>
+            <tr class="text-xs text-[var(--color-ink)]/60">
+              <th class="py-1">
+                Coachee
+              </th>
+              <th class="py-1">
+                Empresa
+              </th>
+              <th class="py-1">
+                Horas realizadas
+              </th>
+              <th class="py-1">
+                Ingreso período
+              </th>
+              <th class="py-1">
+                Proyectado
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="c in resumen.porCoachee"
+              :key="c.coacheeId"
+              class="border-t border-[var(--color-line)]"
+            >
+              <td class="py-2">
+                <button
+                  type="button"
+                  class="transition-colors hover:text-[var(--color-sage)] hover:underline print:pointer-events-none"
+                  @click="verCoachee(c.coacheeId)"
+                >
+                  {{ c.nombre }}
+                </button>
+              </td>
+              <td class="py-2 text-[var(--color-ink)]/70">
+                {{ c.empresaNombre ?? 'Independiente' }}
+              </td>
+              <td class="py-2">
+                {{ c.horasRealizadas }}
+              </td>
+              <td class="py-2">
+                {{ formatoCLP.format(c.ingresoDelPeriodo) }}
+              </td>
+              <td class="py-2">
+                {{ formatoCLP.format(c.ingresoProyectado) }}
               </td>
             </tr>
           </tbody>

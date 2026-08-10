@@ -245,4 +245,56 @@ describe('DashboardView', () => {
     expect(wrapper.text()).toContain('Nuevo Coachee')
     expect(wrapper.text()).toContain('Andes Minerals')
   })
+
+  describe('buscador de coachees', () => {
+    beforeEach(() => {
+      vi.mocked(listCoachees).mockResolvedValue([
+        { id: 'c1', nombre: 'Rodrigo Peña', empresaId: null, consentimientoInformado: true, consentimientoFecha: null },
+        { id: 'c2', nombre: 'Ana Reagenda', empresaId: 'e1', empresa: { id: 'e1', nombre: 'Andes Minerals' }, consentimientoInformado: true, consentimientoFecha: null },
+      ])
+    })
+
+    it('finds a coachee by a partial, accent-insensitive match and lets you jump to their profile', async () => {
+      const wrapper = mount(DashboardView, { global: { plugins: [router] } })
+      await flushPromises()
+
+      const buscador = wrapper.find('input[type="search"]')
+      await buscador.setValue('reagenda')
+      await buscador.trigger('focus')
+      await flushPromises()
+
+      expect(wrapper.text()).toContain('Ana Reagenda')
+      expect(wrapper.text()).toContain('Andes Minerals')
+
+      const resultado = wrapper.findAll('button').find((b) => b.text().includes('Ana Reagenda'))!
+      await resultado.trigger('mousedown')
+      await flushPromises()
+
+      expect(router.currentRoute.value.name).toBe('coach-coachee-detail')
+      expect(router.currentRoute.value.params.coacheeId).toBe('c2')
+    })
+
+    it('shows a muted "no matches" message instead of the whole list when nothing matches', async () => {
+      const wrapper = mount(DashboardView, { global: { plugins: [router] } })
+      await flushPromises()
+
+      const buscador = wrapper.find('input[type="search"]')
+      await buscador.setValue('zzzz')
+      await buscador.trigger('focus')
+      await flushPromises()
+
+      expect(wrapper.text()).toContain('Sin coincidencias')
+      expect(wrapper.text()).not.toContain('Andes Minerals')
+    })
+
+    it('does not show a dropdown while the search box is empty', async () => {
+      const wrapper = mount(DashboardView, { global: { plugins: [router] } })
+      await flushPromises()
+
+      await wrapper.find('input[type="search"]').trigger('focus')
+      await flushPromises()
+
+      expect(wrapper.text()).not.toContain('Sin coincidencias')
+    })
+  })
 })

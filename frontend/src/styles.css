@@ -26,3 +26,11 @@ body {
   color: var(--color-ink);
   font-family: var(--font-body);
 }
+
+/* Ningún navegador le pone cursor de mano a <button> por defecto (solo a los <a> con
+   href) — sin esto, cualquier botón de la app se ve clickeable pero el mouse no lo dice.
+   Se aplica acá una sola vez, en vez de repetir `cursor-pointer` botón por botón. */
+button:not(:disabled),
+[role="button"]:not([aria-disabled="true"]) {
+  cursor: pointer;
+}

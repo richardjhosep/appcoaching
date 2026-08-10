@@ -3,7 +3,7 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { ApiError } from '../api/client'
-import logoUrl from '../assets/logo.jpg'
+import AppLogo from '../components/AppLogo.vue'
 
 const auth = useAuthStore()
 const router = useRouter()
@@ -33,12 +33,18 @@ async function handleSubmit() {
     style="background: radial-gradient(circle at 20% 20%, #1c2b20 0%, var(--color-ink) 55%, #0a0a0a 100%);"
   >
     <div class="w-full max-w-sm">
-      <div class="mb-6 overflow-hidden rounded-2xl shadow-xl shadow-black/20">
-        <img
-          :src="logoUrl"
-          alt="CoachOS — Gestiona tu práctica. Multiplica tu impacto."
-          class="block w-full"
-        >
+      <div class="mb-6 flex flex-col items-center gap-2 text-center">
+        <AppLogo
+          :size="56"
+          :show-wordmark="false"
+          dark
+        />
+        <p class="font-[family-name:var(--font-heading)] text-2xl font-semibold tracking-tight text-[var(--color-ivory)]">
+          Coach<span class="text-[var(--color-bronze)]">Nexus</span>
+        </p>
+        <p class="text-sm text-white/60">
+          Gestiona tu práctica. Multiplica tu impacto.
+        </p>
       </div>
 
       <form
@@ -95,7 +101,7 @@ async function handleSubmit() {
       </form>
 
       <p class="mt-6 text-center text-xs text-white/40">
-        CoachOS · Plataforma de acompañamiento
+        CoachNexus · Plataforma de acompañamiento
       </p>
     </div>
   </div>

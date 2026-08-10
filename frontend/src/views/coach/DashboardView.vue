@@ -10,6 +10,8 @@ import { listCoachees, type CoacheeListItem } from '../../api/coachees'
 import { getResumenLegal, type ResumenLegal } from '../../api/legal'
 import { estadoVisual } from '../../lib/legalFormat'
 import { coacheesQueNecesitanAlgo, type CoacheeAtencion } from '../../lib/dashboardAtencion'
+import { buscarAproximado } from '../../lib/busquedaAproximada'
+import { iniciales } from '../../lib/avatar'
 import { ApiError } from '../../api/client'
 import { notifySuccess, notifyError } from '../../lib/notify'
 
@@ -78,6 +80,27 @@ onMounted(load)
 
 function verPerfil(coacheeId: string) {
   void router.push({ name: 'coach-coachee-detail', params: { coacheeId } })
+}
+
+// Buscador aproximado: encuentra un coachee aunque se escriba con errores, sin tildes,
+// o solo una parte del nombre — sobre la lista completa (no solo los que necesitan algo),
+// para poder saltar directo al detalle de cualquiera.
+const buscarTexto = ref('')
+const buscarAbierto = ref(false)
+const resultadosBusqueda = computed(() =>
+  buscarAproximado(buscarTexto.value, coacheesLista.value, (c) => c.nombre).slice(0, 8),
+)
+
+function cerrarBusqueda() {
+  setTimeout(() => {
+    buscarAbierto.value = false
+  }, 150)
+}
+
+function irACoacheeDesdeBusqueda(coacheeId: string) {
+  buscarTexto.value = ''
+  buscarAbierto.value = false
+  verPerfil(coacheeId)
 }
 
 function verPlan(coacheeId: string) {
@@ -159,13 +182,6 @@ function desglose(c: CoacheeAtencion): { primario: ItemAtencion | null; secundar
   return { primario, secundarios: items.filter((i) => i !== primario) }
 }
 
-function iniciales(nombre: string): string {
-  const partes = nombre.trim().split(/\s+/)
-  const primera = partes[0]?.[0] ?? ''
-  const ultima = partes.length > 1 ? partes[partes.length - 1][0] : ''
-  return (primera + ultima).toUpperCase()
-}
-
 interface InfoCobro {
   texto: string
   severidad: 'danger' | 'sage' | 'neutral'
@@ -217,13 +233,65 @@ const filasAtencion = computed<FilaAtencion[]>(() =>
 
 <template>
   <AppShell>
-    <div class="mb-5">
-      <h1 class="font-[family-name:var(--font-heading)] text-xl font-semibold">
-        Dashboard
-      </h1>
-      <p class="text-sm text-[var(--color-ink)]/60">
-        Vista general de tu práctica de coaching.
-      </p>
+    <div class="mb-5 flex flex-wrap items-start justify-between gap-3">
+      <div>
+        <h1 class="font-[family-name:var(--font-heading)] text-xl font-semibold">
+          Dashboard
+        </h1>
+        <p class="text-sm text-[var(--color-ink)]/60">
+          Vista general de tu práctica de coaching.
+        </p>
+      </div>
+
+      <div class="relative w-full sm:w-72">
+        <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-ink)]/40">
+          <NavIcon
+            name="buscar"
+            :size="16"
+          />
+        </span>
+        <input
+          v-model="buscarTexto"
+          type="search"
+          placeholder="Buscar un coachee…"
+          class="w-full rounded-full border border-[var(--color-line)] bg-white py-2 pl-9 pr-3 text-sm focus:border-[var(--color-sage)] focus:outline-none focus:ring-2 focus:ring-[var(--color-sage)]/30"
+          @focus="buscarAbierto = true"
+          @blur="cerrarBusqueda"
+        >
+        <div
+          v-if="buscarAbierto && buscarTexto.trim()"
+          class="absolute left-0 right-0 z-10 mt-1.5 max-h-72 overflow-y-auto rounded-xl border border-[var(--color-line)] bg-white p-1.5 shadow-lg"
+        >
+          <p
+            v-if="resultadosBusqueda.length === 0"
+            class="px-2 py-2 text-xs text-[var(--color-ink)]/50"
+          >
+            Sin coincidencias para "{{ buscarTexto }}".
+          </p>
+          <button
+            v-for="c in resultadosBusqueda"
+            :key="c.id"
+            type="button"
+            class="flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-left hover:bg-[var(--color-parchment)]/60"
+            @mousedown.prevent="irACoacheeDesdeBusqueda(c.id)"
+          >
+            <div
+              class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--color-ink)] text-[10px] font-semibold text-[var(--color-parchment)]"
+              aria-hidden="true"
+            >
+              {{ iniciales(c.nombre) }}
+            </div>
+            <div class="min-w-0">
+              <p class="truncate text-sm">
+                {{ c.nombre }}
+              </p>
+              <p class="truncate text-xs text-[var(--color-ink)]/50">
+                {{ c.empresa?.nombre ?? 'Independiente' }}
+              </p>
+            </div>
+          </button>
+        </div>
+      </div>
     </div>
 
     <div
@@ -342,7 +410,7 @@ const filasAtencion = computed<FilaAtencion[]>(() =>
                 <div class="min-w-0 flex-1">
                   <button
                     type="button"
-                    class="block truncate text-left font-medium hover:underline"
+                    class="block truncate text-left font-medium transition-colors hover:text-[var(--color-sage)] hover:underline"
                     @click="verPerfil(fila.coachee.coacheeId)"
                   >
                     {{ fila.coachee.nombre }}
@@ -423,7 +491,7 @@ const filasAtencion = computed<FilaAtencion[]>(() =>
             >
               <RouterLink
                 to="/coach/legal"
-                class="hover:underline"
+                class="font-medium transition-colors hover:text-[var(--color-sage)] hover:underline"
               >
                 {{ e.nombre }}
               </RouterLink>

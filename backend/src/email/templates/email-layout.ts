@@ -1,9 +1,9 @@
 const CURRENT_YEAR = new Date().getFullYear();
 
-export const LOGO_CID = 'coachos-logo';
+export const LOGO_CID = 'coachnexus-logo';
 
 /**
- * Envoltorio visual compartido por todos los correos transaccionales de CoachOS:
+ * Envoltorio visual compartido por todos los correos transaccionales de CoachNexus:
  * header con el logo, cuerpo inyectado y footer con el aviso de no-reply.
  */
 export function renderEmailLayout(bodyHtml: string): string {
@@ -14,7 +14,7 @@ export function renderEmailLayout(bodyHtml: string): string {
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;background-color:#fbf9f4;border-radius:12px;overflow:hidden;border:1px solid #e4dcc9;">
             <tr>
               <td style="background-color:#121212;padding:28px 32px;text-align:center;">
-                <img src="cid:${LOGO_CID}" width="200" alt="CoachOS" style="display:block;margin:0 auto;max-width:200px;height:auto;border:0;">
+                <img src="cid:${LOGO_CID}" width="200" alt="CoachNexus" style="display:block;margin:0 auto;max-width:200px;height:auto;border:0;">
               </td>
             </tr>
             <tr>
@@ -29,7 +29,7 @@ export function renderEmailLayout(bodyHtml: string): string {
                   Este es un mensaje automático enviado desde una casilla no-reply — por favor no respondas a este correo.
                 </p>
                 <p style="margin:0;font-size:12px;line-height:1.6;color:#6b6b6b;">
-                  © ${CURRENT_YEAR} CoachOS · Gestiona tu práctica. Multiplica tu impacto.
+                  © ${CURRENT_YEAR} CoachNexus · Gestiona tu práctica. Multiplica tu impacto.
                 </p>
               </td>
             </tr>

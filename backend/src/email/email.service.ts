@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createTransport, type Transporter } from 'nodemailer';
-import { COACHOS_LOGO_BASE64 } from './assets/logo-base64';
+import { COACHNEXUS_LOGO_BASE64 } from './assets/logo-base64';
 import {
   LOGO_CID,
   renderButton,
@@ -56,7 +56,7 @@ export class EmailService {
     const user = this.config.get<string>('smtp.user');
     const pass = this.config.get<string>('smtp.pass');
     const from = this.config.get<string>('smtp.from');
-    this.from = from ? `"CoachOS (no-reply)" <${from}>` : undefined;
+    this.from = from ? `"CoachNexus (no-reply)" <${from}>` : undefined;
 
     if (!user || !pass) {
       this.logger.warn(
@@ -83,11 +83,11 @@ export class EmailService {
   }): Promise<void> {
     const nombre = options.nombre ? escapeHtml(options.nombre) : null;
     const saludo = nombre
-      ? `¡Bienvenido/a a CoachOS, ${nombre}!`
-      : '¡Bienvenido/a a CoachOS!';
+      ? `¡Bienvenido/a a CoachNexus, ${nombre}!`
+      : '¡Bienvenido/a a CoachNexus!';
     const intro =
       'Gracias por confiar en nosotros para acompañar tu proceso de coaching. Ya creamos tu cuenta y está lista para que ingreses.';
-    const subject = 'Bienvenido/a a CoachOS — tu cuenta ya está lista';
+    const subject = 'Bienvenido/a a CoachNexus — tu cuenta ya está lista';
 
     const body = `
       <h1 style="margin:0 0 16px;font-family:'Poppins',Arial,sans-serif;font-size:22px;color:#121212;">${saludo}</h1>
@@ -107,7 +107,7 @@ export class EmailService {
       <p style="margin:16px 0 0;font-size:13px;line-height:1.6;color:#6b6b6b;">
         Por tu seguridad, esta contraseña es válida por 48 horas y deberás cambiarla la primera vez que inicies sesión.
       </p>
-      ${renderButton(options.loginUrl, 'Ingresar a CoachOS')}
+      ${renderButton(options.loginUrl, 'Ingresar a CoachNexus')}
       ${renderFallbackLink(options.loginUrl)}
     `;
 
@@ -153,7 +153,7 @@ export class EmailService {
       <h1 style="margin:0 0 16px;font-family:'Poppins',Arial,sans-serif;font-size:22px;color:#121212;">Nueva solicitud de reagendamiento</h1>
       <p style="margin:0 0 16px;font-size:15px;line-height:1.6;">${intro}</p>
       ${motivoBox}
-      ${renderButton(options.verUrl, 'Ver en CoachOS')}
+      ${renderButton(options.verUrl, 'Ver en CoachNexus')}
       ${renderFallbackLink(options.verUrl)}
     `;
 
@@ -163,7 +163,7 @@ export class EmailService {
       `${options.nombreCoachee} solicitó reagendar su sesión del ${fecha}.`,
       ...(options.motivo ? ['', `Motivo: ${options.motivo}`] : []),
       '',
-      `Ver en CoachOS: ${options.verUrl}`,
+      `Ver en CoachNexus: ${options.verUrl}`,
       '',
       'Este es un mensaje automático enviado desde una casilla no-reply — por favor no respondas a este correo.',
     ].join('\n');
@@ -376,8 +376,8 @@ export class EmailService {
         text: options.text,
         attachments: [
           {
-            filename: 'coachos-logo.jpg',
-            content: COACHOS_LOGO_BASE64,
+            filename: 'coachnexus-logo.jpg',
+            content: COACHNEXUS_LOGO_BASE64,
             encoding: 'base64',
             cid: LOGO_CID,
           },

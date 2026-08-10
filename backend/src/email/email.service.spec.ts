@@ -38,19 +38,22 @@ describe('EmailService', () => {
     expect(sendMail).toHaveBeenCalledTimes(1);
     expect(sendMail).toHaveBeenCalledWith(
       expect.objectContaining({
-        from: '"CoachOS (no-reply)" <coach@gmail.com>',
+        from: '"CoachNexus (no-reply)" <coach@gmail.com>',
         to: 'nuevo@example.com',
         subject: expect.stringContaining('Bienvenido') as string,
         html: expect.stringContaining('temp-123') as string,
         text: expect.stringContaining('temp-123') as string,
         attachments: [
-          expect.objectContaining({ cid: 'coachos-logo', encoding: 'base64' }),
+          expect.objectContaining({
+            cid: 'coachnexus-logo',
+            encoding: 'base64',
+          }),
         ],
       }),
     );
     const [[call]] = sendMail.mock.calls as [[{ html: string; text: string }]];
     expect(call.html).toContain('Ana');
-    expect(call.html).toContain('cid:coachos-logo');
+    expect(call.html).toContain('cid:coachnexus-logo');
     expect(call.html).toContain('no-reply');
     expect(call.text).toContain('Ana');
   });

@@ -45,6 +45,8 @@ export interface Coachee {
   nombre: string
   empresaId: string | null
   empresa?: { id: string; nombre: string } | null
+  // El backend ya lo incluye (relación user siempre cargada) — sólo faltaba declararlo acá.
+  user?: { id: string; email: string } | null
   telefono: string | null
   emailContacto: string | null
   jefeDirecto?: string | null

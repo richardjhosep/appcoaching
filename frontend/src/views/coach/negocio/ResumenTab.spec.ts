@@ -15,6 +15,18 @@ vi.mock('../../../api/negocio', async () => {
 })
 vi.mock('../../../api/empresas', () => ({ updateEmpresa: vi.fn() }))
 
+const jsonToSheet = vi.fn().mockReturnValue({})
+const bookAppendSheet = vi.fn()
+const writeFile = vi.fn()
+vi.mock('xlsx', () => ({
+  utils: {
+    json_to_sheet: (...args: unknown[]) => jsonToSheet(...args),
+    book_new: () => ({}),
+    book_append_sheet: (...args: unknown[]) => bookAppendSheet(...args),
+  },
+  writeFile: (...args: unknown[]) => writeFile(...args),
+}))
+
 import { getResumenNegocio, getAlertas, getAvancePorArea } from '../../../api/negocio'
 
 const resumen: ResumenNegocio = {
@@ -28,6 +40,10 @@ const resumen: ResumenNegocio = {
       ingresoDelPeriodo: 120000,
       ingresoProyectado: 60000,
     },
+  ],
+  porCoachee: [
+    { coacheeId: 'c1', nombre: 'Coachee de Empresa', empresaNombre: 'Empresa Uno', horasRealizadas: 4, ingresoDelPeriodo: 120000, ingresoProyectado: 60000 },
+    { coacheeId: 'c2', nombre: 'Coachee Independiente', empresaNombre: null, horasRealizadas: 2, ingresoDelPeriodo: 45000, ingresoProyectado: 0 },
   ],
   horasRealizadasTotal: 4,
   ingresoDelPeriodoTotal: 120000,
@@ -89,6 +105,41 @@ describe('ResumenTab', () => {
     expect((checkbox.element as HTMLInputElement).checked).toBe(true)
     const horasInput = wrapper.find('input[type="number"]')
     expect((horasInput.element as HTMLInputElement).value).toBe('10')
+  })
+
+  it('shows a per-coachee income table on screen, including independientes not covered by the empresa table', async () => {
+    const wrapper = mount(ResumenTab)
+    await flushPromises()
+
+    const text = wrapper.text()
+    expect(text).toContain('Ingresos por coachee')
+    expect(text).toContain('Coachee de Empresa')
+    expect(text).toContain('Coachee Independiente')
+    expect(text).toContain('Independiente') // empresa column fallback for c2
+  })
+
+  it('exports both empresas AND independientes to Excel, in separate sheets — not just empresas', async () => {
+    const wrapper = mount(ResumenTab)
+    await flushPromises()
+
+    const exportarBtn = wrapper.findAll('button').find((b) => b.text() === 'Exportar Excel')!
+    await exportarBtn.trigger('click')
+
+    expect(jsonToSheet).toHaveBeenCalledTimes(2)
+    const [filasEmpresa] = jsonToSheet.mock.calls[0]
+    const [filasCoachee] = jsonToSheet.mock.calls[1]
+
+    expect(filasEmpresa).toEqual([
+      { Empresa: 'Empresa Uno', Pagada: 'Sí', 'Horas contratadas': 10, 'Horas consumidas': 4, 'Ingreso del período': 120000, 'Ingreso proyectado': 60000 },
+    ])
+    expect(filasCoachee).toEqual([
+      { Coachee: 'Coachee de Empresa', Empresa: 'Empresa Uno', 'Horas realizadas': 4, 'Ingreso del período': 120000, 'Ingreso proyectado': 60000 },
+      { Coachee: 'Coachee Independiente', Empresa: 'Independiente', 'Horas realizadas': 2, 'Ingreso del período': 45000, 'Ingreso proyectado': 0 },
+    ])
+
+    expect(bookAppendSheet).toHaveBeenCalledWith(expect.anything(), expect.anything(), 'Cobros por empresa')
+    expect(bookAppendSheet).toHaveBeenCalledWith(expect.anything(), expect.anything(), 'Cobros por coachee')
+    expect(writeFile).toHaveBeenCalledTimes(1)
   })
 
   it('renders the avance por área bar chart', async () => {
