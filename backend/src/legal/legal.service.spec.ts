@@ -7,6 +7,11 @@ import { Empresa } from '../empresas/entities/empresa.entity';
 import { Coachee } from '../coachees/entities/coachee.entity';
 import { TipoDocumentoLegal } from './enums/tipo-documento-legal.enum';
 import { EstadoDocumentoLegal } from './enums/estado-documento-legal.enum';
+import { validarPdfSubido } from '../common/file-type-filter.util';
+
+jest.mock('../common/file-type-filter.util', () => ({
+  validarPdfSubido: jest.fn(),
+}));
 
 type PartialDocumento = Partial<DocumentoLegal>;
 type PartialAdicional = Partial<DocumentoAdicionalLegal>;
@@ -30,6 +35,7 @@ describe('LegalService', () => {
   let coacheesRepo: { find: jest.Mock };
 
   beforeEach(() => {
+    jest.mocked(validarPdfSubido).mockResolvedValue(undefined);
     documentosRepo = {
       findOne: jest.fn(),
       create: jest.fn((data: PartialDocumento) => data),
@@ -151,6 +157,32 @@ describe('LegalService', () => {
 
       expect(doc.archivoPath).toBe('uuid-1234.pdf');
       expect(doc.archivoNombre).toBe('nda-firmado.pdf');
+      expect(validarPdfSubido).toHaveBeenCalledWith(
+        expect.objectContaining({ filename: 'uuid-1234.pdf' }),
+        expect.any(String),
+      );
+    });
+
+    it('rejects the upload and never saves when the file is not really a PDF', async () => {
+      documentosRepo.findOne.mockResolvedValue(null);
+      jest
+        .mocked(validarPdfSubido)
+        .mockRejectedValue(
+          new BadRequestException('El archivo no es un PDF válido.'),
+        );
+
+      await expect(
+        service.upsertDocumento(
+          { empresaId: 'e1' },
+          TipoDocumentoLegal.NDA,
+          { estado: EstadoDocumentoLegal.FIRMADO },
+          {
+            filename: 'uuid-evil.pdf',
+            originalname: 'nda.pdf',
+          } as Express.Multer.File,
+        ),
+      ).rejects.toThrow(BadRequestException);
+      expect(documentosRepo.save).not.toHaveBeenCalled();
     });
 
     it('keeps the existing archivo when the caller only updates estado/fechas', async () => {
@@ -396,6 +428,23 @@ describe('LegalService', () => {
       expect(documento.coacheeId).toBeNull();
       expect(documento.titulo).toBe('Correo de aprobación');
       expect(documento.archivoNombre).toBe('correo.pdf');
+      expect(validarPdfSubido).toHaveBeenCalled();
+    });
+
+    it('rejects subirAdicional and never saves when the file is not really a PDF', async () => {
+      jest
+        .mocked(validarPdfSubido)
+        .mockRejectedValue(
+          new BadRequestException('El archivo no es un PDF válido.'),
+        );
+
+      await expect(
+        service.subirAdicional({ empresaId: 'e1' }, 'Correo de aprobación', {
+          filename: 'uuid-evil.pdf',
+          originalname: 'correo.pdf',
+        } as Express.Multer.File),
+      ).rejects.toThrow(BadRequestException);
+      expect(adicionalesRepo.save).not.toHaveBeenCalled();
     });
 
     it('stores an adicional attached to a coachee', async () => {

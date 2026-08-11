@@ -14,11 +14,14 @@ export default () => ({
   redis: {
     host: process.env.REDIS_HOST ?? 'localhost',
     port: parseInt(process.env.REDIS_PORT ?? '6379', 10),
+    password: process.env.REDIS_PASSWORD,
   },
   jwt: {
-    accessSecret: process.env.JWT_ACCESS_SECRET ?? 'dev-access-secret',
+    // Sin fallback a propósito: validateEnv() ya hizo fallar el arranque si no están
+    // definidas o son inseguras, así que acá siempre hay un valor real.
+    accessSecret: process.env.JWT_ACCESS_SECRET as string,
     accessTtl: process.env.JWT_ACCESS_TTL ?? '15m',
-    refreshSecret: process.env.JWT_REFRESH_SECRET ?? 'dev-refresh-secret',
+    refreshSecret: process.env.JWT_REFRESH_SECRET as string,
     refreshTtl: process.env.JWT_REFRESH_TTL ?? '7d',
   },
   bcryptRounds: parseInt(process.env.BCRYPT_SALT_ROUNDS ?? '12', 10),

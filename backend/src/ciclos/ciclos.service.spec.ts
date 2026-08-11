@@ -12,6 +12,11 @@ import { Role } from '../auth/enums/role.enum';
 import { CoacheesService } from '../coachees/coachees.service';
 import { PlanesDesarrolloService } from '../planes-desarrollo/planes-desarrollo.service';
 import { SeguimientoService } from '../seguimiento/seguimiento.service';
+import { validarPdfSubido } from '../common/file-type-filter.util';
+
+jest.mock('../common/file-type-filter.util', () => ({
+  validarPdfSubido: jest.fn(),
+}));
 
 type PartialCiclo = Partial<CicloCoaching>;
 
@@ -33,6 +38,7 @@ describe('CiclosService', () => {
   let seguimiento: { avanceGeneralForCoachee: jest.Mock };
 
   beforeEach(() => {
+    jest.mocked(validarPdfSubido).mockResolvedValue(undefined);
     ciclosRepo = {
       findOne: jest.fn<Promise<PartialCiclo | null>, unknown[]>(),
       find: jest.fn<Promise<PartialCiclo[]>, unknown[]>(),
@@ -197,6 +203,51 @@ describe('CiclosService', () => {
       expect(ciclo.informeFinal).toContain('Mejorar liderazgo');
       expect(ciclo.informeFinal).toContain('Delegar más');
       expect(ciclo.informeFinal).toContain('sin autoevaluación registrada');
+    });
+  });
+
+  describe('uploadInformePdf', () => {
+    it('validates the file is really a PDF before storing it', async () => {
+      ciclosRepo.findOne.mockResolvedValue({
+        id: 'ciclo-1',
+        coacheeId: 'coachee-1',
+        totalSesiones: 10,
+        fechaApertura: new Date('2026-01-01'),
+        fechaCierre: null,
+      });
+
+      const ciclo = await service.uploadInformePdf('ciclo-1', {
+        originalname: 'informe.pdf',
+        filename: 'uuid-1.pdf',
+      });
+
+      expect(validarPdfSubido).toHaveBeenCalledWith(
+        { originalname: 'informe.pdf', filename: 'uuid-1.pdf' },
+        expect.any(String),
+      );
+      expect(ciclo.informePdfPath).toBe('uuid-1.pdf');
+      expect(ciclo.informePdfNombre).toBe('informe.pdf');
+    });
+
+    it('rejects and never saves when the file is not really a PDF', async () => {
+      ciclosRepo.findOne.mockResolvedValue({
+        id: 'ciclo-1',
+        coacheeId: 'coachee-1',
+        totalSesiones: 10,
+        fechaApertura: new Date('2026-01-01'),
+        fechaCierre: null,
+      });
+      jest
+        .mocked(validarPdfSubido)
+        .mockRejectedValue(new Error('El archivo no es un PDF válido.'));
+
+      await expect(
+        service.uploadInformePdf('ciclo-1', {
+          originalname: 'informe.pdf',
+          filename: 'uuid-evil.pdf',
+        }),
+      ).rejects.toThrow('El archivo no es un PDF válido.');
+      expect(ciclosRepo.save).not.toHaveBeenCalled();
     });
   });
 

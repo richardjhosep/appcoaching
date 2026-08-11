@@ -23,6 +23,7 @@ import { UpsertDocumentoLegalDto } from './dto/upsert-documento-legal.dto';
 import { SubirDocumentoAdicionalDto } from './dto/subir-documento-adicional.dto';
 import { TipoDocumentoLegal } from './enums/tipo-documento-legal.enum';
 import { UPLOADS_DIR } from '../recursos/uploads-dir.util';
+import { soloPermitir, MIMETYPES_PDF } from '../common/file-type-filter.util';
 import { AuditService } from '../audit/audit.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -39,6 +40,7 @@ const ARCHIVO_INTERCEPTOR = FileInterceptor('archivo', {
     },
   }),
   limits: { fileSize: 20 * 1024 * 1024 },
+  fileFilter: soloPermitir(MIMETYPES_PDF),
 });
 
 @UseGuards(JwtAuthGuard, RolesGuard)

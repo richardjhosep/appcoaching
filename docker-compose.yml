@@ -3,7 +3,7 @@ services:
     image: postgres:16-alpine
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-coaching}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD en .env — no hay valor por defecto a propósito}
       POSTGRES_DB: ${POSTGRES_DB:-coaching}
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -15,8 +15,17 @@ services:
 
   redis:
     image: redis:7-alpine
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+    # Sin REDIS_PASSWORD, redis queda igual que antes (sin auth) — la app ya soporta
+    # ambos casos (redis.service.ts sólo manda password si está definida). Si se define,
+    # exige auth; sólo importa de verdad si redis alguna vez queda expuesto fuera de la
+    # red interna de docker (hoy sólo se expone vía docker-compose.override.yml, marcado
+    # como "nunca en producción").
+    command: >
+      sh -c 'if [ -n "$$REDIS_PASSWORD" ]; then exec redis-server --requirepass "$$REDIS_PASSWORD"; else exec redis-server; fi'
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" ping || redis-cli ping"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -27,7 +36,7 @@ services:
       POSTGRES_HOST: postgres
       POSTGRES_DB: ${POSTGRES_DB:-coaching}
       POSTGRES_USER: ${POSTGRES_USER:-coaching}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD en .env — no hay valor por defecto a propósito}
       SCHEDULE: "@daily"
       BACKUP_KEEP_DAYS: 7
       BACKUP_KEEP_WEEKS: 4

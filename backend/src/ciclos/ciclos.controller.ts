@@ -23,6 +23,7 @@ import { CerrarCicloDto } from './dto/cerrar-ciclo.dto';
 import { UpdateResumenDto } from './dto/update-resumen.dto';
 import { UpdateInformeFinalDto } from './dto/update-informe-final.dto';
 import { UPLOADS_DIR } from '../recursos/uploads-dir.util';
+import { soloPermitir, MIMETYPES_PDF } from '../common/file-type-filter.util';
 import { CoacheesService } from '../coachees/coachees.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -110,6 +111,7 @@ export class CiclosController {
         },
       }),
       limits: { fileSize: 20 * 1024 * 1024 },
+      fileFilter: soloPermitir(MIMETYPES_PDF),
     }),
   )
   subirInformePdf(

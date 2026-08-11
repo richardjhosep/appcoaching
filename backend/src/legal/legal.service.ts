@@ -12,6 +12,8 @@ import { Coachee } from '../coachees/entities/coachee.entity';
 import { TipoDocumentoLegal } from './enums/tipo-documento-legal.enum';
 import { EstadoDocumentoLegal } from './enums/estado-documento-legal.enum';
 import { UpsertDocumentoLegalDto } from './dto/upsert-documento-legal.dto';
+import { UPLOADS_DIR } from '../recursos/uploads-dir.util';
+import { validarPdfSubido } from '../common/file-type-filter.util';
 
 /** Exactamente uno de los dos debe estar presente — empresa o coachee independiente. */
 export interface TargetLegal {
@@ -125,6 +127,7 @@ export class LegalService {
     documento.fecha = dto.fecha ?? null;
     documento.vigencia = dto.vigencia ?? null;
     if (archivo) {
+      await validarPdfSubido(archivo, UPLOADS_DIR);
       documento.archivoPath = archivo.filename;
       documento.archivoNombre = archivo.originalname;
     }
@@ -253,6 +256,7 @@ export class LegalService {
     if (!archivo) {
       throw new BadRequestException('Debe adjuntarse un archivo.');
     }
+    await validarPdfSubido(archivo, UPLOADS_DIR);
     const documento = this.adicionales.create({
       empresaId: target.empresaId ?? null,
       coacheeId: target.coacheeId ?? null,

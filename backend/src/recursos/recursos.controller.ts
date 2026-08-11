@@ -26,6 +26,10 @@ import { UpdateRecursoDto } from './dto/update-recurso.dto';
 import { AsignarAccesoDto } from './dto/asignar-acceso.dto';
 import { CreateAprendizajeDto } from './dto/create-aprendizaje.dto';
 import { UPLOADS_DIR } from './uploads-dir.util';
+import {
+  soloPermitir,
+  MIMETYPES_RECURSO,
+} from '../common/file-type-filter.util';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -52,6 +56,7 @@ export class RecursosController {
         },
       }),
       limits: { fileSize: 20 * 1024 * 1024 },
+      fileFilter: soloPermitir(MIMETYPES_RECURSO),
     }),
   )
   create(
@@ -151,11 +156,14 @@ export class RecursosController {
     @Res() res: Response,
   ) {
     const recurso = await this.recursos.findOne(id);
-    if (!recurso.archivoPath) {
-      throw new NotFoundException('Este recurso no tiene un archivo asociado.');
-    }
+    // El permiso se valida antes que cualquier detalle del recurso — si no, un
+    // coachee podría usar la respuesta (404 sin archivo vs. 403 sin permiso) como
+    // oráculo para saber qué recursos existen fuera de su biblioteca asignada.
     if (actor.role === Role.COACHEE) {
       await this.recursos.assertCoacheePuedeDescargar(actor.id, id);
+    }
+    if (!recurso.archivoPath) {
+      throw new NotFoundException('Este recurso no tiene un archivo asociado.');
     }
     res.download(
       join(UPLOADS_DIR, recurso.archivoPath),

@@ -15,6 +15,8 @@ import { PlanesDesarrolloService } from '../planes-desarrollo/planes-desarrollo.
 import { SeguimientoService } from '../seguimiento/seguimiento.service';
 import { Role } from '../auth/enums/role.enum';
 import type { AuthenticatedUser } from '../auth/auth.types';
+import { UPLOADS_DIR } from '../recursos/uploads-dir.util';
+import { validarPdfSubido } from '../common/file-type-filter.util';
 
 const ALERTA_SESIONES_RESTANTES = 2;
 
@@ -161,6 +163,7 @@ export class CiclosService {
     archivo: { originalname: string; filename: string },
   ): Promise<CicloConEstado> {
     const ciclo = await this.findOne(id);
+    await validarPdfSubido(archivo, UPLOADS_DIR);
     ciclo.informePdfNombre = archivo.originalname;
     ciclo.informePdfPath = archivo.filename;
     await this.ciclos.save(ciclo);
