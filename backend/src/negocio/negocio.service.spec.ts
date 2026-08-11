@@ -32,7 +32,7 @@ describe('NegocioService', () => {
   };
   let postSesionesRepo: { createQueryBuilder: jest.Mock };
   let empresasRepo: { find: jest.Mock };
-  let coacheesRepo: { find: jest.Mock; findOne: jest.Mock };
+  let coacheesRepo: { find: jest.Mock; findOne: jest.Mock; count: jest.Mock };
   let logrosRepo: { exists: jest.Mock };
   let solicitudesProcesoRepo: { find: jest.Mock };
   let solicitudesReagendamientoRepo: { count: jest.Mock };
@@ -57,6 +57,7 @@ describe('NegocioService', () => {
     coacheesRepo = {
       find: jest.fn().mockResolvedValue([]),
       findOne: jest.fn(),
+      count: jest.fn().mockResolvedValue(0),
     };
     logrosRepo = { exists: jest.fn() };
     solicitudesProcesoRepo = { find: jest.fn().mockResolvedValue([]) };
@@ -462,15 +463,18 @@ describe('NegocioService', () => {
   });
 
   describe('resumenNegocio', () => {
-    it('combines cobros, coacheesActivos and satisfaccionPromedio', async () => {
-      ciclosService.findAllAbiertosConEstado.mockResolvedValue([{}, {}]);
+    it('combines cobros, coacheesActivos (cartera activa, no sólo con ciclo abierto) and satisfaccionPromedio', async () => {
+      coacheesRepo.count.mockResolvedValue(3);
       postSesionesRepo.createQueryBuilder.mockReturnValue(
         makeAvgQueryBuilder('4.333'),
       );
 
       const resumen = await service.resumenNegocio();
 
-      expect(resumen.coacheesActivos).toBe(2);
+      expect(coacheesRepo.count).toHaveBeenCalledWith({
+        where: { activo: true },
+      });
+      expect(resumen.coacheesActivos).toBe(3);
       expect(resumen.satisfaccionPromedio).toBe(4.3);
     });
 

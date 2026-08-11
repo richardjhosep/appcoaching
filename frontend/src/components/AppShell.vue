@@ -52,33 +52,66 @@ interface NavItem {
   icon: string
 }
 
-const coacheeNav: NavItem[] = [
-  { to: '/coachee/plan', label: 'Plan', icon: 'planes' },
-  { to: '/coachee/sesiones', label: 'Sesiones', icon: 'sesiones' },
-  { to: '/coachee/progreso', label: 'Progreso', icon: 'progreso' },
-  { to: '/coachee/biblioteca', label: 'Biblioteca', icon: 'biblioteca' },
+interface NavGroup {
+  // Sin label = va pegado al grupo anterior, sin separador ni título (para que el
+  // primer grupo — Dashboard solo — no lleve una línea encima de la nada).
+  label?: string
+  items: NavItem[]
+}
+
+const coacheeNavGroups: NavGroup[] = [
+  {
+    items: [
+      { to: '/coachee/plan', label: 'Plan', icon: 'planes' },
+      { to: '/coachee/sesiones', label: 'Sesiones', icon: 'sesiones' },
+      { to: '/coachee/progreso', label: 'Progreso', icon: 'progreso' },
+      { to: '/coachee/biblioteca', label: 'Biblioteca', icon: 'biblioteca' },
+    ],
+  },
 ]
 
-const coachNav: NavItem[] = [
-  { to: '/coach/dashboard', label: 'Dashboard', icon: 'dashboard' },
-  { to: '/coach/planes', label: 'Planes', icon: 'planes' },
-  { to: '/coach/recursos', label: 'Recursos', icon: 'recursos' },
-  { to: '/coach/negocio', label: 'Negocio', icon: 'negocio' },
-  { to: '/coach/legal', label: 'Legal y auditoría', icon: 'legal' },
-  { to: '/coach/empresas', label: 'Empresas', icon: 'empresas' },
-  { to: '/coach/coachees', label: 'Coachees', icon: 'coachees' },
-  { to: '/coach/usuarios', label: 'Usuarios', icon: 'usuarios' },
+// Agrupado en 3 bloques, no alfabético: quién trabajas (Coachees/Empresas) primero
+// porque son la entidad central de la app — todo lo demás (planes, recursos) es "de un
+// coachee" —, después el trabajo de coaching en sí, y al final negocio/legal/admin.
+const coachNavGroups: NavGroup[] = [
+  { items: [{ to: '/coach/dashboard', label: 'Dashboard', icon: 'dashboard' }] },
+  {
+    label: 'Coaching',
+    items: [
+      { to: '/coach/coachees', label: 'Coachees', icon: 'coachees' },
+      { to: '/coach/empresas', label: 'Empresas', icon: 'empresas' },
+    ],
+  },
+  {
+    label: 'Trabajo',
+    items: [
+      { to: '/coach/planes', label: 'Planes', icon: 'planes' },
+      { to: '/coach/recursos', label: 'Recursos', icon: 'recursos' },
+    ],
+  },
+  {
+    label: 'Administración',
+    items: [
+      { to: '/coach/negocio', label: 'Negocio', icon: 'negocio' },
+      { to: '/coach/legal', label: 'Legal y auditoría', icon: 'legal' },
+      { to: '/coach/usuarios', label: 'Usuarios', icon: 'usuarios' },
+    ],
+  },
 ]
 
-const empresaNav: NavItem[] = [
-  { to: '/empresa/coachees', label: 'Coachees', icon: 'coachees' },
-  { to: '/empresa/satisfaccion', label: 'Satisfacción', icon: 'satisfaccion' },
+const empresaNavGroups: NavGroup[] = [
+  {
+    items: [
+      { to: '/empresa/coachees', label: 'Coachees', icon: 'coachees' },
+      { to: '/empresa/satisfaccion', label: 'Satisfacción', icon: 'satisfaccion' },
+    ],
+  },
 ]
 
-const navItems = computed<NavItem[]>(() => {
-  if (auth.user?.role === 'coachee') return coacheeNav
-  if (auth.user?.role === 'coach') return coachNav
-  if (auth.user?.role === 'empresa') return empresaNav
+const navGroups = computed<NavGroup[]>(() => {
+  if (auth.user?.role === 'coachee') return coacheeNavGroups
+  if (auth.user?.role === 'coach') return coachNavGroups
+  if (auth.user?.role === 'empresa') return empresaNavGroups
   return []
 })
 
@@ -215,18 +248,32 @@ async function guardarContacto() {
         <BusquedaGlobal />
       </div>
 
-      <nav class="flex-1 space-y-0.5 overflow-y-auto px-3 py-3">
-        <RouterLink
-          v-for="item in navItems"
-          :key="item.to"
-          :to="item.to"
-          class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-[var(--color-parchment)]/80 transition-colors hover:bg-white/10 hover:text-[var(--color-parchment)]"
-          active-class="bg-[var(--color-sage)]/20 text-[var(--color-parchment)] font-medium"
-          @click="closeOnMobileNav"
+      <nav class="flex-1 overflow-y-auto px-3 py-3">
+        <div
+          v-for="(group, i) in navGroups"
+          :key="i"
+          :class="i > 0 ? 'mt-3 border-t border-white/10 pt-3' : ''"
         >
-          <NavIcon :name="item.icon" />
-          {{ item.label }}
-        </RouterLink>
+          <p
+            v-if="group.label"
+            class="mb-1 px-3 text-[10px] font-medium uppercase tracking-wide text-[var(--color-parchment)]/40"
+          >
+            {{ group.label }}
+          </p>
+          <div class="space-y-0.5">
+            <RouterLink
+              v-for="item in group.items"
+              :key="item.to"
+              :to="item.to"
+              class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-[var(--color-parchment)]/80 transition-colors hover:bg-white/10 hover:text-[var(--color-parchment)]"
+              active-class="bg-[var(--color-sage)]/20 text-[var(--color-parchment)] font-medium"
+              @click="closeOnMobileNav"
+            >
+              <NavIcon :name="item.icon" />
+              {{ item.label }}
+            </RouterLink>
+          </div>
+        </div>
       </nav>
     </aside>
 

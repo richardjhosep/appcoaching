@@ -364,9 +364,14 @@ export class NegocioService {
   }
 
   async resumenNegocio() {
-    const [cobros, ciclosAbiertos, satisfaccion] = await Promise.all([
+    // "Coachees activos" = cartera activa (coachee.activo, el mismo toggle del
+    // mantenedor) — NO "con ciclo abierto". Antes usaba ese conteo más angosto, lo que
+    // producía el número quedara por debajo de "coachees que necesitan algo" (esa lista
+    // sí incluye coachees sin ciclo abierto, ej. con el plan sin enviar): un coachee recién
+    // creado, sin ciclo todavía, parecía "no contar" pese a seguir activo en la cartera.
+    const [cobros, coacheesActivos, satisfaccion] = await Promise.all([
       this.calcularResumenCobros(),
-      this.ciclos.findAllAbiertosConEstado(),
+      this.coachees.count({ where: { activo: true } }),
       this.postSesiones
         .createQueryBuilder('post')
         .select('AVG(post.utilidad)', 'avg')
@@ -376,7 +381,7 @@ export class NegocioService {
 
     return {
       ...cobros,
-      coacheesActivos: ciclosAbiertos.length,
+      coacheesActivos,
       satisfaccionPromedio: satisfaccion?.avg
         ? Math.round(Number(satisfaccion.avg) * 10) / 10
         : null,
