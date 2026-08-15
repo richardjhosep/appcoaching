@@ -2,7 +2,7 @@ import Swal from 'sweetalert2'
 
 const base = Swal.mixin({
   confirmButtonColor: '#121212',
-  cancelButtonColor: '#b08d57',
+  cancelButtonColor: '#a2651a',
   buttonsStyling: true,
   customClass: {
     popup: 'font-[family-name:var(--font-body)] rounded-2xl',

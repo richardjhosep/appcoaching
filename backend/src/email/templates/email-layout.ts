@@ -44,7 +44,7 @@ export function renderButton(url: string, label: string): string {
   return `
     <table role="presentation" cellpadding="0" cellspacing="0" style="margin:24px 0;">
       <tr>
-        <td style="border-radius:8px;background-color:#b08d57;">
+        <td style="border-radius:8px;background-color:#a2651a;">
           <a href="${url}" style="display:inline-block;padding:12px 28px;font-family:'Poppins',Arial,sans-serif;font-size:14px;font-weight:600;color:#fbf9f4;text-decoration:none;border-radius:8px;">
             ${label}
           </a>

@@ -71,7 +71,7 @@ function imprimir() {
       </div>
 
       <div class="rounded-2xl border-4 border-double border-[var(--color-bronze)] bg-white p-10 text-center print:rounded-none print:border-2">
-        <p class="mb-1 font-[family-name:var(--font-heading)] text-xs uppercase tracking-widest text-[var(--color-bronze)]">
+        <p class="mb-1 font-[family-name:var(--font-heading)] text-xs uppercase tracking-widest text-[var(--color-spark)]">
           Coach Fernando Ramos
         </p>
         <h1 class="mb-6 font-[family-name:var(--font-heading)] text-2xl font-semibold">

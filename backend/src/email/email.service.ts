@@ -41,7 +41,7 @@ function renderFallbackLink(url: string): string {
   return `
     <p style="margin:0;font-size:13px;line-height:1.6;color:#6b6b6b;">
       Si el botón no funciona, copia y pega este enlace en tu navegador:<br>
-      <a href="${url}" style="color:#b08d57;">${url}</a>
+      <a href="${url}" style="color:#a2651a;">${url}</a>
     </p>
   `;
 }

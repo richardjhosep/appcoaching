@@ -9,11 +9,18 @@
   --color-ink: #121212;
   --color-parchment: #f1ebdd;
   --color-ivory: #fbf9f4;
-  --color-sage: #6b8f71;
-  --color-bronze: #b08d57;
+  /* sage/bronze subidos de saturación (14%→44%, 36%→72%) — las versiones anteriores
+     medían debajo de 3:1 de contraste como texto sobre ivory/blanco (fallaban WCAG AA),
+     además de leerse apagadas. Mismo tono/familia, más vivos y ahora accesibles. */
+  --color-sage: #2f794a;
+  --color-bronze: #a2651a;
   --color-danger: #dc2626;
   --color-line: #e4dcc9;
   --color-saltup: #03b3ac;
+  /* Acento nuevo, reservado para momentos de logro/celebración — sobre todo en la
+     experiencia del coachee (progreso, hitos), donde el pedido fue "más atractivo,
+     no tan serio". No reemplaza a los colores de estado, se suma como quinto tono. */
+  --color-spark: #ca2b6d;
 
   --font-heading: "Poppins", sans-serif;
   --font-body: "Inter", sans-serif;
