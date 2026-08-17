@@ -4,6 +4,8 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Role } from '../auth/enums/role.enum';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import type { AuthenticatedUser } from '../auth/auth.types';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('negocio')
@@ -14,6 +16,18 @@ export class NegocioController {
   @Get('resumen')
   resumen() {
     return this.negocio.resumenNegocio();
+  }
+
+  @Roles(Role.EMPRESA)
+  @Get('empresa/resumen')
+  resumenEmpresa(@CurrentUser() actor: AuthenticatedUser) {
+    return this.negocio.resumenParaEmpresa(actor.empresaId ?? '');
+  }
+
+  @Roles(Role.EMPRESA)
+  @Get('empresa/proyeccion')
+  proyeccionEmpresa(@CurrentUser() actor: AuthenticatedUser) {
+    return this.negocio.proyeccionParaEmpresa(actor.empresaId ?? '');
   }
 
   @Roles(Role.COACH)

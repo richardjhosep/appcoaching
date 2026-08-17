@@ -264,6 +264,50 @@ describe('NegocioService', () => {
 
       expect(resumen.porCoachee.map((c) => c.coacheeId)).toEqual(['c1']);
     });
+
+    it('gastoBruto* is never gated by pagada — porCoacheeGastoBruto includes a coachee excluded from porCoachee', async () => {
+      const coachee = {
+        id: 'c1',
+        nombre: 'Ana',
+        empresaId: 'e1',
+        tarifaPropia: null,
+        empresa: {
+          id: 'e1',
+          nombre: 'Empresa sin pagar',
+          tarifaHora: 30000,
+          pagada: false,
+        },
+      };
+      coacheesRepo.find.mockResolvedValue([coachee]);
+      empresasRepo.find.mockResolvedValue([coachee.empresa]);
+      sesionesRepo.find.mockResolvedValue([
+        { coacheeId: 'c1', fechaHora: hace1h },
+        { coacheeId: 'c1', fechaHora: en1h },
+      ]);
+
+      const resumen = await service.calcularResumenCobros();
+
+      // porCoachee (gated) sigue vacío, como siempre — no se toca su comportamiento.
+      expect(resumen.porCoachee).toEqual([]);
+      // porEmpresa sigue con ingreso $0 (gated) pero ahora también trae el gasto real.
+      expect(resumen.porEmpresa[0]).toMatchObject({
+        ingresoDelPeriodo: 0,
+        ingresoProyectado: 0,
+        gastoBrutoDelPeriodo: 30000,
+        gastoBrutoProyectado: 30000,
+      });
+      // porCoacheeGastoBruto (nuevo, sin gate) sí incluye a Ana.
+      expect(resumen.porCoacheeGastoBruto).toEqual([
+        {
+          coacheeId: 'c1',
+          nombre: 'Ana',
+          empresaNombre: 'Empresa sin pagar',
+          horasRealizadas: 1,
+          gastoBrutoDelPeriodo: 30000,
+          gastoBrutoProyectado: 30000,
+        },
+      ]);
+    });
   });
 
   describe('rangoDePeriodo', () => {
@@ -459,6 +503,188 @@ describe('NegocioService', () => {
         { nombre: 'Empresa A', monto: 30000 },
       ]);
       expect(proyeccion[1].porEmpresa).toEqual([]);
+    });
+  });
+
+  describe('resumenParaEmpresa', () => {
+    it('reports the honest gasto (unaffected by pagada) and gastoPendiente when unpaid', async () => {
+      const coachee = {
+        id: 'c1',
+        nombre: 'Ana',
+        empresaId: 'e1',
+        tarifaPropia: null,
+        empresa: {
+          id: 'e1',
+          nombre: 'Empresa sin pagar',
+          tarifaHora: 30000,
+          horasContratadas: 40,
+          pagada: false,
+        },
+      };
+      coacheesRepo.find
+        .mockResolvedValueOnce([coachee]) // calcularResumenCobros()
+        .mockResolvedValueOnce([coachee]); // this.coachees.find({ where: { empresaId } })
+      empresasRepo.find.mockResolvedValue([coachee.empresa]);
+      sesionesRepo.find.mockResolvedValue([
+        { coacheeId: 'c1', fechaHora: hace1h },
+      ]);
+
+      const resumen = await service.resumenParaEmpresa('e1');
+
+      expect(resumen).toEqual({
+        pagada: false,
+        horasContratadas: 40,
+        horasConsumidas: 1,
+        gastoDelPeriodo: 30000,
+        gastoProyectado: 0,
+        gastoPendiente: 30000,
+        porCoachee: [
+          {
+            coacheeId: 'c1',
+            nombre: 'Ana',
+            empresaNombre: 'Empresa sin pagar',
+            horasRealizadas: 1,
+            gastoBrutoDelPeriodo: 30000,
+            gastoBrutoProyectado: 0,
+          },
+        ],
+      });
+    });
+
+    it('gastoPendiente is 0 once the coach marks the empresa as pagada', async () => {
+      const coachee = {
+        id: 'c1',
+        nombre: 'Ana',
+        empresaId: 'e1',
+        tarifaPropia: null,
+        empresa: {
+          id: 'e1',
+          nombre: 'Empresa pagada',
+          tarifaHora: 30000,
+          horasContratadas: null,
+          pagada: true,
+        },
+      };
+      coacheesRepo.find
+        .mockResolvedValueOnce([coachee])
+        .mockResolvedValueOnce([coachee]);
+      empresasRepo.find.mockResolvedValue([coachee.empresa]);
+      sesionesRepo.find.mockResolvedValue([
+        { coacheeId: 'c1', fechaHora: hace1h },
+      ]);
+
+      const resumen = await service.resumenParaEmpresa('e1');
+
+      expect(resumen.gastoDelPeriodo).toBe(30000);
+      expect(resumen.gastoPendiente).toBe(0);
+    });
+
+    it('never includes a coachee from a different empresa', async () => {
+      const propio = {
+        id: 'c1',
+        nombre: 'Ana',
+        empresaId: 'e1',
+        tarifaPropia: null,
+        empresa: {
+          id: 'e1',
+          nombre: 'Empresa A',
+          tarifaHora: 30000,
+          pagada: true,
+        },
+      };
+      const ajeno = {
+        id: 'c2',
+        nombre: 'Beto',
+        empresaId: 'e2',
+        tarifaPropia: null,
+        empresa: {
+          id: 'e2',
+          nombre: 'Empresa B',
+          tarifaHora: 20000,
+          pagada: true,
+        },
+      };
+      coacheesRepo.find
+        .mockResolvedValueOnce([propio, ajeno])
+        .mockResolvedValueOnce([propio]); // solo los de e1
+      empresasRepo.find.mockResolvedValue([propio.empresa, ajeno.empresa]);
+      sesionesRepo.find.mockResolvedValue([
+        { coacheeId: 'c1', fechaHora: hace1h },
+        { coacheeId: 'c2', fechaHora: hace1h },
+      ]);
+
+      const resumen = await service.resumenParaEmpresa('e1');
+
+      expect(resumen.porCoachee.map((c) => c.coacheeId)).toEqual(['c1']);
+    });
+  });
+
+  describe('proyeccionParaEmpresa', () => {
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    it('returns 6 months, never includes porEmpresa, and scopes porCoachee to the empresa', async () => {
+      jest.useFakeTimers().setSystemTime(new Date(2026, 7, 15));
+
+      const propio = {
+        id: 'c1',
+        nombre: 'Ana',
+        empresaId: 'e1',
+        tarifaPropia: null,
+        empresa: {
+          id: 'e1',
+          nombre: 'Empresa A',
+          tarifaHora: 30000,
+          pagada: true,
+        },
+      };
+      const ajeno = {
+        id: 'c2',
+        nombre: 'Beto',
+        empresaId: 'e2',
+        tarifaPropia: null,
+        empresa: {
+          id: 'e2',
+          nombre: 'Empresa B',
+          tarifaHora: 20000,
+          pagada: false,
+        },
+      };
+      coacheesRepo.find.mockImplementation(
+        (opts?: { where?: { empresaId?: string } }) => {
+          if (opts?.where?.empresaId) {
+            return Promise.resolve(
+              opts.where.empresaId === 'e1' ? [propio] : [ajeno],
+            );
+          }
+          return Promise.resolve([propio, ajeno]);
+        },
+      );
+      empresasRepo.find.mockResolvedValue([propio.empresa, ajeno.empresa]);
+
+      let mesLlamado = -1;
+      sesionesRepo.find.mockImplementation(() => {
+        mesLlamado += 1;
+        if (mesLlamado === 0) {
+          return Promise.resolve([
+            { coacheeId: 'c1', fechaHora: new Date(2026, 7, 10) },
+            { coacheeId: 'c2', fechaHora: new Date(2026, 7, 10) },
+          ]);
+        }
+        return Promise.resolve([]);
+      });
+
+      const proyeccion = await service.proyeccionParaEmpresa('e1');
+
+      expect(proyeccion).toHaveLength(6);
+      expect(proyeccion[0]).toEqual({
+        mes: '2026-08',
+        etiqueta: "Ago '26",
+        total: 30000,
+        porCoachee: [{ nombre: 'Ana', monto: 30000 }],
+      });
+      expect(proyeccion[0]).not.toHaveProperty('porEmpresa');
     });
   });
 

@@ -189,6 +189,12 @@ const routes: RouteRecordRaw[] = [
     meta: { roles: ['empresa'] },
   },
   {
+    path: '/empresa/finanzas',
+    name: 'empresa-finanzas',
+    component: () => import('../views/empresa/FinanzasView.vue'),
+    meta: { roles: ['empresa'] },
+  },
+  {
     path: '/empresa/coachees/:coacheeId/ciclo',
     name: 'empresa-ciclo',
     component: () => import('../views/empresa/CicloView.vue'),

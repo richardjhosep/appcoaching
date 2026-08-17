@@ -28,6 +28,11 @@ export interface EmpresaCobro {
   horasConsumidas: number;
   ingresoDelPeriodo: number;
   ingresoProyectado: number;
+  // Mismo cálculo que ingresoDelPeriodo/ingresoProyectado pero sin el gate de `pagada` —
+  // lo que la empresa realmente gastó, independiente de si el coach ya concilió el cobro
+  // en su propio panel. Usado por la vista de empresa, no por el panel del coach.
+  gastoBrutoDelPeriodo: number;
+  gastoBrutoProyectado: number;
 }
 
 export interface CoacheeCobro {
@@ -39,9 +44,22 @@ export interface CoacheeCobro {
   ingresoProyectado: number;
 }
 
+// Gasto real por coachee, sin el gate de `pagada` — a diferencia de `porCoachee` (que solo
+// incluye coachees "facturables" hoy), esta lista incluye a TODOS los coachees con actividad
+// en el período, incluidos los de una empresa que el coach todavía no marcó como pagada.
+export interface CoacheeGastoBruto {
+  coacheeId: string;
+  nombre: string;
+  empresaNombre: string | null;
+  horasRealizadas: number;
+  gastoBrutoDelPeriodo: number;
+  gastoBrutoProyectado: number;
+}
+
 export interface ResumenCobros {
   porEmpresa: EmpresaCobro[];
   porCoachee: CoacheeCobro[];
+  porCoacheeGastoBruto: CoacheeGastoBruto[];
   horasRealizadasTotal: number;
   ingresoDelPeriodoTotal: number;
   ingresoProyectadoTotal: number;
@@ -57,6 +75,23 @@ export interface ProyeccionMes {
   etiqueta: string;
   total: number;
   porEmpresa: ContribuyenteMes[];
+  porCoachee: ContribuyenteMes[];
+}
+
+export interface ResumenFinanzasEmpresa {
+  pagada: boolean;
+  horasContratadas: number | null;
+  horasConsumidas: number;
+  gastoDelPeriodo: number;
+  gastoProyectado: number;
+  gastoPendiente: number;
+  porCoachee: CoacheeGastoBruto[];
+}
+
+export interface ProyeccionMesEmpresa {
+  mes: string;
+  etiqueta: string;
+  total: number;
   porCoachee: ContribuyenteMes[];
 }
 
@@ -165,6 +200,8 @@ export class NegocioService {
         horasConsumidas: number;
         ingresoDelPeriodo: number;
         ingresoProyectado: number;
+        gastoBrutoDelPeriodo: number;
+        gastoBrutoProyectado: number;
       }
     >();
     const porCoacheeMap = new Map<
@@ -173,6 +210,17 @@ export class NegocioService {
         horasRealizadas: number;
         ingresoDelPeriodo: number;
         ingresoProyectado: number;
+      }
+    >();
+    // Espejo de porCoacheeMap pero sin el gate de `pagada` — ver comentario en
+    // CoacheeGastoBruto. Se mantiene aparte para no alterar en absoluto qué filas/valores
+    // devuelve porCoachee hoy (usado por el panel del coach, ya probado).
+    const porCoacheeGastoBrutoMap = new Map<
+      string,
+      {
+        horasRealizadas: number;
+        gastoBrutoDelPeriodo: number;
+        gastoBrutoProyectado: number;
       }
     >();
 
@@ -200,12 +248,16 @@ export class NegocioService {
           horasConsumidas: 0,
           ingresoDelPeriodo: 0,
           ingresoProyectado: 0,
+          gastoBrutoDelPeriodo: 0,
+          gastoBrutoProyectado: 0,
         };
         if (realizada) {
           bucket.horasConsumidas += 1;
+          bucket.gastoBrutoDelPeriodo += tarifa;
           if (coachee.empresa?.pagada) bucket.ingresoDelPeriodo += tarifa;
-        } else if (coachee.empresa?.pagada) {
-          bucket.ingresoProyectado += tarifa;
+        } else {
+          bucket.gastoBrutoProyectado += tarifa;
+          if (coachee.empresa?.pagada) bucket.ingresoProyectado += tarifa;
         }
         porEmpresaMap.set(coachee.empresaId, bucket);
       }
@@ -224,6 +276,19 @@ export class NegocioService {
         }
         porCoacheeMap.set(coachee.id, bucket);
       }
+
+      const gastoBucket = porCoacheeGastoBrutoMap.get(coachee.id) ?? {
+        horasRealizadas: 0,
+        gastoBrutoDelPeriodo: 0,
+        gastoBrutoProyectado: 0,
+      };
+      if (realizada) {
+        gastoBucket.horasRealizadas += 1;
+        gastoBucket.gastoBrutoDelPeriodo += tarifa;
+      } else {
+        gastoBucket.gastoBrutoProyectado += tarifa;
+      }
+      porCoacheeGastoBrutoMap.set(coachee.id, gastoBucket);
     }
 
     const porEmpresa: EmpresaCobro[] = empresas.map((empresa) => {
@@ -231,6 +296,8 @@ export class NegocioService {
         horasConsumidas: 0,
         ingresoDelPeriodo: 0,
         ingresoProyectado: 0,
+        gastoBrutoDelPeriodo: 0,
+        gastoBrutoProyectado: 0,
       };
       return {
         empresaId: empresa.id,
@@ -261,9 +328,29 @@ export class NegocioService {
           (a.ingresoDelPeriodo + a.ingresoProyectado),
       );
 
+    const porCoacheeGastoBruto: CoacheeGastoBruto[] = [
+      ...porCoacheeGastoBrutoMap.entries(),
+    ]
+      .map(([coacheeId, datos]) => {
+        const coachee = coacheeMap.get(coacheeId)!;
+        return {
+          coacheeId,
+          nombre: coachee.nombre,
+          empresaNombre: coachee.empresa?.nombre ?? null,
+          ...datos,
+        };
+      })
+      .sort(
+        (a, b) =>
+          b.gastoBrutoDelPeriodo +
+          b.gastoBrutoProyectado -
+          (a.gastoBrutoDelPeriodo + a.gastoBrutoProyectado),
+      );
+
     return {
       porEmpresa,
       porCoachee,
+      porCoacheeGastoBruto,
       horasRealizadasTotal,
       ingresoDelPeriodoTotal,
       ingresoProyectadoTotal,
@@ -324,39 +411,118 @@ export class NegocioService {
     };
   }
 
-  /**
-   * Proyección rodante de 12 meses calendario, empezando en el mes actual — reutiliza
-   * `calcularResumenCobros` mes a mes en vez de duplicar la lógica de tarifa efectiva /
-   * pagada / confirmado-vs-proyectado.
-   */
-  async proyeccionMensual(): Promise<ProyeccionMes[]> {
+  private rangosMensuales(cantidad: number): { inicio: Date; fin: Date }[] {
     const now = new Date();
-    const rangos = Array.from({ length: 12 }, (_, i) => ({
+    return Array.from({ length: cantidad }, (_, i) => ({
       inicio: new Date(now.getFullYear(), now.getMonth() + i, 1),
       fin: new Date(now.getFullYear(), now.getMonth() + i + 1, 1),
     }));
+  }
 
+  private etiquetaMes(inicio: Date): { mes: string; etiqueta: string } {
+    return {
+      mes: `${inicio.getFullYear()}-${String(inicio.getMonth() + 1).padStart(2, '0')}`,
+      etiqueta: `${MESES_ABREV[inicio.getMonth()]} '${String(inicio.getFullYear()).slice(2)}`,
+    };
+  }
+
+  /**
+   * `calcularResumenCobros` corrido mes a mes sobre una ventana rodante — compartido por
+   * `proyeccionMensual` (12 meses, todas las empresas) y `proyeccionParaEmpresa` (6 meses,
+   * una sola empresa), para no duplicar la lógica de tarifa efectiva/pagada/proyectado.
+   */
+  private async cobrosPorMeses(
+    cantidad: number,
+  ): Promise<{ rango: { inicio: Date; fin: Date }; cobros: ResumenCobros }[]> {
+    const rangos = this.rangosMensuales(cantidad);
     const cobrosPorMes = await Promise.all(
       rangos.map((rango) => this.calcularResumenCobros(rango)),
     );
+    return rangos.map((rango, i) => ({ rango, cobros: cobrosPorMes[i] }));
+  }
 
-    return rangos.map((rango, i) => {
-      const cobros = cobrosPorMes[i];
+  /**
+   * Proyección rodante de 12 meses calendario, empezando en el mes actual — todas las
+   * empresas/coachees, para el panel del coach.
+   */
+  async proyeccionMensual(): Promise<ProyeccionMes[]> {
+    const datos = await this.cobrosPorMeses(12);
+    return datos.map(({ rango, cobros }) => ({
+      ...this.etiquetaMes(rango.inicio),
+      total: cobros.ingresoDelPeriodoTotal + cobros.ingresoProyectadoTotal,
+      porEmpresa: cobros.porEmpresa
+        .map((e) => ({
+          nombre: e.nombre,
+          monto: e.ingresoDelPeriodo + e.ingresoProyectado,
+        }))
+        .filter((e) => e.monto > 0)
+        .sort((a, b) => b.monto - a.monto),
+      porCoachee: cobros.porCoachee
+        .map((c) => ({
+          nombre: c.nombre,
+          monto: c.ingresoDelPeriodo + c.ingresoProyectado,
+        }))
+        .sort((a, b) => b.monto - a.monto),
+    }));
+  }
+
+  /**
+   * Resumen financiero del mes actual para UNA empresa (rol EMPRESA) — usa los campos
+   * `gastoBruto*` (sin gate de `pagada`) para que "cuánto gasté" sea honesto incluso si el
+   * coach todavía no marcó la empresa como pagada en su propio panel.
+   */
+  async resumenParaEmpresa(empresaId: string): Promise<ResumenFinanzasEmpresa> {
+    const [cobros, coacheesEmpresa] = await Promise.all([
+      this.calcularResumenCobros(),
+      this.coachees.find({ where: { empresaId } }),
+    ]);
+    const empresaCobro = cobros.porEmpresa.find(
+      (e) => e.empresaId === empresaId,
+    );
+    const coacheeIds = new Set(coacheesEmpresa.map((c) => c.id));
+    const gastoDelPeriodo = empresaCobro?.gastoBrutoDelPeriodo ?? 0;
+    const pagada = empresaCobro?.pagada ?? false;
+
+    return {
+      pagada,
+      horasContratadas: empresaCobro?.horasContratadas ?? null,
+      horasConsumidas: empresaCobro?.horasConsumidas ?? 0,
+      gastoDelPeriodo,
+      gastoProyectado: empresaCobro?.gastoBrutoProyectado ?? 0,
+      gastoPendiente: pagada ? 0 : gastoDelPeriodo,
+      porCoachee: cobros.porCoacheeGastoBruto.filter((c) =>
+        coacheeIds.has(c.coacheeId),
+      ),
+    };
+  }
+
+  /**
+   * Proyección rodante de 6 meses para UNA empresa — nunca incluye `porEmpresa` (evitaría
+   * filtrar nombres de otras empresas del coach a un cliente).
+   */
+  async proyeccionParaEmpresa(
+    empresaId: string,
+  ): Promise<ProyeccionMesEmpresa[]> {
+    const [datos, coacheesEmpresa] = await Promise.all([
+      this.cobrosPorMeses(6),
+      this.coachees.find({ where: { empresaId } }),
+    ]);
+    const coacheeIds = new Set(coacheesEmpresa.map((c) => c.id));
+
+    return datos.map(({ rango, cobros }) => {
+      const empresaCobro = cobros.porEmpresa.find(
+        (e) => e.empresaId === empresaId,
+      );
       return {
-        mes: `${rango.inicio.getFullYear()}-${String(rango.inicio.getMonth() + 1).padStart(2, '0')}`,
-        etiqueta: `${MESES_ABREV[rango.inicio.getMonth()]} '${String(rango.inicio.getFullYear()).slice(2)}`,
-        total: cobros.ingresoDelPeriodoTotal + cobros.ingresoProyectadoTotal,
-        porEmpresa: cobros.porEmpresa
-          .map((e) => ({
-            nombre: e.nombre,
-            monto: e.ingresoDelPeriodo + e.ingresoProyectado,
-          }))
-          .filter((e) => e.monto > 0)
-          .sort((a, b) => b.monto - a.monto),
-        porCoachee: cobros.porCoachee
+        ...this.etiquetaMes(rango.inicio),
+        total:
+          (empresaCobro?.gastoBrutoDelPeriodo ?? 0) +
+          (empresaCobro?.gastoBrutoProyectado ?? 0),
+        porCoachee: cobros.porCoacheeGastoBruto
+          .filter((c) => coacheeIds.has(c.coacheeId))
           .map((c) => ({
             nombre: c.nombre,
-            monto: c.ingresoDelPeriodo + c.ingresoProyectado,
+            monto: c.gastoBrutoDelPeriodo + c.gastoBrutoProyectado,
           }))
           .sort((a, b) => b.monto - a.monto),
       };

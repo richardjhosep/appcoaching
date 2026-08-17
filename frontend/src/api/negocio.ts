@@ -98,6 +98,40 @@ export function getProyeccionMensual(): Promise<ProyeccionMes[]> {
   return apiRequest<ProyeccionMes[]>('/negocio/proyeccion-mensual')
 }
 
+export interface CoacheeGastoBruto {
+  coacheeId: string
+  nombre: string
+  empresaNombre: string | null
+  horasRealizadas: number
+  gastoBrutoDelPeriodo: number
+  gastoBrutoProyectado: number
+}
+
+export interface ResumenFinanzasEmpresa {
+  pagada: boolean
+  horasContratadas: number | null
+  horasConsumidas: number
+  gastoDelPeriodo: number
+  gastoProyectado: number
+  gastoPendiente: number
+  porCoachee: CoacheeGastoBruto[]
+}
+
+export interface ProyeccionMesEmpresa {
+  mes: string
+  etiqueta: string
+  total: number
+  porCoachee: ContribuyenteMes[]
+}
+
+export function getMiResumenFinanciero(): Promise<ResumenFinanzasEmpresa> {
+  return apiRequest<ResumenFinanzasEmpresa>('/negocio/empresa/resumen')
+}
+
+export function getMiProyeccionFinanciera(): Promise<ProyeccionMesEmpresa[]> {
+  return apiRequest<ProyeccionMesEmpresa[]>('/negocio/empresa/proyeccion')
+}
+
 export function enviarRecordatorioSesion(coacheeId: string): Promise<{ success: boolean }> {
   return apiRequest<{ success: boolean }>(`/negocio/coachees/${coacheeId}/recordatorio-sesion`, {
     method: 'POST',
