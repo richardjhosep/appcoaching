@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import AppShell from '../../components/AppShell.vue'
 import ProgresoLineaTiempo from '../../components/ProgresoLineaTiempo.vue'
+import HistorialCiclos from '../../components/HistorialCiclos.vue'
 import SectionCard from '../../components/SectionCard.vue'
 import EmptyState from '../../components/EmptyState.vue'
 import NavIcon from '../../components/NavIcon.vue'
@@ -26,6 +27,7 @@ const loading = ref(true)
 const avance = ref<number | null>(null)
 const puntos = ref<PuntoProgreso[]>([])
 const logros = ref<Logro[]>([])
+const ciclos = ref<Ciclo[]>([])
 const certificados = ref<Ciclo[]>([])
 const nuevaFecha = ref('')
 const nuevaDescripcion = ref('')
@@ -35,10 +37,11 @@ const guardandoDiario = ref(false)
 const error = ref<string | null>(null)
 
 const coloresAvance = computed(() => coloresNivel[nivelProgreso(avance.value ?? 0)])
+const ciclosCerrados = computed(() => ciclos.value.filter((c) => c.fechaCierre))
 
 async function load() {
   loading.value = true
-  const [a, p, l, d, ciclos] = await Promise.all([
+  const [a, p, l, d, cs] = await Promise.all([
     getMiAvance(),
     getMiLineaProgreso(),
     getMisLogros(),
@@ -49,7 +52,8 @@ async function load() {
   puntos.value = p
   logros.value = l
   diarioEntradas.value = d
-  certificados.value = ciclos.filter((c) => c.fechaCierre && c.resultado)
+  ciclos.value = cs
+  certificados.value = cs.filter((c) => c.fechaCierre && c.resultado)
   loading.value = false
 }
 
@@ -152,6 +156,14 @@ async function agregarEntradaDiario() {
         icon="objetivo"
       >
         <ProgresoLineaTiempo :puntos="puntos" />
+      </SectionCard>
+
+      <SectionCard
+        v-if="ciclosCerrados.length > 0"
+        title="Historial de ciclos"
+        icon="objetivo"
+      >
+        <HistorialCiclos :ciclos="ciclosCerrados" />
       </SectionCard>
 
       <SectionCard

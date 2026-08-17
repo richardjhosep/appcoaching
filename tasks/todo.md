@@ -792,3 +792,15 @@ Reportado por el usuario: la tab Formación mostraba "no hay nada" aunque Quiz/F
 - [x] `vitest run` 262/262, `eslint`/`vue-tsc`/`tsc` limpios
 - [x] Verificado visualmente simulando el mismo desajuste (cuenta de prueba cambiada temporalmente a una competencia sin contenido, restaurada después)
 - [ ] Pendiente de decisión del usuario: la cuenta real "Felipe Cortes" tiene su plan en "Impacto e Influencia" pero todo el contenido de prueba creado esta sesión es de "Auto Desarrollo" — no es un bug, pero esa cuenta específica seguirá viendo la tab vacía hasta que se cree/retagueé contenido de esa competencia
+
+---
+
+# Fix: coachee no podía ver el resultado de sus propios ciclos — 2026-08-17
+
+El usuario preguntó "¿sé si aprobé los tópicos?" — auditoría reveló que `HistorialCiclos.vue` (con el resultado Logrado/Medianamente logrado/No logrado por ciclo) solo se usaba en las vistas del coach y de la empresa, nunca en la del coachee, pese a que el dato siempre existió.
+
+- [x] `ProgresoView.vue`: nueva `SectionCard` "Historial de ciclos" reutilizando `HistorialCiclos.vue` sin modificarlo (cero cambios de backend, cero componentes nuevos) — mismo patrón `ciclosCerrados = computed(...)` que ya usa `CicloTab.vue` del coach
+- [x] `vitest run` 262/262, `eslint`/`vue-tsc`/`tsc` limpios (mismos 3 errores preexistentes)
+- [x] Verificado en navegador real: abrí y cerré un ciclo de prueba con resultado "logrado" para la cuenta qa-paleta-verify, confirmé que aparece con el badge correcto y el detalle expandido (resumen + informe)
+
+Diagnóstico más amplio entregado al usuario (no implementado, pendiente de decisión): Quiz no tiene umbral de aprobado/reprobado (solo puntaje crudo), y el modelo de datos no soporta "varios tópicos trabajados en el tiempo" — el Plan trackea una sola competencia activa a la vez, no un temario tipo curso.
