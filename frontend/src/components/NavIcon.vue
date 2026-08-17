@@ -243,5 +243,12 @@ withDefaults(defineProps<{ name: string; size?: number }>(), { size: 18 })
     <template v-else-if="name === 'trofeo'">
       <path d="M8 4h8v4a4 4 0 0 1-8 0z" /><path d="M8 5H5a3 3 0 0 0 3 5" /><path d="M16 5h3a3 3 0 0 1-3 5" /><path d="M12 12v3" /><path d="M9 20h6" /><path d="M10 17h4v3h-4z" />
     </template>
+    <template v-else-if="name === 'certificado'">
+      <circle
+        cx="12"
+        cy="8"
+        r="6.5"
+      /><path d="M8.2 13.7L7 22l5-3 5 3-1.2-8.3" />
+    </template>
   </svg>
 </template>

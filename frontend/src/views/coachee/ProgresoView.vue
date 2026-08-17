@@ -181,7 +181,7 @@ async function agregarEntradaDiario() {
       <SectionCard
         v-if="certificados.length > 0"
         title="Certificados"
-        icon="trofeo"
+        icon="certificado"
       >
         <div class="space-y-2">
           <div
@@ -191,7 +191,7 @@ async function agregarEntradaDiario() {
           >
             <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--color-parchment)] text-[var(--color-spark)]">
               <NavIcon
-                name="trofeo"
+                name="certificado"
                 :size="20"
               />
             </div>
