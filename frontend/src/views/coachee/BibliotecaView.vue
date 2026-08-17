@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import AppShell from '../../components/AppShell.vue'
 import AppModal from '../../components/AppModal.vue'
 import RecursoIcono from '../../components/RecursoIcono.vue'
+import EmptyState from '../../components/EmptyState.vue'
 import { getMisCarpetas, type Carpeta } from '../../api/carpetas'
 import {
   getMisRecursos,
@@ -117,15 +118,17 @@ async function descargar(r: Recurso) {
     </div>
 
     <template v-else-if="!carpetaActual">
-      <p
+      <EmptyState
         v-if="arbol.length === 0 && recursosSueltos.length === 0"
-        class="text-sm text-[var(--color-ink)]/60"
-      >
-        Todavía no tienes acceso a ninguna carpeta.
-      </p>
+        icon="biblioteca"
+        title="Todavía no tienes acceso a ninguna carpeta"
+        description="Cuando tu coach te comparta material, va a aparecer acá organizado por carpetas."
+      />
       <template v-else>
-        <div
+        <TransitionGroup
           v-if="arbol.length"
+          name="fade-slide"
+          tag="div"
           class="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4"
         >
           <button
@@ -155,13 +158,17 @@ async function descargar(r: Recurso) {
               </p>
             </div>
           </button>
-        </div>
+        </TransitionGroup>
 
         <template v-if="recursosSueltos.length">
           <p class="mb-2 text-xs font-medium uppercase tracking-wide text-[var(--color-ink)]/45">
             Compartidos contigo directamente
           </p>
-          <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+          <TransitionGroup
+            name="fade-slide"
+            tag="div"
+            class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4"
+          >
             <button
               v-for="r in recursosSueltos"
               :key="r.id"
@@ -176,7 +183,7 @@ async function descargar(r: Recurso) {
                 {{ r.titulo }}
               </p>
             </button>
-          </div>
+          </TransitionGroup>
         </template>
       </template>
     </template>
@@ -237,15 +244,17 @@ async function descargar(r: Recurso) {
         </button>
       </div>
 
-      <p
+      <EmptyState
         v-if="recursosDeCarpeta.length === 0 && subcarpetas.length === 0"
-        class="text-sm text-[var(--color-ink)]/50"
-      >
-        Esta carpeta está vacía.
-      </p>
+        icon="biblioteca"
+        title="Esta carpeta está vacía"
+        description="Todavía no hay recursos guardados acá."
+      />
 
-      <div
+      <TransitionGroup
         v-if="recursosDeCarpeta.length"
+        name="fade-slide"
+        tag="div"
         class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4"
       >
         <button
@@ -262,7 +271,7 @@ async function descargar(r: Recurso) {
             {{ r.titulo }}
           </p>
         </button>
-      </div>
+      </TransitionGroup>
     </template>
 
     <AppModal

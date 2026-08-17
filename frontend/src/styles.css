@@ -41,3 +41,41 @@ button:not(:disabled),
 [role="button"]:not([aria-disabled="true"]) {
   cursor: pointer;
 }
+
+/* Entrada tipo fade+slight-rise para listas que hoy aparecen de golpe (logros, tarjetas
+   de biblioteca, sesiones). Clases compartidas para usar con <TransitionGroup name="fade-slide">
+   en vez de definir keyframes por vista. */
+.fade-slide-enter-active,
+.fade-slide-leave-active {
+  transition: opacity 0.22s ease, transform 0.22s ease;
+}
+.fade-slide-enter-from,
+.fade-slide-leave-to {
+  opacity: 0;
+  transform: translateY(6px);
+}
+
+/* Flip 3D de flashcards (coachee) — única animación 3D de la app, clases
+   compartidas en vez de definirlas dentro del componente. */
+.flip-card {
+  perspective: 1200px;
+}
+.flip-card-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transition: transform 0.5s;
+  transform-style: preserve-3d;
+}
+.flip-card.is-flipped .flip-card-inner {
+  transform: rotateY(180deg);
+}
+.flip-card-front,
+.flip-card-back {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+}
+.flip-card-back {
+  transform: rotateY(180deg);
+}

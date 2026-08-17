@@ -24,6 +24,8 @@ import { LegalModule } from './legal/legal.module';
 import { BusquedaModule } from './busqueda/busqueda.module';
 import { SatisfaccionModule } from './satisfaccion/satisfaccion.module';
 import { NotificacionesModule } from './notificaciones/notificaciones.module';
+import { QuizModule } from './quiz/quiz.module';
+import { FlashcardsModule } from './flashcards/flashcards.module';
 
 @Module({
   imports: [
@@ -65,6 +67,8 @@ import { NotificacionesModule } from './notificaciones/notificaciones.module';
     BusquedaModule,
     SatisfaccionModule,
     NotificacionesModule,
+    QuizModule,
+    FlashcardsModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

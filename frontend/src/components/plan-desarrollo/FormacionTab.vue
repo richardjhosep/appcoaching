@@ -3,6 +3,7 @@ import { reactive, ref } from 'vue'
 import { updateOwnPlan, type PlanDesarrollo } from '../../api/planesDesarrollo'
 import { ApiError } from '../../api/client'
 import { notifyError, notifySuccess } from '../../lib/notify'
+import SectionCard from '../SectionCard.vue'
 
 const props = defineProps<{ plan: PlanDesarrollo }>()
 const emit = defineEmits<{ updated: [PlanDesarrollo] }>()
@@ -49,54 +50,59 @@ async function guardar() {
     >
       {{ error }}
     </p>
-    <div class="grid gap-3 rounded-2xl border border-[var(--color-line)] bg-white p-4">
-      <label class="text-sm">
-        Libros
-        <textarea
-          v-model="form.formacionLibros"
-          rows="2"
-          class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
-        />
-      </label>
-      <label class="text-sm">
-        Artículos
-        <textarea
-          v-model="form.formacionArticulos"
-          rows="2"
-          class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
-        />
-      </label>
-      <label class="text-sm">
-        Videos
-        <textarea
-          v-model="form.formacionVideos"
-          rows="2"
-          class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
-        />
-      </label>
-      <label class="text-sm">
-        Podcasts
-        <textarea
-          v-model="form.formacionPodcasts"
-          rows="2"
-          class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
-        />
-      </label>
-      <label class="text-sm">
-        Práctica guiada
-        <textarea
-          v-model="form.formacionPracticaGuiada"
-          rows="2"
-          class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
-        />
-      </label>
-      <button
-        class="w-fit rounded-lg bg-[var(--color-ink)] px-4 py-2 text-sm text-[var(--color-parchment)] disabled:opacity-60"
-        :disabled="saving"
-        @click="guardar"
-      >
-        {{ saving ? 'Guardando…' : 'Guardar formación' }}
-      </button>
-    </div>
+    <SectionCard
+      title="Formación complementaria"
+      icon="formacion"
+    >
+      <div class="grid gap-3">
+        <label class="text-sm">
+          Libros
+          <textarea
+            v-model="form.formacionLibros"
+            rows="2"
+            class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+          />
+        </label>
+        <label class="text-sm">
+          Artículos
+          <textarea
+            v-model="form.formacionArticulos"
+            rows="2"
+            class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+          />
+        </label>
+        <label class="text-sm">
+          Videos
+          <textarea
+            v-model="form.formacionVideos"
+            rows="2"
+            class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+          />
+        </label>
+        <label class="text-sm">
+          Podcasts
+          <textarea
+            v-model="form.formacionPodcasts"
+            rows="2"
+            class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+          />
+        </label>
+        <label class="text-sm">
+          Práctica guiada
+          <textarea
+            v-model="form.formacionPracticaGuiada"
+            rows="2"
+            class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+          />
+        </label>
+        <button
+          class="w-fit rounded-lg bg-[var(--color-ink)] px-4 py-2 text-sm text-[var(--color-parchment)] disabled:opacity-60"
+          :disabled="saving"
+          @click="guardar"
+        >
+          {{ saving ? 'Guardando…' : 'Guardar formación' }}
+        </button>
+      </div>
+    </SectionCard>
   </div>
 </template>

@@ -2,6 +2,9 @@
 import { computed, onMounted, ref } from 'vue'
 import AppShell from '../../components/AppShell.vue'
 import ProgresoLineaTiempo from '../../components/ProgresoLineaTiempo.vue'
+import SectionCard from '../../components/SectionCard.vue'
+import EmptyState from '../../components/EmptyState.vue'
+import NavIcon from '../../components/NavIcon.vue'
 import {
   addEntradaDiario,
   addLogro,
@@ -111,16 +114,16 @@ async function agregarEntradaDiario() {
         {{ error }}
       </p>
 
-      <div class="rounded-2xl border border-[var(--color-line)] bg-white p-4">
-        <h2 class="mb-1 text-sm font-medium">
-          Avance general
-        </h2>
-        <p
+      <SectionCard
+        title="Avance general"
+        icon="progreso"
+      >
+        <EmptyState
           v-if="avance === null"
-          class="text-sm text-[var(--color-ink)]/60"
-        >
-          Aún no te has autoevaluado en ningún post-sesión.
-        </p>
+          icon="progreso"
+          title="Aún no te has autoevaluado"
+          description="El avance general se calcula con las autoevaluaciones que completas en cada post-sesión."
+        />
         <template v-else>
           <p
             class="mb-2 font-[family-name:var(--font-mono)] text-3xl"
@@ -142,22 +145,20 @@ async function agregarEntradaDiario() {
             />
           </div>
         </template>
-      </div>
+      </SectionCard>
 
-      <div class="rounded-2xl border border-[var(--color-line)] bg-white p-4">
-        <h2 class="mb-3 text-sm font-medium">
-          Línea de tiempo (cercanía al objetivo por sesión)
-        </h2>
-        <ProgresoLineaTiempo :puntos="puntos" />
-      </div>
-
-      <div
-        v-if="certificados.length > 0"
-        class="rounded-2xl border border-[var(--color-line)] bg-white p-4"
+      <SectionCard
+        title="Línea de tiempo (cercanía al objetivo por sesión)"
+        icon="objetivo"
       >
-        <h2 class="mb-3 text-sm font-medium">
-          Certificados
-        </h2>
+        <ProgresoLineaTiempo :puntos="puntos" />
+      </SectionCard>
+
+      <SectionCard
+        v-if="certificados.length > 0"
+        title="Certificados"
+        icon="trofeo"
+      >
         <ul class="space-y-1 text-sm">
           <li
             v-for="c in certificados"
@@ -171,21 +172,32 @@ async function agregarEntradaDiario() {
             </RouterLink>
           </li>
         </ul>
-      </div>
+      </SectionCard>
 
-      <div class="rounded-2xl border border-[var(--color-line)] bg-white p-4">
-        <h2 class="mb-3 text-sm font-medium">
-          Logros
-        </h2>
-        <ul class="mb-3 space-y-2">
+      <SectionCard
+        title="Logros"
+        icon="trofeo"
+      >
+        <TransitionGroup
+          name="fade-slide"
+          tag="ul"
+          class="mb-3 space-y-2"
+        >
           <li
             v-for="logro in logros"
             :key="logro.id"
             class="flex items-start justify-between gap-2 text-sm"
           >
-            <span>
-              <span class="font-[family-name:var(--font-mono)] text-[var(--color-ink)]/50">{{ logro.fecha }}</span>
-              — {{ logro.descripcion }}
+            <span class="flex items-start gap-1.5">
+              <NavIcon
+                name="trofeo"
+                :size="14"
+                class="mt-0.5 shrink-0 text-[var(--color-spark)]"
+              />
+              <span>
+                <span class="font-[family-name:var(--font-mono)] text-[var(--color-ink)]/50">{{ logro.fecha }}</span>
+                — {{ logro.descripcion }}
+              </span>
             </span>
             <button
               class="shrink-0 text-xs text-[var(--color-bronze)] hover:underline"
@@ -194,7 +206,7 @@ async function agregarEntradaDiario() {
               Quitar
             </button>
           </li>
-        </ul>
+        </TransitionGroup>
         <div class="flex flex-col gap-2 sm:flex-row">
           <input
             v-model="nuevaFecha"
@@ -215,18 +227,18 @@ async function agregarEntradaDiario() {
             Agregar
           </button>
         </div>
-      </div>
+      </SectionCard>
 
-      <div class="rounded-2xl border border-[var(--color-line)] bg-white p-4">
-        <h2 class="mb-3 text-sm font-medium">
-          Diario de reflexión
-        </h2>
-        <p
+      <SectionCard
+        title="Diario de reflexión"
+        icon="diario"
+      >
+        <EmptyState
           v-if="diarioEntradas.length === 0"
-          class="mb-3 text-sm text-[var(--color-ink)]/60"
-        >
-          Todavía no has escrito ninguna reflexión.
-        </p>
+          icon="diario"
+          title="Todavía no has escrito ninguna reflexión"
+          description="Usa este espacio para anotar lo que vas descubriendo entre sesiones."
+        />
         <ul
           v-else
           class="mb-4 space-y-2"
@@ -257,7 +269,7 @@ async function agregarEntradaDiario() {
         >
           {{ guardandoDiario ? 'Guardando…' : 'Guardar' }}
         </button>
-      </div>
+      </SectionCard>
     </div>
   </AppShell>
 </template>

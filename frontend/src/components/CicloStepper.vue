@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import type { Ciclo } from '../api/ciclos'
 import type { PlanDesarrollo } from '../api/planesDesarrollo'
+import EmptyState from './EmptyState.vue'
 
 const props = defineProps<{
   ciclo: Ciclo | null
@@ -75,12 +76,12 @@ const lineClass: Record<EstadoEtapa, string> = {
 </script>
 
 <template>
-  <div
+  <EmptyState
     v-if="!ciclo"
-    class="rounded-2xl border border-[var(--color-line)] bg-white p-4 text-sm text-[var(--color-ink)]/50"
-  >
-    Aún no hay un ciclo abierto.
-  </div>
+    icon="objetivo"
+    title="Aún no hay un ciclo abierto"
+    description="Cuando tu coach abra un nuevo ciclo, acá vas a ver el avance etapa por etapa."
+  />
   <div
     v-else
     class="rounded-2xl border border-[var(--color-line)] bg-white p-4"

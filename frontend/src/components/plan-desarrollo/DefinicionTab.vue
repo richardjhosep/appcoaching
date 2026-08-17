@@ -12,6 +12,7 @@ import {
 import type { Competencia } from '../../api/competencias'
 import { ApiError } from '../../api/client'
 import { notifyError, notifySuccess } from '../../lib/notify'
+import SectionCard from '../SectionCard.vue'
 
 const props = defineProps<{
   plan: PlanDesarrollo
@@ -138,104 +139,109 @@ async function enviar() {
       {{ error }}
     </p>
 
-    <div class="grid gap-3 rounded-2xl border border-[var(--color-line)] bg-white p-4 sm:grid-cols-2">
-      <label class="text-sm sm:col-span-2">
-        Competencia a desarrollar
-        <select
-          v-model="form.competenciaId"
-          :disabled="locked"
-          class="mt-1 w-full rounded-lg border px-3 py-2 text-sm disabled:bg-[var(--color-parchment)]/50"
-          :class="serverErrors.competenciaId ? 'border-[var(--color-danger)]' : 'border-[var(--color-line)]'"
+    <SectionCard
+      title="Definición"
+      icon="objetivo"
+    >
+      <div class="grid gap-3 sm:grid-cols-2">
+        <label class="text-sm sm:col-span-2">
+          Competencia a desarrollar
+          <select
+            v-model="form.competenciaId"
+            :disabled="locked"
+            class="mt-1 w-full rounded-lg border px-3 py-2 text-sm disabled:bg-[var(--color-parchment)]/50"
+            :class="serverErrors.competenciaId ? 'border-[var(--color-danger)]' : 'border-[var(--color-line)]'"
+          >
+            <option
+              value=""
+              disabled
+            >Elige una competencia</option>
+            <option
+              v-for="c in competencias"
+              :key="c.id"
+              :value="c.id"
+            >{{ c.nombre }}</option>
+          </select>
+          <span
+            v-if="serverErrors.competenciaId"
+            class="mt-1 block text-xs text-[var(--color-danger)]"
+          >{{ serverErrors.competenciaId }}</span>
+        </label>
+
+        <label class="text-sm">
+          Nivel actual (libre edición)
+          <input
+            v-model.number="form.nivelActual"
+            type="number"
+            min="1"
+            class="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+            :class="serverErrors.nivelActual ? 'border-[var(--color-danger)]' : 'border-[var(--color-line)]'"
+          >
+          <span
+            v-if="serverErrors.nivelActual"
+            class="mt-1 block text-xs text-[var(--color-danger)]"
+          >{{ serverErrors.nivelActual }}</span>
+        </label>
+
+        <label class="text-sm">
+          Nivel objetivo
+          <input
+            v-model.number="form.nivelObjetivo"
+            type="number"
+            min="1"
+            :disabled="locked"
+            class="mt-1 w-full rounded-lg border px-3 py-2 text-sm disabled:bg-[var(--color-parchment)]/50"
+            :class="serverErrors.nivelObjetivo ? 'border-[var(--color-danger)]' : 'border-[var(--color-line)]'"
+          >
+          <span
+            v-if="serverErrors.nivelObjetivo"
+            class="mt-1 block text-xs text-[var(--color-danger)]"
+          >{{ serverErrors.nivelObjetivo }}</span>
+        </label>
+
+        <label class="text-sm sm:col-span-2">
+          Plazo a lograr el nuevo nivel (libre edición)
+          <input
+            v-model="form.plazo"
+            type="text"
+            placeholder="ej. 3 meses"
+            class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+          >
+        </label>
+
+        <label class="text-sm sm:col-span-2">
+          Descripción del estado actual (libre edición)
+          <textarea
+            v-model="form.descripcionEstadoActual"
+            rows="3"
+            class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+          />
+        </label>
+
+        <label class="text-sm sm:col-span-2">
+          Objetivo general
+          <textarea
+            v-model="form.objetivoGeneral"
+            rows="3"
+            :disabled="locked"
+            class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm disabled:bg-[var(--color-parchment)]/50"
+          />
+        </label>
+
+        <button
+          class="w-fit rounded-lg bg-[var(--color-ink)] px-4 py-2 text-sm text-[var(--color-parchment)] disabled:opacity-60 sm:col-span-2"
+          :disabled="saving"
+          @click="guardar"
         >
-          <option
-            value=""
-            disabled
-          >Elige una competencia</option>
-          <option
-            v-for="c in competencias"
-            :key="c.id"
-            :value="c.id"
-          >{{ c.nombre }}</option>
-        </select>
-        <span
-          v-if="serverErrors.competenciaId"
-          class="mt-1 block text-xs text-[var(--color-danger)]"
-        >{{ serverErrors.competenciaId }}</span>
-      </label>
+          {{ saving ? 'Guardando…' : 'Guardar definición' }}
+        </button>
+      </div>
+    </SectionCard>
 
-      <label class="text-sm">
-        Nivel actual (libre edición)
-        <input
-          v-model.number="form.nivelActual"
-          type="number"
-          min="1"
-          class="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
-          :class="serverErrors.nivelActual ? 'border-[var(--color-danger)]' : 'border-[var(--color-line)]'"
-        >
-        <span
-          v-if="serverErrors.nivelActual"
-          class="mt-1 block text-xs text-[var(--color-danger)]"
-        >{{ serverErrors.nivelActual }}</span>
-      </label>
-
-      <label class="text-sm">
-        Nivel objetivo
-        <input
-          v-model.number="form.nivelObjetivo"
-          type="number"
-          min="1"
-          :disabled="locked"
-          class="mt-1 w-full rounded-lg border px-3 py-2 text-sm disabled:bg-[var(--color-parchment)]/50"
-          :class="serverErrors.nivelObjetivo ? 'border-[var(--color-danger)]' : 'border-[var(--color-line)]'"
-        >
-        <span
-          v-if="serverErrors.nivelObjetivo"
-          class="mt-1 block text-xs text-[var(--color-danger)]"
-        >{{ serverErrors.nivelObjetivo }}</span>
-      </label>
-
-      <label class="text-sm sm:col-span-2">
-        Plazo a lograr el nuevo nivel (libre edición)
-        <input
-          v-model="form.plazo"
-          type="text"
-          placeholder="ej. 3 meses"
-          class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
-        >
-      </label>
-
-      <label class="text-sm sm:col-span-2">
-        Descripción del estado actual (libre edición)
-        <textarea
-          v-model="form.descripcionEstadoActual"
-          rows="3"
-          class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
-        />
-      </label>
-
-      <label class="text-sm sm:col-span-2">
-        Objetivo general
-        <textarea
-          v-model="form.objetivoGeneral"
-          rows="3"
-          :disabled="locked"
-          class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm disabled:bg-[var(--color-parchment)]/50"
-        />
-      </label>
-
-      <button
-        class="w-fit rounded-lg bg-[var(--color-ink)] px-4 py-2 text-sm text-[var(--color-parchment)] disabled:opacity-60 sm:col-span-2"
-        :disabled="saving"
-        @click="guardar"
-      >
-        {{ saving ? 'Guardando…' : 'Guardar definición' }}
-      </button>
-    </div>
-
-    <div class="rounded-2xl border border-[var(--color-line)] bg-white p-4">
-      <h2 class="mb-2 text-sm font-medium">
-        Objetivos específicos
-      </h2>
+    <SectionCard
+      title="Objetivos específicos"
+      icon="lista"
+    >
       <ul class="mb-3 space-y-2">
         <li
           v-for="o in [...plan.objetivos].sort((a, b) => a.orden - b.orden)"
@@ -276,7 +282,7 @@ async function enviar() {
           Agregar
         </button>
       </div>
-    </div>
+    </SectionCard>
 
     <button
       v-if="!locked"

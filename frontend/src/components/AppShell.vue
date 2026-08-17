@@ -66,6 +66,8 @@ const coacheeNavGroups: NavGroup[] = [
       { to: '/coachee/sesiones', label: 'Sesiones', icon: 'sesiones' },
       { to: '/coachee/progreso', label: 'Progreso', icon: 'progreso' },
       { to: '/coachee/biblioteca', label: 'Biblioteca', icon: 'biblioteca' },
+      { to: '/coachee/quiz', label: 'Quiz', icon: 'quiz' },
+      { to: '/coachee/flashcards', label: 'Flashcards', icon: 'flashcards' },
     ],
   },
 ]
@@ -87,6 +89,8 @@ const coachNavGroups: NavGroup[] = [
     items: [
       { to: '/coach/planes', label: 'Planes', icon: 'planes' },
       { to: '/coach/recursos', label: 'Recursos', icon: 'recursos' },
+      { to: '/coach/quiz', label: 'Quiz', icon: 'quiz' },
+      { to: '/coach/flashcards', label: 'Flashcards', icon: 'flashcards' },
     ],
   },
   {

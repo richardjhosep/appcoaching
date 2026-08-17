@@ -11,6 +11,7 @@ import {
 } from '../../api/planesDesarrollo'
 import { ApiError } from '../../api/client'
 import { notifyError, notifySuccess } from '../../lib/notify'
+import SectionCard from '../SectionCard.vue'
 
 const props = defineProps<{ plan: PlanDesarrollo }>()
 const emit = defineEmits<{ updated: [PlanDesarrollo] }>()
@@ -102,79 +103,81 @@ function objetivoDescripcion(objetivoId: string): string {
       {{ error }}
     </p>
 
-    <div class="grid gap-3 rounded-2xl border border-[var(--color-line)] bg-white p-4 sm:grid-cols-2">
-      <h2 class="text-sm font-medium sm:col-span-2">
-        Hábito a incorporar o cambiar
-      </h2>
-      <label class="text-sm">
-        Cuándo (el detonante del hábito)
-        <textarea
-          v-model="form.habitoCuando"
-          rows="2"
-          class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
-        />
-      </label>
-      <label class="text-sm">
-        En vez de (tu hábito actual)
-        <textarea
-          v-model="form.habitoEnVezDe"
-          rows="2"
-          class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
-        />
-      </label>
-      <label class="text-sm sm:col-span-2">
-        Voy a (tu nuevo hábito)
-        <textarea
-          v-model="form.habitoVoyA"
-          rows="2"
-          class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
-        />
-      </label>
-      <label class="text-sm">
-        Cómo hacerlo Obvio
-        <textarea
-          v-model="form.habitoObvio"
-          rows="2"
-          class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
-        />
-      </label>
-      <label class="text-sm">
-        Cómo hacerlo Sencillo
-        <textarea
-          v-model="form.habitoSencillo"
-          rows="2"
-          class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
-        />
-      </label>
-      <label class="text-sm">
-        Cómo hacerlo Atractivo
-        <textarea
-          v-model="form.habitoAtractivo"
-          rows="2"
-          class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
-        />
-      </label>
-      <label class="text-sm">
-        Cómo hacerlo Satisfactorio
-        <textarea
-          v-model="form.habitoSatisfactorio"
-          rows="2"
-          class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
-        />
-      </label>
-      <button
-        class="w-fit rounded-lg bg-[var(--color-ink)] px-4 py-2 text-sm text-[var(--color-parchment)] disabled:opacity-60 sm:col-span-2"
-        :disabled="saving"
-        @click="guardarHabito"
-      >
-        {{ saving ? 'Guardando…' : 'Guardar hábito' }}
-      </button>
-    </div>
+    <SectionCard
+      title="Hábito a incorporar o cambiar"
+      icon="habito"
+    >
+      <div class="grid gap-3 sm:grid-cols-2">
+        <label class="text-sm">
+          Cuándo (el detonante del hábito)
+          <textarea
+            v-model="form.habitoCuando"
+            rows="2"
+            class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+          />
+        </label>
+        <label class="text-sm">
+          En vez de (tu hábito actual)
+          <textarea
+            v-model="form.habitoEnVezDe"
+            rows="2"
+            class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+          />
+        </label>
+        <label class="text-sm sm:col-span-2">
+          Voy a (tu nuevo hábito)
+          <textarea
+            v-model="form.habitoVoyA"
+            rows="2"
+            class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+          />
+        </label>
+        <label class="text-sm">
+          Cómo hacerlo Obvio
+          <textarea
+            v-model="form.habitoObvio"
+            rows="2"
+            class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+          />
+        </label>
+        <label class="text-sm">
+          Cómo hacerlo Sencillo
+          <textarea
+            v-model="form.habitoSencillo"
+            rows="2"
+            class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+          />
+        </label>
+        <label class="text-sm">
+          Cómo hacerlo Atractivo
+          <textarea
+            v-model="form.habitoAtractivo"
+            rows="2"
+            class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+          />
+        </label>
+        <label class="text-sm">
+          Cómo hacerlo Satisfactorio
+          <textarea
+            v-model="form.habitoSatisfactorio"
+            rows="2"
+            class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+          />
+        </label>
+        <button
+          class="w-fit rounded-lg bg-[var(--color-ink)] px-4 py-2 text-sm text-[var(--color-parchment)] disabled:opacity-60 sm:col-span-2"
+          :disabled="saving"
+          @click="guardarHabito"
+        >
+          {{ saving ? 'Guardando…' : 'Guardar hábito' }}
+        </button>
+      </div>
+    </SectionCard>
 
-    <div class="rounded-2xl border border-[var(--color-line)] bg-white p-4">
-      <h2 class="mb-2 text-sm font-medium">
-        Plan de ejecución
-      </h2>
+    <SectionCard
+      title="Plan de ejecución"
+      icon="lista"
+    >
       <ul class="mb-3 space-y-2">
         <li
           v-for="a in plan.actividades"
@@ -256,6 +259,6 @@ function objetivoDescripcion(objetivoId: string): string {
           Agregar actividad
         </button>
       </div>
-    </div>
+    </SectionCard>
   </div>
 </template>

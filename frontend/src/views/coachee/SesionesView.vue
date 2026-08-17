@@ -3,6 +3,8 @@ import { computed, onMounted, reactive, ref, type ComponentPublicInstance } from
 import AppShell from '../../components/AppShell.vue'
 import AppModal from '../../components/AppModal.vue'
 import WeekCalendar from '../../components/WeekCalendar.vue'
+import EmptyState from '../../components/EmptyState.vue'
+import NavIcon from '../../components/NavIcon.vue'
 import {
   getMisSesiones,
   guardarPostSesion,
@@ -153,14 +155,16 @@ function onSelectSesion(id: string) {
     >
       Cargando…
     </div>
-    <div
+    <EmptyState
       v-else-if="sesionesOrdenadas.length === 0"
-      class="text-sm text-[var(--color-ink)]/60"
-    >
-      Todavía no tienes sesiones agendadas.
-    </div>
-    <div
+      icon="sesiones"
+      title="Todavía no tienes sesiones agendadas"
+      description="Cuando tu coach agende una sesión contigo, va a aparecer acá y en el calendario de arriba."
+    />
+    <TransitionGroup
       v-else
+      name="fade-slide"
+      tag="div"
       class="space-y-4"
     >
       <div
@@ -228,10 +232,17 @@ function onSelectSesion(id: string) {
           >
             <div class="flex flex-wrap gap-2">
               <span
-                class="rounded-full px-3 py-1 text-xs font-semibold"
+                class="flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold"
                 :class="coloresCercania(sesion.postSesion.cercaniaObjetivo).texto"
                 :style="{ backgroundColor: coloresCercania(sesion.postSesion.cercaniaObjetivo).suave }"
-              >Cercanía al objetivo: {{ sesion.postSesion.cercaniaObjetivo }}/10</span>
+              >
+                <NavIcon
+                  v-if="sesion.postSesion.cercaniaObjetivo >= 8"
+                  name="trofeo"
+                  :size="12"
+                  class="text-[var(--color-spark)]"
+                />
+                Cercanía al objetivo: {{ sesion.postSesion.cercaniaObjetivo }}/10</span>
               <span class="rounded-full bg-[var(--color-ink)]/5 px-3 py-1 text-xs font-semibold text-[var(--color-ink)]/70">
                 Utilidad: {{ sesion.postSesion.utilidad }}/5
               </span>
@@ -263,9 +274,13 @@ function onSelectSesion(id: string) {
           </div>
           <div
             v-else
-            class="space-y-3"
+            class="space-y-3 rounded-xl border border-[var(--color-line)]/60 bg-[var(--color-parchment)]/30 p-4"
           >
-            <p class="text-xs font-medium text-[var(--color-ink)]/70">
+            <p class="flex items-center gap-1.5 text-xs font-medium text-[var(--color-ink)]/70">
+              <NavIcon
+                name="lista"
+                :size="14"
+              />
               Post-sesión (una vez publicado no se puede editar)
             </p>
             <p
@@ -360,7 +375,7 @@ function onSelectSesion(id: string) {
           </button>
         </div>
       </div>
-    </div>
+    </TransitionGroup>
 
     <AppModal
       v-if="reagendarModalOpen"

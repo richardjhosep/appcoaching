@@ -59,6 +59,18 @@ const routes: RouteRecordRaw[] = [
     meta: { roles: ['coachee'] },
   },
   {
+    path: '/coachee/quiz',
+    name: 'coachee-quiz',
+    component: () => import('../views/coachee/QuizView.vue'),
+    meta: { roles: ['coachee'] },
+  },
+  {
+    path: '/coachee/flashcards',
+    name: 'coachee-flashcards',
+    component: () => import('../views/coachee/FlashcardsView.vue'),
+    meta: { roles: ['coachee'] },
+  },
+  {
     path: '/coachee/ciclos/:cicloId/certificado',
     name: 'coachee-certificado',
     component: () => import('../views/coachee/CertificadoView.vue'),
@@ -81,6 +93,18 @@ const routes: RouteRecordRaw[] = [
     path: '/coach/recursos',
     name: 'coach-recursos',
     component: () => import('../views/coach/RecursosView.vue'),
+    meta: { roles: ['coach'] },
+  },
+  {
+    path: '/coach/quiz',
+    name: 'coach-quiz',
+    component: () => import('../views/coach/QuizView.vue'),
+    meta: { roles: ['coach'] },
+  },
+  {
+    path: '/coach/flashcards',
+    name: 'coach-flashcards',
+    component: () => import('../views/coach/FlashcardsView.vue'),
     meta: { roles: ['coach'] },
   },
   {

@@ -168,5 +168,65 @@ withDefaults(defineProps<{ name: string; size?: number }>(), { size: 18 })
         r="2"
       /><path d="M6 16.5a2.5 2.5 0 0 1 5 0M13 10h5M13 14h3" />
     </template>
+    <template v-else-if="name === 'objetivo'">
+      <circle
+        cx="12"
+        cy="12"
+        r="8.5"
+      /><circle
+        cx="12"
+        cy="12"
+        r="4.5"
+      /><circle
+        cx="12"
+        cy="12"
+        r="1"
+        fill="currentColor"
+        stroke="none"
+      />
+    </template>
+    <template v-else-if="name === 'lista'">
+      <path d="M4 6.3l1.4 1.4L8 5" /><path d="M4 12.3l1.4 1.4 2.6-2.7" /><path d="M4 18.3l1.4 1.4 2.6-2.7" /><path d="M11 6.5h9M11 12.5h9M11 18.5h9" />
+    </template>
+    <template v-else-if="name === 'habito'">
+      <path d="M17 2.1l4 4-4 4" /><path d="M3 12.1v-2a4 4 0 0 1 4-4h14" /><path d="M7 21.9l-4-4 4-4" /><path d="M21 11.9v2a4 4 0 0 1-4 4H3" />
+    </template>
+    <template v-else-if="name === 'formacion'">
+      <path d="M12 3l10 5-10 5L2 8z" /><path d="M6 10.5V16c0 1.5 2.7 3 6 3s6-1.5 6-3v-5.5" /><path d="M22 8v6" />
+    </template>
+    <template v-else-if="name === 'diario'">
+      <path d="M12 6.5c-1.6-1.1-4-1.6-6-1v13c2-.6 4.4-.1 6 1 1.6-1.1 4-1.6 6-1v-13c-2-.6-4.4-.1-6 1z" /><path d="M12 6.5v13" />
+    </template>
+    <template v-else-if="name === 'quiz'">
+      <circle
+        cx="12"
+        cy="12"
+        r="9"
+      /><path d="M9.2 9.3a2.8 2.8 0 0 1 5.4.9c0 1.8-2.4 2.3-2.4 4" /><circle
+        cx="12"
+        cy="17"
+        r="0.6"
+        fill="currentColor"
+        stroke="none"
+      />
+    </template>
+    <template v-else-if="name === 'flashcards'">
+      <rect
+        x="6"
+        y="3.5"
+        width="14"
+        height="10"
+        rx="1.5"
+      /><rect
+        x="3.5"
+        y="8.5"
+        width="14"
+        height="10"
+        rx="1.5"
+      />
+    </template>
+    <template v-else-if="name === 'trofeo'">
+      <path d="M8 4h8v4a4 4 0 0 1-8 0z" /><path d="M8 5H5a3 3 0 0 0 3 5" /><path d="M16 5h3a3 3 0 0 1-3 5" /><path d="M12 12v3" /><path d="M9 20h6" /><path d="M10 17h4v3h-4z" />
+    </template>
   </svg>
 </template>

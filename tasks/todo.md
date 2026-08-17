@@ -685,3 +685,51 @@ Igual que en el Sprint 13, `npm install`/`npx playwright` se cuelgan indefinidam
 ## Revisión
 
 Sprint 14 completo — cierre del plan de `docs/jira-plan.md`. El hallazgo más significativo no estaba en ninguna historia escrita: 13 sprints de verificación habían sembrado datos siempre vía `curl`, ocultando que jamás existió una UI real para las operaciones más básicas de alta (empresas, coachees, sesiones). Se resolvió con la solución más simple y correcta — exponer en el frontend los endpoints que el Coach ya podía usar desde el backend — en vez de construir un rol "superadmin" paralelo y redundante que el usuario pidió inicialmente sin conocer aún esta causa raíz. El resto de las historias de hardening (backups, puertos, validación, onboarding, densidad celular, e2e/CI) se completaron y verificaron con la misma rigurosidad de siempre, con dos bugs reales encontrados y corregidos en el camino (validación de teléfono demasiado estricta, error de tipos preexistente). Única brecha real: la verificación visual con Playwright, bloqueada por una restricción de red de este sandbox — mitigada construyendo una suite real y verificándola exhaustivamente por vías alternativas (tsc, YAML parsing, revisión manual contra el markup real), lista para correr en CI sin intervención adicional. Con este sprint se cierran las 14 épicas planificadas para el MVP de Coach Fernando Ramos.
+
+---
+
+# Vistas del coachee — de "formulario serio" a interfaz con personalidad — 2026-08-16
+
+Plan completo en `/Users/richardmunoz/.claude/plans/greedy-tumbling-dawn.md`. Checklist:
+
+- [x] `components/EmptyState.vue` (+ spec)
+- [x] `components/SectionCard.vue` (+ spec)
+- [x] Iconos nuevos (objetivo, lista, habito, formacion, diario, trofeo) en `NavIcon.vue`
+- [x] Clases utilitarias de transición fade+slight-rise en `styles.css`
+- [x] `ProgresoView.vue`: EmptyState en autoevaluación/diario, icono spark en Logros, TransitionGroup, SectionCard en las 5 cards
+- [x] `SesionesView.vue`: EmptyState sin sesiones, tratamiento con icono en post-sesión, TransitionGroup en lista, trofeo spark en cercanía alta
+- [x] `PlanDesarrolloView.vue` + tabs: EmptyState sin ciclo (en CicloStepper), SectionCard con icono por tab (Definición/Objetivos, Hábito/Ejecución, Formación)
+- [x] `BibliotecaView.vue`: EmptyState sin recursos (2 lugares), TransitionGroup en cards de tópico/recursos
+- [x] `SesionesView.spec.ts`/`BibliotecaView.spec.ts` verificados, sin roturas (aserciones por texto, no por clase)
+- [x] `vitest run` (218/218), `eslint --fix` (0 errores), `vue-tsc --noEmit` + cross-check `tsc -p tsconfig.app.json` (0 errores nuevos, 3 preexistentes sin relación)
+- [x] Verificación CDP antes/después en las 4 vistas + tab Formación — confirmado visualmente
+
+---
+
+# Módulo Quiz — sin IA — 2026-08-16
+
+Plan completo en `/Users/richardmunoz/.claude/plans/greedy-tumbling-dawn.md`. Checklist:
+
+- [x] Backend: entidades `Quiz`/`PreguntaQuiz`/`IntentoQuiz`, migración, DTOs, service, controller, module, registro en `app.module.ts`
+- [x] `respuestaCorrecta` nunca viaja al coachee antes de responder (verificado por test + smoke real vía curl + captura de pantalla del formulario)
+- [x] Guard de eliminación: 409 si el quiz ya tiene intentos registrados
+- [x] Migración aplicada a la base de dev y verificada con `POST/GET` reales
+- [x] Frontend: `api/quiz.ts`, ícono `quiz` en `NavIcon.vue`, `views/coach/QuizView.vue`, `views/coachee/QuizView.vue`, rutas + nav
+- [x] Backend: `jest` 297/297, `tsc --noEmit` sin errores nuevos, `eslint` limpio
+- [x] Frontend: `vitest run` 226/226, `eslint --fix` limpio, `vue-tsc` + cross-check `tsc` sin errores nuevos
+- [x] Verificación CDP: coach crea quiz + agrega preguntas + ve resultados; coachee responde y ve feedback con puntaje y `--color-spark` en "mejor puntaje"
+
+---
+
+# Módulo Flashcards — sin IA — 2026-08-17
+
+Plan completo en `/Users/richardmunoz/.claude/plans/greedy-tumbling-dawn.md`. Checklist:
+
+- [x] Backend: entidades `Flashcard`/`RepasoFlashcard`, migración, DTOs, service, controller, module, registro en `app.module.ts`
+- [x] Repetición espaciada (olvidado+1d/dificil+3d/facil+7d) verificada por test + smoke real vía curl (proximaRevision correcta, debeRepasar pasa a false tras repasar)
+- [x] Guard de eliminación: 409 si la flashcard ya tiene repasos registrados
+- [x] Migración aplicada a la base de dev
+- [x] Frontend: `api/flashcards.ts`, ícono `flashcards` en `NavIcon.vue`, `views/coach/FlashcardsView.vue`, `views/coachee/FlashcardsView.vue` (flip 3D con `styles.css` compartido), rutas + nav
+- [x] Backend: `jest` 308/308, `tsc --noEmit` sin errores nuevos, `eslint` limpio
+- [x] Frontend: `vitest run` 232/232, `eslint --fix` limpio, `vue-tsc` + cross-check `tsc` sin errores nuevos
+- [x] Verificación CDP: coach crea 2 flashcards; coachee hace flip (confirmado visualmente), marca fácil/difícil, ve pantalla "ya repasaste todo por hoy"
