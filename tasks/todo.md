@@ -733,3 +733,17 @@ Plan completo en `/Users/richardmunoz/.claude/plans/greedy-tumbling-dawn.md`. Ch
 - [x] Backend: `jest` 308/308, `tsc --noEmit` sin errores nuevos, `eslint` limpio
 - [x] Frontend: `vitest run` 232/232, `eslint --fix` limpio, `vue-tsc` + cross-check `tsc` sin errores nuevos
 - [x] Verificación CDP: coach crea 2 flashcards; coachee hace flip (confirmado visualmente), marca fácil/difícil, ve pantalla "ya repasaste todo por hoy"
+
+---
+
+# Mapa Mental — sin IA — 2026-08-17
+
+Plan completo en `/Users/richardmunoz/.claude/plans/greedy-tumbling-dawn.md`. Checklist:
+
+- [x] Backend: entidades `MapaMental`/`NodoMapa` (autoreferenciada, cascada real), migración, DTOs, service, controller, module, registro en `app.module.ts`
+- [x] Sin guard de eliminación (no hay historial del coachee que proteger, a diferencia de Quiz/Flashcards) — confirmado por test
+- [x] Migración aplicada a la base de dev; smoke test real vía curl (6 nodos, 2 niveles)
+- [x] Frontend: `lib/mapaArbol.ts` (buildArbol + layoutArbol puros, testeados en aislado), `components/MapaCanvas.vue` (renderizado SVG + nodos posicionados, primer lienzo visual real de la app), `api/mapas.ts`, ícono `mapa` en `NavIcon.vue`, `views/coach/MapasView.vue`, `views/coachee/MapasView.vue`, rutas + nav
+- [x] Backend: `jest` 316/316, `tsc --noEmit` sin errores nuevos, `eslint` limpio
+- [x] Frontend: `vitest run` 244/244, `eslint --fix` limpio, `vue-tsc` + cross-check `tsc` sin errores nuevos
+- [x] Verificación CDP: coach arma un mapa de 2 niveles (tema central + 4 ramas + 1 sub-rama) y lo ve renderizado con líneas curvas; clic colapsa/expande (badge "+1"); coachee explora el mismo mapa en modo solo-lectura y ve el detalle del nodo seleccionado

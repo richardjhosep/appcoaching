@@ -71,6 +71,12 @@ const routes: RouteRecordRaw[] = [
     meta: { roles: ['coachee'] },
   },
   {
+    path: '/coachee/mapas',
+    name: 'coachee-mapas',
+    component: () => import('../views/coachee/MapasView.vue'),
+    meta: { roles: ['coachee'] },
+  },
+  {
     path: '/coachee/ciclos/:cicloId/certificado',
     name: 'coachee-certificado',
     component: () => import('../views/coachee/CertificadoView.vue'),
@@ -105,6 +111,12 @@ const routes: RouteRecordRaw[] = [
     path: '/coach/flashcards',
     name: 'coach-flashcards',
     component: () => import('../views/coach/FlashcardsView.vue'),
+    meta: { roles: ['coach'] },
+  },
+  {
+    path: '/coach/mapas',
+    name: 'coach-mapas',
+    component: () => import('../views/coach/MapasView.vue'),
     meta: { roles: ['coach'] },
   },
   {

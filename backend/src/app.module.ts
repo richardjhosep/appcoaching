@@ -26,6 +26,7 @@ import { SatisfaccionModule } from './satisfaccion/satisfaccion.module';
 import { NotificacionesModule } from './notificaciones/notificaciones.module';
 import { QuizModule } from './quiz/quiz.module';
 import { FlashcardsModule } from './flashcards/flashcards.module';
+import { MapasModule } from './mapas/mapas.module';
 
 @Module({
   imports: [
@@ -69,6 +70,7 @@ import { FlashcardsModule } from './flashcards/flashcards.module';
     NotificacionesModule,
     QuizModule,
     FlashcardsModule,
+    MapasModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

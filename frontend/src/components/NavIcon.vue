@@ -225,6 +225,21 @@ withDefaults(defineProps<{ name: string; size?: number }>(), { size: 18 })
         rx="1.5"
       />
     </template>
+    <template v-else-if="name === 'mapa'">
+      <circle
+        cx="6"
+        cy="12"
+        r="2.6"
+      /><circle
+        cx="17"
+        cy="6"
+        r="2.6"
+      /><circle
+        cx="17"
+        cy="18"
+        r="2.6"
+      /><path d="M8.4 10.8L14.6 7.2M8.4 13.2L14.6 16.8" />
+    </template>
     <template v-else-if="name === 'trofeo'">
       <path d="M8 4h8v4a4 4 0 0 1-8 0z" /><path d="M8 5H5a3 3 0 0 0 3 5" /><path d="M16 5h3a3 3 0 0 1-3 5" /><path d="M12 12v3" /><path d="M9 20h6" /><path d="M10 17h4v3h-4z" />
     </template>
