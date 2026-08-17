@@ -1,5 +1,5 @@
 <script setup lang="ts">
-defineProps<{ title: string }>()
+withDefaults(defineProps<{ title: string; size?: 'md' | 'lg' }>(), { size: 'md' })
 const emit = defineEmits<{ close: [] }>()
 </script>
 
@@ -9,7 +9,10 @@ const emit = defineEmits<{ close: [] }>()
       class="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 px-4 py-8 sm:items-center"
       @click.self="emit('close')"
     >
-      <div class="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl">
+      <div
+        class="w-full rounded-2xl bg-white p-6 shadow-xl"
+        :class="size === 'lg' ? 'max-w-2xl' : 'max-w-lg'"
+      >
         <div class="mb-4 flex items-center justify-between">
           <h2 class="font-[family-name:var(--font-heading)] text-lg font-semibold text-[var(--color-ink)]">
             {{ title }}

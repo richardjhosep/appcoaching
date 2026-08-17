@@ -804,3 +804,15 @@ El usuario preguntó "¿sé si aprobé los tópicos?" — auditoría reveló que
 - [x] Verificado en navegador real: abrí y cerré un ciclo de prueba con resultado "logrado" para la cuenta qa-paleta-verify, confirmé que aparece con el badge correcto y el detalle expandido (resumen + informe)
 
 Diagnóstico más amplio entregado al usuario (no implementado, pendiente de decisión): Quiz no tiene umbral de aprobado/reprobado (solo puntaje crudo), y el modelo de datos no soporta "varios tópicos trabajados en el tiempo" — el Plan trackea una sola competencia activa a la vez, no un temario tipo curso.
+
+---
+
+# Regla: no cerrar ciclo sin plan aprobado — 2026-08-17
+
+El usuario notó que el ciclo de prueba cerrado (usado para verificar "Historial de ciclos") era incoherente: el coachee nunca había enviado su plan. Confirmó que debía ser una regla obligatoria del backend.
+
+- [x] `CiclosService.cerrar()`: nuevo guard — si el plan del coachee no existe o no está `aprobado`, lanza `ConflictException` con mensaje claro. Reutiliza `PlanesDesarrolloService` ya inyectado en el servicio, sin nuevo módulo/dependencia.
+- [x] `ciclos.service.spec.ts`: 2 tests nuevos (rechaza sin plan, rechaza con plan no aprobado) + los 2 tests existentes de `cerrar` actualizados para mockear un plan aprobado
+- [x] `jest` 322/322, `tsc`/`eslint` limpios
+- [x] Verificado real vía API: intento de cierre sin plan aprobado → 409 con el mensaje correcto; luego de enviar+aprobar el plan de la cuenta de prueba, el mismo cierre funciona (201) — el frontend ya mostraba `ApiError.message` tal cual en `CicloTab.vue`, no necesitó cambios
+- [x] Dato de prueba corregido: la cuenta qa-paleta-verify ahora tiene su plan realmente enviado y aprobado, con un objetivo específico — la historia ya es coherente

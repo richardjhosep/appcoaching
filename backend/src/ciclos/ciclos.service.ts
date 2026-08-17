@@ -12,6 +12,7 @@ import { AbrirCicloDto } from './dto/abrir-ciclo.dto';
 import { ResultadoCiclo } from './enums/resultado-ciclo.enum';
 import { CoacheesService } from '../coachees/coachees.service';
 import { PlanesDesarrolloService } from '../planes-desarrollo/planes-desarrollo.service';
+import { EstadoPlan } from '../planes-desarrollo/enums/estado-plan.enum';
 import { SeguimientoService } from '../seguimiento/seguimiento.service';
 import { Role } from '../auth/enums/role.enum';
 import type { AuthenticatedUser } from '../auth/auth.types';
@@ -92,6 +93,17 @@ export class CiclosService {
     const ciclo = await this.findOne(id);
     if (ciclo.fechaCierre) {
       throw new ConflictException('El ciclo ya está cerrado.');
+    }
+    // Un ciclo no puede cerrarse si el coachee nunca llegó a tener su plan de
+    // desarrollo aprobado — sin plan (fila inexistente) cuenta igual que "no
+    // aprobado", no se distingue.
+    const plan = await this.planesDesarrollo
+      .getByCoacheeId(ciclo.coacheeId)
+      .catch(() => null);
+    if (plan?.estado !== EstadoPlan.APROBADO) {
+      throw new ConflictException(
+        'No se puede cerrar el ciclo: el plan de desarrollo del coachee todavía no está aprobado.',
+      );
     }
     ciclo.fechaCierre = new Date();
     ciclo.resultado = resultado;

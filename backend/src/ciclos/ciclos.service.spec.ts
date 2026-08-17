@@ -115,11 +115,47 @@ describe('CiclosService', () => {
       ).rejects.toThrow(ConflictException);
     });
 
-    it('sets fechaCierre and resultado', async () => {
+    it('rejects closing when the coachee has no plan at all', async () => {
       ciclosRepo.findOne.mockResolvedValue({
         id: 'ciclo-1',
+        coacheeId: 'coachee-1',
         fechaCierre: null,
         totalSesiones: 10,
+      });
+      planesDesarrollo.getByCoacheeId.mockRejectedValue(
+        new NotFoundException(),
+      );
+
+      await expect(
+        service.cerrar('ciclo-1', ResultadoCiclo.LOGRADO),
+      ).rejects.toThrow(ConflictException);
+    });
+
+    it('rejects closing when the plan exists but is not aprobado', async () => {
+      ciclosRepo.findOne.mockResolvedValue({
+        id: 'ciclo-1',
+        coacheeId: 'coachee-1',
+        fechaCierre: null,
+        totalSesiones: 10,
+      });
+      planesDesarrollo.getByCoacheeId.mockResolvedValue({
+        estado: 'pendiente_aprobacion',
+      });
+
+      await expect(
+        service.cerrar('ciclo-1', ResultadoCiclo.LOGRADO),
+      ).rejects.toThrow(ConflictException);
+    });
+
+    it('sets fechaCierre and resultado once the plan is aprobado', async () => {
+      ciclosRepo.findOne.mockResolvedValue({
+        id: 'ciclo-1',
+        coacheeId: 'coachee-1',
+        fechaCierre: null,
+        totalSesiones: 10,
+      });
+      planesDesarrollo.getByCoacheeId.mockResolvedValue({
+        estado: 'aprobado',
       });
 
       const ciclo = await service.cerrar('ciclo-1', ResultadoCiclo.LOGRADO);

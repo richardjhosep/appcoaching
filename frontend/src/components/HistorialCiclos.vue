@@ -1,16 +1,11 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { descargarInformePdf, type Ciclo } from '../api/ciclos'
+import { resultadoLabel } from '../lib/resultadoCiclo'
 
 defineProps<{ ciclos: Ciclo[] }>()
 
 const expandido = ref<string | null>(null)
-
-const resultadoLabel: Record<string, string> = {
-  logrado: 'Logrado',
-  medianamente_logrado: 'Medianamente logrado',
-  no_logrado: 'No logrado',
-}
 
 function toggle(id: string) {
   expandido.value = expandido.value === id ? null : id

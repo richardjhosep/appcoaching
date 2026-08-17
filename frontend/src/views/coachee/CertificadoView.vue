@@ -5,6 +5,7 @@ import { getMyCoachee, type Coachee } from '../../api/coachees'
 import { getOwnPlan, type PlanDesarrollo } from '../../api/planesDesarrollo'
 import { getMisCiclos, type Ciclo } from '../../api/ciclos'
 import BackLink from '../../components/BackLink.vue'
+import CertificadoContenido from '../../components/CertificadoContenido.vue'
 
 const props = defineProps<{ cicloId: string }>()
 const router = useRouter()
@@ -13,12 +14,6 @@ const loading = ref(true)
 const coachee = ref<Coachee | null>(null)
 const plan = ref<PlanDesarrollo | null>(null)
 const ciclo = ref<Ciclo | null>(null)
-
-const resultadoLabel: Record<string, string> = {
-  logrado: 'Logrado',
-  medianamente_logrado: 'Medianamente logrado',
-  no_logrado: 'No logrado',
-}
 
 onMounted(async () => {
   const [c, p, ciclos] = await Promise.all([getMyCoachee(), getOwnPlan(), getMisCiclos()])
@@ -70,37 +65,13 @@ function imprimir() {
         </button>
       </div>
 
-      <div class="rounded-2xl border-4 border-double border-[var(--color-bronze)] bg-white p-10 text-center print:rounded-none print:border-2">
-        <p class="mb-1 font-[family-name:var(--font-heading)] text-xs uppercase tracking-widest text-[var(--color-spark)]">
-          Coach Fernando Ramos
-        </p>
-        <h1 class="mb-6 font-[family-name:var(--font-heading)] text-2xl font-semibold">
-          Certificado de Finalización de Proceso de Coaching
-        </h1>
-        <p class="mb-2 text-sm text-[var(--color-ink)]/70">
-          Se certifica que
-        </p>
-        <p class="mb-6 font-[family-name:var(--font-heading)] text-xl font-semibold">
-          {{ coachee?.nombre }}
-        </p>
-        <p class="mb-1 text-sm text-[var(--color-ink)]/70">
-          completó su proceso de coaching enfocado en
-        </p>
-        <p class="mb-6 text-sm font-medium">
-          {{ plan?.objetivoGeneral ?? 'su plan de desarrollo' }}
-        </p>
-        <p class="mb-1 text-sm text-[var(--color-ink)]/70">
-          con resultado
-        </p>
-        <p class="mb-6 font-[family-name:var(--font-heading)] text-lg font-semibold text-[var(--color-sage)]">
-          {{ resultadoLabel[ciclo.resultado] }}
-        </p>
-        <p class="font-[family-name:var(--font-mono)] text-xs text-[var(--color-ink)]/60">
-          {{ new Date(ciclo.fechaApertura).toLocaleDateString('es-CL') }}
-          —
-          {{ new Date(ciclo.fechaCierre).toLocaleDateString('es-CL') }}
-        </p>
-      </div>
+      <CertificadoContenido
+        :nombre-coachee="coachee?.nombre ?? ''"
+        :objetivo="plan?.objetivoGeneral ?? 'su plan de desarrollo'"
+        :resultado="ciclo.resultado"
+        :fecha-apertura="ciclo.fechaApertura"
+        :fecha-cierre="ciclo.fechaCierre"
+      />
     </div>
   </div>
 </template>

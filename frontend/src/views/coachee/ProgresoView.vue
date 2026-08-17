@@ -6,6 +6,8 @@ import HistorialCiclos from '../../components/HistorialCiclos.vue'
 import SectionCard from '../../components/SectionCard.vue'
 import EmptyState from '../../components/EmptyState.vue'
 import NavIcon from '../../components/NavIcon.vue'
+import AppModal from '../../components/AppModal.vue'
+import CertificadoContenido from '../../components/CertificadoContenido.vue'
 import {
   addEntradaDiario,
   addLogro,
@@ -19,9 +21,12 @@ import {
   type PuntoProgreso,
 } from '../../api/seguimiento'
 import { getMisCiclos, type Ciclo } from '../../api/ciclos'
+import { getMyCoachee, type Coachee } from '../../api/coachees'
+import { getOwnPlan, type PlanDesarrollo } from '../../api/planesDesarrollo'
 import { ApiError } from '../../api/client'
 import { notifyError, notifySuccess } from '../../lib/notify'
 import { nivelProgreso, coloresNivel } from '../../lib/nivelProgreso'
+import { resultadoLabel } from '../../lib/resultadoCiclo'
 
 const loading = ref(true)
 const avance = ref<number | null>(null)
@@ -29,6 +34,9 @@ const puntos = ref<PuntoProgreso[]>([])
 const logros = ref<Logro[]>([])
 const ciclos = ref<Ciclo[]>([])
 const certificados = ref<Ciclo[]>([])
+const coachee = ref<Coachee | null>(null)
+const plan = ref<PlanDesarrollo | null>(null)
+const previewCiclo = ref<Ciclo | null>(null)
 const nuevaFecha = ref('')
 const nuevaDescripcion = ref('')
 const diarioEntradas = ref<Diario[]>([])
@@ -41,12 +49,14 @@ const ciclosCerrados = computed(() => ciclos.value.filter((c) => c.fechaCierre))
 
 async function load() {
   loading.value = true
-  const [a, p, l, d, cs] = await Promise.all([
+  const [a, p, l, d, cs, co, pl] = await Promise.all([
     getMiAvance(),
     getMiLineaProgreso(),
     getMisLogros(),
     getMisEntradasDiario(),
     getMisCiclos(),
+    getMyCoachee().catch(() => null),
+    getOwnPlan().catch(() => null),
   ])
   avance.value = a.avance
   puntos.value = p
@@ -54,6 +64,8 @@ async function load() {
   diarioEntradas.value = d
   ciclos.value = cs
   certificados.value = cs.filter((c) => c.fechaCierre && c.resultado)
+  coachee.value = co
+  plan.value = pl
   loading.value = false
 }
 
@@ -171,19 +183,43 @@ async function agregarEntradaDiario() {
         title="Certificados"
         icon="trofeo"
       >
-        <ul class="space-y-1 text-sm">
-          <li
+        <div class="space-y-2">
+          <div
             v-for="c in certificados"
             :key="c.id"
+            class="flex flex-col gap-3 rounded-xl border border-[var(--color-line)] bg-white p-3 sm:flex-row sm:items-center"
           >
-            <RouterLink
-              :to="{ name: 'coachee-certificado', params: { cicloId: c.id } }"
-              class="text-[var(--color-sage)] underline"
-            >
-              Certificado — ciclo cerrado el {{ new Date(c.fechaCierre!).toLocaleDateString('es-CL') }}
-            </RouterLink>
-          </li>
-        </ul>
+            <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--color-parchment)] text-[var(--color-spark)]">
+              <NavIcon
+                name="trofeo"
+                :size="20"
+              />
+            </div>
+            <div class="min-w-0 flex-1">
+              <p class="text-sm font-medium">
+                Certificado de finalización
+              </p>
+              <p class="flex flex-wrap items-center gap-2 text-xs text-[var(--color-ink)]/60">
+                <span>Ciclo cerrado el {{ new Date(c.fechaCierre!).toLocaleDateString('es-CL') }}</span>
+                <span class="rounded-full bg-[var(--color-parchment)] px-2 py-0.5">{{ resultadoLabel[c.resultado!] }}</span>
+              </p>
+            </div>
+            <div class="flex shrink-0 gap-2">
+              <button
+                class="rounded-lg border border-[var(--color-line)] px-3 py-1.5 text-xs hover:bg-[var(--color-parchment)]/50"
+                @click="previewCiclo = c"
+              >
+                Vista previa
+              </button>
+              <RouterLink
+                :to="{ name: 'coachee-certificado', params: { cicloId: c.id } }"
+                class="rounded-lg bg-[var(--color-ink)] px-3 py-1.5 text-xs text-[var(--color-parchment)]"
+              >
+                Descargar
+              </RouterLink>
+            </div>
+          </div>
+        </div>
       </SectionCard>
 
       <SectionCard
@@ -283,5 +319,34 @@ async function agregarEntradaDiario() {
         </button>
       </SectionCard>
     </div>
+
+    <AppModal
+      v-if="previewCiclo"
+      size="lg"
+      title="Vista previa del certificado"
+      @close="previewCiclo = null"
+    >
+      <CertificadoContenido
+        :nombre-coachee="coachee?.nombre ?? ''"
+        :objetivo="plan?.objetivoGeneral ?? 'su plan de desarrollo'"
+        :resultado="previewCiclo.resultado!"
+        :fecha-apertura="previewCiclo.fechaApertura"
+        :fecha-cierre="previewCiclo.fechaCierre!"
+      />
+      <div class="mt-4 flex justify-end gap-2">
+        <button
+          class="rounded-lg border border-[var(--color-line)] px-4 py-2 text-sm"
+          @click="previewCiclo = null"
+        >
+          Cerrar
+        </button>
+        <RouterLink
+          :to="{ name: 'coachee-certificado', params: { cicloId: previewCiclo.id } }"
+          class="rounded-lg bg-[var(--color-ink)] px-4 py-2 text-sm text-[var(--color-parchment)]"
+        >
+          Descargar / Imprimir
+        </RouterLink>
+      </div>
+    </AppModal>
   </AppShell>
 </template>
