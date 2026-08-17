@@ -747,3 +747,48 @@ Plan completo en `/Users/richardmunoz/.claude/plans/greedy-tumbling-dawn.md`. Ch
 - [x] Backend: `jest` 316/316, `tsc --noEmit` sin errores nuevos, `eslint` limpio
 - [x] Frontend: `vitest run` 244/244, `eslint --fix` limpio, `vue-tsc` + cross-check `tsc` sin errores nuevos
 - [x] Verificación CDP: coach arma un mapa de 2 niveles (tema central + 4 ramas + 1 sub-rama) y lo ve renderizado con líneas curvas; clic colapsa/expande (badge "+1"); coachee explora el mismo mapa en modo solo-lectura y ve el detalle del nodo seleccionado
+
+---
+
+# "Mi Aprendizaje" — hub del coachee — 2026-08-17
+
+Plan completo en `/Users/richardmunoz/.claude/plans/greedy-tumbling-dawn.md`. Checklist:
+
+- [x] Backend: `AprendizajesRecursoService.listAllOwn` + `GET /recursos/aprendizajes/me` (junta notas de todos los recursos, antes solo existía por-recurso)
+- [x] `lib/miAprendizaje.ts` (resumenAprendizaje, puro) — 7 tests unitarios
+- [x] `views/coachee/MiAprendizajeView.vue` — agrega sesiones/biblioteca/quiz/flashcards/mapas/apuntes en un vistazo, primer ítem del nav
+- [x] Backend: `jest` 318/318, `tsc --noEmit` sin errores nuevos, `eslint` limpio
+- [x] Frontend: `vitest run` 254/254, `eslint --fix` limpio, `vue-tsc` + cross-check `tsc` sin errores nuevos
+- [x] Verificación CDP con la cuenta de prueba real (datos acumulados de toda la sesión): contadores correctos (Quiz/Flashcards "Al día" reflejando intentos/repasos reales, Biblioteca "sin apuntes" bajó de 4 a 3 al escribir una nota nueva, aparece en Apuntes recientes sin recargar nada más)
+
+---
+
+# Nav del coachee agrupado — 2026-08-17
+
+- [x] `AppShell.vue`: `coacheeNavGroups` reorganizado en "Mi Aprendizaje" (sin grupo, primero) + "Mi proceso" (Plan/Sesiones/Progreso) + "Estudiar" (Biblioteca/Quiz/Flashcards/Mapas mentales) — mismo criterio que ya usa el coach (Coaching/Trabajo/Administración)
+- [x] `vitest run` 254/254, `eslint` limpio, verificado visualmente en CDP
+
+---
+
+# Formación complementaria — de texto libre a contenido derivado — 2026-08-17
+
+Plan completo en `/Users/richardmunoz/.claude/plans/greedy-tumbling-dawn.md`. Checklist:
+
+- [x] Backend: `Recurso.competenciaId` (nullable) + migración + validación en `RecursosService` (`RecursosModule` ahora importa `CompetenciasModule`)
+- [x] `RecursosView.vue` (coach): selector de competencia opcional al crear un recurso
+- [x] `lib/formacionRecomendada.ts` (puro, filtra recursos/quiz/flashcards/mapas por `competenciaId` del plan) — 3 tests
+- [x] `FormacionTab.vue` reescrito: de 5 textareas editables a contenido real derivado, agrupado en 4 `SectionCard`; texto legado (si existía) se muestra de solo lectura en un `<details>`, ya no se pierde ni se edita
+- [x] Backend: `jest` 320/320, `tsc --noEmit` sin errores nuevos, `eslint` limpio
+- [x] Frontend: `vitest run` 261/261 (arreglados fixtures de `Recurso` en 3 specs preexistentes que ya no tenían `competenciaId`), `eslint --fix` limpio, `vue-tsc` + cross-check `tsc` sin errores nuevos
+- [x] Verificación CDP real: tageé el plan y un recurso nuevo con la misma competencia que ya tenían el Quiz/Flashcards/Mapa de pasadas anteriores — la tab Formación los agrupó correctamente a los 4, con links funcionales
+
+---
+
+# Fix: mensaje de vacío confuso en Formación — 2026-08-17
+
+Reportado por el usuario: la tab Formación mostraba "no hay nada" aunque Quiz/Flashcards/Mapas sí tenían contenido. Diagnóstico: no era bug — el contenido existente estaba etiquetado con una competencia distinta a la del plan (confirmado por consulta directa a la base). Mejora de UX real:
+
+- [x] `FormacionTab.vue`: el mensaje de vacío ahora nombra la competencia del plan y distingue "no hay nada en ningún lado" de "sí hay contenido, pero de otras competencias" (nuevo computed `hayContenidoDeOtraCompetencia`)
+- [x] `vitest run` 262/262, `eslint`/`vue-tsc`/`tsc` limpios
+- [x] Verificado visualmente simulando el mismo desajuste (cuenta de prueba cambiada temporalmente a una competencia sin contenido, restaurada después)
+- [ ] Pendiente de decisión del usuario: la cuenta real "Felipe Cortes" tiene su plan en "Impacto e Influencia" pero todo el contenido de prueba creado esta sesión es de "Auto Desarrollo" — no es un bug, pero esa cuenta específica seguirá viendo la tab vacía hasta que se cree/retagueé contenido de esa competencia

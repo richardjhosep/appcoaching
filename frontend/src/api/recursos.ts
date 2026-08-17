@@ -7,6 +7,8 @@ export interface Recurso {
   titulo: string
   descripcion: string | null
   carpetaId: string
+  competenciaId: string | null
+  competencia?: { id: string; nombre: string }
   tipo: TipoRecurso
   url: string | null
   archivoNombre: string | null
@@ -34,6 +36,7 @@ export interface CreateRecursoInput {
   titulo: string
   descripcion?: string
   carpetaId: string
+  competenciaId?: string
   tipo: TipoRecurso
   url?: string
   archivo?: File
@@ -45,6 +48,7 @@ export function crearRecurso(input: CreateRecursoInput): Promise<Recurso> {
   form.set('tipo', input.tipo)
   form.set('carpetaId', input.carpetaId)
   if (input.descripcion) form.set('descripcion', input.descripcion)
+  if (input.competenciaId) form.set('competenciaId', input.competenciaId)
   if (input.url) form.set('url', input.url)
   if (input.archivo) form.set('archivo', input.archivo)
   return apiUpload<Recurso>('/recursos', form)
@@ -95,6 +99,16 @@ export function addAprendizaje(recursoId: string, contenido: string): Promise<Ap
 
 export function getMisAprendizajes(recursoId: string): Promise<Aprendizaje[]> {
   return apiRequest<Aprendizaje[]>(`/recursos/${recursoId}/aprendizajes/me`)
+}
+
+export interface AprendizajeConRecurso extends Aprendizaje {
+  recurso?: { id: string; titulo: string }
+}
+
+// Junta las notas de TODOS los recursos del coachee (a diferencia de getMisAprendizajes,
+// que es siempre de uno solo) — usado por "Mi Aprendizaje".
+export function listMisAprendizajes(): Promise<AprendizajeConRecurso[]> {
+  return apiRequest<AprendizajeConRecurso[]>('/recursos/aprendizajes/me')
 }
 
 export async function descargarArchivo(recursoId: string, nombreArchivo: string): Promise<void> {

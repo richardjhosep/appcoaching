@@ -25,6 +25,7 @@ import {
   type TipoRecurso,
 } from '../../api/recursos'
 import { listCoachees, type CoacheeListItem } from '../../api/coachees'
+import { listCompetencias, type Competencia } from '../../api/competencias'
 import { ApiError } from '../../api/client'
 import { notifyError, notifySuccess, confirmDialog, promptDialog } from '../../lib/notify'
 import { buildArbol, breadcrumbDe, idsHastaRaiz } from '../../lib/carpetaArbol'
@@ -32,6 +33,7 @@ import { buildArbol, breadcrumbDe, idsHastaRaiz } from '../../lib/carpetaArbol'
 const loading = ref(true)
 const carpetas = ref<Carpeta[]>([])
 const coachees = ref<CoacheeListItem[]>([])
+const competencias = ref<Competencia[]>([])
 const recursos = ref<Recurso[]>([])
 const seleccionadaId = ref<string | null>(null)
 const expandidas = ref<Set<string>>(new Set())
@@ -55,9 +57,10 @@ async function loadRecursos() {
 }
 
 onMounted(async () => {
-  const [cs, cc] = await Promise.all([listCarpetas(), listCoachees()])
+  const [cs, cc, comps] = await Promise.all([listCarpetas(), listCoachees(), listCompetencias()])
   carpetas.value = cs
   coachees.value = cc
+  competencias.value = comps
   loading.value = false
 })
 
@@ -131,7 +134,7 @@ async function borrarCarpeta() {
 
 // --- Recursos: subir / eliminar --------------------------------------------
 
-const form = reactive({ titulo: '', tipo: 'link' as TipoRecurso, url: '', descripcion: '' })
+const form = reactive({ titulo: '', tipo: 'link' as TipoRecurso, url: '', descripcion: '', competenciaId: '' })
 const archivoSeleccionado = ref<File | null>(null)
 const archivoInput = ref<HTMLInputElement | null>(null)
 const creando = ref(false)
@@ -152,6 +155,7 @@ function abrirSubirModal() {
   form.tipo = 'link'
   form.url = ''
   form.descripcion = ''
+  form.competenciaId = ''
   quitarArchivo()
   mostrarSubirModal.value = true
 }
@@ -170,6 +174,7 @@ async function crear() {
       carpetaId: seleccionadaId.value,
       url: form.tipo === 'link' ? form.url.trim() : undefined,
       descripcion: form.descripcion.trim() || undefined,
+      competenciaId: form.competenciaId || undefined,
       archivo: form.tipo === 'archivo' ? (archivoSeleccionado.value ?? undefined) : undefined,
     })
     recursos.value = [recurso, ...recursos.value]
@@ -641,6 +646,24 @@ async function alternarPublica() {
             type="text"
             class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
           >
+        </label>
+        <label class="text-sm sm:col-span-2">
+          Competencia (opcional — hace que este recurso aparezca en "Formación" del plan de los coachees que trabajan esa competencia)
+          <select
+            v-model="form.competenciaId"
+            class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+          >
+            <option value="">
+              Sin competencia
+            </option>
+            <option
+              v-for="c in competencias"
+              :key="c.id"
+              :value="c.id"
+            >
+              {{ c.nombre }}
+            </option>
+          </select>
         </label>
         <button
           class="w-fit rounded-lg bg-[var(--color-ink)] px-4 py-2 text-sm text-[var(--color-parchment)] disabled:opacity-60 sm:col-span-2"

@@ -59,12 +59,23 @@ interface NavGroup {
   items: NavItem[]
 }
 
+// Agrupado por rol, mismo criterio que coachNavGroups: Mi Aprendizaje es el resumen
+// (sin grupo, primero), "Mi proceso" es la relación de coaching en sí (plan/sesiones/
+// progreso), "Estudiar" es todo el material y las herramientas de práctica — Biblioteca
+// entra ahí también, es material de estudio igual que Quiz/Flashcards/Mapas, no "proceso".
 const coacheeNavGroups: NavGroup[] = [
+  { items: [{ to: '/coachee/mi-aprendizaje', label: 'Mi Aprendizaje', icon: 'dashboard' }] },
   {
+    label: 'Mi proceso',
     items: [
       { to: '/coachee/plan', label: 'Plan', icon: 'planes' },
       { to: '/coachee/sesiones', label: 'Sesiones', icon: 'sesiones' },
       { to: '/coachee/progreso', label: 'Progreso', icon: 'progreso' },
+    ],
+  },
+  {
+    label: 'Estudiar',
+    items: [
       { to: '/coachee/biblioteca', label: 'Biblioteca', icon: 'biblioteca' },
       { to: '/coachee/quiz', label: 'Quiz', icon: 'quiz' },
       { to: '/coachee/flashcards', label: 'Flashcards', icon: 'flashcards' },

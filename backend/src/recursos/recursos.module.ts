@@ -13,6 +13,7 @@ import { RecursosController } from './recursos.controller';
 import { CarpetasController } from './carpetas.controller';
 import { UPLOADS_DIR } from './uploads-dir.util';
 import { CoacheesModule } from '../coachees/coachees.module';
+import { CompetenciasModule } from '../competencias/competencias.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { CoacheesModule } from '../coachees/coachees.module';
       AsignacionCarpeta,
     ]),
     CoacheesModule,
+    CompetenciasModule,
   ],
   providers: [RecursosService, AprendizajesRecursoService, CarpetasService],
   controllers: [RecursosController, CarpetasController],

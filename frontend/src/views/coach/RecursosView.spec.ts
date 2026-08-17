@@ -36,6 +36,11 @@ vi.mock('../../api/coachees', () => ({
   listCoachees: vi.fn(),
 }))
 
+vi.mock('../../api/competencias', async () => {
+  const actual = await vi.importActual<typeof import('../../api/competencias')>('../../api/competencias')
+  return { ...actual, listCompetencias: vi.fn() }
+})
+
 vi.mock('../../lib/notify', () => ({
   notifySuccess: vi.fn(),
   notifyError: vi.fn(),
@@ -46,6 +51,7 @@ vi.mock('../../lib/notify', () => ({
 import { listCarpetas, getAsignacionesDeCarpeta } from '../../api/carpetas'
 import { crearRecurso, listRecursos, getAsignacionesDeRecurso, asignarRecurso } from '../../api/recursos'
 import { listCoachees } from '../../api/coachees'
+import { listCompetencias } from '../../api/competencias'
 
 const carpetaRaiz: Carpeta = {
   id: 'cp1',
@@ -61,6 +67,7 @@ const recurso: Recurso = {
   titulo: 'Manual de ejercicios',
   descripcion: null,
   carpetaId: 'cp1',
+  competenciaId: null,
   tipo: 'link',
   url: 'https://example.com',
   archivoNombre: null,
@@ -93,6 +100,7 @@ describe('RecursosView', () => {
     ])
     vi.mocked(getAsignacionesDeCarpeta).mockResolvedValue([])
     vi.mocked(getAsignacionesDeRecurso).mockResolvedValue([])
+    vi.mocked(listCompetencias).mockResolvedValue([])
   })
 
   it('shows the folder tree and an empty state until a folder is selected', async () => {

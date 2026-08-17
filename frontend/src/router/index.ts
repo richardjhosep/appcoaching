@@ -35,6 +35,12 @@ const routes: RouteRecordRaw[] = [
     component: () => import('../views/CambiarPasswordView.vue'),
   },
   {
+    path: '/coachee/mi-aprendizaje',
+    name: 'coachee-mi-aprendizaje',
+    component: () => import('../views/coachee/MiAprendizajeView.vue'),
+    meta: { roles: ['coachee'] },
+  },
+  {
     path: '/coachee/plan',
     name: 'coachee-plan',
     component: () => import('../views/coachee/PlanDesarrolloView.vue'),

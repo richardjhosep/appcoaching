@@ -1,108 +1,211 @@
 <script setup lang="ts">
-import { reactive, ref } from 'vue'
-import { updateOwnPlan, type PlanDesarrollo } from '../../api/planesDesarrollo'
-import { ApiError } from '../../api/client'
-import { notifyError, notifySuccess } from '../../lib/notify'
+import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
+import type { PlanDesarrollo } from '../../api/planesDesarrollo'
+import { getMisRecursos, type Recurso } from '../../api/recursos'
+import { listQuizzesDisponibles, type QuizResumen } from '../../api/quiz'
+import { listFlashcardsDisponibles, type FlashcardConEstado } from '../../api/flashcards'
+import { listMapasDisponibles, type MapaResumen } from '../../api/mapas'
+import { listCompetencias, type Competencia } from '../../api/competencias'
+import { formacionDe } from '../../lib/formacionRecomendada'
 import SectionCard from '../SectionCard.vue'
+import EmptyState from '../EmptyState.vue'
+import RecursoIcono from '../RecursoIcono.vue'
 
 const props = defineProps<{ plan: PlanDesarrollo }>()
-const emit = defineEmits<{ updated: [PlanDesarrollo] }>()
 
-// Sin `watch(() => props.plan, ...)` a propósito: ver la nota en DefinicionTab.vue.
-const form = reactive({
-  formacionLibros: props.plan.formacionLibros ?? '',
-  formacionArticulos: props.plan.formacionArticulos ?? '',
-  formacionVideos: props.plan.formacionVideos ?? '',
-  formacionPodcasts: props.plan.formacionPodcasts ?? '',
-  formacionPracticaGuiada: props.plan.formacionPracticaGuiada ?? '',
+const router = useRouter()
+const loading = ref(true)
+const recursos = ref<Recurso[]>([])
+const quizzes = ref<QuizResumen[]>([])
+const flashcards = ref<FlashcardConEstado[]>([])
+const mapas = ref<MapaResumen[]>([])
+const competencias = ref<Competencia[]>([])
+
+onMounted(async () => {
+  loading.value = true
+  const [r, q, f, m, comps] = await Promise.all([
+    getMisRecursos(),
+    listQuizzesDisponibles(),
+    listFlashcardsDisponibles(),
+    listMapasDisponibles(),
+    listCompetencias(),
+  ])
+  recursos.value = r
+  quizzes.value = q
+  flashcards.value = f
+  mapas.value = m
+  competencias.value = comps
+  loading.value = false
 })
 
-const saving = ref(false)
-const error = ref<string | null>(null)
+const formacion = computed(() =>
+  formacionDe(props.plan.competenciaId, {
+    recursos: recursos.value,
+    quizzes: quizzes.value,
+    flashcards: flashcards.value,
+    mapas: mapas.value,
+  }),
+)
 
-async function guardar() {
-  saving.value = true
-  error.value = null
-  try {
-    const updated = await updateOwnPlan({
-      formacionLibros: form.formacionLibros || undefined,
-      formacionArticulos: form.formacionArticulos || undefined,
-      formacionVideos: form.formacionVideos || undefined,
-      formacionPodcasts: form.formacionPodcasts || undefined,
-      formacionPracticaGuiada: form.formacionPracticaGuiada || undefined,
-    })
-    emit('updated', updated)
-    await notifySuccess('Formación guardada')
-  } catch (err) {
-    error.value = err instanceof ApiError ? err.message : 'No se pudo guardar.'
-    await notifyError('No se pudo guardar la formación', error.value)
-  } finally {
-    saving.value = false
-  }
-}
+const nombreCompetencia = computed(
+  () => competencias.value.find((c) => c.id === props.plan.competenciaId)?.nombre ?? null,
+)
+
+// Distingue "no hay nada de material todavía" de "hay material, pero de otras
+// competencias" — la primera vez que probamos esto en real, confundía a un coach
+// ver "no hay nada" cuando en realidad sí tenía Quiz/Flashcards, solo que de otra
+// competencia distinta a la de este plan.
+const hayContenidoDeOtraCompetencia = computed(() => {
+  const tieneAlgunaCompetencia = (id: string | null) => id !== null && id !== props.plan.competenciaId
+  return (
+    recursos.value.some((r) => tieneAlgunaCompetencia(r.competenciaId)) ||
+    quizzes.value.some((q) => tieneAlgunaCompetencia(q.competenciaId)) ||
+    flashcards.value.some((f) => tieneAlgunaCompetencia(f.competenciaId)) ||
+    mapas.value.some((m) => tieneAlgunaCompetencia(m.competenciaId))
+  )
+})
+
+// Texto libre de antes de este cambio — ya no editable, se muestra de solo lectura
+// para no perder lo que el coach haya escrito, pero no se vuelve a guardar.
+const notasAntiguas = computed(() =>
+  [
+    { label: 'Libros', contenido: props.plan.formacionLibros },
+    { label: 'Artículos', contenido: props.plan.formacionArticulos },
+    { label: 'Videos', contenido: props.plan.formacionVideos },
+    { label: 'Podcasts', contenido: props.plan.formacionPodcasts },
+    { label: 'Práctica guiada', contenido: props.plan.formacionPracticaGuiada },
+  ].filter((n) => n.contenido?.trim()),
+)
 </script>
 
 <template>
   <div class="space-y-4">
-    <p
-      v-if="error"
-      class="text-sm text-[var(--color-danger)]"
+    <div
+      v-if="loading"
+      class="text-sm text-[var(--color-ink)]/60"
     >
-      {{ error }}
-    </p>
-    <SectionCard
-      title="Formación complementaria"
+      Cargando…
+    </div>
+
+    <EmptyState
+      v-else-if="!plan.competenciaId"
       icon="formacion"
-    >
-      <div class="grid gap-3">
-        <label class="text-sm">
-          Libros
-          <textarea
-            v-model="form.formacionLibros"
-            rows="2"
-            class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
-          />
-        </label>
-        <label class="text-sm">
-          Artículos
-          <textarea
-            v-model="form.formacionArticulos"
-            rows="2"
-            class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
-          />
-        </label>
-        <label class="text-sm">
-          Videos
-          <textarea
-            v-model="form.formacionVideos"
-            rows="2"
-            class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
-          />
-        </label>
-        <label class="text-sm">
-          Podcasts
-          <textarea
-            v-model="form.formacionPodcasts"
-            rows="2"
-            class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
-          />
-        </label>
-        <label class="text-sm">
-          Práctica guiada
-          <textarea
-            v-model="form.formacionPracticaGuiada"
-            rows="2"
-            class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
-          />
-        </label>
+      title="Define primero una competencia"
+      description="La formación complementaria se arma sola a partir de la competencia que elijas en la pestaña Definición."
+    />
+
+    <EmptyState
+      v-else-if="formacion.vacio"
+      icon="formacion"
+      :title="`Todavía no hay material de ${nombreCompetencia ?? 'esta competencia'}`"
+      :description="hayContenidoDeOtraCompetencia
+        ? `Sí hay recursos, quiz, flashcards o mapas mentales creados, pero de otras competencias — ninguno etiquetado como ${nombreCompetencia ?? 'esta'} todavía.`
+        : 'Cuando tu coach agregue recursos, quiz, flashcards o mapas mentales de esta competencia, van a aparecer acá.'"
+    />
+
+    <template v-else>
+      <SectionCard
+        v-if="formacion.recursos.length"
+        title="Recursos"
+        icon="biblioteca"
+      >
+        <ul class="space-y-2">
+          <li
+            v-for="r in formacion.recursos"
+            :key="r.id"
+            class="flex items-center gap-2 text-sm"
+          >
+            <RecursoIcono
+              :recurso="r"
+              size="xs"
+            />
+            {{ r.titulo }}
+          </li>
+        </ul>
         <button
-          class="w-fit rounded-lg bg-[var(--color-ink)] px-4 py-2 text-sm text-[var(--color-parchment)] disabled:opacity-60"
-          :disabled="saving"
-          @click="guardar"
+          class="mt-3 text-xs text-[var(--color-sage)] hover:underline"
+          @click="router.push({ name: 'coachee-biblioteca' })"
         >
-          {{ saving ? 'Guardando…' : 'Guardar formación' }}
+          Ir a Biblioteca →
         </button>
+      </SectionCard>
+
+      <SectionCard
+        v-if="formacion.quizzes.length"
+        title="Quiz"
+        icon="quiz"
+      >
+        <ul class="space-y-1 text-sm">
+          <li
+            v-for="q in formacion.quizzes"
+            :key="q.id"
+          >
+            {{ q.titulo }}
+          </li>
+        </ul>
+        <button
+          class="mt-3 text-xs text-[var(--color-sage)] hover:underline"
+          @click="router.push({ name: 'coachee-quiz' })"
+        >
+          Ir a Quiz →
+        </button>
+      </SectionCard>
+
+      <SectionCard
+        v-if="formacion.flashcards.length"
+        title="Flashcards"
+        icon="flashcards"
+      >
+        <p class="text-sm text-[var(--color-ink)]/70">
+          {{ formacion.flashcards.length }} flashcard{{ formacion.flashcards.length === 1 ? '' : 's' }} de esta competencia.
+        </p>
+        <button
+          class="mt-3 text-xs text-[var(--color-sage)] hover:underline"
+          @click="router.push({ name: 'coachee-flashcards' })"
+        >
+          Ir a Flashcards →
+        </button>
+      </SectionCard>
+
+      <SectionCard
+        v-if="formacion.mapas.length"
+        title="Mapas mentales"
+        icon="mapa"
+      >
+        <ul class="space-y-1 text-sm">
+          <li
+            v-for="m in formacion.mapas"
+            :key="m.id"
+          >
+            {{ m.titulo }}
+          </li>
+        </ul>
+        <button
+          class="mt-3 text-xs text-[var(--color-sage)] hover:underline"
+          @click="router.push({ name: 'coachee-mapas' })"
+        >
+          Ir a Mapas mentales →
+        </button>
+      </SectionCard>
+    </template>
+
+    <details
+      v-if="notasAntiguas.length"
+      class="rounded-2xl border border-[var(--color-line)] bg-white p-4"
+    >
+      <summary class="cursor-pointer text-xs font-medium uppercase tracking-wide text-[var(--color-ink)]/45">
+        Notas antiguas de formación
+      </summary>
+      <div class="mt-3 space-y-2">
+        <p
+          v-for="n in notasAntiguas"
+          :key="n.label"
+          class="text-sm"
+        >
+          <span class="font-medium">{{ n.label }}:</span> {{ n.contenido }}
+        </p>
       </div>
-    </SectionCard>
+    </details>
   </div>
 </template>

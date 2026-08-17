@@ -47,6 +47,18 @@ export class AprendizajesRecursoService {
     });
   }
 
+  // Junta las notas de TODOS los recursos del coachee — a diferencia de
+  // listOwn(), que es siempre por-recurso. Usado por "Mi Aprendizaje" para
+  // mostrar los apuntes recientes sin tener que abrir cada recurso uno a uno.
+  async listAllOwn(actorUserId: string): Promise<AprendizajeRecurso[]> {
+    const coacheeId = await this.resolveCoacheeId(actorUserId);
+    return this.aprendizajes.find({
+      where: { coacheeId },
+      relations: { recurso: true },
+      order: { createdAt: 'DESC' },
+    });
+  }
+
   listForRecurso(recursoId: string): Promise<AprendizajeRecurso[]> {
     return this.aprendizajes.find({
       where: { recursoId },

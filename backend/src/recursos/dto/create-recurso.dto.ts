@@ -27,4 +27,8 @@ export class CreateRecursoDto {
   @ValidateIf((dto: CreateRecursoDto) => dto.tipo === TipoRecurso.LINK)
   @IsUrl()
   url?: string;
+
+  @IsOptional()
+  @IsUUID()
+  competenciaId?: string;
 }

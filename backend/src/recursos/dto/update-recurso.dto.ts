@@ -13,4 +13,8 @@ export class UpdateRecursoDto {
   @IsOptional()
   @IsUUID()
   carpetaId?: string;
+
+  @IsOptional()
+  @IsUUID()
+  competenciaId?: string;
 }

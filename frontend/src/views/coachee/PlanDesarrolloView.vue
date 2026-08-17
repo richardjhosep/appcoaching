@@ -103,7 +103,6 @@ function handleUpdated(updated: PlanDesarrollo) {
       <FormacionTab
         v-else
         :plan="plan"
-        @updated="handleUpdated"
       />
     </div>
   </AppShell>

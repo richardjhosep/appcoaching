@@ -114,6 +114,14 @@ export class RecursosController {
     return this.recursos.asignacionesDeRecurso(id);
   }
 
+  // Ruta literal ("aprendizajes/me", 2 segmentos) — no colisiona con ninguna
+  // ruta ':id/...' independientemente del orden de declaración.
+  @Roles(Role.COACHEE)
+  @Get('aprendizajes/me')
+  todosMisAprendizajes(@CurrentUser() actor: AuthenticatedUser) {
+    return this.aprendizajes.listAllOwn(actor.id);
+  }
+
   @Roles(Role.COACHEE)
   @Post(':id/aprendizajes')
   addAprendizaje(

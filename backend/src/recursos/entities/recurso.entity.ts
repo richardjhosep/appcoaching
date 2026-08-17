@@ -8,6 +8,7 @@ import {
 } from 'typeorm';
 import { TipoRecurso } from '../enums/tipo-recurso.enum';
 import { Carpeta } from './carpeta.entity';
+import { Competencia } from '../../competencias/entities/competencia.entity';
 
 @Entity('recursos')
 export class Recurso {
@@ -26,6 +27,16 @@ export class Recurso {
   @ManyToOne(() => Carpeta)
   @JoinColumn({ name: 'carpeta_id' })
   carpeta?: Carpeta;
+
+  // Opcional — liga el recurso a una competencia del catálogo, mismo campo
+  // que ya tienen Quiz/Flashcard/MapaMental. Con esto, "Formación complementaria"
+  // del plan se deriva automáticamente en vez de ser texto libre del coach.
+  @Column({ name: 'competencia_id', type: 'uuid', nullable: true })
+  competenciaId: string | null;
+
+  @ManyToOne(() => Competencia, { nullable: true })
+  @JoinColumn({ name: 'competencia_id' })
+  competencia?: Competencia | null;
 
   @Column({ type: 'enum', enum: TipoRecurso })
   tipo: TipoRecurso;

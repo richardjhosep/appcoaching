@@ -10,6 +10,7 @@ import { AsignacionRecurso } from './entities/asignacion-recurso.entity';
 import { TipoRecurso } from './enums/tipo-recurso.enum';
 import { CoacheesService } from '../coachees/coachees.service';
 import { CarpetasService } from './carpetas.service';
+import { CompetenciasService } from '../competencias/competencias.service';
 
 type PartialRecurso = Partial<Recurso>;
 type PartialAsignacion = Partial<AsignacionRecurso>;
@@ -44,6 +45,7 @@ describe('RecursosService', () => {
     carpetasVisiblesIds: jest.Mock;
     carpetaVisible: jest.Mock;
   };
+  let competencias: { exists: jest.Mock };
 
   beforeEach(() => {
     recursosRepo = {
@@ -70,11 +72,13 @@ describe('RecursosService', () => {
       carpetasVisiblesIds: jest.fn(),
       carpetaVisible: jest.fn(),
     };
+    competencias = { exists: jest.fn().mockResolvedValue(true) };
     service = new RecursosService(
       recursosRepo as unknown as Repository<Recurso>,
       asignacionesRepo as unknown as Repository<AsignacionRecurso>,
       coachees as unknown as CoacheesService,
       carpetas as unknown as CarpetasService,
+      competencias as unknown as CompetenciasService,
     );
   });
 
@@ -119,6 +123,32 @@ describe('RecursosService', () => {
 
       expect(recurso.archivoNombre).toBe('manual.pdf');
       expect(recurso.archivoPath).toBe('uuid-generado.pdf');
+    });
+
+    it('rejects a competenciaId that does not exist', async () => {
+      competencias.exists.mockResolvedValue(false);
+
+      await expect(
+        service.create({
+          titulo: 'Artículo',
+          tipo: TipoRecurso.LINK,
+          url: 'https://example.com',
+          carpetaId: 'carpeta-1',
+          competenciaId: 'comp-inexistente',
+        }),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('accepts a valid competenciaId', async () => {
+      const recurso = await service.create({
+        titulo: 'Artículo',
+        tipo: TipoRecurso.LINK,
+        url: 'https://example.com',
+        carpetaId: 'carpeta-1',
+        competenciaId: 'comp-1',
+      });
+
+      expect(recurso.competenciaId).toBe('comp-1');
     });
   });
 

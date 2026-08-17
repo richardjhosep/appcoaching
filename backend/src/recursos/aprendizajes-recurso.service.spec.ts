@@ -75,4 +75,29 @@ describe('AprendizajesRecursoService', () => {
       );
     });
   });
+
+  describe('listAllOwn', () => {
+    it('rejects when the actor has no coachee profile', async () => {
+      coachees.findByUserId.mockResolvedValue(null);
+
+      await expect(service.listAllOwn('user-x')).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('lists aprendizajes across every recurso, not just one', async () => {
+      coachees.findByUserId.mockResolvedValue({ id: 'c1' });
+      repo.find.mockResolvedValue([
+        { id: 'a1', recursoId: 'r1', coacheeId: 'c1', contenido: 'nota 1' },
+        { id: 'a2', recursoId: 'r2', coacheeId: 'c1', contenido: 'nota 2' },
+      ]);
+
+      const resultado = await service.listAllOwn('user-1');
+
+      expect(repo.find).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { coacheeId: 'c1' } }),
+      );
+      expect(resultado).toHaveLength(2);
+    });
+  });
 });

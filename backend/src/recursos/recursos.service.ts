@@ -13,6 +13,7 @@ import { UpdateRecursoDto } from './dto/update-recurso.dto';
 import { TipoRecurso } from './enums/tipo-recurso.enum';
 import { CoacheesService } from '../coachees/coachees.service';
 import { CarpetasService } from './carpetas.service';
+import { CompetenciasService } from '../competencias/competencias.service';
 import { assignDefined } from '../common/assign-defined.util';
 
 @Injectable()
@@ -23,7 +24,14 @@ export class RecursosService {
     private readonly asignaciones: Repository<AsignacionRecurso>,
     private readonly coachees: CoacheesService,
     private readonly carpetas: CarpetasService,
+    private readonly competencias: CompetenciasService,
   ) {}
+
+  private async assertCompetenciaExists(id: string): Promise<void> {
+    if (!(await this.competencias.exists(id))) {
+      throw new NotFoundException('Competencia not found');
+    }
+  }
 
   async create(
     dto: CreateRecursoDto,
@@ -40,11 +48,15 @@ export class RecursosService {
       );
     }
     await this.carpetas.findOne(dto.carpetaId);
+    if (dto.competenciaId) {
+      await this.assertCompetenciaExists(dto.competenciaId);
+    }
     return this.recursos.save(
       this.recursos.create({
         titulo: dto.titulo,
         descripcion: dto.descripcion ?? null,
         carpetaId: dto.carpetaId,
+        competenciaId: dto.competenciaId ?? null,
         tipo: dto.tipo,
         url: dto.tipo === TipoRecurso.LINK ? dto.url! : null,
         archivoNombre: archivo?.originalname ?? null,
@@ -79,10 +91,14 @@ export class RecursosService {
     if (dto.carpetaId) {
       await this.carpetas.findOne(dto.carpetaId);
     }
+    if (dto.competenciaId) {
+      await this.assertCompetenciaExists(dto.competenciaId);
+    }
     assignDefined(recurso, {
       titulo: dto.titulo,
       descripcion: dto.descripcion,
       carpetaId: dto.carpetaId,
+      competenciaId: dto.competenciaId,
     });
     return this.recursos.save(recurso);
   }
