@@ -157,6 +157,29 @@ describe('SesionesService', () => {
     });
   });
 
+  describe('findProximaForCoacheeId', () => {
+    it('queries directly by coacheeId, without resolving an actor', async () => {
+      repo.findOne.mockResolvedValue({
+        id: 's1',
+        coacheeId: 'coachee-1',
+        notasPrivadas: 'secret notes',
+      });
+
+      const result = await service.findProximaForCoacheeId('coachee-1');
+
+      expect(coachees.findByUserId).not.toHaveBeenCalled();
+      expect(result).not.toHaveProperty('notasPrivadas');
+    });
+
+    it('returns null when there is no upcoming session', async () => {
+      repo.findOne.mockResolvedValue(null);
+
+      const result = await service.findProximaForCoacheeId('coachee-1');
+
+      expect(result).toBeNull();
+    });
+  });
+
   describe('update', () => {
     it('applies only the given fields', async () => {
       repo.findOne.mockResolvedValue({

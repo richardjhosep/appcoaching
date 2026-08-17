@@ -10,6 +10,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { PlanesDesarrolloService } from './planes-desarrollo.service';
+import { CoacheesService } from '../coachees/coachees.service';
 import { AuditService } from '../audit/audit.service';
 import { UpdatePlanDto } from './dto/update-plan.dto';
 import { CreateObjetivoDto } from './dto/create-objetivo.dto';
@@ -30,6 +31,7 @@ import type { AuthenticatedUser } from '../auth/auth.types';
 export class PlanesDesarrolloController {
   constructor(
     private readonly planes: PlanesDesarrolloService,
+    private readonly coachees: CoacheesService,
     private readonly audit: AuditService,
   ) {}
 
@@ -116,9 +118,13 @@ export class PlanesDesarrolloController {
     return this.planes.findAll(estado);
   }
 
-  @Roles(Role.COACH)
+  @Roles(Role.COACH, Role.EMPRESA)
   @Get(':coacheeId')
-  findOne(@Param('coacheeId') coacheeId: string) {
+  async findOne(
+    @Param('coacheeId') coacheeId: string,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    await this.coachees.findOneForActor(coacheeId, actor);
     return this.planes.getByCoacheeId(coacheeId);
   }
 

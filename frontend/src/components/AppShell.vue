@@ -119,6 +119,7 @@ const coachNavGroups: NavGroup[] = [
 const empresaNavGroups: NavGroup[] = [
   {
     items: [
+      { to: '/empresa/dashboard', label: 'Resumen', icon: 'dashboard' },
       { to: '/empresa/coachees', label: 'Coachees', icon: 'coachees' },
       { to: '/empresa/satisfaccion', label: 'Satisfacción', icon: 'satisfaccion' },
     ],

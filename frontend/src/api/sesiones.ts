@@ -40,6 +40,10 @@ export function getSesionesDeCoachee(coacheeId: string): Promise<Sesion[]> {
   return apiRequest<Sesion[]>(`/sesiones?coacheeId=${coacheeId}`)
 }
 
+export function getProximaSesionDeCoachee(coacheeId: string): Promise<Sesion | null> {
+  return apiRequest<Sesion | null>(`/sesiones/coachee/${coacheeId}/proxima`)
+}
+
 export function agendarSesion(
   coacheeId: string,
   fechaHora: string,

@@ -100,8 +100,14 @@ export class SesionesService {
     if (!coachee) {
       throw new NotFoundException('Coachee profile not found');
     }
+    return this.findProximaForCoacheeId(coachee.id);
+  }
+
+  async findProximaForCoacheeId(
+    coacheeId: string,
+  ): Promise<SesionSinNotasPrivadas | null> {
     const proxima = await this.sesiones.findOne({
-      where: { coacheeId: coachee.id, fechaHora: MoreThan(new Date()) },
+      where: { coacheeId, fechaHora: MoreThan(new Date()) },
       order: { fechaHora: 'ASC' },
     });
     return proxima ? this.stripPrivateNotes(proxima) : null;

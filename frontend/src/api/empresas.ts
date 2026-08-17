@@ -14,6 +14,10 @@ export function listEmpresas(): Promise<Empresa[]> {
   return apiRequest<Empresa[]>('/empresas')
 }
 
+export function getMyEmpresa(): Promise<Empresa> {
+  return apiRequest<Empresa>('/empresas/me')
+}
+
 export function createEmpresa(nombre: string, tarifaHora: number): Promise<Empresa> {
   return apiRequest<Empresa>('/empresas', { method: 'POST', body: { nombre, tarifaHora } })
 }

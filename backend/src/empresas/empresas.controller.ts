@@ -20,7 +20,6 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../auth/auth.types';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(Role.COACH)
 @Controller('empresas')
 export class EmpresasController {
   constructor(
@@ -28,26 +27,38 @@ export class EmpresasController {
     private readonly audit: AuditService,
   ) {}
 
+  @Roles(Role.COACH)
   @Post()
   create(@Body() dto: CreateEmpresaDto) {
     return this.empresas.create(dto);
   }
 
+  @Roles(Role.COACH)
   @Get()
   findAll() {
     return this.empresas.findAll();
   }
 
+  // Declarada antes de ':id' — si no, Nest la matchea contra la ruta con parámetro.
+  @Roles(Role.EMPRESA)
+  @Get('me')
+  findOwn(@CurrentUser() actor: AuthenticatedUser) {
+    return this.empresas.findById(actor.empresaId ?? '');
+  }
+
+  @Roles(Role.COACH)
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.empresas.findById(id);
   }
 
+  @Roles(Role.COACH)
   @Patch(':id')
   update(@Param('id') id: string, @Body() dto: UpdateEmpresaDto) {
     return this.empresas.update(id, dto);
   }
 
+  @Roles(Role.COACH)
   @Delete(':id')
   async remove(
     @Param('id') id: string,

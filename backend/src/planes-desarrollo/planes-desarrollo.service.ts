@@ -87,7 +87,7 @@ export class PlanesDesarrolloService {
   async getByCoacheeId(coacheeId: string): Promise<PlanDesarrollo> {
     const plan = await this.planes.findOne({
       where: { coacheeId },
-      relations: { coachee: true },
+      relations: { coachee: true, competencia: true },
     });
     if (!plan) {
       throw new NotFoundException('Plan de desarrollo not found');

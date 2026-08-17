@@ -12,6 +12,7 @@ import {
 import { SesionesService } from './sesiones.service';
 import { PostSesionesService } from './post-sesiones.service';
 import { SolicitudesReagendamientoService } from './solicitudes-reagendamiento.service';
+import { CoacheesService } from '../coachees/coachees.service';
 import { CreateSesionDto } from './dto/create-sesion.dto';
 import { UpdateSesionDto } from './dto/update-sesion.dto';
 import { UpdatePostSesionDto } from './dto/update-post-sesion.dto';
@@ -30,6 +31,7 @@ export class SesionesController {
     private readonly sesiones: SesionesService,
     private readonly postSesiones: PostSesionesService,
     private readonly solicitudes: SolicitudesReagendamientoService,
+    private readonly coachees: CoacheesService,
   ) {}
 
   @Roles(Role.COACH)
@@ -96,6 +98,18 @@ export class SesionesController {
         postSesion: await this.postSesiones.findForSesion(sesion.id),
       })),
     );
+  }
+
+  // Declarada antes de ':id' — 'coachee' es un segmento literal, no debe quedar atrás
+  // de un sibling con :param al mismo nivel.
+  @Roles(Role.COACH, Role.EMPRESA)
+  @Get('coachee/:coacheeId/proxima')
+  async proximaDeCoachee(
+    @Param('coacheeId') coacheeId: string,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    await this.coachees.findOneForActor(coacheeId, actor);
+    return this.sesiones.findProximaForCoacheeId(coacheeId);
   }
 
   @Roles(Role.COACH)

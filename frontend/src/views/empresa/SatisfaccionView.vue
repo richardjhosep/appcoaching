@@ -1,20 +1,18 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import AppShell from '../../components/AppShell.vue'
+import SectionCard from '../../components/SectionCard.vue'
 import {
   crearEncuesta,
   crearSolicitud,
   getMisEncuestas,
-  getMisKpis,
   getMisSolicitudes,
   type Encuesta,
-  type KpisEmpresa,
   type SolicitudProceso,
 } from '../../api/satisfaccion'
 import { ApiError } from '../../api/client'
 
 const loading = ref(true)
-const kpis = ref<KpisEmpresa | null>(null)
 const encuestas = ref<Encuesta[]>([])
 const solicitudes = ref<SolicitudProceso[]>([])
 const error = ref<string | null>(null)
@@ -29,8 +27,7 @@ const enviandoSolicitud = ref(false)
 
 async function load() {
   loading.value = true
-  const [k, e, s] = await Promise.all([getMisKpis(), getMisEncuestas(), getMisSolicitudes()])
-  kpis.value = k
+  const [e, s] = await Promise.all([getMisEncuestas(), getMisSolicitudes()])
   encuestas.value = e
   solicitudes.value = s
   loading.value = false
@@ -46,7 +43,6 @@ async function enviarEncuesta() {
     nuevoComentario.value = ''
     nuevaCalificacion.value = 5
     encuestas.value = await getMisEncuestas()
-    kpis.value = await getMisKpis()
   } catch (err) {
     error.value = err instanceof ApiError ? err.message : 'No se pudo enviar la encuesta.'
   } finally {
@@ -94,48 +90,10 @@ async function enviarSolicitud() {
         {{ error }}
       </p>
 
-      <div
-        v-if="kpis"
-        class="grid grid-cols-2 gap-3 sm:grid-cols-4"
+      <SectionCard
+        title="Encuesta de satisfacción"
+        icon="satisfaccion"
       >
-        <div class="rounded-2xl border border-[var(--color-line)] bg-white p-4">
-          <p class="text-xs text-[var(--color-ink)]/60">
-            Procesos terminados
-          </p>
-          <p class="font-[family-name:var(--font-mono)] text-2xl">
-            {{ kpis.procesosTerminados }}
-          </p>
-        </div>
-        <div class="rounded-2xl border border-[var(--color-line)] bg-white p-4">
-          <p class="text-xs text-[var(--color-ink)]/60">
-            Procesos en curso
-          </p>
-          <p class="font-[family-name:var(--font-mono)] text-2xl">
-            {{ kpis.procesosEnCurso }}
-          </p>
-        </div>
-        <div class="rounded-2xl border border-[var(--color-line)] bg-white p-4">
-          <p class="text-xs text-[var(--color-ink)]/60">
-            Tasa de asistencia
-          </p>
-          <p class="font-[family-name:var(--font-mono)] text-2xl text-[var(--color-sage)]">
-            {{ kpis.tasaAsistencia !== null ? `${kpis.tasaAsistencia}%` : '—' }}
-          </p>
-        </div>
-        <div class="rounded-2xl border border-[var(--color-line)] bg-white p-4">
-          <p class="text-xs text-[var(--color-ink)]/60">
-            Satisfacción promedio
-          </p>
-          <p class="font-[family-name:var(--font-mono)] text-2xl">
-            {{ kpis.satisfaccionPromedio !== null ? `${kpis.satisfaccionPromedio} ★` : '—' }}
-          </p>
-        </div>
-      </div>
-
-      <div class="rounded-2xl border border-[var(--color-line)] bg-white p-4">
-        <h2 class="mb-3 text-sm font-medium">
-          Encuesta de satisfacción
-        </h2>
         <form
           class="mb-4 space-y-2"
           @submit.prevent="enviarEncuesta"
@@ -190,12 +148,12 @@ async function enviarSolicitud() {
             — {{ e.calificacion }} ★<span v-if="e.comentario"> — {{ e.comentario }}</span>
           </li>
         </ul>
-      </div>
+      </SectionCard>
 
-      <div class="rounded-2xl border border-[var(--color-line)] bg-white p-4">
-        <h2 class="mb-3 text-sm font-medium">
-          Solicitar un nuevo proceso
-        </h2>
+      <SectionCard
+        title="Solicitar un nuevo proceso"
+        icon="contacto"
+      >
         <form
           class="mb-4 space-y-2"
           @submit.prevent="enviarSolicitud"
@@ -250,7 +208,7 @@ async function enviarSolicitud() {
             </span>
           </li>
         </ul>
-      </div>
+      </SectionCard>
     </div>
   </AppShell>
 </template>

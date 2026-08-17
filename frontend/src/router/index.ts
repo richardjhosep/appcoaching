@@ -171,6 +171,12 @@ const routes: RouteRecordRaw[] = [
     meta: { roles: ['coach'] },
   },
   {
+    path: '/empresa/dashboard',
+    name: 'empresa-dashboard',
+    component: () => import('../views/empresa/DashboardView.vue'),
+    meta: { roles: ['empresa'] },
+  },
+  {
     path: '/empresa/coachees',
     name: 'empresa-coachees',
     component: () => import('../views/empresa/CoacheesView.vue'),
@@ -189,6 +195,13 @@ const routes: RouteRecordRaw[] = [
     meta: { roles: ['empresa'] },
     props: true,
   },
+  {
+    path: '/empresa/coachees/:coacheeId/ciclos/:cicloId/certificado',
+    name: 'empresa-certificado',
+    component: () => import('../views/empresa/CertificadoView.vue'),
+    meta: { roles: ['empresa'] },
+    props: true,
+  },
 ]
 
 export const router = createRouter({
@@ -199,7 +212,7 @@ export const router = createRouter({
 function homeFor(role: string): string {
   if (role === 'coach') return '/coach/dashboard'
   if (role === 'coachee') return '/coachee/plan'
-  return '/empresa/coachees'
+  return '/empresa/dashboard'
 }
 
 router.beforeEach(async (to) => {
