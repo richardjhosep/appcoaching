@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import AppShell from '../../components/AppShell.vue'
 import ProgresoLineaTiempo from '../../components/ProgresoLineaTiempo.vue'
 import HistorialCiclos from '../../components/HistorialCiclos.vue'
@@ -23,10 +23,21 @@ import {
 import { getMisCiclos, type Ciclo } from '../../api/ciclos'
 import { getMyCoachee, type Coachee } from '../../api/coachees'
 import { getOwnPlan, type PlanDesarrollo } from '../../api/planesDesarrollo'
+import {
+  crearRetroalimentacion,
+  getMisRetroalimentaciones,
+  type RespuestaRetroalimentacion,
+  type RetroalimentacionCierre,
+} from '../../api/retroalimentacion'
 import { ApiError } from '../../api/client'
 import { notifyError, notifySuccess } from '../../lib/notify'
 import { nivelProgreso, coloresNivel } from '../../lib/nivelProgreso'
 import { resultadoLabel } from '../../lib/resultadoCiclo'
+import {
+  BLOQUES_RETROALIMENTACION,
+  PREGUNTAS_RETROALIMENTACION,
+  preguntasDelBloque,
+} from '../../lib/retroalimentacionPreguntas'
 
 const loading = ref(true)
 const avance = ref<number | null>(null)
@@ -38,18 +49,21 @@ const coachee = ref<Coachee | null>(null)
 const plan = ref<PlanDesarrollo | null>(null)
 const previewCiclo = ref<Ciclo | null>(null)
 const nuevaFecha = ref('')
+const nuevaSituacion = ref('')
 const nuevaDescripcion = ref('')
 const diarioEntradas = ref<Diario[]>([])
 const nuevaEntradaDiario = ref('')
 const guardandoDiario = ref(false)
 const error = ref<string | null>(null)
+const retroalimentaciones = ref<RetroalimentacionCierre[]>([])
 
 const coloresAvance = computed(() => coloresNivel[nivelProgreso(avance.value ?? 0)])
 const ciclosCerrados = computed(() => ciclos.value.filter((c) => c.fechaCierre))
+const cicloIdsConRetro = computed(() => new Set(retroalimentaciones.value.map((r) => r.cicloId)))
 
 async function load() {
   loading.value = true
-  const [a, p, l, d, cs, co, pl] = await Promise.all([
+  const [a, p, l, d, cs, co, pl, rs] = await Promise.all([
     getMiAvance(),
     getMiLineaProgreso(),
     getMisLogros(),
@@ -57,6 +71,7 @@ async function load() {
     getMisCiclos(),
     getMyCoachee().catch(() => null),
     getOwnPlan().catch(() => null),
+    getMisRetroalimentaciones(),
   ])
   avance.value = a.avance
   puntos.value = p
@@ -66,6 +81,7 @@ async function load() {
   certificados.value = cs.filter((c) => c.fechaCierre && c.resultado)
   coachee.value = co
   plan.value = pl
+  retroalimentaciones.value = rs
   loading.value = false
 }
 
@@ -74,9 +90,14 @@ onMounted(load)
 async function agregarLogro() {
   if (!nuevaFecha.value || !nuevaDescripcion.value.trim()) return
   try {
-    const logro = await addLogro(nuevaFecha.value, nuevaDescripcion.value.trim())
+    const logro = await addLogro(
+      nuevaFecha.value,
+      nuevaDescripcion.value.trim(),
+      nuevaSituacion.value.trim() || undefined,
+    )
     logros.value = [logro, ...logros.value]
     nuevaFecha.value = ''
+    nuevaSituacion.value = ''
     nuevaDescripcion.value = ''
   } catch (err) {
     error.value = err instanceof ApiError ? err.message : 'No se pudo agregar el logro.'
@@ -104,6 +125,60 @@ async function agregarEntradaDiario() {
     await notifyError('No se pudo guardar la reflexión', err instanceof ApiError ? err.message : 'Ocurrió un error inesperado.')
   } finally {
     guardandoDiario.value = false
+  }
+}
+
+const modalRetroCiclo = ref<Ciclo | null>(null)
+const respuestasRetro = ref<Record<string, number>>({})
+const abiertasRetro = reactive({
+  loQueMasGusto: '',
+  mayoresAprendizajes: '',
+  sugerencias: '',
+  otrosComentarios: '',
+})
+const guardandoRetro = ref(false)
+const errorRetro = ref<string | null>(null)
+
+function abrirRetro(ciclo: Ciclo) {
+  modalRetroCiclo.value = ciclo
+  respuestasRetro.value = {}
+  abiertasRetro.loQueMasGusto = ''
+  abiertasRetro.mayoresAprendizajes = ''
+  abiertasRetro.sugerencias = ''
+  abiertasRetro.otrosComentarios = ''
+  errorRetro.value = null
+}
+
+async function guardarRetro() {
+  const ciclo = modalRetroCiclo.value
+  if (!ciclo) return
+  const respuestas: RespuestaRetroalimentacion[] = PREGUNTAS_RETROALIMENTACION.map((p) => ({
+    bloque: p.bloque,
+    afirmacion: p.afirmacion,
+    valor: respuestasRetro.value[p.afirmacion],
+  })).filter((r): r is RespuestaRetroalimentacion => typeof r.valor === 'number')
+  if (respuestas.length < PREGUNTAS_RETROALIMENTACION.length) {
+    errorRetro.value = 'Responde todas las afirmaciones antes de enviar.'
+    return
+  }
+  guardandoRetro.value = true
+  errorRetro.value = null
+  try {
+    const creada = await crearRetroalimentacion({
+      cicloId: ciclo.id,
+      respuestas,
+      loQueMasGusto: abiertasRetro.loQueMasGusto.trim() || undefined,
+      mayoresAprendizajes: abiertasRetro.mayoresAprendizajes.trim() || undefined,
+      sugerencias: abiertasRetro.sugerencias.trim() || undefined,
+      otrosComentarios: abiertasRetro.otrosComentarios.trim() || undefined,
+    })
+    retroalimentaciones.value = [creada, ...retroalimentaciones.value]
+    modalRetroCiclo.value = null
+    await notifySuccess('Retroalimentación enviada, ¡gracias!')
+  } catch (err) {
+    errorRetro.value = err instanceof ApiError ? err.message : 'No se pudo enviar la retroalimentación.'
+  } finally {
+    guardandoRetro.value = false
   }
 }
 </script>
@@ -179,6 +254,35 @@ async function agregarEntradaDiario() {
       </SectionCard>
 
       <SectionCard
+        v-if="ciclosCerrados.length > 0"
+        title="Retroalimentación de cierre"
+        icon="satisfaccion"
+      >
+        <ul class="space-y-2 text-sm">
+          <li
+            v-for="c in ciclosCerrados"
+            :key="c.id"
+            class="flex items-center justify-between gap-3 rounded-xl border border-[var(--color-line)] p-3"
+          >
+            <span>Ciclo cerrado el {{ new Date(c.fechaCierre!).toLocaleDateString('es-CL') }}</span>
+            <span
+              v-if="cicloIdsConRetro.has(c.id)"
+              class="text-xs text-[var(--color-sage)]"
+            >
+              Enviada ✓
+            </span>
+            <button
+              v-else
+              class="shrink-0 rounded-lg border border-[var(--color-line)] px-3 py-1.5 text-xs hover:bg-[var(--color-parchment)]/50"
+              @click="abrirRetro(c)"
+            >
+              Completar retroalimentación
+            </button>
+          </li>
+        </ul>
+      </SectionCard>
+
+      <SectionCard
         v-if="certificados.length > 0"
         title="Certificados"
         icon="certificado"
@@ -245,6 +349,12 @@ async function agregarEntradaDiario() {
               <span>
                 <span class="font-[family-name:var(--font-mono)] text-[var(--color-ink)]/50">{{ logro.fecha }}</span>
                 — {{ logro.descripcion }}
+                <span
+                  v-if="logro.situacion"
+                  class="block text-xs text-[var(--color-ink)]/50"
+                >
+                  Situación: {{ logro.situacion }}
+                </span>
               </span>
             </span>
             <button
@@ -255,25 +365,35 @@ async function agregarEntradaDiario() {
             </button>
           </li>
         </TransitionGroup>
-        <div class="flex flex-col gap-2 sm:flex-row">
-          <input
-            v-model="nuevaFecha"
-            type="date"
-            class="rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
-          >
-          <input
-            v-model="nuevaDescripcion"
-            type="text"
-            placeholder="Describe tu logro"
-            class="flex-1 rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
-            @keyup.enter="agregarLogro"
-          >
-          <button
-            class="rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm hover:bg-[var(--color-parchment)]/50"
-            @click="agregarLogro"
-          >
-            Agregar
-          </button>
+        <div class="flex flex-col gap-2">
+          <div class="flex flex-col gap-2 sm:flex-row">
+            <input
+              v-model="nuevaFecha"
+              type="date"
+              class="rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+            >
+            <input
+              v-model="nuevaSituacion"
+              type="text"
+              placeholder="¿Qué situación lo gatilló? (opcional)"
+              class="flex-1 rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+            >
+          </div>
+          <div class="flex flex-col gap-2 sm:flex-row">
+            <input
+              v-model="nuevaDescripcion"
+              type="text"
+              placeholder="Describe tu logro"
+              class="flex-1 rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+              @keyup.enter="agregarLogro"
+            >
+            <button
+              class="rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm hover:bg-[var(--color-parchment)]/50"
+              @click="agregarLogro"
+            >
+              Agregar
+            </button>
+          </div>
         </div>
       </SectionCard>
 
@@ -347,6 +467,109 @@ async function agregarEntradaDiario() {
           Descargar / Imprimir
         </RouterLink>
       </div>
+    </AppModal>
+
+    <AppModal
+      v-if="modalRetroCiclo"
+      size="lg"
+      title="Retroalimentación del proceso de coaching"
+      @close="modalRetroCiclo = null"
+    >
+      <form
+        class="space-y-5"
+        @submit.prevent="guardarRetro"
+      >
+        <p
+          v-if="errorRetro"
+          class="text-sm text-[var(--color-danger)]"
+        >
+          {{ errorRetro }}
+        </p>
+        <p class="text-xs text-[var(--color-ink)]/60">
+          Evalúa de 1 (nada de acuerdo) a 5 (totalmente de acuerdo).
+        </p>
+        <div
+          v-for="bloque in BLOQUES_RETROALIMENTACION"
+          :key="bloque"
+        >
+          <h3 class="mb-2 text-sm font-medium">
+            {{ bloque }}
+          </h3>
+          <div class="space-y-2">
+            <div
+              v-for="p in preguntasDelBloque(bloque)"
+              :key="p.afirmacion"
+              class="flex flex-col gap-1 rounded-lg border border-[var(--color-line)] p-2 text-xs sm:flex-row sm:items-center sm:justify-between"
+            >
+              <span class="sm:max-w-[70%]">{{ p.afirmacion }}</span>
+              <div class="flex gap-1">
+                <button
+                  v-for="valor in [1, 2, 3, 4, 5]"
+                  :key="valor"
+                  type="button"
+                  class="h-7 w-7 shrink-0 rounded-full border text-xs"
+                  :class="respuestasRetro[p.afirmacion] === valor
+                    ? 'border-[var(--color-ink)] bg-[var(--color-ink)] text-[var(--color-parchment)]'
+                    : 'border-[var(--color-line)]'"
+                  @click="respuestasRetro[p.afirmacion] = valor"
+                >
+                  {{ valor }}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <label class="block text-sm">
+          Lo que más te gustó de este proceso
+          <textarea
+            v-model="abiertasRetro.loQueMasGusto"
+            rows="2"
+            class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+          />
+        </label>
+        <label class="block text-sm">
+          Tus mayores aprendizajes
+          <textarea
+            v-model="abiertasRetro.mayoresAprendizajes"
+            rows="2"
+            class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+          />
+        </label>
+        <label class="block text-sm">
+          Sugerencias para mejorar este proceso
+          <textarea
+            v-model="abiertasRetro.sugerencias"
+            rows="2"
+            class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+          />
+        </label>
+        <label class="block text-sm">
+          Otros comentarios
+          <textarea
+            v-model="abiertasRetro.otrosComentarios"
+            rows="2"
+            class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+          />
+        </label>
+
+        <div class="flex justify-end gap-2 pt-2">
+          <button
+            type="button"
+            class="rounded-lg border border-[var(--color-line)] px-4 py-2 text-sm"
+            @click="modalRetroCiclo = null"
+          >
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            :disabled="guardandoRetro"
+            class="rounded-lg bg-[var(--color-ink)] px-4 py-2 text-sm text-[var(--color-parchment)] disabled:opacity-60"
+          >
+            {{ guardandoRetro ? 'Enviando…' : 'Enviar retroalimentación' }}
+          </button>
+        </div>
+      </form>
     </AppModal>
   </AppShell>
 </template>

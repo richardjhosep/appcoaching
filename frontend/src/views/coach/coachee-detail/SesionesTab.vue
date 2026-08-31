@@ -5,9 +5,10 @@ import WeekCalendar from '../../../components/WeekCalendar.vue'
 import AppModal from '../../../components/AppModal.vue'
 import {
   actualizarAsistencia,
-  actualizarNotasPrivadas,
+  actualizarRegistroSesion,
   agendarSesion,
   getSesionesDeCoachee,
+  type RegistroSesionInput,
   type Sesion,
 } from '../../../api/sesiones'
 import {
@@ -36,7 +37,7 @@ const solicitudesReagendamiento = ref<SolicitudReagendamiento[]>([])
 const error = ref<string | null>(null)
 const guardandoAsistencia = ref<string | null>(null)
 const guardandoNotas = ref<string | null>(null)
-const notasEdit = ref<Record<string, string>>({})
+const registroEdit = ref<Record<string, RegistroSesionInput>>({})
 
 const coloresAvance = computed(() => coloresNivel[nivelProgreso(avance.value ?? 0)])
 
@@ -131,16 +132,17 @@ async function cambiarAsistencia(sesion: Sesion, valor: string) {
   }
 }
 
-async function guardarNotas(sesion: Sesion) {
-  const texto = notasEdit.value[sesion.id] ?? ''
+async function guardarRegistro(sesion: Sesion) {
+  const registro = registroEdit.value[sesion.id]
+  if (!registro) return
   error.value = null
   guardandoNotas.value = sesion.id
   try {
-    const actualizada = await actualizarNotasPrivadas(sesion.id, texto)
+    const actualizada = await actualizarRegistroSesion(sesion.id, registro)
     const idx = sesiones.value.findIndex((s) => s.id === sesion.id)
     if (idx !== -1) sesiones.value[idx] = actualizada
   } catch (err) {
-    error.value = err instanceof ApiError ? err.message : 'No se pudieron guardar las notas.'
+    error.value = err instanceof ApiError ? err.message : 'No se pudo guardar el registro de la sesión.'
   } finally {
     guardandoNotas.value = null
   }
@@ -166,7 +168,18 @@ async function load() {
   puntos.value = p
   logros.value = l
   sesiones.value = s
-  notasEdit.value = Object.fromEntries(s.map((sesion) => [sesion.id, sesion.notasPrivadas ?? '']))
+  registroEdit.value = Object.fromEntries(
+    s.map((sesion) => [
+      sesion.id,
+      {
+        resumenCompartido: sesion.resumenCompartido ?? '',
+        notasPrivadas: sesion.notasPrivadas ?? '',
+        temaTratado: sesion.temaTratado ?? '',
+        ejerciciosAplicados: sesion.ejerciciosAplicados ?? '',
+        acuerdos: sesion.acuerdos ?? '',
+      } satisfies RegistroSesionInput,
+    ]),
+  )
   solicitudesReagendamiento.value = r.filter((sol) => sol.coacheeId === props.coacheeId)
   loading.value = false
 }
@@ -297,10 +310,10 @@ function onSelectSesion(id: string) {
 
     <div class="mb-4 rounded-2xl border border-[var(--color-line)] bg-white p-4">
       <h2 class="mb-3 text-sm font-medium">
-        Sesiones pasadas — asistencia y notas privadas
+        Sesiones pasadas — registro de la sesión
       </h2>
       <p class="mb-3 text-xs text-[var(--color-ink)]/50">
-        Las notas privadas nunca son visibles para el coachee ni la empresa.
+        Todo lo de abajo es visible para el coachee, salvo las notas privadas.
       </p>
       <p
         v-if="error"
@@ -367,18 +380,59 @@ function onSelectSesion(id: string) {
               class="text-xs text-[var(--color-ink)]/50"
             >Esta sesión no fue grabada.</span>
           </p>
-          <textarea
-            v-model="notasEdit[s.id]"
-            rows="2"
-            placeholder="Notas privadas de esta sesión…"
-            class="mb-2 block w-full rounded border border-[var(--color-line)] px-2 py-1 text-xs"
-          />
+          <div class="mb-2 grid gap-2 sm:grid-cols-2">
+            <label class="block text-xs">
+              Resumen compartido
+              <textarea
+                v-model="registroEdit[s.id]!.resumenCompartido"
+                rows="2"
+                placeholder="Lo que el coachee puede ver de esta sesión…"
+                class="mt-1 block w-full rounded border border-[var(--color-line)] px-2 py-1 text-xs"
+              />
+            </label>
+            <label class="block text-xs">
+              Tema tratado
+              <textarea
+                v-model="registroEdit[s.id]!.temaTratado"
+                rows="2"
+                placeholder="Tema principal de la sesión…"
+                class="mt-1 block w-full rounded border border-[var(--color-line)] px-2 py-1 text-xs"
+              />
+            </label>
+            <label class="block text-xs">
+              Ejercicios/assessments aplicados
+              <textarea
+                v-model="registroEdit[s.id]!.ejerciciosAplicados"
+                rows="2"
+                placeholder="Ejercicios o assessments usados en la sesión…"
+                class="mt-1 block w-full rounded border border-[var(--color-line)] px-2 py-1 text-xs"
+              />
+            </label>
+            <label class="block text-xs">
+              Acuerdos
+              <textarea
+                v-model="registroEdit[s.id]!.acuerdos"
+                rows="2"
+                placeholder="Acuerdos alcanzados en la sesión…"
+                class="mt-1 block w-full rounded border border-[var(--color-line)] px-2 py-1 text-xs"
+              />
+            </label>
+            <label class="block text-xs sm:col-span-2">
+              Notas privadas <span class="text-[var(--color-ink)]/40">(nunca visibles para el coachee ni la empresa)</span>
+              <textarea
+                v-model="registroEdit[s.id]!.notasPrivadas"
+                rows="2"
+                placeholder="Notas privadas de esta sesión…"
+                class="mt-1 block w-full rounded border border-[var(--color-line)] px-2 py-1 text-xs"
+              />
+            </label>
+          </div>
           <button
             class="rounded-lg border border-[var(--color-line)] px-3 py-1.5 text-xs hover:bg-[var(--color-parchment)]/50 disabled:opacity-60"
             :disabled="guardandoNotas === s.id"
-            @click="guardarNotas(s)"
+            @click="guardarRegistro(s)"
           >
-            Guardar notas
+            Guardar registro
           </button>
         </li>
       </ul>
@@ -398,6 +452,12 @@ function onSelectSesion(id: string) {
         >
           <span class="font-[family-name:var(--font-mono)] text-[var(--color-ink)]/50">{{ logro.fecha }}</span>
           — {{ logro.descripcion }}
+          <span
+            v-if="logro.situacion"
+            class="block text-xs text-[var(--color-ink)]/50"
+          >
+            Situación: {{ logro.situacion }}
+          </span>
         </li>
       </ul>
       <p

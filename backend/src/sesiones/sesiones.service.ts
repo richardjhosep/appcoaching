@@ -127,6 +127,15 @@ export class SesionesService {
     if (dto.notasPrivadas !== undefined) {
       sesion.notasPrivadas = dto.notasPrivadas;
     }
+    if (dto.temaTratado !== undefined) {
+      sesion.temaTratado = dto.temaTratado;
+    }
+    if (dto.ejerciciosAplicados !== undefined) {
+      sesion.ejerciciosAplicados = dto.ejerciciosAplicados;
+    }
+    if (dto.acuerdos !== undefined) {
+      sesion.acuerdos = dto.acuerdos;
+    }
     if (dto.asistio !== undefined) {
       sesion.asistio = dto.asistio;
     }

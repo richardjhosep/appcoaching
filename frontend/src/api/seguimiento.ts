@@ -4,6 +4,7 @@ export interface Logro {
   id: string
   coacheeId: string
   fecha: string
+  situacion: string | null
   descripcion: string
   createdAt: string
 }
@@ -22,10 +23,10 @@ export interface PuntoProgreso {
   aprendizaje: string | null
 }
 
-export function addLogro(fecha: string, descripcion: string): Promise<Logro> {
+export function addLogro(fecha: string, descripcion: string, situacion?: string): Promise<Logro> {
   return apiRequest<Logro>('/seguimiento/logros', {
     method: 'POST',
-    body: { fecha, descripcion },
+    body: { fecha, descripcion, situacion: situacion || undefined },
   })
 }
 
@@ -66,4 +67,34 @@ export function getMiLineaProgreso(): Promise<PuntoProgreso[]> {
 
 export function getLineaProgresoDeCoachee(coacheeId: string): Promise<PuntoProgreso[]> {
   return apiRequest<PuntoProgreso[]>(`/seguimiento/linea-progreso/${coacheeId}`)
+}
+
+export interface AutoevaluacionCompetencia {
+  id: string
+  coacheeId: string
+  competenciaId: string
+  nivel: number
+  ejemplo: string
+  createdAt: string
+}
+
+export function addAutoevaluacion(
+  competenciaId: string,
+  nivel: number,
+  ejemplo: string,
+): Promise<AutoevaluacionCompetencia> {
+  return apiRequest<AutoevaluacionCompetencia>('/seguimiento/autoevaluaciones', {
+    method: 'POST',
+    body: { competenciaId, nivel, ejemplo },
+  })
+}
+
+export function getMisAutoevaluaciones(): Promise<AutoevaluacionCompetencia[]> {
+  return apiRequest<AutoevaluacionCompetencia[]>('/seguimiento/autoevaluaciones/me')
+}
+
+export function getAutoevaluacionesDeCoachee(
+  coacheeId: string,
+): Promise<AutoevaluacionCompetencia[]> {
+  return apiRequest<AutoevaluacionCompetencia[]>(`/seguimiento/autoevaluaciones/${coacheeId}`)
 }

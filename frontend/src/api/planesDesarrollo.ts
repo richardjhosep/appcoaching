@@ -16,6 +16,7 @@ export interface ActividadEjecucion {
   fechaInicio: string | null
   fechaFin: string | null
   estado: EstadoActividad
+  observaciones: string | null
 }
 
 export interface CoacheeResumen {
@@ -94,6 +95,7 @@ export interface CreateActividadInput {
   fechaInicio?: string
   fechaFin?: string
   estado?: EstadoActividad
+  observaciones?: string
 }
 
 export function getOwnPlan(): Promise<PlanDesarrollo> {

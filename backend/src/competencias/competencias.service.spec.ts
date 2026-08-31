@@ -18,7 +18,7 @@ describe('CompetenciasService', () => {
     insert: jest.Mock;
     into: jest.Mock;
     values: jest.Mock;
-    orIgnore: jest.Mock;
+    orUpdate: jest.Mock;
     execute: jest.Mock;
   };
 
@@ -27,13 +27,13 @@ describe('CompetenciasService', () => {
       insert: jest.fn(),
       into: jest.fn(),
       values: jest.fn(),
-      orIgnore: jest.fn(),
+      orUpdate: jest.fn(),
       execute: jest.fn(),
     };
     insertBuilder.insert.mockReturnValue(insertBuilder);
     insertBuilder.into.mockReturnValue(insertBuilder);
     insertBuilder.values.mockReturnValue(insertBuilder);
-    insertBuilder.orIgnore.mockReturnValue(insertBuilder);
+    insertBuilder.orUpdate.mockReturnValue(insertBuilder);
 
     repo = {
       findOne: jest.fn<Promise<PartialCompetencia | null>, unknown[]>(),
@@ -47,7 +47,7 @@ describe('CompetenciasService', () => {
   });
 
   describe('onApplicationBootstrap', () => {
-    it('seeds the full catalog when the table is empty', async () => {
+    it('upserts the full catalog, keeping definicion/niveles synced with the code', async () => {
       insertBuilder.execute.mockResolvedValue({
         identifiers: COMPETENCIAS_SEED.map(() => ({ id: 'generated' })),
       });
@@ -55,10 +55,13 @@ describe('CompetenciasService', () => {
       await service.onApplicationBootstrap();
 
       expect(insertBuilder.values).toHaveBeenCalledWith(COMPETENCIAS_SEED);
-      expect(insertBuilder.orIgnore).toHaveBeenCalled();
+      expect(insertBuilder.orUpdate).toHaveBeenCalledWith(
+        ['definicion', 'niveles'],
+        ['nombre'],
+      );
     });
 
-    it('does not fail when every row was already seeded (ON CONFLICT DO NOTHING)', async () => {
+    it('does not fail when every row already existed (ON CONFLICT DO UPDATE)', async () => {
       insertBuilder.execute.mockResolvedValue({
         identifiers: COMPETENCIAS_SEED.map(() => ({})),
       });

@@ -34,6 +34,13 @@ const saving = ref(false)
 const error = ref<string | null>(null)
 const nuevaActividad = reactive({ objetivoId: '', actividad: '', fechaInicio: '', fechaFin: '' })
 
+// Sin watch a props.plan por la misma razón que `form` arriba; las actividades agregadas
+// después de montar el componente reciben su entrada en agregarActividad().
+const observacionesEdit = reactive<Record<string, string>>(
+  Object.fromEntries(props.plan.actividades.map((a) => [a.id, a.observaciones ?? ''])),
+)
+const guardandoObservacion = ref<string | null>(null)
+
 async function refetch() {
   emit('updated', await getOwnPlan())
 }
@@ -64,12 +71,13 @@ async function guardarHabito() {
 async function agregarActividad() {
   if (!nuevaActividad.objetivoId || !nuevaActividad.actividad.trim()) return
   try {
-    await addActividad({
+    const creada = await addActividad({
       objetivoId: nuevaActividad.objetivoId,
       actividad: nuevaActividad.actividad.trim(),
       fechaInicio: nuevaActividad.fechaInicio || undefined,
       fechaFin: nuevaActividad.fechaFin || undefined,
     })
+    observacionesEdit[creada.id] = ''
     nuevaActividad.actividad = ''
     nuevaActividad.fechaInicio = ''
     nuevaActividad.fechaFin = ''
@@ -82,6 +90,20 @@ async function agregarActividad() {
 async function cambiarEstado(id: string, estado: EstadoActividad) {
   await updateActividad(id, { estado })
   await refetch()
+}
+
+async function guardarObservacion(id: string) {
+  guardandoObservacion.value = id
+  try {
+    await updateActividad(id, { observaciones: observacionesEdit[id] || undefined })
+    await refetch()
+    await notifySuccess('Observación guardada')
+  } catch (err) {
+    error.value = err instanceof ApiError ? err.message : 'No se pudo guardar la observación.'
+    await notifyError('No se pudo guardar la observación', error.value)
+  } finally {
+    guardandoObservacion.value = null
+  }
 }
 
 async function borrarActividad(id: string) {
@@ -212,6 +234,21 @@ function objetivoDescripcion(objetivoId: string): string {
               Quitar
             </button>
           </div>
+          <label class="mt-2 block text-xs">
+            Observaciones — ¿qué pasó al ejecutar esta actividad?
+            <textarea
+              v-model="observacionesEdit[a.id]"
+              rows="2"
+              class="mt-1 w-full rounded border border-[var(--color-line)] px-2 py-1 text-xs"
+            />
+          </label>
+          <button
+            class="mt-1 rounded-lg border border-[var(--color-line)] px-3 py-1.5 text-xs hover:bg-[var(--color-parchment)]/50 disabled:opacity-60"
+            :disabled="guardandoObservacion === a.id"
+            @click="guardarObservacion(a.id)"
+          >
+            {{ guardandoObservacion === a.id ? 'Guardando…' : 'Guardar observación' }}
+          </button>
         </li>
       </ul>
 

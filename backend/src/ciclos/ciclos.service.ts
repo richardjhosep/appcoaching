@@ -14,6 +14,7 @@ import { CoacheesService } from '../coachees/coachees.service';
 import { PlanesDesarrolloService } from '../planes-desarrollo/planes-desarrollo.service';
 import { EstadoPlan } from '../planes-desarrollo/enums/estado-plan.enum';
 import { SeguimientoService } from '../seguimiento/seguimiento.service';
+import { RetroalimentacionService } from '../retroalimentacion/retroalimentacion.service';
 import { Role } from '../auth/enums/role.enum';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { UPLOADS_DIR } from '../recursos/uploads-dir.util';
@@ -37,6 +38,7 @@ export class CiclosService {
     private readonly coachees: CoacheesService,
     private readonly planesDesarrollo: PlanesDesarrolloService,
     private readonly seguimiento: SeguimientoService,
+    private readonly retroalimentacion: RetroalimentacionService,
   ) {}
 
   private async attachEstado(ciclo: CicloCoaching): Promise<CicloConEstado> {
@@ -128,15 +130,18 @@ export class CiclosService {
     return this.attachEstado(ciclo);
   }
 
+  // Arma un borrador narrativo por secciones (resumen, objetivo del proceso, avances
+  // observados, cierre) agregando datos que ya existen en la app — el coach lo sigue
+  // pudiendo editar libremente antes de guardarlo, este es solo el punto de partida.
   async generarBorradorInforme(id: string): Promise<CicloConEstado> {
     const ciclo = await this.findOne(id);
     const conEstado = await this.attachEstado(ciclo);
 
-    let objetivosTexto = 'Sin plan de desarrollo definido.';
-    let competenciaTexto = '—';
+    let objetivoGeneralTexto = 'Sin plan de desarrollo definido.';
+    let objetivosTexto = 'Sin objetivos específicos registrados.';
     try {
       const plan = await this.planesDesarrollo.getByCoacheeId(ciclo.coacheeId);
-      competenciaTexto = plan.objetivoGeneral ?? '—';
+      objetivoGeneralTexto = plan.objetivoGeneral ?? '—';
       const objetivos = plan.objetivos ?? [];
       objetivosTexto =
         objetivos.length > 0
@@ -149,25 +154,62 @@ export class CiclosService {
     const avance = await this.seguimiento.avanceGeneralForCoachee(
       ciclo.coacheeId,
     );
+    const logros = await this.seguimiento.listLogrosForCoachee(ciclo.coacheeId);
+    const logrosTexto =
+      logros.length > 0
+        ? logros.map((l) => `- ${l.fecha}: ${l.descripcion}`).join('\n')
+        : 'Sin logros registrados durante el proceso.';
 
-    const informe = [
-      `Informe final del ciclo de coaching`,
-      `Período: ${ciclo.fechaApertura.toISOString().slice(0, 10)} — ${
-        ciclo.fechaCierre
-          ? ciclo.fechaCierre.toISOString().slice(0, 10)
-          : 'en curso'
-      }`,
+    const retroalimentaciones = await this.retroalimentacion.listForCoachee(
+      ciclo.coacheeId,
+    );
+    const retro =
+      retroalimentaciones.find((r) => r.cicloId === ciclo.id) ?? null;
+
+    const periodo = `${ciclo.fechaApertura.toISOString().slice(0, 10)} — ${
+      ciclo.fechaCierre
+        ? ciclo.fechaCierre.toISOString().slice(0, 10)
+        : 'en curso'
+    }`;
+
+    const secciones = [
+      'INFORME DE CIERRE — Ciclo de Coaching',
       '',
-      `Objetivo general: ${competenciaTexto}`,
-      '',
-      'Objetivos específicos trabajados:',
-      objetivosTexto,
-      '',
+      'Resumen Ejecutivo',
+      `Período: ${periodo}`,
       `Sesiones realizadas: ${conEstado.sesionesRealizadas} de ${ciclo.totalSesiones} contratadas.`,
       `Avance general autoevaluado: ${avance !== null ? `${avance}%` : 'sin autoevaluación registrada'}.`,
-    ].join('\n');
+      ...(ciclo.resultado ? [`Resultado: ${ciclo.resultado}.`] : []),
+      '',
+      'Objetivo del Proceso',
+      objetivoGeneralTexto,
+      '',
+      'Objetivos Específicos Trabajados',
+      objetivosTexto,
+      '',
+      'Avances Observados',
+      logrosTexto,
+    ];
 
-    return this.updateInformeFinal(id, informe);
+    if (retro) {
+      secciones.push('', 'Retroalimentación del Coachee al Cierre');
+      if (retro.loQueMasGusto) {
+        secciones.push(`Lo que más le gustó: ${retro.loQueMasGusto}`);
+      }
+      if (retro.mayoresAprendizajes) {
+        secciones.push(`Mayores aprendizajes: ${retro.mayoresAprendizajes}`);
+      }
+      if (retro.sugerencias) {
+        secciones.push(`Sugerencias: ${retro.sugerencias}`);
+      }
+      if (retro.otrosComentarios) {
+        secciones.push(`Otros comentarios: ${retro.otrosComentarios}`);
+      }
+    }
+
+    secciones.push('', 'Próximos Pasos', '(a completar por el coach)');
+
+    return this.updateInformeFinal(id, secciones.join('\n'));
   }
 
   async uploadInformePdf(

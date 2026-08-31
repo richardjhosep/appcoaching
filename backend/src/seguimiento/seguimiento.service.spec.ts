@@ -3,11 +3,14 @@ import { Repository } from 'typeorm';
 import { SeguimientoService } from './seguimiento.service';
 import { Logro } from './entities/logro.entity';
 import { EntradaDiario } from './entities/entrada-diario.entity';
+import { AutoevaluacionCompetencia } from './entities/autoevaluacion-competencia.entity';
 import { CoacheesService } from '../coachees/coachees.service';
 import { PostSesionesService } from '../sesiones/post-sesiones.service';
+import { CompetenciasService } from '../competencias/competencias.service';
 
 type PartialLogro = Partial<Logro>;
 type PartialDiario = Partial<EntradaDiario>;
+type PartialAutoevaluacion = Partial<AutoevaluacionCompetencia>;
 
 describe('SeguimientoService', () => {
   let service: SeguimientoService;
@@ -22,11 +25,17 @@ describe('SeguimientoService', () => {
     create: jest.Mock<PartialDiario, [PartialDiario]>;
     save: jest.Mock<Promise<PartialDiario>, [PartialDiario]>;
   };
+  let autoevaluacionesRepo: {
+    find: jest.Mock<Promise<PartialAutoevaluacion[]>, unknown[]>;
+    create: jest.Mock<PartialAutoevaluacion, [PartialAutoevaluacion]>;
+    save: jest.Mock<Promise<PartialAutoevaluacion>, [PartialAutoevaluacion]>;
+  };
   let coachees: { findByUserId: jest.Mock };
   let postSesiones: {
     avanceGeneral: jest.Mock;
     findAllPublicadasForCoachee: jest.Mock;
   };
+  let competencias: { exists: jest.Mock };
 
   beforeEach(() => {
     logrosRepo = {
@@ -44,16 +53,26 @@ describe('SeguimientoService', () => {
         Promise.resolve({ id: 'generated-id', ...data }),
       ),
     };
+    autoevaluacionesRepo = {
+      find: jest.fn<Promise<PartialAutoevaluacion[]>, unknown[]>(),
+      create: jest.fn((data: PartialAutoevaluacion) => data),
+      save: jest.fn((data: PartialAutoevaluacion) =>
+        Promise.resolve({ id: 'generated-id', ...data }),
+      ),
+    };
     coachees = { findByUserId: jest.fn() };
     postSesiones = {
       avanceGeneral: jest.fn(),
       findAllPublicadasForCoachee: jest.fn(),
     };
+    competencias = { exists: jest.fn() };
     service = new SeguimientoService(
       logrosRepo as unknown as Repository<Logro>,
       diariosRepo as unknown as Repository<EntradaDiario>,
+      autoevaluacionesRepo as unknown as Repository<AutoevaluacionCompetencia>,
       coachees as unknown as CoacheesService,
       postSesiones as unknown as PostSesionesService,
+      competencias as unknown as CompetenciasService,
     );
   });
 
@@ -128,6 +147,51 @@ describe('SeguimientoService', () => {
 
       expect(postSesiones.avanceGeneral).toHaveBeenCalledWith('coachee-1');
       expect(avance).toBe(70);
+    });
+  });
+
+  describe('addAutoevaluacionOwn / listAutoevaluacionesOwn', () => {
+    it('rejects when the competencia does not exist', async () => {
+      coachees.findByUserId.mockResolvedValue({ id: 'coachee-1' });
+      competencias.exists.mockResolvedValue(false);
+
+      await expect(
+        service.addAutoevaluacionOwn('user-1', {
+          competenciaId: 'missing',
+          nivel: 3,
+          ejemplo: 'ejemplo concreto',
+        }),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('creates an autoevaluación scoped to the actor coachee', async () => {
+      coachees.findByUserId.mockResolvedValue({ id: 'coachee-1' });
+      competencias.exists.mockResolvedValue(true);
+
+      const autoevaluacion = await service.addAutoevaluacionOwn('user-1', {
+        competenciaId: 'comp-1',
+        nivel: 3,
+        ejemplo: 'ejemplo concreto',
+      });
+
+      expect(autoevaluacion.coacheeId).toBe('coachee-1');
+      expect(autoevaluacion.nivel).toBe(3);
+    });
+
+    it('lists autoevaluaciones ordered by most recent first', async () => {
+      coachees.findByUserId.mockResolvedValue({ id: 'coachee-1' });
+      autoevaluacionesRepo.find.mockResolvedValue([
+        { id: 'a2', coacheeId: 'coachee-1', nivel: 4 },
+        { id: 'a1', coacheeId: 'coachee-1', nivel: 2 },
+      ]);
+
+      const resultado = await service.listAutoevaluacionesOwn('user-1');
+
+      expect(autoevaluacionesRepo.find).toHaveBeenCalledWith({
+        where: { coacheeId: 'coachee-1' },
+        order: { createdAt: 'DESC' },
+      });
+      expect(resultado.map((a) => a.id)).toEqual(['a2', 'a1']);
     });
   });
 });

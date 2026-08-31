@@ -71,6 +71,12 @@ const routes: RouteRecordRaw[] = [
     meta: { roles: ['coachee'] },
   },
   {
+    path: '/coachee/ejercicios',
+    name: 'coachee-ejercicios',
+    component: () => import('../views/coachee/EjerciciosView.vue'),
+    meta: { roles: ['coachee'] },
+  },
+  {
     path: '/coachee/flashcards',
     name: 'coachee-flashcards',
     component: () => import('../views/coachee/FlashcardsView.vue'),
@@ -111,6 +117,12 @@ const routes: RouteRecordRaw[] = [
     path: '/coach/quiz',
     name: 'coach-quiz',
     component: () => import('../views/coach/QuizView.vue'),
+    meta: { roles: ['coach'] },
+  },
+  {
+    path: '/coach/ejercicios',
+    name: 'coach-ejercicios',
+    component: () => import('../views/coach/EjerciciosView.vue'),
     meta: { roles: ['coach'] },
   },
   {
@@ -186,6 +198,12 @@ const routes: RouteRecordRaw[] = [
     path: '/empresa/satisfaccion',
     name: 'empresa-satisfaccion',
     component: () => import('../views/empresa/SatisfaccionView.vue'),
+    meta: { roles: ['empresa'] },
+  },
+  {
+    path: '/empresa/coach',
+    name: 'empresa-coach',
+    component: () => import('../views/empresa/PerfilCoachView.vue'),
     meta: { roles: ['empresa'] },
   },
   {

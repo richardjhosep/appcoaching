@@ -17,6 +17,17 @@ vi.mock('../../api/planesDesarrollo', async () => {
     getOwnPlan: vi.fn(),
   }
 })
+vi.mock('../../api/seguimiento', async () => {
+  const actual =
+    await vi.importActual<typeof import('../../api/seguimiento')>('../../api/seguimiento')
+  return {
+    ...actual,
+    addAutoevaluacion: vi.fn(),
+    getMisAutoevaluaciones: vi.fn(),
+  }
+})
+
+import { getMisAutoevaluaciones } from '../../api/seguimiento'
 
 const basePlan: PlanDesarrollo = {
   id: 'plan-1',
@@ -51,6 +62,7 @@ const basePlan: PlanDesarrollo = {
 describe('DefinicionTab', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
+    vi.mocked(getMisAutoevaluaciones).mockResolvedValue([])
   })
 
   it('locks competencia/nivelObjetivo/objetivoGeneral but keeps nivelActual/plazo/descripcion free while pending approval', () => {

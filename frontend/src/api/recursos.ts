@@ -29,6 +29,7 @@ export interface Aprendizaje {
   recursoId: string
   coacheeId: string
   contenido: string
+  aplicacion: string | null
   createdAt: string
 }
 
@@ -90,10 +91,14 @@ export function getAprendizajesDeRecurso(recursoId: string): Promise<Aprendizaje
   return apiRequest<Aprendizaje[]>(`/recursos/${recursoId}/aprendizajes`)
 }
 
-export function addAprendizaje(recursoId: string, contenido: string): Promise<Aprendizaje> {
+export function addAprendizaje(
+  recursoId: string,
+  contenido: string,
+  aplicacion?: string,
+): Promise<Aprendizaje> {
   return apiRequest<Aprendizaje>(`/recursos/${recursoId}/aprendizajes`, {
     method: 'POST',
-    body: { contenido },
+    body: { contenido, aplicacion: aplicacion || undefined },
   })
 }
 

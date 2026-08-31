@@ -31,6 +31,11 @@ export class AprendizajeRecurso {
   @Column({ type: 'text' })
   contenido: string;
 
+  // "¿Cómo se aplica a mi trabajo?" — separado de `contenido` porque en la plantilla real
+  // (Excel de Plan de Desarrollo y la pauta en papel que usa el coach) son 2 columnas distintas.
+  @Column({ type: 'text', nullable: true })
+  aplicacion: string | null;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 }

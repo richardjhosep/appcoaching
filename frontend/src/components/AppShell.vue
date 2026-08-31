@@ -80,6 +80,7 @@ const coacheeNavGroups: NavGroup[] = [
       { to: '/coachee/quiz', label: 'Quiz', icon: 'quiz' },
       { to: '/coachee/flashcards', label: 'Flashcards', icon: 'flashcards' },
       { to: '/coachee/mapas', label: 'Mapas mentales', icon: 'mapa' },
+      { to: '/coachee/ejercicios', label: 'Ejercicios', icon: 'ejercicios' },
     ],
   },
 ]
@@ -104,6 +105,7 @@ const coachNavGroups: NavGroup[] = [
       { to: '/coach/quiz', label: 'Quiz', icon: 'quiz' },
       { to: '/coach/flashcards', label: 'Flashcards', icon: 'flashcards' },
       { to: '/coach/mapas', label: 'Mapas mentales', icon: 'mapa' },
+      { to: '/coach/ejercicios', label: 'Ejercicios', icon: 'ejercicios' },
     ],
   },
   {
@@ -123,6 +125,7 @@ const empresaNavGroups: NavGroup[] = [
       { to: '/empresa/coachees', label: 'Coachees', icon: 'coachees' },
       { to: '/empresa/finanzas', label: 'Finanzas', icon: 'negocio' },
       { to: '/empresa/satisfaccion', label: 'Satisfacción', icon: 'satisfaccion' },
+      { to: '/empresa/coach', label: 'Mi Coach', icon: 'contacto' },
     ],
   },
 ]

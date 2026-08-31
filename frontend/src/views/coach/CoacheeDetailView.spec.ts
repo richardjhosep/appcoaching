@@ -38,7 +38,6 @@ const coacheeBase: Coachee = {
 const planBase: PlanDesarrollo = {
   id: 'p1',
   coacheeId: 'c1',
-  coachee: null,
   competenciaId: null,
   competencia: null,
   nivelActual: null,

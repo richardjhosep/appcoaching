@@ -3,10 +3,13 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Logro } from './entities/logro.entity';
 import { EntradaDiario } from './entities/entrada-diario.entity';
+import { AutoevaluacionCompetencia } from './entities/autoevaluacion-competencia.entity';
 import { CreateLogroDto } from './dto/create-logro.dto';
 import { CreateEntradaDiarioDto } from './dto/create-entrada-diario.dto';
+import { CreateAutoevaluacionDto } from './dto/create-autoevaluacion.dto';
 import { CoacheesService } from '../coachees/coachees.service';
 import { PostSesionesService } from '../sesiones/post-sesiones.service';
+import { CompetenciasService } from '../competencias/competencias.service';
 
 @Injectable()
 export class SeguimientoService {
@@ -14,8 +17,11 @@ export class SeguimientoService {
     @InjectRepository(Logro) private readonly logros: Repository<Logro>,
     @InjectRepository(EntradaDiario)
     private readonly diarios: Repository<EntradaDiario>,
+    @InjectRepository(AutoevaluacionCompetencia)
+    private readonly autoevaluaciones: Repository<AutoevaluacionCompetencia>,
     private readonly coachees: CoacheesService,
     private readonly postSesiones: PostSesionesService,
+    private readonly competencias: CompetenciasService,
   ) {}
 
   private async resolveCoacheeId(actorUserId: string): Promise<string> {
@@ -32,6 +38,7 @@ export class SeguimientoService {
       this.logros.create({
         coacheeId,
         fecha: dto.fecha,
+        situacion: dto.situacion ?? null,
         descripcion: dto.descripcion,
       }),
     );
@@ -91,5 +98,39 @@ export class SeguimientoService {
 
   lineaProgresoForCoachee(coacheeId: string) {
     return this.postSesiones.findAllPublicadasForCoachee(coacheeId);
+  }
+
+  async addAutoevaluacionOwn(
+    actorUserId: string,
+    dto: CreateAutoevaluacionDto,
+  ): Promise<AutoevaluacionCompetencia> {
+    const coacheeId = await this.resolveCoacheeId(actorUserId);
+    if (!(await this.competencias.exists(dto.competenciaId))) {
+      throw new NotFoundException('Competencia not found');
+    }
+    return this.autoevaluaciones.save(
+      this.autoevaluaciones.create({
+        coacheeId,
+        competenciaId: dto.competenciaId,
+        nivel: dto.nivel,
+        ejemplo: dto.ejemplo,
+      }),
+    );
+  }
+
+  async listAutoevaluacionesOwn(
+    actorUserId: string,
+  ): Promise<AutoevaluacionCompetencia[]> {
+    const coacheeId = await this.resolveCoacheeId(actorUserId);
+    return this.listAutoevaluacionesForCoachee(coacheeId);
+  }
+
+  listAutoevaluacionesForCoachee(
+    coacheeId: string,
+  ): Promise<AutoevaluacionCompetencia[]> {
+    return this.autoevaluaciones.find({
+      where: { coacheeId },
+      order: { createdAt: 'DESC' },
+    });
   }
 }

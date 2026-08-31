@@ -3,6 +3,7 @@ import { apiRequest } from './client'
 export interface NivelCompetencia {
   nivel: number
   descripcion: string
+  comportamientos?: string[]
 }
 
 export interface Competencia {

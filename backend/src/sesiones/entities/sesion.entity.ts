@@ -41,6 +41,17 @@ export class Sesion {
   @Column({ name: 'notas_privadas', type: 'text', nullable: true })
   notasPrivadas: string | null;
 
+  // Registro estructurado de la sesión (plantilla real "Registro de Sesiones" del coach) —
+  // separados de resumenCompartido/notasPrivadas porque son 3 columnas propias en esa plantilla.
+  @Column({ name: 'tema_tratado', type: 'text', nullable: true })
+  temaTratado: string | null;
+
+  @Column({ name: 'ejercicios_aplicados', type: 'text', nullable: true })
+  ejerciciosAplicados: string | null;
+
+  @Column({ type: 'text', nullable: true })
+  acuerdos: string | null;
+
   @Column({ type: 'boolean', nullable: true })
   asistio: boolean | null;
 

@@ -816,3 +816,73 @@ El usuario notó que el ciclo de prueba cerrado (usado para verificar "Historial
 - [x] `jest` 322/322, `tsc`/`eslint` limpios
 - [x] Verificado real vía API: intento de cierre sin plan aprobado → 409 con el mensaje correcto; luego de enviar+aprobar el plan de la cuenta de prueba, el mismo cierre funciona (201) — el frontend ya mostraba `ApiError.message` tal cual en `CicloTab.vue`, no necesitó cambios
 - [x] Dato de prueba corregido: la cuenta qa-paleta-verify ahora tiene su plan realmente enviado y aprobado, con un objetivo específico — la historia ya es coherente
+
+---
+
+# Cerrar la brecha entre las plantillas reales de Fernando y la app — 2026-08-31
+
+## Contexto
+
+El usuario descargó a `docs/` 7 documentos + 5 imágenes reales de su práctica (Excel de Plan de
+Desarrollo de Felipe Cortés/Ferronor, informe de cierre real, pauta de retroalimentación, registro
+de sesiones, presupuesto/invitación comerciales, capturas del competidor Winston PAD y de su
+landing personal) pidiendo un análisis de qué le falta a la app para agregar valor real. Se comparó
+campo por campo contra las entidades reales del backend (3 agentes Explore en paralelo) y se
+confirmó que `PlanDesarrollo` ya nació 1:1 de ese Excel. El resto expone contenido que el coach
+sigue llevando a mano porque la app no tiene dónde ponerlo. Plan completo (6 fases) en
+`~/.claude/plans/parallel-inventing-robin.md`. Decisiones confirmadas con el usuario: la
+Retroalimentación de Cierre es entidad nueva (no se toca `EncuestaSatisfaccion` de empresa, que es
+otro concepto); los "comportamientos" de competencia solo se enriquecen para las 3 con evidencia
+real (Autoconfianza, Trabajo en Equipo, Flexibilidad).
+
+## Pasos de ejecución
+
+- [x] Fase 1 — Gaps rápidos: `AprendizajeRecurso.aplicacion`, `ActividadEjecucion.observaciones`,
+      `Logro.situacion`, `Sesion.temaTratado/ejerciciosAplicados/acuerdos` (1 migración combinada)
+- [x] Fase 2 — Retroalimentación de Cierre (nueva entidad coachee→ciclo, 18 ítems Likert + 4 abiertas —
+      la pauta real tiene 18 afirmaciones en 3 bloques, no 15 como se estimó en el plan inicial)
+- [x] Fase 3 — Autoevaluación de Competencias (seed enriquecido de 3 competencias + upsert bootstrap
+      + entidad `AutoevaluacionCompetencia` + cruce nivel↔descripción en `DefinicionTab.vue`)
+- [x] Fase 4 — Enriquecer `CiclosService.generarBorradorInforme()` con Logros + retroalimentación
+      de cierre + estructura narrativa por secciones (sin módulo nuevo, sin migración)
+- [x] Fase 5 — Módulo "Ejercicios de comunicación" (Saber-Sentir-Hacer), clon de `quiz/`.
+      Bonus: `npm run build` del frontend estaba roto de antes (3 errores de tipos
+      pre-existentes, no relacionados) — se corrigieron de paso al descubrirlos.
+- [x] Fase 6 — "Perfil del Coach" estático para el rol Empresa
+
+## Verificación
+
+Por fase: migración aplicada, specs existentes verdes, y verificación real solicitada al usuario
+en su propio navegador (LAN, `http://192.168.0.2:5173`) — el navegador conectado a esta sesión
+resultó estar en otra máquina (Windows remoto), así que no pude tomar capturas CDP yo mismo; el
+usuario quedó a cargo de la revisión visual de cada fase mientras yo seguía con la siguiente.
+
+Checks corridos en cada fase, backend y frontend: `npm run lint`, `npm test` (backend, jest),
+`npx vue-tsc --noEmit` + `npx tsc -p tsconfig.app.json --noEmit` (cross-check, ver
+`project_vue_tsc_spec_blindspot`), `npx vitest run`, y — descubierto a mitad de la Fase 5 como el
+chequeo realmente autoritativo — `npm run build` completo (`vue-tsc -b && vite build`), que
+encontró 3 errores de tipos que los chequeos rápidos venían pasando por alto (2 pre-existentes en
+fixtures de test, 1 real en `SesionesView.vue`), todos corregidos.
+
+## Revisión
+
+**Backend**: 30 test suites / 349 tests (arrancó en 322, cerró en 349). 6 migraciones nuevas
+aplicadas contra Postgres local y corridas sin error. Módulos nuevos: `retroalimentacion/`,
+`ejercicios/`; módulos ampliados: `recursos`, `planes-desarrollo`, `seguimiento`, `sesiones`,
+`competencias`, `ciclos`.
+
+**Frontend**: 63 archivos de test / 295 tests (arrancó en 291). `npm run build` limpio de punta a
+punta. 2 vistas nuevas (`coach/EjerciciosView.vue`, `coachee/EjerciciosView.vue`,
+`empresa/PerfilCoachView.vue`), 1 ícono nuevo (`ejercicios`), nav de coach/coachee/empresa
+actualizado.
+
+**Las 6 fases del plan (`~/.claude/plans/parallel-inventing-robin.md`) quedaron completas**: gaps
+rápidos de plantillas reales, retroalimentación de cierre (18 ítems reales, no 15 como se estimó
+al leer el documento por arriba), autoevaluación de competencias con contenido real de 3
+competencias, informe de cierre enriquecido con logros y retroalimentación, módulo de ejercicios
+de comunicación completo, y perfil del coach para empresa.
+
+**Pendiente, fuera de este alcance** (mencionado al usuario, no implementado): los 4 gaps
+comerciales identificados el 26-08 (facturación real, ROI, presupuesto por depto, HRIS) y el
+contenido de comportamientos para las ~13 competencias restantes del catálogo (falta que el
+usuario aporte el framework completo).

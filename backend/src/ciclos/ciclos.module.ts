@@ -7,6 +7,7 @@ import { CiclosController } from './ciclos.controller';
 import { CoacheesModule } from '../coachees/coachees.module';
 import { PlanesDesarrolloModule } from '../planes-desarrollo/planes-desarrollo.module';
 import { SeguimientoModule } from '../seguimiento/seguimiento.module';
+import { RetroalimentacionModule } from '../retroalimentacion/retroalimentacion.module';
 import { AuditModule } from '../audit/audit.module';
 
 @Module({
@@ -15,6 +16,7 @@ import { AuditModule } from '../audit/audit.module';
     CoacheesModule,
     PlanesDesarrolloModule,
     SeguimientoModule,
+    RetroalimentacionModule,
     AuditModule,
   ],
   providers: [CiclosService],

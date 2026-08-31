@@ -129,7 +129,12 @@ export class RecursosController {
     @Body() dto: CreateAprendizajeDto,
     @CurrentUser() actor: AuthenticatedUser,
   ) {
-    return this.aprendizajes.addOwn(actor.id, id, dto.contenido);
+    return this.aprendizajes.addOwn(
+      actor.id,
+      id,
+      dto.contenido,
+      dto.aplicacion,
+    );
   }
 
   @Roles(Role.COACHEE)

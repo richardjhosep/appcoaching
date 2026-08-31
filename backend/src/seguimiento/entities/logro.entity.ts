@@ -23,6 +23,11 @@ export class Logro {
   @Column({ type: 'varchar' })
   fecha: string;
 
+  // Contexto/detonante del logro — opcional, separado de `descripcion` (qué se logró)
+  // siguiendo la plantilla real de seguimiento del coach (columnas "situación" / "logro").
+  @Column({ type: 'text', nullable: true })
+  situacion: string | null;
+
   @Column({ type: 'text' })
   descripcion: string;
 

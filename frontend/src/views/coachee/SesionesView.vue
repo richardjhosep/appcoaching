@@ -197,12 +197,23 @@ function onSelectSesion(id: string) {
           </span>
         </div>
 
-        <p
-          v-if="sesion.resumenCompartido"
-          class="mb-3 text-sm text-[var(--color-ink)]/80"
+        <div
+          v-if="sesion.resumenCompartido || sesion.temaTratado || sesion.ejerciciosAplicados || sesion.acuerdos"
+          class="mb-3 space-y-1 text-sm text-[var(--color-ink)]/80"
         >
-          <strong>Resumen del coach:</strong> {{ sesion.resumenCompartido }}
-        </p>
+          <p v-if="sesion.resumenCompartido">
+            <strong>Resumen del coach:</strong> {{ sesion.resumenCompartido }}
+          </p>
+          <p v-if="sesion.temaTratado">
+            <strong>Tema tratado:</strong> {{ sesion.temaTratado }}
+          </p>
+          <p v-if="sesion.ejerciciosAplicados">
+            <strong>Ejercicios/assessments aplicados:</strong> {{ sesion.ejerciciosAplicados }}
+          </p>
+          <p v-if="sesion.acuerdos">
+            <strong>Acuerdos:</strong> {{ sesion.acuerdos }}
+          </p>
+        </div>
 
         <template v-if="yaRealizada(sesion)">
           <p class="mb-3 text-sm">
@@ -233,11 +244,11 @@ function onSelectSesion(id: string) {
             <div class="flex flex-wrap gap-2">
               <span
                 class="flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold"
-                :class="coloresCercania(sesion.postSesion.cercaniaObjetivo).texto"
-                :style="{ backgroundColor: coloresCercania(sesion.postSesion.cercaniaObjetivo).suave }"
+                :class="coloresCercania(sesion.postSesion.cercaniaObjetivo ?? 0).texto"
+                :style="{ backgroundColor: coloresCercania(sesion.postSesion.cercaniaObjetivo ?? 0).suave }"
               >
                 <NavIcon
-                  v-if="sesion.postSesion.cercaniaObjetivo >= 8"
+                  v-if="(sesion.postSesion.cercaniaObjetivo ?? 0) >= 8"
                   name="trofeo"
                   :size="12"
                   class="text-[var(--color-spark)]"

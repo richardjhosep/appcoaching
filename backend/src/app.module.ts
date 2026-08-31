@@ -27,6 +27,8 @@ import { NotificacionesModule } from './notificaciones/notificaciones.module';
 import { QuizModule } from './quiz/quiz.module';
 import { FlashcardsModule } from './flashcards/flashcards.module';
 import { MapasModule } from './mapas/mapas.module';
+import { RetroalimentacionModule } from './retroalimentacion/retroalimentacion.module';
+import { EjerciciosModule } from './ejercicios/ejercicios.module';
 
 @Module({
   imports: [
@@ -71,6 +73,8 @@ import { MapasModule } from './mapas/mapas.module';
     QuizModule,
     FlashcardsModule,
     MapasModule,
+    RetroalimentacionModule,
+    EjerciciosModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

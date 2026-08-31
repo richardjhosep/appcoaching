@@ -19,22 +19,22 @@ export class CompetenciasService implements OnApplicationBootstrap {
   ) {}
 
   async onApplicationBootstrap(): Promise<void> {
-    // INSERT ... ON CONFLICT DO NOTHING: seguro ante instancias que arrancan en paralelo
-    // contra la misma base (a diferencia de un count()-then-insert, que no es atómico).
-    const result = await this.competencias
+    // INSERT ... ON CONFLICT (nombre) DO UPDATE: a diferencia del DO NOTHING anterior, esto
+    // mantiene `definicion`/`niveles` sincronizados con el código cada vez que se enriquece el
+    // seed (ej. agregar `comportamientos` a un nivel) — sin eso, cada enriquecimiento del
+    // catálogo necesitaría además una migración de datos manual fila por fila. Sigue siendo
+    // atómico a nivel de base de datos, seguro ante instancias arrancando en paralelo.
+    await this.competencias
       .createQueryBuilder()
       .insert()
       .into(Competencia)
       .values(COMPETENCIAS_SEED)
-      .orIgnore()
+      .orUpdate(['definicion', 'niveles'], ['nombre'])
       .execute();
 
-    const inserted = result.identifiers.filter((id) => id?.id).length;
-    if (inserted > 0) {
-      this.logger.log(
-        `Seeded ${inserted} competencias from the master catalog.`,
-      );
-    }
+    this.logger.log(
+      `Synced ${COMPETENCIAS_SEED.length} competencias from the master catalog.`,
+    );
   }
 
   findAll(): Promise<Competencia[]> {

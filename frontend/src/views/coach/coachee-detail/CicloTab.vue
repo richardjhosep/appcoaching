@@ -13,6 +13,11 @@ import {
   type Ciclo,
   type ResultadoCiclo,
 } from '../../../api/ciclos'
+import {
+  getRetroalimentacionesDeCoachee,
+  type RetroalimentacionCierre,
+} from '../../../api/retroalimentacion'
+import { promedioPorBloque, promedioGeneral } from '../../../lib/retroalimentacionResumen'
 import { ApiError } from '../../../api/client'
 
 const props = defineProps<{ coacheeId: string }>()
@@ -25,6 +30,10 @@ const error = ref<string | null>(null)
 const acting = ref(false)
 
 const ciclosCerrados = computed(() => historial.value.filter((c) => c.fechaCierre))
+const retroalimentaciones = ref<RetroalimentacionCierre[]>([])
+const retroPorCiclo = computed(
+  () => new Map(retroalimentaciones.value.map((r) => [r.cicloId, r])),
+)
 
 const nuevoTotalSesiones = ref(10)
 const nuevoResumen = ref('')
@@ -36,12 +45,14 @@ const resultadoSeleccionado = ref<ResultadoCiclo | ''>('')
 
 async function load() {
   loading.value = true
-  const [actual, todos] = await Promise.all([
+  const [actual, todos, retros] = await Promise.all([
     getCicloActualDeCoachee(props.coacheeId),
     getCiclosDeCoachee(props.coacheeId),
+    getRetroalimentacionesDeCoachee(props.coacheeId),
   ])
   cicloActual.value = actual
   historial.value = todos
+  retroalimentaciones.value = retros
   resumenEdit.value = actual?.resumenReunionInicial ?? ''
   informeEdit.value = actual?.informeFinal ?? ''
   loading.value = false
@@ -317,6 +328,47 @@ async function cerrar() {
         Ciclos anteriores
       </h2>
       <HistorialCiclos :ciclos="ciclosCerrados" />
+    </div>
+
+    <div
+      v-if="ciclosCerrados.some((c) => retroPorCiclo.has(c.id))"
+      class="mt-4 rounded-2xl border border-[var(--color-line)] bg-white p-4"
+    >
+      <h2 class="mb-3 text-sm font-medium">
+        Retroalimentación del coachee
+      </h2>
+      <div
+        v-for="c in ciclosCerrados.filter((c) => retroPorCiclo.has(c.id))"
+        :key="c.id"
+        class="mb-4 space-y-2 border-b border-[var(--color-line)]/60 pb-4 text-sm last:mb-0 last:border-b-0 last:pb-0"
+      >
+        <p class="text-xs text-[var(--color-ink)]/50">
+          Ciclo cerrado el {{ new Date(c.fechaCierre!).toLocaleDateString('es-CL') }} — promedio
+          general
+          <strong>{{ promedioGeneral(retroPorCiclo.get(c.id)!.respuestas) }}/5</strong>
+        </p>
+        <ul class="flex flex-wrap gap-2 text-xs">
+          <li
+            v-for="pb in promedioPorBloque(retroPorCiclo.get(c.id)!.respuestas)"
+            :key="pb.bloque"
+            class="rounded-full bg-[var(--color-parchment)]/60 px-2.5 py-1"
+          >
+            {{ pb.bloque }}: <strong>{{ pb.promedio }}/5</strong>
+          </li>
+        </ul>
+        <p v-if="retroPorCiclo.get(c.id)!.loQueMasGusto">
+          <strong>Lo que más le gustó:</strong> {{ retroPorCiclo.get(c.id)!.loQueMasGusto }}
+        </p>
+        <p v-if="retroPorCiclo.get(c.id)!.mayoresAprendizajes">
+          <strong>Mayores aprendizajes:</strong> {{ retroPorCiclo.get(c.id)!.mayoresAprendizajes }}
+        </p>
+        <p v-if="retroPorCiclo.get(c.id)!.sugerencias">
+          <strong>Sugerencias:</strong> {{ retroPorCiclo.get(c.id)!.sugerencias }}
+        </p>
+        <p v-if="retroPorCiclo.get(c.id)!.otrosComentarios">
+          <strong>Otros comentarios:</strong> {{ retroPorCiclo.get(c.id)!.otrosComentarios }}
+        </p>
+      </div>
     </div>
   </div>
 </template>

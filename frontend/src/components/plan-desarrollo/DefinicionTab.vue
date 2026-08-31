@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import {
   updateOwnPlan,
   enviarPlan,
@@ -10,6 +10,11 @@ import {
   type PlanDesarrollo,
 } from '../../api/planesDesarrollo'
 import type { Competencia } from '../../api/competencias'
+import {
+  addAutoevaluacion,
+  getMisAutoevaluaciones,
+  type AutoevaluacionCompetencia,
+} from '../../api/seguimiento'
 import { ApiError } from '../../api/client'
 import { notifyError, notifySuccess } from '../../lib/notify'
 import SectionCard from '../SectionCard.vue'
@@ -42,6 +47,49 @@ const enviando = ref(false)
 const error = ref<string | null>(null)
 const serverErrors = ref<Record<string, string>>({})
 const nuevoObjetivo = ref('')
+
+const competenciaSeleccionada = computed(() =>
+  props.competencias.find((c) => c.id === form.competenciaId) ?? null,
+)
+function nivelInfo(nivel: number | null) {
+  if (!competenciaSeleccionada.value || nivel == null) return null
+  return competenciaSeleccionada.value.niveles.find((n) => n.nivel === nivel) ?? null
+}
+
+const autoevaluaciones = ref<AutoevaluacionCompetencia[]>([])
+const autoevaluacionesDeLaCompetencia = computed(() =>
+  autoevaluaciones.value.filter((a) => a.competenciaId === form.competenciaId),
+)
+const nivelAutoeval = ref<number | null>(null)
+const ejemploAutoeval = ref('')
+const guardandoAutoeval = ref(false)
+const nivelAutoevalInfo = computed(() => nivelInfo(nivelAutoeval.value))
+
+onMounted(async () => {
+  autoevaluaciones.value = await getMisAutoevaluaciones()
+})
+
+async function guardarAutoevaluacion() {
+  if (!form.competenciaId || !nivelAutoeval.value || !ejemploAutoeval.value.trim()) return
+  guardandoAutoeval.value = true
+  try {
+    const creada = await addAutoevaluacion(
+      form.competenciaId,
+      nivelAutoeval.value,
+      ejemploAutoeval.value.trim(),
+    )
+    autoevaluaciones.value = [creada, ...autoevaluaciones.value]
+    ejemploAutoeval.value = ''
+    await notifySuccess('Autoevaluación guardada')
+  } catch (err) {
+    await notifyError(
+      'No se pudo guardar la autoevaluación',
+      err instanceof ApiError ? err.message : 'Ocurrió un error inesperado.',
+    )
+  } finally {
+    guardandoAutoeval.value = false
+  }
+}
 
 const aprobado = computed(() => props.plan.estado === 'aprobado')
 const mensajeBloqueo = computed(() =>
@@ -181,6 +229,10 @@ async function enviar() {
             v-if="serverErrors.nivelActual"
             class="mt-1 block text-xs text-[var(--color-danger)]"
           >{{ serverErrors.nivelActual }}</span>
+          <span
+            v-if="nivelInfo(form.nivelActual)"
+            class="mt-1 block text-xs text-[var(--color-ink)]/60"
+          >{{ nivelInfo(form.nivelActual)!.descripcion }}</span>
         </label>
 
         <label class="text-sm">
@@ -197,6 +249,10 @@ async function enviar() {
             v-if="serverErrors.nivelObjetivo"
             class="mt-1 block text-xs text-[var(--color-danger)]"
           >{{ serverErrors.nivelObjetivo }}</span>
+          <span
+            v-if="nivelInfo(form.nivelObjetivo)"
+            class="mt-1 block text-xs text-[var(--color-ink)]/60"
+          >{{ nivelInfo(form.nivelObjetivo)!.descripcion }}</span>
         </label>
 
         <label class="text-sm sm:col-span-2">
@@ -282,6 +338,83 @@ async function enviar() {
           Agregar
         </button>
       </div>
+    </SectionCard>
+
+    <SectionCard
+      v-if="competenciaSeleccionada"
+      title="Autoevaluación de competencia"
+      icon="objetivo"
+    >
+      <p class="mb-3 text-xs text-[var(--color-ink)]/60">
+        Marca en qué nivel de "{{ competenciaSeleccionada.nombre }}" crees estar hoy y describe un
+        ejemplo concreto que lo demuestre.
+      </p>
+
+      <ul
+        v-if="autoevaluacionesDeLaCompetencia.length"
+        class="mb-4 space-y-2 text-sm"
+      >
+        <li
+          v-for="a in autoevaluacionesDeLaCompetencia"
+          :key="a.id"
+          class="rounded-lg border border-[var(--color-line)] p-2"
+        >
+          <p class="text-xs text-[var(--color-ink)]/50">
+            {{ new Date(a.createdAt).toLocaleDateString('es-CL') }} — Nivel {{ a.nivel }}
+          </p>
+          <p>{{ a.ejemplo }}</p>
+        </li>
+      </ul>
+
+      <label class="mb-2 block text-sm">
+        Nivel
+        <select
+          v-model.number="nivelAutoeval"
+          class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+        >
+          <option
+            :value="null"
+            disabled
+          >
+            Elige un nivel
+          </option>
+          <option
+            v-for="n in competenciaSeleccionada.niveles"
+            :key="n.nivel"
+            :value="n.nivel"
+          >
+            Nivel {{ n.nivel }} — {{ n.descripcion }}
+          </option>
+        </select>
+      </label>
+
+      <ul
+        v-if="nivelAutoevalInfo?.comportamientos?.length"
+        class="mb-3 list-disc space-y-1 pl-5 text-xs text-[var(--color-ink)]/70"
+      >
+        <li
+          v-for="(c, i) in nivelAutoevalInfo.comportamientos"
+          :key="i"
+        >
+          {{ c }}
+        </li>
+      </ul>
+
+      <label class="mb-2 block text-sm">
+        Ejemplo — ¿por qué crees estar en ese nivel?
+        <textarea
+          v-model="ejemploAutoeval"
+          rows="3"
+          class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+        />
+      </label>
+      <button
+        class="rounded-lg border border-[var(--color-line)] px-4 py-2 text-sm hover:bg-[var(--color-parchment)]/50 disabled:opacity-60"
+        :disabled="guardandoAutoeval || !nivelAutoeval || !ejemploAutoeval.trim()"
+        @click="guardarAutoevaluacion"
+      >
+        {{ guardandoAutoeval ? 'Guardando…' : 'Guardar autoevaluación' }}
+      </button>
     </SectionCard>
 
     <button

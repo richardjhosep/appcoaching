@@ -11,6 +11,7 @@ import { SeguimientoService } from './seguimiento.service';
 import { CoacheesService } from '../coachees/coachees.service';
 import { CreateLogroDto } from './dto/create-logro.dto';
 import { CreateEntradaDiarioDto } from './dto/create-entrada-diario.dto';
+import { CreateAutoevaluacionDto } from './dto/create-autoevaluacion.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -107,5 +108,30 @@ export class SeguimientoController {
   ) {
     await this.coachees.findOneForActor(coacheeId, actor);
     return this.seguimiento.lineaProgresoForCoachee(coacheeId);
+  }
+
+  @Roles(Role.COACHEE)
+  @Post('autoevaluaciones')
+  addAutoevaluacion(
+    @Body() dto: CreateAutoevaluacionDto,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.seguimiento.addAutoevaluacionOwn(actor.id, dto);
+  }
+
+  @Roles(Role.COACHEE)
+  @Get('autoevaluaciones/me')
+  listMyAutoevaluaciones(@CurrentUser() actor: AuthenticatedUser) {
+    return this.seguimiento.listAutoevaluacionesOwn(actor.id);
+  }
+
+  @Roles(Role.COACH, Role.EMPRESA)
+  @Get('autoevaluaciones/:coacheeId')
+  async autoevaluacionesDeCoachee(
+    @Param('coacheeId') coacheeId: string,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    await this.coachees.findOneForActor(coacheeId, actor);
+    return this.seguimiento.listAutoevaluacionesForCoachee(coacheeId);
   }
 }

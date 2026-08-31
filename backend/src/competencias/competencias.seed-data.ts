@@ -9,6 +9,17 @@ export interface CompetenciaSeed {
 const niveles = (...descripciones: string[]): NivelCompetencia[] =>
   descripciones.map((descripcion, i) => ({ nivel: i + 1, descripcion }));
 
+// Igual que `niveles`, pero con los comportamientos observables (bullets) de cada nivel —
+// usado solo donde hay contenido fuente verificado (ver nota en NivelCompetencia).
+const nivelesConComportamientos = (
+  ...pares: [descripcion: string, comportamientos: string[]][]
+): NivelCompetencia[] =>
+  pares.map(([descripcion, comportamientos], i) => ({
+    nivel: i + 1,
+    descripcion,
+    comportamientos,
+  }));
+
 export const COMPETENCIAS_SEED: CompetenciaSeed[] = [
   {
     nombre: 'Orientación Estratégica',
@@ -77,12 +88,53 @@ export const COMPETENCIAS_SEED: CompetenciaSeed[] = [
     nombre: 'Trabajo en Equipo',
     definicion:
       'Capacidad de colaborar y actuar como miembro efectivo del equipo, contribuyendo al cumplimiento de objetivos comunes, promoviendo cooperación, confianza, respeto y valoración de ideas y aportes.',
-    niveles: niveles(
-      'Trabaja en colaboración con otros',
-      'Expresa expectativas positivas sobre el equipo y transmite un sentido de unidad o compromiso mutuo',
-      'Persigue el beneficio colectivo antes que el individual',
-      'Estimula a los demás que formen parte del equipo',
-      'Construye un ambiente de trabajo en equipo dentro de la organización',
+    niveles: nivelesConComportamientos(
+      [
+        'Trabaja en colaboración con otros',
+        [
+          'Apoya las decisiones del equipo y hace su parte del trabajo.',
+          'Mantiene informados a los otros miembros y los actualiza acerca de los acontecimientos relevantes para su área de responsabilidad.',
+          'Proactivamente, comparte toda la información relevante o útil para que se logren los resultados que como equipo comparten.',
+        ],
+      ],
+      [
+        'Expresa expectativas positivas sobre el equipo y transmite un sentido de unidad o compromiso mutuo',
+        [
+          'Expresa expectativas positivas de otros en términos de sus habilidades y contribuciones esperadas, intenciones, etc.',
+          'Habla de los miembros del equipo en términos positivos a lo interno o externo del equipo y transmite un sentido de unidad o compromiso mutuo.',
+          'Toma en cuenta y se apoya en los conocimientos y experiencias de los integrantes del equipo para tenerlos de soporte.',
+          'Escucha con atención los comentarios y opiniones de las personas que integran al equipo.',
+          'Se responsabiliza y al mismo tiempo hace responsable a otros de los trabajos y los resultados/objetivos del equipo.',
+        ],
+      ],
+      [
+        'Persigue el beneficio colectivo antes que el individual',
+        [
+          'Evalúa genuinamente las sugerencias y experiencia de los demás e incluye la perspectiva de otros para tomar decisiones o planes específicos.',
+          'Muestra voluntad de aprender de los demás (incluyendo de sus subordinados y compañeros).',
+          'Coloca los resultados globales y los objetivos de la empresa, el equipo o el proceso por encima de sus intereses personales.',
+        ],
+      ],
+      [
+        'Estimula a los demás que formen parte del equipo',
+        [
+          'Actúa para promover la colaboración en las relaciones de trabajo.',
+          'Reconoce públicamente las contribuciones positivas de los demás.',
+          'Estimula y faculta a otros, los hace sentir capaces e importantes.',
+          'Solicita, fomenta y valora los puntos de vista de los integrantes del equipo, incluso cuando no están alineados con su opinión propia.',
+        ],
+      ],
+      [
+        'Construye un ambiente de trabajo en equipo dentro de la organización',
+        [
+          'Escucha y considera los puntos de vista que no son los propios y busca de manera proactiva comprender lo que opinan los demás, tomando en cuenta su impacto en otra persona, área o proceso.',
+          'Promueve buenas relaciones de trabajo sin importar preferencias personales.',
+          'Construye sinergia en el equipo para lograr los objetivos de la organización.',
+          'Construye relaciones de apoyo mutuo con los compañeros de trabajo o de otras áreas para que las acciones estén coordinadas y alineadas.',
+          'Facilita la resolución beneficiosa de los conflictos del equipo.',
+          'Crea las condiciones para equipos de alto rendimiento: misión clara y resultados previstos, un plan efectivo, un entorno de apertura y cooperación, procedimientos eficaces para trabajar juntos, herramientas para monitorear el progreso, y enfrentar problemas y obstáculos con rapidez y eficacia.',
+        ],
+      ],
     ),
   },
   {
@@ -102,11 +154,36 @@ export const COMPETENCIAS_SEED: CompetenciaSeed[] = [
     nombre: 'Flexibilidad',
     definicion:
       'Capacidad de ajustar enfoques y acciones ante situaciones, personas o información diversa, adaptándose con apertura a distintos puntos de vista y respondiendo con agilidad a cambios.',
-    niveles: niveles(
-      'Acepta la necesidad de ser flexible (implica que escucha activamente a otros)',
-      'Aplica las reglas/procesos flexiblemente',
-      'Adapta las tácticas que lleva el resultado o propósito final',
-      'Adapta la estrategia o el objetivo final',
+    niveles: nivelesConComportamientos(
+      [
+        'Acepta la necesidad de ser flexible (implica que escucha activamente a otros)',
+        [
+          'Acepta nuevas ideas, opiniones o críticas de externos.',
+          'Entiende y valora puntos de vista distintos a los suyos de manera abierta.',
+          'Se adapta fácilmente a nuevos escenarios o situaciones.',
+        ],
+      ],
+      [
+        'Aplica las reglas/procesos flexiblemente',
+        [
+          'Modifica y adapta los procedimientos habituales a una situación única, con el objetivo de responder a las necesidades del negocio, respetando el diseño del proceso. Implica adaptar acciones específicas dentro de un plan.',
+        ],
+      ],
+      [
+        'Adapta las tácticas que lleva el resultado o propósito final',
+        [
+          'Decide qué hacer para adaptar los recursos que tiene asignados a la situación y lo lleva a cabo.',
+          'Identifica los cambios tácticos que se deben de realizar para lograr el plan o estrategia general ante una situación cambiante o información nueva/adicional que sea importante considerar.',
+          'Impulsa cambios en los procesos (si es un Dueño de Proceso) o sugiere/trabaja con el Dueño de Proceso en respuesta a cambios significativos requeridos por el negocio, clientes o usuarios.',
+        ],
+      ],
+      [
+        'Adapta la estrategia o el objetivo final',
+        [
+          'Cambia la estrategia, planes, metas, procesos o iniciativas para adaptarlos a cambios sustanciales del negocio o entorno del mercado.',
+          'Puede realizar cambios profundos, incluso institucionales, para cumplir con las necesidades de una situación específica.',
+        ],
+      ],
     ),
   },
   {
@@ -136,12 +213,47 @@ export const COMPETENCIAS_SEED: CompetenciaSeed[] = [
     nombre: 'Autoconfianza',
     definicion:
       'Confianza en la propia capacidad para asumir decisiones y desafíos, incluso en contextos difíciles o ambiguos, fortaleciendo el rendimiento personal y aportando visión para el futuro.',
-    niveles: niveles(
-      'Actúa con confianza en su rol de trabajo, o incluso saliendo un poco de estos si fuera necesario',
-      'Actúa confiadamente dentro de los límites del puesto',
-      'Demuestra confianza en sus propias habilidades',
-      'Asume retos',
-      'Escoge situaciones extremadamente desafiantes',
+    niveles: nivelesConComportamientos(
+      [
+        'Actúa con confianza en su rol de trabajo, o incluso saliendo un poco de estos si fuera necesario',
+        [
+          'Trabaja sin necesidad de supervisión directa.',
+          'Muestra confianza en la capacidad propia para realizar el trabajo o tomar decisiones adecuadas.',
+          'Muestra seguridad al interactuar o presentarse ante los demás. Se presenta a sí mismo sin ansiedad o nerviosismo.',
+        ],
+      ],
+      [
+        'Actúa confiadamente dentro de los límites del puesto',
+        [
+          'Expone sus ideas aun cuando otros están en desacuerdo.',
+          'Transmite sus ideas, aunque se le cuestione.',
+          'Actúa por sí mismo más allá de los límites del puesto, orientado a lo más conveniente para el proceso/área.',
+          'Actúa confiadamente en circunstancias inciertas y acepta los riesgos que trae consigo el haber tomado, lo que a su parecer, es la mejor alternativa para el proceso/área.',
+        ],
+      ],
+      [
+        'Demuestra confianza en sus propias habilidades',
+        [
+          'Se muestra a sí mismo como alguien que hace que sucedan las cosas, promotor u originador de temas específicos.',
+          'Da muestras claras en que confía en su propio entendimiento de los temas a tratar.',
+        ],
+      ],
+      [
+        'Asume retos',
+        [
+          'Busca y obtiene nuevas responsabilidades y muestra seguridad en sí mismo para asumirlas.',
+          'Muestra interés y se enfrenta a asignaciones desafiantes y se entusiasma ante los retos.',
+          'Expone sus inquietudes, pensamientos y puntos de vista cuando no está de acuerdo con los niveles superiores o clientes; lo hace de forma educada y cortés, aun cuando sabe que se puede generar un conflicto.',
+        ],
+      ],
+      [
+        'Escoge situaciones extremadamente desafiantes',
+        [
+          'Se hace cargo voluntariamente de tareas extremadamente desafiantes.',
+          'Confronta firme y efectivamente a otros (autoridad y clientes) con respeto, cuando la situación lo amerita.',
+          'Toma medidas audaces o riesgo personal de cara a situaciones difíciles e inciertas.',
+        ],
+      ],
     ),
   },
   {

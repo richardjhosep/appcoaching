@@ -58,8 +58,8 @@ const plan: PlanDesarrollo = {
     { id: 'o2', descripcion: 'Dar feedback semanal', orden: 2 },
   ],
   actividades: [
-    { id: 'a1', objetivoId: 'o1', actividad: 'Reunión de delegación', fechaInicio: null, fechaFin: null, estado: 'completada' },
-    { id: 'a2', objetivoId: 'o1', actividad: 'Seguimiento', fechaInicio: null, fechaFin: null, estado: 'pendiente' },
+    { id: 'a1', objetivoId: 'o1', actividad: 'Reunión de delegación', fechaInicio: null, fechaFin: null, estado: 'completada', observaciones: null },
+    { id: 'a2', objetivoId: 'o1', actividad: 'Seguimiento', fechaInicio: null, fechaFin: null, estado: 'pendiente', observaciones: null },
   ],
   createdAt: '2026-01-01T00:00:00.000Z',
   updatedAt: '2026-01-15T00:00:00.000Z',
@@ -163,7 +163,7 @@ describe('PlanesListView', () => {
       ...plan,
       id: 'plan-2',
       coacheeId: 'c2',
-      coachee: { id: 'c2', nombre: 'Ana Reagenda', createdAt: '2026-01-01T00:00:00.000Z' },
+      coachee: { id: 'c2', nombre: 'Ana Reagenda', telefono: null, createdAt: '2026-01-01T00:00:00.000Z' },
       estado: 'aprobado',
     }
     vi.mocked(listPlanes).mockResolvedValue([plan, aprobado])
@@ -200,7 +200,7 @@ describe('PlanesListView', () => {
       ...plan,
       id: `plan-${i}`,
       coacheeId: `c${i}`,
-      coachee: { id: `c${i}`, nombre: `Coachee ${i}`, createdAt: '2026-01-01T00:00:00.000Z' },
+      coachee: { id: `c${i}`, nombre: `Coachee ${i}`, telefono: null, createdAt: '2026-01-01T00:00:00.000Z' },
     }))
     vi.mocked(listPlanes).mockResolvedValue(planes)
 

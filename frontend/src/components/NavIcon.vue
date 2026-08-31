@@ -240,6 +240,27 @@ withDefaults(defineProps<{ name: string; size?: number }>(), { size: 18 })
         r="2.6"
       /><path d="M8.4 10.8L14.6 7.2M8.4 13.2L14.6 16.8" />
     </template>
+    <template v-else-if="name === 'ejercicios'">
+      <path d="M4 5h16a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-9l-4 4v-4H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z" /><circle
+        cx="9"
+        cy="11"
+        r="0.6"
+        fill="currentColor"
+        stroke="none"
+      /><circle
+        cx="13"
+        cy="11"
+        r="0.6"
+        fill="currentColor"
+        stroke="none"
+      /><circle
+        cx="17"
+        cy="11"
+        r="0.6"
+        fill="currentColor"
+        stroke="none"
+      />
+    </template>
     <template v-else-if="name === 'trofeo'">
       <path d="M8 4h8v4a4 4 0 0 1-8 0z" /><path d="M8 5H5a3 3 0 0 0 3 5" /><path d="M16 5h3a3 3 0 0 1-3 5" /><path d="M12 12v3" /><path d="M9 20h6" /><path d="M10 17h4v3h-4z" />
     </template>

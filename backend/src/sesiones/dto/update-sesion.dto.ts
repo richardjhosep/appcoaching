@@ -24,6 +24,18 @@ export class UpdateSesionDto {
   notasPrivadas?: string;
 
   @IsOptional()
+  @IsString()
+  temaTratado?: string;
+
+  @IsOptional()
+  @IsString()
+  ejerciciosAplicados?: string;
+
+  @IsOptional()
+  @IsString()
+  acuerdos?: string;
+
+  @IsOptional()
   @IsBoolean()
   asistio?: boolean;
 }

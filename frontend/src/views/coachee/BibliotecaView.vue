@@ -25,6 +25,7 @@ const seleccionadaId = ref<string | null>(null)
 const recursoAbierto = ref<Recurso | null>(null)
 const aprendizajesDelAbierto = ref<Aprendizaje[]>([])
 const nuevoAprendizaje = ref('')
+const nuevaAplicacion = ref('')
 const guardandoAprendizaje = ref(false)
 
 const arbol = computed(() => buildArbol(carpetas.value))
@@ -70,6 +71,7 @@ function seleccionar(id: string | null) {
 async function abrirRecurso(r: Recurso) {
   recursoAbierto.value = r
   nuevoAprendizaje.value = ''
+  nuevaAplicacion.value = ''
   aprendizajesDelAbierto.value = await getMisAprendizajes(r.id)
 }
 
@@ -83,9 +85,10 @@ async function guardarAprendizaje() {
   if (!recurso || !contenido) return
   guardandoAprendizaje.value = true
   try {
-    const aprendizaje = await addAprendizaje(recurso.id, contenido)
+    const aprendizaje = await addAprendizaje(recurso.id, contenido, nuevaAplicacion.value.trim() || undefined)
     aprendizajesDelAbierto.value = [aprendizaje, ...aprendizajesDelAbierto.value]
     nuevoAprendizaje.value = ''
+    nuevaAplicacion.value = ''
   } catch (err) {
     error.value = err instanceof ApiError ? err.message : 'No se pudo guardar el aprendizaje.'
   } finally {
@@ -312,20 +315,32 @@ async function descargar(r: Recurso) {
         <p class="text-xs font-medium uppercase tracking-wide text-[var(--color-ink)]/45">
           Mis aprendizajes
         </p>
-        <ul class="space-y-1 text-sm">
+        <ul class="space-y-2 text-sm">
           <li
             v-for="a in aprendizajesDelAbierto"
             :key="a.id"
           >
-            {{ a.contenido }}
+            <p>{{ a.contenido }}</p>
+            <p
+              v-if="a.aplicacion"
+              class="text-xs text-[var(--color-ink)]/50"
+            >
+              ¿Cómo lo aplico? {{ a.aplicacion }}
+            </p>
           </li>
         </ul>
-        <div class="flex gap-2">
+        <div class="space-y-2">
           <input
             v-model="nuevoAprendizaje"
             type="text"
             placeholder="Registra un aprendizaje práctico"
-            class="flex-1 rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+            class="w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+          >
+          <input
+            v-model="nuevaAplicacion"
+            type="text"
+            placeholder="¿Cómo se aplica a mi trabajo? (opcional)"
+            class="w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
             @keyup.enter="guardarAprendizaje"
           >
           <button

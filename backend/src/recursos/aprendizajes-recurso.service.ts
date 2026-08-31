@@ -18,13 +18,19 @@ export class AprendizajesRecursoService {
     actorUserId: string,
     recursoId: string,
     contenido: string,
+    aplicacion?: string,
   ): Promise<AprendizajeRecurso> {
     const coacheeId = await this.recursos.assertEnBibliotecaDeCoachee(
       actorUserId,
       recursoId,
     );
     return this.aprendizajes.save(
-      this.aprendizajes.create({ recursoId, coacheeId, contenido }),
+      this.aprendizajes.create({
+        recursoId,
+        coacheeId,
+        contenido,
+        aplicacion: aplicacion ?? null,
+      }),
     );
   }
 

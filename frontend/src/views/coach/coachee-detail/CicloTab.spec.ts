@@ -13,8 +13,16 @@ vi.mock('../../../api/ciclos', async () => {
     getCiclosDeCoachee: vi.fn(),
   }
 })
+vi.mock('../../../api/retroalimentacion', async () => {
+  const actual = await vi.importActual<typeof import('../../../api/retroalimentacion')>('../../../api/retroalimentacion')
+  return {
+    ...actual,
+    getRetroalimentacionesDeCoachee: vi.fn(),
+  }
+})
 
 import { getCicloActualDeCoachee, getCiclosDeCoachee } from '../../../api/ciclos'
+import { getRetroalimentacionesDeCoachee } from '../../../api/retroalimentacion'
 
 const cicloAbierto: Ciclo = {
   id: 'c1',
@@ -36,6 +44,7 @@ describe('CicloTab (coach)', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     vi.mocked(getCiclosDeCoachee).mockResolvedValue([])
+    vi.mocked(getRetroalimentacionesDeCoachee).mockResolvedValue([])
   })
 
   it('shows the "abrir ciclo" form when there is no open cycle', async () => {

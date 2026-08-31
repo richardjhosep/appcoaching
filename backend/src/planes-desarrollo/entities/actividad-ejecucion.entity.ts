@@ -45,6 +45,11 @@ export class ActividadEjecucion {
   })
   estado: EstadoActividad;
 
+  // Relato de qué pasó al ejecutar la actividad — es el campo más usado en la plantilla real
+  // (Excel de Plan de Desarrollo), no existía lugar para él hasta ahora.
+  @Column({ type: 'text', nullable: true })
+  observaciones: string | null;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 }

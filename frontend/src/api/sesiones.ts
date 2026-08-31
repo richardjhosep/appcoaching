@@ -20,6 +20,9 @@ export interface Sesion {
   linkVideollamada: string | null
   resumenCompartido: string | null
   notasPrivadas?: string | null
+  temaTratado?: string | null
+  ejerciciosAplicados?: string | null
+  acuerdos?: string | null
   asistio?: boolean | null
   postSesion: PostSesion | null
 }
@@ -62,10 +65,23 @@ export function actualizarAsistencia(sesionId: string, asistio: boolean): Promis
   })
 }
 
-export function actualizarNotasPrivadas(sesionId: string, notasPrivadas: string): Promise<Sesion> {
+export interface RegistroSesionInput {
+  resumenCompartido?: string
+  notasPrivadas?: string
+  temaTratado?: string
+  ejerciciosAplicados?: string
+  acuerdos?: string
+}
+
+// Registro estructurado de la sesión (plantilla real "Registro de Sesiones" del coach) —
+// un solo PATCH para los 5 campos que el coach documenta después de cada sesión.
+export function actualizarRegistroSesion(
+  sesionId: string,
+  input: RegistroSesionInput,
+): Promise<Sesion> {
   return apiRequest<Sesion>(`/sesiones/${sesionId}`, {
     method: 'PATCH',
-    body: { notasPrivadas },
+    body: input,
   })
 }
 

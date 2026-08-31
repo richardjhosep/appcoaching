@@ -12,6 +12,7 @@ import { Role } from '../auth/enums/role.enum';
 import { CoacheesService } from '../coachees/coachees.service';
 import { PlanesDesarrolloService } from '../planes-desarrollo/planes-desarrollo.service';
 import { SeguimientoService } from '../seguimiento/seguimiento.service';
+import { RetroalimentacionService } from '../retroalimentacion/retroalimentacion.service';
 import { validarPdfSubido } from '../common/file-type-filter.util';
 
 jest.mock('../common/file-type-filter.util', () => ({
@@ -35,7 +36,11 @@ describe('CiclosService', () => {
     findOneForActor: jest.Mock;
   };
   let planesDesarrollo: { getByCoacheeId: jest.Mock };
-  let seguimiento: { avanceGeneralForCoachee: jest.Mock };
+  let seguimiento: {
+    avanceGeneralForCoachee: jest.Mock;
+    listLogrosForCoachee: jest.Mock;
+  };
+  let retroalimentacion: { listForCoachee: jest.Mock };
 
   beforeEach(() => {
     jest.mocked(validarPdfSubido).mockResolvedValue(undefined);
@@ -58,13 +63,16 @@ describe('CiclosService', () => {
     planesDesarrollo = { getByCoacheeId: jest.fn() };
     seguimiento = {
       avanceGeneralForCoachee: jest.fn().mockResolvedValue(null),
+      listLogrosForCoachee: jest.fn().mockResolvedValue([]),
     };
+    retroalimentacion = { listForCoachee: jest.fn().mockResolvedValue([]) };
     service = new CiclosService(
       ciclosRepo as unknown as Repository<CicloCoaching>,
       sesionesRepo as unknown as Repository<Sesion>,
       coachees as unknown as CoacheesService,
       planesDesarrollo as unknown as PlanesDesarrolloService,
       seguimiento as unknown as SeguimientoService,
+      retroalimentacion as unknown as RetroalimentacionService,
     );
   });
 
@@ -239,6 +247,64 @@ describe('CiclosService', () => {
       expect(ciclo.informeFinal).toContain('Mejorar liderazgo');
       expect(ciclo.informeFinal).toContain('Delegar más');
       expect(ciclo.informeFinal).toContain('sin autoevaluación registrada');
+    });
+
+    it('includes logros under "Avances Observados"', async () => {
+      ciclosRepo.findOne.mockResolvedValue({
+        id: 'ciclo-1',
+        coacheeId: 'coachee-1',
+        totalSesiones: 10,
+        fechaApertura: new Date('2026-01-01'),
+        fechaCierre: null,
+      });
+      sesionesRepo.count.mockResolvedValue(3);
+      planesDesarrollo.getByCoacheeId.mockRejectedValue(
+        new NotFoundException(),
+      );
+      seguimiento.avanceGeneralForCoachee.mockResolvedValue(null);
+      seguimiento.listLogrosForCoachee.mockResolvedValue([
+        { fecha: '2026-07-10', descripcion: 'Lideró la reunión de equipo' },
+      ]);
+
+      const ciclo = await service.generarBorradorInforme('ciclo-1');
+
+      expect(ciclo.informeFinal).toContain('Avances Observados');
+      expect(ciclo.informeFinal).toContain(
+        '2026-07-10: Lideró la reunión de equipo',
+      );
+    });
+
+    it('includes the retroalimentación del coachee for this ciclo when it exists', async () => {
+      ciclosRepo.findOne.mockResolvedValue({
+        id: 'ciclo-1',
+        coacheeId: 'coachee-1',
+        totalSesiones: 10,
+        fechaApertura: new Date('2026-01-01'),
+        fechaCierre: null,
+      });
+      sesionesRepo.count.mockResolvedValue(3);
+      planesDesarrollo.getByCoacheeId.mockRejectedValue(
+        new NotFoundException(),
+      );
+      seguimiento.avanceGeneralForCoachee.mockResolvedValue(null);
+      retroalimentacion.listForCoachee.mockResolvedValue([
+        {
+          cicloId: 'ciclo-1',
+          loQueMasGusto: 'La cercanía del coach',
+          mayoresAprendizajes: null,
+          sugerencias: null,
+          otrosComentarios: null,
+        },
+        { cicloId: 'ciclo-otro', loQueMasGusto: 'no debería aparecer' },
+      ]);
+
+      const ciclo = await service.generarBorradorInforme('ciclo-1');
+
+      expect(ciclo.informeFinal).toContain(
+        'Retroalimentación del Coachee al Cierre',
+      );
+      expect(ciclo.informeFinal).toContain('La cercanía del coach');
+      expect(ciclo.informeFinal).not.toContain('no debería aparecer');
     });
   });
 

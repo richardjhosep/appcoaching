@@ -26,4 +26,8 @@ export class CreateActividadDto {
   @IsOptional()
   @IsEnum(EstadoActividad)
   estado?: EstadoActividad;
+
+  @IsOptional()
+  @IsString()
+  observaciones?: string;
 }
