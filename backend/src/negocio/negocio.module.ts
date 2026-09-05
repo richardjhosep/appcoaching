@@ -8,11 +8,13 @@ import { Coachee } from '../coachees/entities/coachee.entity';
 import { Logro } from '../seguimiento/entities/logro.entity';
 import { SolicitudProceso } from '../satisfaccion/entities/solicitud-proceso.entity';
 import { CicloCoaching } from '../ciclos/entities/ciclo-coaching.entity';
+import { DisponibilidadCoach } from '../sesiones/entities/disponibilidad-coach.entity';
 import { NegocioService } from './negocio.service';
 import { NegocioController } from './negocio.controller';
 import { CiclosModule } from '../ciclos/ciclos.module';
 import { SeguimientoModule } from '../seguimiento/seguimiento.module';
 import { EmailModule } from '../email/email.module';
+import { EmpresasModule } from '../empresas/empresas.module';
 
 @Module({
   imports: [
@@ -25,10 +27,12 @@ import { EmailModule } from '../email/email.module';
       SolicitudProceso,
       SolicitudReagendamiento,
       CicloCoaching,
+      DisponibilidadCoach,
     ]),
     CiclosModule,
     SeguimientoModule,
     EmailModule,
+    EmpresasModule,
   ],
   providers: [NegocioService],
   controllers: [NegocioController],

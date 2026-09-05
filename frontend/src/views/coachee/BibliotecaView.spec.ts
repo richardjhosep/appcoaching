@@ -55,6 +55,7 @@ const recursoEnRaiz: Recurso = {
   url: 'https://example.com',
   archivoNombre: null,
   archivoPath: null,
+  fechaLimite: null,
   createdAt: '2026-01-01T00:00:00.000Z',
 }
 
@@ -68,6 +69,7 @@ const recursoEnSub: Recurso = {
   url: 'https://example.com/2',
   archivoNombre: null,
   archivoPath: null,
+  fechaLimite: null,
   createdAt: '2026-01-01T00:00:00.000Z',
 }
 
@@ -111,6 +113,7 @@ describe('BibliotecaView', () => {
       url: 'https://example.com/3',
       archivoNombre: null,
       archivoPath: null,
+      fechaLimite: null,
       createdAt: '2026-01-01T00:00:00.000Z',
     }
     vi.mocked(getMisRecursos).mockResolvedValue([recursoEnRaiz, recursoEnSub, recursoSuelto])

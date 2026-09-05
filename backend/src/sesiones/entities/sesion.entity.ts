@@ -55,6 +55,11 @@ export class Sesion {
   @Column({ type: 'boolean', nullable: true })
   asistio: boolean | null;
 
+  // La pone el propio coachee (a diferencia de asistio, que el coach registra después de la
+  // sesión) — confirma que va a asistir. Sin "desconfirmar": una vez confirmada, queda.
+  @Column({ type: 'boolean', default: false })
+  confirmada: boolean;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

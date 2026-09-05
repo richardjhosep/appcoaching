@@ -16,6 +16,8 @@ import {
 } from '../../../api/negocio'
 import { ApiError } from '../../../api/client'
 import ProyeccionIngresosChart from '../../../components/ProyeccionIngresosChart.vue'
+import SkeletonBlock from '../../../components/SkeletonBlock.vue'
+import TabBar from '../../../components/TabBar.vue'
 
 const router = useRouter()
 
@@ -30,12 +32,11 @@ const loadingProyeccion = ref(true)
 
 // --- Resumen comercial por período (KPIs) ------------------------------------
 
-const PERIODOS: PeriodoComercial[] = ['mes', 'semestre', 'anio']
-const periodoLabel: Record<PeriodoComercial, string> = {
-  mes: 'Mes actual',
-  semestre: 'Semestre actual',
-  anio: 'Año actual',
-}
+const PERIODOS: Array<{ key: PeriodoComercial; label: string; icon: string }> = [
+  { key: 'mes', label: 'Mes actual', icon: 'sesiones' },
+  { key: 'semestre', label: 'Semestre actual', icon: 'progreso' },
+  { key: 'anio', label: 'Año actual', icon: 'negocio' },
+]
 const RESULTADOS: ResultadoCiclo[] = ['logrado', 'medianamente_logrado', 'no_logrado']
 const resultadoConfig: Record<ResultadoCiclo, { label: string; color: string; icono: 'check' | 'medio' | 'x' }> = {
   logrado: { label: 'Logrado', color: 'var(--color-sage)', icono: 'check' },
@@ -127,17 +128,12 @@ function abrirNuevoProceso(coacheeId: string) {
     :meses="proyeccionMensual"
   />
 
-  <div class="mb-4 flex w-fit gap-1 rounded-full bg-[var(--color-parchment)] p-1">
-    <button
-      v-for="p in PERIODOS"
-      :key="p"
-      class="rounded-full px-3.5 py-1.5 text-sm transition-colors"
-      :class="periodo === p ? 'bg-[var(--color-ink)] text-[var(--color-parchment)]' : 'text-[var(--color-ink)]/70'"
-      @click="cambiarPeriodo(p)"
-    >
-      {{ periodoLabel[p] }}
-    </button>
-  </div>
+  <TabBar
+    class="mb-4"
+    :tabs="PERIODOS"
+    :model-value="periodo"
+    @update:model-value="cambiarPeriodo"
+  />
 
   <div
     v-if="loadingResumen"
@@ -339,12 +335,7 @@ function abrirNuevoProceso(coacheeId: string) {
     </div>
   </div>
 
-  <div
-    v-if="loading"
-    class="text-sm text-[var(--color-ink)]/60"
-  >
-    Cargando…
-  </div>
+  <SkeletonBlock v-if="loading" />
   <div
     v-else
     class="space-y-4"

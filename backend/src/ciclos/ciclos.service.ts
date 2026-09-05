@@ -61,7 +61,7 @@ export class CiclosService {
   async findOne(id: string): Promise<CicloCoaching> {
     const ciclo = await this.ciclos.findOne({ where: { id } });
     if (!ciclo) {
-      throw new NotFoundException('Ciclo not found');
+      throw new NotFoundException('Ciclo no encontrado.');
     }
     return ciclo;
   }
@@ -72,7 +72,7 @@ export class CiclosService {
 
   async abrir(dto: AbrirCicloDto): Promise<CicloConEstado> {
     if (!(await this.coachees.exists(dto.coacheeId))) {
-      throw new NotFoundException('Coachee not found');
+      throw new NotFoundException('Coachee no encontrado.');
     }
     const abierto = await this.ciclos.findOne({
       where: { coacheeId: dto.coacheeId, fechaCierre: IsNull() },
@@ -130,6 +130,16 @@ export class CiclosService {
     return this.attachEstado(ciclo);
   }
 
+  async updateImpactoNegocio(
+    id: string,
+    impactoNegocio: string,
+  ): Promise<CicloConEstado> {
+    const ciclo = await this.findOne(id);
+    ciclo.impactoNegocio = impactoNegocio;
+    await this.ciclos.save(ciclo);
+    return this.attachEstado(ciclo);
+  }
+
   // Arma un borrador narrativo por secciones (resumen, objetivo del proceso, avances
   // observados, cierre) agregando datos que ya existen en la app — el coach lo sigue
   // pudiendo editar libremente antes de guardarlo, este es solo el punto de partida.
@@ -154,7 +164,16 @@ export class CiclosService {
     const avance = await this.seguimiento.avanceGeneralForCoachee(
       ciclo.coacheeId,
     );
-    const logros = await this.seguimiento.listLogrosForCoachee(ciclo.coacheeId);
+    // Acotado a la ventana de este ciclo (createdAt, no el `fecha` de texto libre que
+    // escribe el coachee) — sin esto, el informe de un segundo ciclo arrastraba también
+    // los logros del primero, ya cerrado.
+    const todosLosLogros = await this.seguimiento.listLogrosForCoachee(
+      ciclo.coacheeId,
+    );
+    const finVentana = ciclo.fechaCierre ?? new Date();
+    const logros = todosLosLogros.filter(
+      (l) => l.createdAt >= ciclo.fechaApertura && l.createdAt <= finVentana,
+    );
     const logrosTexto =
       logros.length > 0
         ? logros.map((l) => `- ${l.fecha}: ${l.descripcion}`).join('\n')
@@ -235,7 +254,7 @@ export class CiclosService {
     if (actor.role === Role.COACHEE) {
       const coachee = await this.coachees.findByUserId(actor.id);
       if (!coachee || coachee.id !== ciclo.coacheeId) {
-        throw new ForbiddenException();
+        throw new ForbiddenException('No tienes acceso a este ciclo.');
       }
       return ciclo;
     }
@@ -281,7 +300,7 @@ export class CiclosService {
   private async resolveCoacheeId(actorUserId: string): Promise<string> {
     const coachee = await this.coachees.findByUserId(actorUserId);
     if (!coachee) {
-      throw new NotFoundException('Coachee profile not found');
+      throw new NotFoundException('Perfil de coachee no encontrado.');
     }
     return coachee.id;
   }

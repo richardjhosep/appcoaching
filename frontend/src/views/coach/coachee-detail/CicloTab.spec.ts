@@ -11,6 +11,7 @@ vi.mock('../../../api/ciclos', async () => {
     abrirCiclo: vi.fn(),
     getCicloActualDeCoachee: vi.fn(),
     getCiclosDeCoachee: vi.fn(),
+    actualizarImpactoNegocio: vi.fn(),
   }
 })
 vi.mock('../../../api/retroalimentacion', async () => {
@@ -21,7 +22,7 @@ vi.mock('../../../api/retroalimentacion', async () => {
   }
 })
 
-import { getCicloActualDeCoachee, getCiclosDeCoachee } from '../../../api/ciclos'
+import { getCicloActualDeCoachee, getCiclosDeCoachee, actualizarImpactoNegocio } from '../../../api/ciclos'
 import { getRetroalimentacionesDeCoachee } from '../../../api/retroalimentacion'
 
 const cicloAbierto: Ciclo = {
@@ -33,6 +34,7 @@ const cicloAbierto: Ciclo = {
   resultado: null,
   resumenReunionInicial: 'Reunión inicial.',
   informeFinal: null,
+  impactoNegocio: null,
   informePdfNombre: null,
   informePdfPath: null,
   sesionesRealizadas: 3,
@@ -66,5 +68,25 @@ describe('CicloTab (coach)', () => {
     expect(wrapper.text()).not.toContain('Abrir nuevo ciclo')
     expect(wrapper.text()).toContain('Cerrar ciclo con resultado')
     expect(wrapper.text()).toContain('3')
+  })
+
+  it('saves the impacto en el negocio separately from the informe', async () => {
+    vi.mocked(getCicloActualDeCoachee).mockResolvedValue(cicloAbierto)
+    vi.mocked(actualizarImpactoNegocio).mockResolvedValue({
+      ...cicloAbierto,
+      impactoNegocio: 'Redujo el tiempo de entrega en 20%.',
+    })
+
+    const wrapper = mount(CicloTab, { props: { coacheeId: 'coachee-1' } })
+    await flushPromises()
+
+    const textarea = wrapper.findAll('textarea').find((t) => t.attributes('placeholder')?.includes('redujo el tiempo'))
+    await textarea!.setValue('Redujo el tiempo de entrega en 20%.')
+
+    const guardarBtn = wrapper.findAll('button').find((b) => b.text() === 'Guardar impacto en el negocio')
+    await guardarBtn!.trigger('click')
+    await flushPromises()
+
+    expect(actualizarImpactoNegocio).toHaveBeenCalledWith('c1', 'Redujo el tiempo de entrega en 20%.')
   })
 })

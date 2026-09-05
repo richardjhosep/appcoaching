@@ -5,7 +5,10 @@ import AppModal from '../../components/AppModal.vue'
 import Pagination from '../../components/Pagination.vue'
 import StatusToggle from '../../components/StatusToggle.vue'
 import IconButton from '../../components/IconButton.vue'
+import SkeletonBlock from '../../components/SkeletonBlock.vue'
+import EmptyState from '../../components/EmptyState.vue'
 import { createEmpresa, deleteEmpresa, listEmpresas, updateEmpresa, type Empresa } from '../../api/empresas'
+import { getKpisDeEmpresa, getEncuestasDeEmpresa, type KpisEmpresa, type Encuesta } from '../../api/satisfaccion'
 import { ApiError } from '../../api/client'
 import { notifyError, notifySuccess, confirmDialog } from '../../lib/notify'
 import { dentroDeRango } from '../../lib/dateRange'
@@ -58,11 +61,43 @@ function limpiarFiltros() {
 
 const formatoCLP = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 })
 
+function formatoFechaFin(fechaFin: string | null): string {
+  if (!fechaFin) return '—'
+  return new Date(`${fechaFin}T00:00:00`).toLocaleDateString('es-CL')
+}
+
+// --- Modal de satisfacción: la empresa llena su encuesta desde su propia cuenta (calificación
+// 1-5 general, no ligada a un coachee o ciclo puntual) — hasta ahora esa data no se veía en
+// ningún lado del panel del coach pese a que el endpoint ya existía.
+const modalSatisfaccion = ref<Empresa | null>(null)
+const kpisSatisfaccion = ref<KpisEmpresa | null>(null)
+const encuestasSatisfaccion = ref<Encuesta[]>([])
+const cargandoSatisfaccion = ref(false)
+
+async function abrirSatisfaccion(empresa: Empresa) {
+  modalSatisfaccion.value = empresa
+  cargandoSatisfaccion.value = true
+  const [kpis, encuestas] = await Promise.all([
+    getKpisDeEmpresa(empresa.id),
+    getEncuestasDeEmpresa(empresa.id),
+  ])
+  kpisSatisfaccion.value = kpis
+  encuestasSatisfaccion.value = encuestas
+  cargandoSatisfaccion.value = false
+}
+
 // --- Modal de creación/edición ---
 const modalOpen = ref(false)
 const editando = ref<Empresa | null>(null)
 const guardando = ref(false)
-const form = reactive({ nombre: '', tarifaHora: null as number | null, horasContratadas: null as number | null, pagada: false })
+const form = reactive({
+  nombre: '',
+  tarifaHora: null as number | null,
+  horasContratadas: null as number | null,
+  pagada: false,
+  fechaInicio: '',
+  fechaFin: '',
+})
 const errors = reactive<{ nombre?: string; tarifaHora?: string }>({})
 const serverErrors = ref<Record<string, string>>({})
 
@@ -72,6 +107,8 @@ function abrirCrear() {
   form.tarifaHora = null
   form.horasContratadas = null
   form.pagada = false
+  form.fechaInicio = ''
+  form.fechaFin = ''
   errors.nombre = undefined
   errors.tarifaHora = undefined
   serverErrors.value = {}
@@ -84,6 +121,8 @@ function abrirEditar(empresa: Empresa) {
   form.tarifaHora = empresa.tarifaHora
   form.horasContratadas = empresa.horasContratadas
   form.pagada = empresa.pagada
+  form.fechaInicio = empresa.fechaInicio ?? ''
+  form.fechaFin = empresa.fechaFin ?? ''
   errors.nombre = undefined
   errors.tarifaHora = undefined
   serverErrors.value = {}
@@ -111,12 +150,14 @@ async function guardar() {
         tarifaHora: form.tarifaHora!,
         horasContratadas: form.horasContratadas,
         pagada: form.pagada,
+        fechaInicio: form.fechaInicio || null,
+        fechaFin: form.fechaFin || null,
       })
       modalOpen.value = false
       await load()
       await notifySuccess('Empresa actualizada', `Los datos de ${form.nombre} se guardaron correctamente.`)
     } else {
-      await createEmpresa(form.nombre, form.tarifaHora!)
+      await createEmpresa(form.nombre, form.tarifaHora!, form.fechaInicio || undefined, form.fechaFin || undefined)
       modalOpen.value = false
       await load()
       await notifySuccess('Empresa creada', `${form.nombre} ya está disponible para asignar coachees.`)
@@ -186,12 +227,7 @@ async function eliminar(empresa: Empresa) {
       </button>
     </div>
 
-    <div
-      v-if="loading"
-      class="text-sm text-[var(--color-ink)]/60"
-    >
-      Cargando…
-    </div>
+    <SkeletonBlock v-if="loading" />
     <div
       v-else
       class="space-y-3"
@@ -264,6 +300,9 @@ async function eliminar(empresa: Empresa) {
                 Pagada
               </th>
               <th class="px-4 py-3">
+                Término contrato
+              </th>
+              <th class="px-4 py-3">
                 Estado
               </th>
               <th class="px-4 py-3">
@@ -280,7 +319,7 @@ async function eliminar(empresa: Empresa) {
               class="border-b border-[var(--color-line)] last:border-0"
             >
               <td
-                colspan="7"
+                colspan="8"
                 class="px-4 py-6 text-center text-sm text-[var(--color-ink)]/50"
               >
                 Sin resultados.
@@ -303,6 +342,12 @@ async function eliminar(empresa: Empresa) {
               <td class="px-4 py-3">
                 {{ e.pagada ? 'Sí' : 'No' }}
               </td>
+              <td
+                class="px-4 py-3 text-xs"
+                :class="!e.fechaFin ? 'text-[var(--color-bronze)]' : ''"
+              >
+                {{ formatoFechaFin(e.fechaFin) }}
+              </td>
               <td class="px-4 py-3">
                 <StatusToggle
                   :active="e.isActive"
@@ -314,6 +359,11 @@ async function eliminar(empresa: Empresa) {
               </td>
               <td class="px-4 py-3">
                 <div class="flex gap-2">
+                  <IconButton
+                    icon="ver"
+                    title="Ver satisfacción"
+                    @click="abrirSatisfaccion(e)"
+                  />
                   <IconButton
                     icon="editar"
                     title="Editar"
@@ -376,6 +426,25 @@ async function eliminar(empresa: Empresa) {
           >{{ errors.tarifaHora || serverErrors.tarifaHora }}</span>
         </label>
 
+        <div class="grid grid-cols-2 gap-3">
+          <label class="block text-sm">
+            Inicio de contrato (opcional)
+            <input
+              v-model="form.fechaInicio"
+              type="date"
+              class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+            >
+          </label>
+          <label class="block text-sm">
+            Término de contrato (opcional)
+            <input
+              v-model="form.fechaFin"
+              type="date"
+              class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+            >
+          </label>
+        </div>
+
         <label
           v-if="editando"
           class="block text-sm"
@@ -417,6 +486,110 @@ async function eliminar(empresa: Empresa) {
           </button>
         </div>
       </form>
+    </AppModal>
+
+    <!-- Modal: Ver satisfacción -->
+    <AppModal
+      v-if="modalSatisfaccion"
+      title="Satisfacción"
+      size="lg"
+      @close="modalSatisfaccion = null"
+    >
+      <p class="mb-4 text-sm font-medium">
+        {{ modalSatisfaccion.nombre }}
+      </p>
+      <SkeletonBlock v-if="cargandoSatisfaccion" />
+      <template v-else-if="kpisSatisfaccion">
+        <div class="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div class="rounded-xl border border-[var(--color-line)] p-3">
+            <p class="mb-1 text-xs text-[var(--color-ink)]/50">
+              Satisfacción promedio
+            </p>
+            <p class="font-[family-name:var(--font-mono)] text-xl">
+              {{ kpisSatisfaccion.satisfaccionPromedio !== null ? `${kpisSatisfaccion.satisfaccionPromedio} ★` : '—' }}
+            </p>
+          </div>
+          <div class="rounded-xl border border-[var(--color-line)] p-3">
+            <p class="mb-1 text-xs text-[var(--color-ink)]/50">
+              Tasa de asistencia
+            </p>
+            <p class="font-[family-name:var(--font-mono)] text-xl">
+              {{ kpisSatisfaccion.tasaAsistencia !== null ? `${kpisSatisfaccion.tasaAsistencia}%` : '—' }}
+            </p>
+          </div>
+          <div class="rounded-xl border border-[var(--color-line)] p-3">
+            <p class="mb-1 text-xs text-[var(--color-ink)]/50">
+              Procesos terminados
+            </p>
+            <p class="font-[family-name:var(--font-mono)] text-xl">
+              {{ kpisSatisfaccion.procesosTerminados }}
+            </p>
+          </div>
+          <div class="rounded-xl border border-[var(--color-line)] p-3">
+            <p class="mb-1 text-xs text-[var(--color-ink)]/50">
+              Procesos en curso
+            </p>
+            <p class="font-[family-name:var(--font-mono)] text-xl">
+              {{ kpisSatisfaccion.procesosEnCurso }}
+            </p>
+          </div>
+        </div>
+
+        <div class="border-t border-[var(--color-line)] pt-4">
+          <p class="mb-2 text-xs font-medium uppercase tracking-wide text-[var(--color-ink)]/50">
+            Encuestas respondidas
+          </p>
+          <EmptyState
+            v-if="encuestasSatisfaccion.length === 0"
+            icon="satisfaccion"
+            title="Todavía no ha respondido ninguna encuesta"
+            description="La empresa completa esta encuesta desde su propia cuenta, cuando quiera."
+          />
+          <ul
+            v-else
+            class="space-y-2"
+          >
+            <li
+              v-for="enc in encuestasSatisfaccion"
+              :key="enc.id"
+              class="rounded-xl border border-[var(--color-line)] p-3"
+            >
+              <div class="mb-1 flex flex-wrap items-center justify-between gap-2">
+                <span class="text-sm font-medium">
+                  {{ enc.ciclo?.coachee?.nombre ?? 'Encuesta general (sin ciclo asociado)' }}
+                </span>
+                <span class="flex items-center gap-2">
+                  <span class="text-sm">
+                    <span
+                      v-for="n in 5"
+                      :key="n"
+                      :class="n <= enc.calificacion ? 'text-[var(--color-bronze)]' : 'text-[var(--color-ink)]/20'"
+                    >★</span>
+                  </span>
+                  <span class="text-xs text-[var(--color-ink)]/50">{{ new Date(enc.createdAt).toLocaleDateString('es-CL') }}</span>
+                </span>
+              </div>
+              <ul
+                v-if="enc.respuestas"
+                class="mb-1 space-y-0.5 text-xs text-[var(--color-ink)]/70"
+              >
+                <li
+                  v-for="r in enc.respuestas"
+                  :key="r.categoria"
+                >
+                  {{ r.categoria }}: {{ r.valor }}/5
+                </li>
+              </ul>
+              <p
+                v-if="enc.comentario"
+                class="text-sm"
+              >
+                {{ enc.comentario }}
+              </p>
+            </li>
+          </ul>
+        </div>
+      </template>
     </AppModal>
   </AppShell>
 </template>

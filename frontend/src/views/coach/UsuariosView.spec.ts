@@ -26,7 +26,7 @@ import { confirmDialog, notifySuccess } from '../../lib/notify'
 const hoyIso = new Date().toISOString()
 
 const empresas: Empresa[] = [
-  { id: 'e1', nombre: 'Orbiflex', tarifaHora: 25000, isActive: true, pagada: true, horasContratadas: 10, createdAt: hoyIso },
+  { id: 'e1', nombre: 'Orbiflex', tarifaHora: 25000, isActive: true, pagada: true, horasContratadas: 10, fechaInicio: null, fechaFin: null, createdAt: hoyIso },
 ]
 
 const usuarios: UserAccount[] = [

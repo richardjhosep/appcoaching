@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import SkeletonBlock from '../SkeletonBlock.vue'
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import type { PlanDesarrollo } from '../../api/planesDesarrollo'
@@ -81,12 +82,7 @@ const notasAntiguas = computed(() =>
 
 <template>
   <div class="space-y-4">
-    <div
-      v-if="loading"
-      class="text-sm text-[var(--color-ink)]/60"
-    >
-      Cargando…
-    </div>
+    <SkeletonBlock v-if="loading" />
 
     <EmptyState
       v-else-if="!plan.competenciaId"

@@ -13,6 +13,7 @@ function archivo(nombre: string): Recurso {
     url: null,
     archivoNombre: nombre,
     archivoPath: '/x',
+    fechaLimite: null,
     createdAt: '2026-01-01T00:00:00.000Z',
   }
 }
@@ -28,6 +29,7 @@ function link(url: string): Recurso {
     url,
     archivoNombre: null,
     archivoPath: null,
+    fechaLimite: null,
     createdAt: '2026-01-01T00:00:00.000Z',
   }
 }

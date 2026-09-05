@@ -4,6 +4,8 @@ import AppShell from '../../components/AppShell.vue'
 import AppModal from '../../components/AppModal.vue'
 import CarpetaArbol from '../../components/CarpetaArbol.vue'
 import RecursoIcono from '../../components/RecursoIcono.vue'
+import SkeletonBlock from '../../components/SkeletonBlock.vue'
+import FechaLimiteEditor from '../../components/FechaLimiteEditor.vue'
 import {
   crearCarpeta,
   listCarpetas,
@@ -21,6 +23,7 @@ import {
   removeRecurso,
   asignarRecurso,
   getAsignacionesDeRecurso,
+  updateRecurso,
   type Recurso,
   type TipoRecurso,
 } from '../../api/recursos'
@@ -134,7 +137,14 @@ async function borrarCarpeta() {
 
 // --- Recursos: subir / eliminar --------------------------------------------
 
-const form = reactive({ titulo: '', tipo: 'link' as TipoRecurso, url: '', descripcion: '', competenciaId: '' })
+const form = reactive({
+  titulo: '',
+  tipo: 'link' as TipoRecurso,
+  url: '',
+  descripcion: '',
+  competenciaId: '',
+  fechaLimite: '',
+})
 const archivoSeleccionado = ref<File | null>(null)
 const archivoInput = ref<HTMLInputElement | null>(null)
 const creando = ref(false)
@@ -156,6 +166,7 @@ function abrirSubirModal() {
   form.url = ''
   form.descripcion = ''
   form.competenciaId = ''
+  form.fechaLimite = ''
   quitarArchivo()
   mostrarSubirModal.value = true
 }
@@ -176,6 +187,7 @@ async function crear() {
       descripcion: form.descripcion.trim() || undefined,
       competenciaId: form.competenciaId || undefined,
       archivo: form.tipo === 'archivo' ? (archivoSeleccionado.value ?? undefined) : undefined,
+      fechaLimite: form.fechaLimite || undefined,
     })
     recursos.value = [recurso, ...recursos.value]
     cerrarSubirModal()
@@ -183,6 +195,23 @@ async function crear() {
     await notifyError('No se pudo subir el archivo', err instanceof ApiError ? err.message : undefined)
   } finally {
     creando.value = false
+  }
+}
+
+const guardandoFechaLimiteId = ref<string | null>(null)
+
+async function guardarFechaLimite(recurso: Recurso, fechaLimite: string | null) {
+  guardandoFechaLimiteId.value = recurso.id
+  try {
+    const actualizado = await updateRecurso(recurso.id, { fechaLimite })
+    recursos.value = recursos.value.map((r) => (r.id === actualizado.id ? actualizado : r))
+  } catch (err) {
+    await notifyError(
+      'No se pudo actualizar la fecha límite',
+      err instanceof ApiError ? err.message : 'Ocurrió un error inesperado.',
+    )
+  } finally {
+    guardandoFechaLimiteId.value = null
   }
 }
 
@@ -338,12 +367,7 @@ async function alternarPublica() {
       Biblioteca de recursos
     </h1>
 
-    <div
-      v-if="loading"
-      class="text-sm text-[var(--color-ink)]/60"
-    >
-      Cargando…
-    </div>
+    <SkeletonBlock v-if="loading" />
 
     <div
       v-else
@@ -538,6 +562,11 @@ async function alternarPublica() {
                 <p class="truncate text-xs text-[var(--color-ink)]/50">
                   {{ r.tipo === 'link' ? r.url : r.archivoNombre }}
                 </p>
+                <FechaLimiteEditor
+                  :fecha-limite="r.fechaLimite"
+                  :guardando="guardandoFechaLimiteId === r.id"
+                  @guardar="(f) => guardarFechaLimite(r, f)"
+                />
               </div>
               <button
                 class="shrink-0 text-xs text-[var(--color-sage)] hover:underline"
@@ -664,6 +693,14 @@ async function alternarPublica() {
               {{ c.nombre }}
             </option>
           </select>
+        </label>
+        <label class="text-sm sm:col-span-2">
+          Fecha límite (opcional)
+          <input
+            v-model="form.fechaLimite"
+            type="date"
+            class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+          >
         </label>
         <button
           class="w-fit rounded-lg bg-[var(--color-ink)] px-4 py-2 text-sm text-[var(--color-parchment)] disabled:opacity-60 sm:col-span-2"

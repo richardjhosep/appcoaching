@@ -2,12 +2,14 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import AppShell from '../../components/AppShell.vue'
 import ProgresoLineaTiempo from '../../components/ProgresoLineaTiempo.vue'
+import GraficoProgreso from '../../components/GraficoProgreso.vue'
 import HistorialCiclos from '../../components/HistorialCiclos.vue'
 import SectionCard from '../../components/SectionCard.vue'
 import EmptyState from '../../components/EmptyState.vue'
 import NavIcon from '../../components/NavIcon.vue'
 import AppModal from '../../components/AppModal.vue'
 import CertificadoContenido from '../../components/CertificadoContenido.vue'
+import SkeletonBlock from '../../components/SkeletonBlock.vue'
 import {
   addEntradaDiario,
   addLogro,
@@ -31,13 +33,11 @@ import {
 } from '../../api/retroalimentacion'
 import { ApiError } from '../../api/client'
 import { notifyError, notifySuccess } from '../../lib/notify'
-import { nivelProgreso, coloresNivel } from '../../lib/nivelProgreso'
 import { resultadoLabel } from '../../lib/resultadoCiclo'
 import {
-  BLOQUES_RETROALIMENTACION,
-  PREGUNTAS_RETROALIMENTACION,
-  preguntasDelBloque,
-} from '../../lib/retroalimentacionPreguntas'
+  getPreguntasRetroalimentacion,
+  type PreguntaRetroalimentacion,
+} from '../../api/configuracion'
 
 const loading = ref(true)
 const avance = ref<number | null>(null)
@@ -56,14 +56,20 @@ const nuevaEntradaDiario = ref('')
 const guardandoDiario = ref(false)
 const error = ref<string | null>(null)
 const retroalimentaciones = ref<RetroalimentacionCierre[]>([])
+const preguntasRetro = ref<PreguntaRetroalimentacion[]>([])
 
-const coloresAvance = computed(() => coloresNivel[nivelProgreso(avance.value ?? 0)])
 const ciclosCerrados = computed(() => ciclos.value.filter((c) => c.fechaCierre))
 const cicloIdsConRetro = computed(() => new Set(retroalimentaciones.value.map((r) => r.cicloId)))
+// Orden de aparición, sin duplicar nombres — mismo shape que antes servía la constante estática,
+// ahora derivado de la parametrización que trae las afirmaciones ya agrupadas.
+const bloquesRetro = computed(() => [...new Set(preguntasRetro.value.map((p) => p.bloque))])
+function preguntasDelBloque(bloque: string) {
+  return preguntasRetro.value.filter((p) => p.bloque === bloque)
+}
 
 async function load() {
   loading.value = true
-  const [a, p, l, d, cs, co, pl, rs] = await Promise.all([
+  const [a, p, l, d, cs, co, pl, rs, pr] = await Promise.all([
     getMiAvance(),
     getMiLineaProgreso(),
     getMisLogros(),
@@ -72,6 +78,7 @@ async function load() {
     getMyCoachee().catch(() => null),
     getOwnPlan().catch(() => null),
     getMisRetroalimentaciones(),
+    getPreguntasRetroalimentacion(),
   ])
   avance.value = a.avance
   puntos.value = p
@@ -82,6 +89,7 @@ async function load() {
   coachee.value = co
   plan.value = pl
   retroalimentaciones.value = rs
+  preguntasRetro.value = pr
   loading.value = false
 }
 
@@ -152,12 +160,12 @@ function abrirRetro(ciclo: Ciclo) {
 async function guardarRetro() {
   const ciclo = modalRetroCiclo.value
   if (!ciclo) return
-  const respuestas: RespuestaRetroalimentacion[] = PREGUNTAS_RETROALIMENTACION.map((p) => ({
+  const respuestas: RespuestaRetroalimentacion[] = preguntasRetro.value.map((p) => ({
     bloque: p.bloque,
     afirmacion: p.afirmacion,
     valor: respuestasRetro.value[p.afirmacion],
   })).filter((r): r is RespuestaRetroalimentacion => typeof r.valor === 'number')
-  if (respuestas.length < PREGUNTAS_RETROALIMENTACION.length) {
+  if (respuestas.length < preguntasRetro.value.length) {
     errorRetro.value = 'Responde todas las afirmaciones antes de enviar.'
     return
   }
@@ -185,15 +193,18 @@ async function guardarRetro() {
 
 <template>
   <AppShell>
-    <h1 class="mb-4 font-[family-name:var(--font-heading)] text-xl font-semibold">
-      Mi progreso
-    </h1>
-    <div
-      v-if="loading"
-      class="text-sm text-[var(--color-ink)]/60"
-    >
-      Cargando…
+    <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+      <h1 class="font-[family-name:var(--font-heading)] text-xl font-semibold">
+        Mi progreso
+      </h1>
+      <RouterLink
+        to="/coachee/resumen"
+        class="rounded-full border border-[var(--color-line)] px-3 py-1.5 text-xs hover:bg-[var(--color-parchment)]/60"
+      >
+        Imprimir resumen
+      </RouterLink>
     </div>
+    <SkeletonBlock v-if="loading" />
     <div
       v-else
       class="space-y-4"
@@ -206,43 +217,38 @@ async function guardarRetro() {
       </p>
 
       <SectionCard
-        title="Avance general"
+        title="Tu camino de crecimiento"
         icon="progreso"
       >
         <EmptyState
-          v-if="avance === null"
+          v-if="avance === null && puntos.length === 0"
           icon="progreso"
           title="Aún no te has autoevaluado"
           description="El avance general se calcula con las autoevaluaciones que completas en cada post-sesión."
         />
-        <template v-else>
-          <p
-            class="mb-2 font-[family-name:var(--font-mono)] text-3xl"
-            :class="coloresAvance.texto"
-          >
-            {{ avance }}%
-          </p>
-          <div
-            class="h-2.5 w-full overflow-hidden rounded-full"
-            :style="{ backgroundColor: coloresAvance.suave }"
-            role="progressbar"
-            :aria-valuenow="avance ?? 0"
-            aria-valuemin="0"
-            aria-valuemax="100"
-          >
-            <div
-              class="h-full rounded-full transition-all"
-              :style="{ width: `${avance}%`, backgroundColor: coloresAvance.fuerte }"
+        <!-- Dos vistas del mismo dato lado a lado, no una sola apilada a todo el ancho (a todo
+             ancho el gráfico de tendencia se ve mal, demasiado estirado): la línea de tiempo
+             da el detalle con la nota de cada sesión, la tendencia da la vista general. -->
+        <div
+          v-else
+          class="grid gap-6 lg:grid-cols-2"
+        >
+          <div>
+            <p class="mb-2 text-xs font-medium uppercase tracking-wide text-[var(--color-ink)]/45">
+              Cercanía al objetivo por sesión
+            </p>
+            <ProgresoLineaTiempo :puntos="puntos" />
+          </div>
+          <div>
+            <p class="mb-2 text-xs font-medium uppercase tracking-wide text-[var(--color-ink)]/45">
+              Tu tendencia
+            </p>
+            <GraficoProgreso
+              :puntos="puntos"
+              :avance="avance"
             />
           </div>
-        </template>
-      </SectionCard>
-
-      <SectionCard
-        title="Línea de tiempo (cercanía al objetivo por sesión)"
-        icon="objetivo"
-      >
-        <ProgresoLineaTiempo :puntos="puntos" />
+        </div>
       </SectionCard>
 
       <SectionCard
@@ -489,7 +495,7 @@ async function guardarRetro() {
           Evalúa de 1 (nada de acuerdo) a 5 (totalmente de acuerdo).
         </p>
         <div
-          v-for="bloque in BLOQUES_RETROALIMENTACION"
+          v-for="bloque in bloquesRetro"
           :key="bloque"
         >
           <h3 class="mb-2 text-sm font-medium">

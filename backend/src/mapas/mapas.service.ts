@@ -13,7 +13,10 @@ import { UpdateMapaDto } from './dto/update-mapa.dto';
 import { CreateNodoDto } from './dto/create-nodo.dto';
 import { UpdateNodoDto } from './dto/update-nodo.dto';
 import { CompetenciasService } from '../competencias/competencias.service';
+import { CoacheesService } from '../coachees/coachees.service';
+import { PlanesDesarrolloService } from '../planes-desarrollo/planes-desarrollo.service';
 import { assignDefined } from '../common/assign-defined.util';
+import { finDelDiaChileAUtc } from '../common/chile-time.util';
 
 export interface MapaResumen {
   id: string;
@@ -22,6 +25,7 @@ export interface MapaResumen {
   competencia?: { id: string; nombre: string };
   recursoId: string | null;
   activo: boolean;
+  fechaLimite: Date | null;
   createdAt: Date;
   totalNodos: number;
 }
@@ -34,17 +38,37 @@ export class MapasService {
     @InjectRepository(NodoMapa) private readonly nodos: Repository<NodoMapa>,
     @InjectRepository(Recurso) private readonly recursos: Repository<Recurso>,
     private readonly competencias: CompetenciasService,
+    private readonly coachees: CoacheesService,
+    private readonly planesDesarrollo: PlanesDesarrolloService,
   ) {}
+
+  private async resolveCoacheeId(actorUserId: string): Promise<string> {
+    const coachee = await this.coachees.findByUserId(actorUserId);
+    if (!coachee) {
+      throw new NotFoundException('Perfil de coachee no encontrado.');
+    }
+    return coachee.id;
+  }
+
+  // Mismo criterio que lib/formacionRecomendada.ts en el frontend — ver quiz.service.ts.
+  private async resolvePlanCompetenciaId(
+    coacheeId: string,
+  ): Promise<string | null> {
+    const plan = await this.planesDesarrollo
+      .getByCoacheeId(coacheeId)
+      .catch(() => null);
+    return plan?.competenciaId ?? null;
+  }
 
   private async assertCompetenciaExists(id: string): Promise<void> {
     if (!(await this.competencias.exists(id))) {
-      throw new NotFoundException('Competencia not found');
+      throw new NotFoundException('Competencia no encontrada.');
     }
   }
 
   private async assertRecursoExists(id: string): Promise<void> {
     if (!(await this.recursos.exists({ where: { id } }))) {
-      throw new NotFoundException('Recurso not found');
+      throw new NotFoundException('Recurso no encontrado.');
     }
   }
 
@@ -54,7 +78,7 @@ export class MapasService {
       relations: { competencia: true, recurso: true },
     });
     if (!mapa) {
-      throw new NotFoundException('Mapa not found');
+      throw new NotFoundException('Mapa no encontrado.');
     }
     return mapa;
   }
@@ -65,7 +89,7 @@ export class MapasService {
   ): Promise<void> {
     const exists = await this.nodos.exists({ where: { id: nodoId, mapaId } });
     if (!exists) {
-      throw new NotFoundException('Nodo not found in this mapa');
+      throw new NotFoundException('Nodo no encontrado en este mapa.');
     }
   }
 
@@ -79,6 +103,9 @@ export class MapasService {
         titulo: dto.titulo,
         competenciaId: dto.competenciaId,
         recursoId: dto.recursoId ?? null,
+        fechaLimite: dto.fechaLimite
+          ? finDelDiaChileAUtc(dto.fechaLimite)
+          : null,
       }),
     );
   }
@@ -109,7 +136,11 @@ export class MapasService {
     if (dto.recursoId !== undefined) {
       await this.assertRecursoExists(dto.recursoId);
     }
-    assignDefined(mapa, dto as Partial<MapaMental>);
+    const { fechaLimite, ...resto } = dto;
+    assignDefined(mapa, resto as Partial<MapaMental>);
+    if (fechaLimite !== undefined) {
+      mapa.fechaLimite = fechaLimite ? finDelDiaChileAUtc(fechaLimite) : null;
+    }
     return this.mapas.save(mapa);
   }
 
@@ -152,7 +183,7 @@ export class MapasService {
   async updateNodo(nodoId: string, dto: UpdateNodoDto): Promise<NodoMapa> {
     const nodo = await this.nodos.findOne({ where: { id: nodoId } });
     if (!nodo) {
-      throw new NotFoundException('Nodo not found');
+      throw new NotFoundException('Nodo no encontrado.');
     }
     if (dto.parentId !== undefined && dto.parentId !== null) {
       if (dto.parentId === nodoId) {
@@ -167,18 +198,24 @@ export class MapasService {
   async removeNodo(nodoId: string): Promise<void> {
     const result = await this.nodos.delete({ id: nodoId });
     if (!result.affected) {
-      throw new NotFoundException('Nodo not found');
+      throw new NotFoundException('Nodo no encontrado.');
     }
   }
 
-  async disponiblesParaCoachee(): Promise<MapaResumen[]> {
+  async disponiblesParaCoachee(actorUserId: string): Promise<MapaResumen[]> {
+    const coacheeId = await this.resolveCoacheeId(actorUserId);
+    const competenciaId = await this.resolvePlanCompetenciaId(coacheeId);
+    if (!competenciaId) return [];
     const mapas = await this.mapas.find({
-      where: { activo: true },
+      where: { activo: true, competenciaId },
       relations: { competencia: true },
       order: { createdAt: 'DESC' },
     });
+    const vigentes = mapas.filter(
+      (m) => !m.fechaLimite || m.fechaLimite.getTime() >= Date.now(),
+    );
     return Promise.all(
-      mapas.map(async (mapa) => {
+      vigentes.map(async (mapa) => {
         const totalNodos = await this.nodos.count({
           where: { mapaId: mapa.id },
         });
@@ -191,6 +228,7 @@ export class MapasService {
             : undefined,
           recursoId: mapa.recursoId,
           activo: mapa.activo,
+          fechaLimite: mapa.fechaLimite,
           createdAt: mapa.createdAt,
           totalNodos,
         };

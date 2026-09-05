@@ -11,6 +11,7 @@ export interface Ciclo {
   resultado: ResultadoCiclo | null
   resumenReunionInicial: string | null
   informeFinal: string | null
+  impactoNegocio: string | null
   informePdfNombre: string | null
   informePdfPath: string | null
   sesionesRealizadas: number
@@ -47,6 +48,13 @@ export function actualizarInformeFinal(id: string, informeFinal: string): Promis
   return apiRequest<Ciclo>(`/ciclos/${id}/informe-final`, {
     method: 'PATCH',
     body: { informeFinal },
+  })
+}
+
+export function actualizarImpactoNegocio(id: string, impactoNegocio: string): Promise<Ciclo> {
+  return apiRequest<Ciclo>(`/ciclos/${id}/impacto-negocio`, {
+    method: 'PATCH',
+    body: { impactoNegocio },
   })
 }
 

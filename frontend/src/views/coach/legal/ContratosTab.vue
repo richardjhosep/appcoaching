@@ -23,6 +23,7 @@ import OtrosDocumentosLegal from '../../../components/OtrosDocumentosLegal.vue'
 import ConsentimientoInformado from '../../../components/ConsentimientoInformado.vue'
 import Pagination from '../../../components/Pagination.vue'
 import NavIcon from '../../../components/NavIcon.vue'
+import SkeletonBlock from '../../../components/SkeletonBlock.vue'
 
 type ItemEmpresa = EmpresaLegal & { tipo: 'empresa' }
 type ItemIndependiente = IndependienteLegal & { tipo: 'independiente' }
@@ -144,12 +145,7 @@ async function enviarSolicitudConsentimiento(coacheeId: string, nombre: string) 
 </script>
 
 <template>
-  <div
-    v-if="loading"
-    class="text-sm text-[var(--color-ink)]/60"
-  >
-    Cargando…
-  </div>
+  <SkeletonBlock v-if="loading" />
   <div
     v-else
     class="space-y-4"

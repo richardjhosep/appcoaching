@@ -1,4 +1,10 @@
-import { IsOptional, IsString, IsUUID, MinLength } from 'class-validator';
+import {
+  IsDateString,
+  IsOptional,
+  IsString,
+  IsUUID,
+  MinLength,
+} from 'class-validator';
 
 export class CreateEjercicioDto {
   @IsString()
@@ -12,4 +18,9 @@ export class CreateEjercicioDto {
   @IsOptional()
   @IsUUID()
   competenciaId?: string;
+
+  // Fecha simple "YYYY-MM-DD" — el servicio la interpreta como fin de ese día en Chile.
+  @IsOptional()
+  @IsDateString()
+  fechaLimite?: string;
 }

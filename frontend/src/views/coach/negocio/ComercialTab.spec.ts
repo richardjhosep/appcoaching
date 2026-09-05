@@ -56,6 +56,7 @@ const cerrados: CicloCerrado[] = [
     resultado: 'logrado',
     resumenReunionInicial: null,
     informeFinal: null,
+    impactoNegocio: null,
     informePdfNombre: null,
     informePdfPath: null,
     sesionesRealizadas: 10,

@@ -24,7 +24,9 @@ export interface Sesion {
   ejerciciosAplicados?: string | null
   acuerdos?: string | null
   asistio?: boolean | null
+  confirmada: boolean
   postSesion: PostSesion | null
+  coachee?: { id: string; nombre: string; empresa?: { id: string; nombre: string } | null }
 }
 
 export interface UpdatePostSesionInput {
@@ -41,6 +43,18 @@ export function getMisSesiones(): Promise<Sesion[]> {
 
 export function getSesionesDeCoachee(coacheeId: string): Promise<Sesion[]> {
   return apiRequest<Sesion[]>(`/sesiones?coacheeId=${coacheeId}`)
+}
+
+// Todas las sesiones de todos los coachees, con el nombre de cada uno — para la agenda
+// global del coach (/coach/agenda).
+export function getTodasLasSesiones(): Promise<Sesion[]> {
+  return apiRequest<Sesion[]>('/sesiones/todas')
+}
+
+// Sesiones de una ventana de fechas ("YYYY-MM-DD"), con el nombre de cada coachee — para el
+// bloque "Esta semana" del dashboard del coach.
+export function getSesionesSemana(desde: string, hasta: string): Promise<Sesion[]> {
+  return apiRequest<Sesion[]>(`/sesiones/semana?desde=${desde}&hasta=${hasta}`)
 }
 
 export function getProximaSesionDeCoachee(coacheeId: string): Promise<Sesion | null> {
@@ -108,6 +122,10 @@ export interface SolicitudReagendamientoResult {
   motivo: string | null
   estado: 'pendiente' | 'resuelta'
   createdAt: string
+}
+
+export function confirmarSesion(sesionId: string): Promise<Sesion> {
+  return apiRequest<Sesion>(`/sesiones/${sesionId}/confirmar`, { method: 'POST' })
 }
 
 export function solicitarReagendamiento(

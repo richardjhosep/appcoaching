@@ -9,6 +9,7 @@ export interface Ejercicio {
   competenciaId: string | null
   competencia?: { id: string; nombre: string }
   activo: boolean
+  fechaLimite: string | null
   createdAt: string
   updatedAt: string
 }
@@ -39,6 +40,7 @@ export interface EjercicioResumen {
   competenciaId: string | null
   competencia?: { id: string; nombre: string }
   activo: boolean
+  fechaLimite: string | null
   createdAt: string
   numeroVersiones: number
   ultimoEstado: EstadoVersionEjercicio | null
@@ -50,6 +52,7 @@ export function createEjercicio(input: {
   titulo: string
   consigna: string
   competenciaId?: string
+  fechaLimite?: string
 }): Promise<Ejercicio> {
   return apiRequest<Ejercicio>('/ejercicios', { method: 'POST', body: input })
 }
@@ -64,7 +67,12 @@ export function getEjercicioParaCoach(id: string): Promise<EjercicioConVersiones
 
 export function updateEjercicio(
   id: string,
-  input: Partial<{ titulo: string; consigna: string; competenciaId: string }>,
+  input: Partial<{
+    titulo: string
+    consigna: string
+    competenciaId: string
+    fechaLimite: string | null
+  }>,
 ): Promise<Ejercicio> {
   return apiRequest<Ejercicio>(`/ejercicios/${id}`, { method: 'PATCH', body: input })
 }

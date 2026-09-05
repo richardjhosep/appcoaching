@@ -16,7 +16,9 @@ import { CreatePreguntaDto } from './dto/create-pregunta.dto';
 import { UpdatePreguntaDto } from './dto/update-pregunta.dto';
 import { CoacheesService } from '../coachees/coachees.service';
 import { CompetenciasService } from '../competencias/competencias.service';
+import { PlanesDesarrolloService } from '../planes-desarrollo/planes-desarrollo.service';
 import { assignDefined } from '../common/assign-defined.util';
+import { finDelDiaChileAUtc } from '../common/chile-time.util';
 
 export interface PreguntaParaResponder {
   id: string;
@@ -39,6 +41,7 @@ export interface QuizResumen {
   competenciaId: string;
   recursoId: string | null;
   activo: boolean;
+  fechaLimite: Date | null;
   createdAt: Date;
   competencia?: { id: string; nombre: string };
   totalPreguntas: number;
@@ -66,17 +69,18 @@ export class QuizService {
     @InjectRepository(Recurso) private readonly recursos: Repository<Recurso>,
     private readonly coachees: CoacheesService,
     private readonly competencias: CompetenciasService,
+    private readonly planesDesarrollo: PlanesDesarrolloService,
   ) {}
 
   private async assertCompetenciaExists(id: string): Promise<void> {
     if (!(await this.competencias.exists(id))) {
-      throw new NotFoundException('Competencia not found');
+      throw new NotFoundException('Competencia no encontrada.');
     }
   }
 
   private async assertRecursoExists(id: string): Promise<void> {
     if (!(await this.recursos.exists({ where: { id } }))) {
-      throw new NotFoundException('Recurso not found');
+      throw new NotFoundException('Recurso no encontrado.');
     }
   }
 
@@ -86,7 +90,7 @@ export class QuizService {
       relations: { competencia: true, recurso: true },
     });
     if (!quiz) {
-      throw new NotFoundException('Quiz not found');
+      throw new NotFoundException('Quiz no encontrado.');
     }
     return quiz;
   }
@@ -94,9 +98,21 @@ export class QuizService {
   private async resolveCoacheeId(actorUserId: string): Promise<string> {
     const coachee = await this.coachees.findByUserId(actorUserId);
     if (!coachee) {
-      throw new NotFoundException('Coachee profile not found');
+      throw new NotFoundException('Perfil de coachee no encontrado.');
     }
     return coachee.id;
+  }
+
+  // Mismo criterio que lib/formacionRecomendada.ts en el frontend: el coachee solo ve
+  // contenido de estudio de la competencia que está trabajando ahora mismo en su plan —
+  // sin esto, cualquier coachee veía TODO el catálogo activo sin importar el tópico.
+  private async resolvePlanCompetenciaId(
+    coacheeId: string,
+  ): Promise<string | null> {
+    const plan = await this.planesDesarrollo
+      .getByCoacheeId(coacheeId)
+      .catch(() => null);
+    return plan?.competenciaId ?? null;
   }
 
   async create(dto: CreateQuizDto): Promise<Quiz> {
@@ -109,6 +125,9 @@ export class QuizService {
         titulo: dto.titulo,
         competenciaId: dto.competenciaId,
         recursoId: dto.recursoId ?? null,
+        fechaLimite: dto.fechaLimite
+          ? finDelDiaChileAUtc(dto.fechaLimite)
+          : null,
       }),
     );
   }
@@ -128,7 +147,11 @@ export class QuizService {
     if (dto.recursoId !== undefined) {
       await this.assertRecursoExists(dto.recursoId);
     }
-    assignDefined(quiz, dto as Partial<Quiz>);
+    const { fechaLimite, ...resto } = dto;
+    assignDefined(quiz, resto as Partial<Quiz>);
+    if (fechaLimite !== undefined) {
+      quiz.fechaLimite = fechaLimite ? finDelDiaChileAUtc(fechaLimite) : null;
+    }
     return this.quizzes.save(quiz);
   }
 
@@ -169,7 +192,7 @@ export class QuizService {
   async findOneParaCoachee(id: string): Promise<QuizParaResponder> {
     const quiz = await this.findOrThrow(id);
     if (!quiz.activo) {
-      throw new NotFoundException('Quiz not found');
+      throw new NotFoundException('Quiz no encontrado.');
     }
     const preguntas = await this.preguntas.find({
       where: { quizId: id },
@@ -221,7 +244,7 @@ export class QuizService {
       where: { id: preguntaId },
     });
     if (!pregunta) {
-      throw new NotFoundException('Pregunta not found');
+      throw new NotFoundException('Pregunta no encontrada.');
     }
     const opciones = dto.opciones ?? pregunta.opciones;
     const respuestaCorrecta =
@@ -239,7 +262,7 @@ export class QuizService {
   async removePregunta(preguntaId: string): Promise<void> {
     const result = await this.preguntas.delete({ id: preguntaId });
     if (!result.affected) {
-      throw new NotFoundException('Pregunta not found');
+      throw new NotFoundException('Pregunta no encontrada.');
     }
   }
 
@@ -254,13 +277,18 @@ export class QuizService {
 
   async disponiblesParaCoachee(actorUserId: string): Promise<QuizResumen[]> {
     const coacheeId = await this.resolveCoacheeId(actorUserId);
+    const competenciaId = await this.resolvePlanCompetenciaId(coacheeId);
+    if (!competenciaId) return [];
     const quizzes = await this.quizzes.find({
-      where: { activo: true },
+      where: { activo: true, competenciaId },
       relations: { competencia: true },
       order: { createdAt: 'DESC' },
     });
+    const vigentes = quizzes.filter(
+      (q) => !q.fechaLimite || q.fechaLimite.getTime() >= Date.now(),
+    );
     return Promise.all(
-      quizzes.map(async (quiz) => {
+      vigentes.map(async (quiz) => {
         const [totalPreguntas, misIntentos] = await Promise.all([
           this.preguntas.count({ where: { quizId: quiz.id } }),
           this.intentos.find({ where: { quizId: quiz.id, coacheeId } }),
@@ -274,6 +302,7 @@ export class QuizService {
           competenciaId: quiz.competenciaId,
           recursoId: quiz.recursoId,
           activo: quiz.activo,
+          fechaLimite: quiz.fechaLimite,
           createdAt: quiz.createdAt,
           competencia: quiz.competencia
             ? { id: quiz.competencia.id, nombre: quiz.competencia.nombre }
@@ -302,7 +331,7 @@ export class QuizService {
     const coacheeId = await this.resolveCoacheeId(actorUserId);
     const quiz = await this.findOrThrow(quizId);
     if (!quiz.activo) {
-      throw new NotFoundException('Quiz not found');
+      throw new NotFoundException('Quiz no encontrado.');
     }
     const preguntas = await this.preguntas.find({
       where: { quizId },

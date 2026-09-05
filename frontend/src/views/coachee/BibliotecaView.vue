@@ -4,6 +4,7 @@ import AppShell from '../../components/AppShell.vue'
 import AppModal from '../../components/AppModal.vue'
 import RecursoIcono from '../../components/RecursoIcono.vue'
 import EmptyState from '../../components/EmptyState.vue'
+import SkeletonBlock from '../../components/SkeletonBlock.vue'
 import { getMisCarpetas, type Carpeta } from '../../api/carpetas'
 import {
   getMisRecursos,
@@ -15,6 +16,7 @@ import {
 } from '../../api/recursos'
 import { ApiError } from '../../api/client'
 import { buildArbol, breadcrumbDe, idsDescendientes } from '../../lib/carpetaArbol'
+import { formatearFechaLimite } from '../../lib/fechaLimite'
 
 const loading = ref(true)
 const error = ref<string | null>(null)
@@ -113,12 +115,7 @@ async function descargar(r: Recurso) {
       {{ error }}
     </p>
 
-    <div
-      v-if="loading"
-      class="text-sm text-[var(--color-ink)]/60"
-    >
-      Cargando…
-    </div>
+    <SkeletonBlock v-if="loading" />
 
     <template v-else-if="!carpetaActual">
       <EmptyState
@@ -184,6 +181,12 @@ async function descargar(r: Recurso) {
               />
               <p class="line-clamp-2 text-xs font-medium">
                 {{ r.titulo }}
+              </p>
+              <p
+                v-if="formatearFechaLimite(r.fechaLimite)"
+                class="text-[11px] text-[var(--color-bronze)]"
+              >
+                {{ formatearFechaLimite(r.fechaLimite) }}
               </p>
             </button>
           </TransitionGroup>
@@ -272,6 +275,12 @@ async function descargar(r: Recurso) {
           />
           <p class="line-clamp-2 text-xs font-medium">
             {{ r.titulo }}
+          </p>
+          <p
+            v-if="formatearFechaLimite(r.fechaLimite)"
+            class="text-[11px] text-[var(--color-bronze)]"
+          >
+            {{ formatearFechaLimite(r.fechaLimite) }}
           </p>
         </button>
       </TransitionGroup>

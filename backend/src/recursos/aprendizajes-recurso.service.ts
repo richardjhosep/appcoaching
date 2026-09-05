@@ -37,7 +37,7 @@ export class AprendizajesRecursoService {
   private async resolveCoacheeId(actorUserId: string): Promise<string> {
     const coachee = await this.coachees.findByUserId(actorUserId);
     if (!coachee) {
-      throw new NotFoundException('Coachee profile not found');
+      throw new NotFoundException('Perfil de coachee no encontrado.');
     }
     return coachee.id;
   }
@@ -76,7 +76,7 @@ export class AprendizajesRecursoService {
     const coacheeId = await this.resolveCoacheeId(actorUserId);
     const result = await this.aprendizajes.delete({ id, coacheeId });
     if (!result.affected) {
-      throw new NotFoundException('Aprendizaje not found');
+      throw new NotFoundException('Aprendizaje no encontrado.');
     }
   }
 }

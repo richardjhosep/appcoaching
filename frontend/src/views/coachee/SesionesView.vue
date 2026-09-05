@@ -3,15 +3,20 @@ import { computed, onMounted, reactive, ref, type ComponentPublicInstance } from
 import AppShell from '../../components/AppShell.vue'
 import AppModal from '../../components/AppModal.vue'
 import WeekCalendar from '../../components/WeekCalendar.vue'
+import DisponibilidadCalendar from '../../components/DisponibilidadCalendar.vue'
 import EmptyState from '../../components/EmptyState.vue'
 import NavIcon from '../../components/NavIcon.vue'
+import SkeletonBlock from '../../components/SkeletonBlock.vue'
 import {
   getMisSesiones,
   guardarPostSesion,
   publicarPostSesion,
   solicitarReagendamiento,
+  confirmarSesion,
   type Sesion,
 } from '../../api/sesiones'
+import { getSlotsLibres } from '../../api/disponibilidad'
+import { crearSolicitudSesion } from '../../api/solicitudes-sesion'
 import { ApiError } from '../../api/client'
 import { notifySuccess, notifyError } from '../../lib/notify'
 import { nivelProgreso, coloresNivel } from '../../lib/nivelProgreso'
@@ -51,6 +56,56 @@ async function enviarSolicitudReagendamiento() {
     )
   } finally {
     enviandoReagendamiento.value = false
+  }
+}
+
+const confirmandoId = ref<string | null>(null)
+
+async function confirmar(sesion: Sesion) {
+  confirmandoId.value = sesion.id
+  try {
+    sesion.confirmada = (await confirmarSesion(sesion.id)).confirmada
+  } catch (err) {
+    await notifyError('No se pudo confirmar', err instanceof ApiError ? err.message : 'Ocurrió un error inesperado.')
+  } finally {
+    confirmandoId.value = null
+  }
+}
+
+const slotsLibres = ref<string[]>([])
+
+async function onCambioSemanaDisponibilidad(desde: string, hasta: string) {
+  slotsLibres.value = await getSlotsLibres(desde, hasta)
+}
+
+const solicitarSesionModalOpen = ref(false)
+const slotSeleccionado = ref<string | null>(null)
+const motivoSolicitud = ref('')
+const enviandoSolicitud = ref(false)
+
+function abrirSolicitarSesion(iso: string) {
+  slotSeleccionado.value = iso
+  motivoSolicitud.value = ''
+  solicitarSesionModalOpen.value = true
+}
+
+async function enviarSolicitudSesion() {
+  const iso = slotSeleccionado.value
+  if (!iso) return
+  enviandoSolicitud.value = true
+  try {
+    await crearSolicitudSesion(iso, motivoSolicitud.value || undefined)
+    solicitarSesionModalOpen.value = false
+    // El slot recién pedido deja de estar disponible hasta que el coach responda.
+    slotsLibres.value = slotsLibres.value.filter((s) => s !== iso)
+    await notifySuccess('Solicitud enviada', 'Tu coach recibió tu pedido de sesión.')
+  } catch (err) {
+    await notifyError(
+      'No se pudo enviar la solicitud',
+      err instanceof ApiError ? err.message : 'Ocurrió un error inesperado.',
+    )
+  } finally {
+    enviandoSolicitud.value = false
   }
 }
 
@@ -143,18 +198,19 @@ function onSelectSesion(id: string) {
     <h1 class="mb-4 font-[family-name:var(--font-heading)] text-xl font-semibold">
       Mis sesiones
     </h1>
+    <DisponibilidadCalendar
+      class="mb-4"
+      :slots="slotsLibres"
+      @cambio-semana="onCambioSemanaDisponibilidad"
+      @solicitar="abrirSolicitarSesion"
+    />
     <WeekCalendar
       v-if="!loading"
       class="mb-4"
       :sesiones="sesiones"
       @select="onSelectSesion"
     />
-    <div
-      v-if="loading"
-      class="text-sm text-[var(--color-ink)]/60"
-    >
-      Cargando…
-    </div>
+    <SkeletonBlock v-if="loading" />
     <EmptyState
       v-else-if="sesionesOrdenadas.length === 0"
       icon="sesiones"
@@ -378,12 +434,28 @@ function onSelectSesion(id: string) {
               class="text-[var(--color-sage)] underline"
             >Link de la videollamada</a>
           </p>
-          <button
-            class="rounded-lg border border-[var(--color-line)] px-3 py-2 text-xs hover:bg-[var(--color-parchment)]/50"
-            @click="abrirSolicitarReagendamiento(sesion)"
-          >
-            Solicitar reagendamiento
-          </button>
+          <div class="flex flex-wrap items-center gap-2">
+            <span
+              v-if="sesion.confirmada"
+              class="flex items-center gap-1 rounded-full bg-[var(--color-sage)]/15 px-2.5 py-1 text-xs font-semibold text-[var(--color-sage)]"
+            >
+              ✓ Confirmada
+            </span>
+            <button
+              v-else
+              class="rounded-lg bg-[var(--color-sage)] px-3 py-2 text-xs font-medium text-white disabled:opacity-60"
+              :disabled="confirmandoId === sesion.id"
+              @click="confirmar(sesion)"
+            >
+              {{ confirmandoId === sesion.id ? 'Confirmando…' : 'Confirmar asistencia' }}
+            </button>
+            <button
+              class="rounded-lg border border-[var(--color-line)] px-3 py-2 text-xs hover:bg-[var(--color-parchment)]/50"
+              @click="abrirSolicitarReagendamiento(sesion)"
+            >
+              Solicitar reagendamiento
+            </button>
+          </div>
         </div>
       </div>
     </TransitionGroup>
@@ -425,6 +497,48 @@ function onSelectSesion(id: string) {
             class="rounded-lg bg-[var(--color-ink)] px-4 py-2 text-sm text-[var(--color-parchment)] disabled:opacity-60"
           >
             {{ enviandoReagendamiento ? 'Enviando…' : 'Enviar' }}
+          </button>
+        </div>
+      </form>
+    </AppModal>
+
+    <AppModal
+      v-if="solicitarSesionModalOpen"
+      title="Solicitar esta hora"
+      @close="solicitarSesionModalOpen = false"
+    >
+      <form
+        class="space-y-4"
+        @submit.prevent="enviarSolicitudSesion"
+      >
+        <p
+          v-if="slotSeleccionado"
+          class="font-[family-name:var(--font-mono)] text-sm text-[var(--color-ink)]/70"
+        >
+          Horario: {{ new Date(slotSeleccionado).toLocaleString('es-CL', { dateStyle: 'medium', timeStyle: 'short' }) }}
+        </p>
+        <label class="block text-sm">
+          Motivo (opcional)
+          <textarea
+            v-model="motivoSolicitud"
+            rows="3"
+            class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+          />
+        </label>
+        <div class="flex justify-end gap-2 pt-2">
+          <button
+            type="button"
+            class="rounded-lg border border-[var(--color-line)] px-4 py-2 text-sm"
+            @click="solicitarSesionModalOpen = false"
+          >
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            :disabled="enviandoSolicitud"
+            class="rounded-lg bg-[var(--color-sage)] px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
+          >
+            {{ enviandoSolicitud ? 'Enviando…' : 'Pedir esta hora' }}
           </button>
         </div>
       </form>

@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import type { ProyeccionMesEmpresa } from '../api/negocio'
+import { VChart, ECHARTS_INIT_OPTIONS } from '../lib/echartsCore'
+import { resolveColor, baseOption } from '../lib/echartsTheme'
 
 const props = defineProps<{ meses: ProyeccionMesEmpresa[] }>()
 
 const mesActivoIndex = ref(0)
+const mesActivo = computed(() => props.meses[mesActivoIndex.value] ?? null)
 
 const formatoCLP = new Intl.NumberFormat('es-CL', {
   style: 'currency',
@@ -12,13 +15,34 @@ const formatoCLP = new Intl.NumberFormat('es-CL', {
   maximumFractionDigits: 0,
 })
 
-const ALTURA_MAX_PX = 88
+const option = computed(() => {
+  const sage = resolveColor('--color-sage')
+  const sageClaro = `color-mix(in srgb, ${sage} 45%, white)`
+  return {
+    ...baseOption(),
+    xAxis: {
+      type: 'category',
+      data: props.meses.map((m) => m.etiqueta),
+      axisLine: { show: false },
+      axisTick: { show: false },
+    },
+    yAxis: { type: 'value', show: false },
+    series: [
+      {
+        type: 'bar',
+        data: props.meses.map((m) => m.total),
+        barMaxWidth: 24,
+        itemStyle: {
+          color: (p: { dataIndex: number }) => (p.dataIndex === mesActivoIndex.value ? sage : sageClaro),
+          borderRadius: [4, 4, 0, 0],
+        },
+      },
+    ],
+  }
+})
 
-const maxTotal = computed(() => Math.max(1, ...props.meses.map((m) => m.total)))
-const mesActivo = computed(() => props.meses[mesActivoIndex.value] ?? null)
-
-function alturaPx(total: number): number {
-  return Math.max(3, Math.round((total / maxTotal.value) * ALTURA_MAX_PX))
+function onClick(params: { dataIndex: number }) {
+  mesActivoIndex.value = params.dataIndex
 }
 </script>
 
@@ -28,33 +52,15 @@ function alturaPx(total: number): number {
       Toca un mes para ver el detalle por coachee
     </p>
 
-    <div class="overflow-x-auto">
-      <div class="flex min-w-[360px] gap-1">
-        <button
-          v-for="(m, i) in meses"
-          :key="m.mes"
-          type="button"
-          class="flex flex-1 flex-col items-center gap-1.5 rounded-lg px-1 py-1.5 transition-colors"
-          :class="i === mesActivoIndex ? 'bg-[var(--color-parchment)]' : 'hover:bg-[var(--color-parchment)]/50'"
-          @click="mesActivoIndex = i"
-        >
-          <div class="flex h-[88px] w-full items-end justify-center">
-            <div
-              class="w-4 rounded-t transition-all"
-              :style="{
-                height: `${alturaPx(m.total)}px`,
-                backgroundColor: i === mesActivoIndex ? 'var(--color-sage)' : 'color-mix(in srgb, var(--color-sage) 45%, white)',
-              }"
-            />
-          </div>
-          <span
-            class="text-[10px]"
-            :class="i === mesActivoIndex ? 'font-medium text-[var(--color-ink)]' : 'text-[var(--color-ink)]/50'"
-          >
-            {{ m.etiqueta }}
-          </span>
-        </button>
-      </div>
+    <!-- Ver TendenciaChart.vue para por qué el tamaño va en este div y no en <VChart>. -->
+    <div class="h-28 w-full">
+      <VChart
+        class="h-full w-full"
+        :option="option"
+        :init-options="ECHARTS_INIT_OPTIONS"
+        autoresize
+        @click="onClick"
+      />
     </div>
 
     <div

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import SkeletonBlock from '../../../components/SkeletonBlock.vue'
 import { ref, onMounted, watch } from 'vue'
 import {
   getPlanByCoachee,
@@ -6,6 +7,8 @@ import {
   solicitarCambios,
   type PlanDesarrollo,
 } from '../../../api/planesDesarrollo'
+import { getAutoevaluacionesDeCoachee, type AutoevaluacionCompetencia } from '../../../api/seguimiento'
+import { listCompetencias, type Competencia } from '../../../api/competencias'
 import { ApiError } from '../../../api/client'
 
 const props = defineProps<{ coacheeId: string }>()
@@ -18,6 +21,20 @@ const error = ref<string | null>(null)
 const comentario = ref('')
 const acting = ref(false)
 
+const autoevaluaciones = ref<AutoevaluacionCompetencia[]>([])
+const competencias = ref<Competencia[]>([])
+
+function competenciaDe(id: string): Competencia | undefined {
+  return competencias.value.find((c) => c.id === id)
+}
+
+function descripcionNivel(autoeval: AutoevaluacionCompetencia): string | null {
+  return (
+    competenciaDe(autoeval.competenciaId)?.niveles.find((n) => n.nivel === autoeval.nivel)
+      ?.descripcion ?? null
+  )
+}
+
 const estadoLabel: Record<string, string> = {
   sin_enviar: 'Sin enviar',
   pendiente_aprobacion: 'Pendiente de aprobación',
@@ -28,6 +45,12 @@ const estadoLabel: Record<string, string> = {
 async function load() {
   loading.value = true
   sinPlan.value = false
+  const [autoevals, comps] = await Promise.all([
+    getAutoevaluacionesDeCoachee(props.coacheeId),
+    listCompetencias(),
+  ])
+  autoevaluaciones.value = autoevals
+  competencias.value = comps
   try {
     plan.value = await getPlanByCoachee(props.coacheeId)
   } catch (err) {
@@ -74,12 +97,7 @@ async function enviarSolicitudCambios() {
 </script>
 
 <template>
-  <div
-    v-if="loading"
-    class="text-sm text-[var(--color-ink)]/60"
-  >
-    Cargando…
-  </div>
+  <SkeletonBlock v-if="loading" />
   <p
     v-else-if="sinPlan"
     class="text-sm text-[var(--color-ink)]/60"
@@ -99,6 +117,34 @@ async function enviarSolicitudCambios() {
     >
       {{ error }}
     </p>
+
+    <div
+      v-if="autoevaluaciones.length > 0"
+      class="mb-4 space-y-3 rounded-2xl border border-[var(--color-line)] bg-white p-4 text-sm"
+    >
+      <strong>Autoevaluaciones del coachee</strong>
+      <ul class="space-y-2">
+        <li
+          v-for="a in autoevaluaciones"
+          :key="a.id"
+          class="rounded-lg border border-[var(--color-line)]/60 p-2"
+        >
+          <p class="text-xs text-[var(--color-ink)]/50">
+            {{ new Date(a.createdAt).toLocaleDateString('es-CL') }} —
+            {{ competenciaDe(a.competenciaId)?.nombre ?? 'Competencia' }} — Nivel {{ a.nivel }}
+          </p>
+          <p
+            v-if="descripcionNivel(a)"
+            class="text-xs text-[var(--color-ink)]/60"
+          >
+            {{ descripcionNivel(a) }}
+          </p>
+          <p class="mt-1">
+            {{ a.ejemplo }}
+          </p>
+        </li>
+      </ul>
+    </div>
 
     <div class="mb-4 space-y-3 rounded-2xl border border-[var(--color-line)] bg-white p-4 text-sm">
       <p><strong>Nivel actual:</strong> {{ plan.nivelActual ?? '—' }}</p>

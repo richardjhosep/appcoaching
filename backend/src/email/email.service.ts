@@ -224,6 +224,95 @@ export class EmailService {
     });
   }
 
+  async sendSolicitudSesionCreada(options: {
+    to: string;
+    nombreCoachee: string;
+    fechaHoraPropuesta: string;
+    motivo?: string | null;
+    verUrl: string;
+  }): Promise<void> {
+    const subject = 'Nueva solicitud de sesión';
+    const nombreCoachee = escapeHtml(options.nombreCoachee);
+    const fecha = formatFechaHora(options.fechaHoraPropuesta);
+    const intro = `${nombreCoachee} pidió una sesión para el ${fecha}.`;
+    const motivoBox = options.motivo
+      ? renderInfoBox('Motivo', escapeHtml(options.motivo))
+      : '';
+
+    const body = `
+      <h1 style="margin:0 0 16px;font-family:'Poppins',Arial,sans-serif;font-size:22px;color:#121212;">Nueva solicitud de sesión</h1>
+      <p style="margin:0 0 16px;font-size:15px;line-height:1.6;">${intro}</p>
+      ${motivoBox}
+      ${renderButton(options.verUrl, 'Ver en CoachNexus')}
+      ${renderFallbackLink(options.verUrl)}
+    `;
+
+    const text = [
+      'Nueva solicitud de sesión',
+      '',
+      `${options.nombreCoachee} pidió una sesión para el ${fecha}.`,
+      ...(options.motivo ? ['', `Motivo: ${options.motivo}`] : []),
+      '',
+      `Ver en CoachNexus: ${options.verUrl}`,
+      '',
+      'Este es un mensaje automático enviado desde una casilla no-reply — por favor no respondas a este correo.',
+    ].join('\n');
+
+    await this.send({
+      to: options.to,
+      subject,
+      html: renderEmailLayout(body),
+      text,
+    });
+  }
+
+  async sendSolicitudSesionResuelta(options: {
+    to: string;
+    fechaHoraPropuesta: string;
+    aprobada: boolean;
+    respuestaCoach?: string | null;
+    verUrl: string;
+  }): Promise<void> {
+    const subject = options.aprobada
+      ? 'Tu sesión fue confirmada'
+      : 'Tu solicitud de sesión fue rechazada';
+    const fecha = formatFechaHora(options.fechaHoraPropuesta);
+    const intro = options.aprobada
+      ? `Tu coach confirmó la sesión que pediste para el ${fecha}.`
+      : `Tu coach no pudo confirmar la sesión que pediste para el ${fecha}.`;
+    const respuestaBox = options.respuestaCoach
+      ? renderInfoBox('Mensaje de tu coach', escapeHtml(options.respuestaCoach))
+      : '';
+
+    const body = `
+      <h1 style="margin:0 0 16px;font-family:'Poppins',Arial,sans-serif;font-size:22px;color:#121212;">${subject}</h1>
+      <p style="margin:0 0 16px;font-size:15px;line-height:1.6;">${intro}</p>
+      ${respuestaBox}
+      ${renderButton(options.verUrl, 'Ver mis sesiones')}
+      ${renderFallbackLink(options.verUrl)}
+    `;
+
+    const text = [
+      subject,
+      '',
+      intro,
+      ...(options.respuestaCoach
+        ? ['', `Mensaje de tu coach: ${options.respuestaCoach}`]
+        : []),
+      '',
+      `Ver mis sesiones: ${options.verUrl}`,
+      '',
+      'Este es un mensaje automático enviado desde una casilla no-reply — por favor no respondas a este correo.',
+    ].join('\n');
+
+    await this.send({
+      to: options.to,
+      subject,
+      html: renderEmailLayout(body),
+      text,
+    });
+  }
+
   async sendRecordatorioPlan(options: {
     to: string;
     nombreCoachee: string;

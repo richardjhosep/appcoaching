@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
+import SkeletonBlock from '../../components/SkeletonBlock.vue'
 import {
   getSolicitud,
   aceptarSolicitud,
@@ -60,12 +61,7 @@ async function responder(aceptado: boolean) {
         Coach<span class="text-[var(--color-bronze)]">Nexus</span>
       </h1>
 
-      <div
-        v-if="vista === 'cargando'"
-        class="text-sm text-[var(--color-ink)]/60"
-      >
-        Cargando…
-      </div>
+      <SkeletonBlock v-if="vista === 'cargando'" />
 
       <div v-else-if="vista === 'no-encontrado'">
         <p class="text-sm text-[var(--color-danger)]">

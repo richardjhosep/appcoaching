@@ -93,4 +93,10 @@ export class SatisfaccionController {
   kpisDeEmpresa(@Param('empresaId') empresaId: string) {
     return this.satisfaccion.kpis(empresaId);
   }
+
+  @Roles(Role.EMPRESA)
+  @Get('tendencia/me')
+  miTendencia(@CurrentUser() actor: AuthenticatedUser) {
+    return this.satisfaccion.tendenciaParaEmpresa(resolveOwnEmpresaId(actor));
+  }
 }

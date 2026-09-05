@@ -26,6 +26,7 @@ export interface Quiz {
   recursoId: string | null
   recurso?: { id: string; titulo: string } | null
   activo: boolean
+  fechaLimite: string | null
   createdAt: string
   updatedAt: string
 }
@@ -49,6 +50,7 @@ export interface QuizResumen {
   competencia?: { id: string; nombre: string }
   recursoId: string | null
   activo: boolean
+  fechaLimite: string | null
   createdAt: string
   totalPreguntas: number
   mejorPuntaje: number | null
@@ -78,6 +80,7 @@ export function createQuiz(input: {
   titulo: string
   competenciaId: string
   recursoId?: string
+  fechaLimite?: string
 }): Promise<Quiz> {
   return apiRequest<Quiz>('/quizzes', { method: 'POST', body: input })
 }
@@ -92,7 +95,12 @@ export function getQuizParaCoach(id: string): Promise<QuizConPreguntas> {
 
 export function updateQuiz(
   id: string,
-  input: Partial<{ titulo: string; competenciaId: string; recursoId: string }>,
+  input: Partial<{
+    titulo: string
+    competenciaId: string
+    recursoId: string
+    fechaLimite: string | null
+  }>,
 ): Promise<Quiz> {
   return apiRequest<Quiz>(`/quizzes/${id}`, { method: 'PATCH', body: input })
 }

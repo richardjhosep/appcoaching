@@ -132,6 +132,119 @@ export function getMiProyeccionFinanciera(): Promise<ProyeccionMesEmpresa[]> {
   return apiRequest<ProyeccionMesEmpresa[]>('/negocio/empresa/proyeccion')
 }
 
+export interface ResumenAcumuladoEmpresa {
+  anio: number
+  semestre: 1 | 2
+  gastoEjecutadoSemestre: number
+  gastoAgendadoSemestre: number
+  gastoEjecutadoAnio: number
+  gastoAgendadoAnio: number
+}
+
+export function getMiResumenAcumulado(): Promise<ResumenAcumuladoEmpresa> {
+  return apiRequest<ResumenAcumuladoEmpresa>('/negocio/empresa/acumulado')
+}
+
+export interface ProcesoConRetorno {
+  coacheeNombre: string
+  cicloId: string
+  fechaApertura: string
+  fechaCierre: string
+  costo: number
+  resultado: ResultadoCiclo
+  impactoNegocio: string | null
+}
+
+export interface RetornoInversionEmpresa {
+  costoTotalProcesosCerrados: number
+  costoPromedioPorProceso: number | null
+  distribucionResultados: Record<ResultadoCiclo, number>
+  procesos: ProcesoConRetorno[]
+}
+
+export function getMiRetornoInversion(): Promise<RetornoInversionEmpresa> {
+  return apiRequest<RetornoInversionEmpresa>('/negocio/empresa/retorno')
+}
+
+export type EstadoCartera = 'sin_fecha' | 'vencido' | 'vence_este_mes' | 'vence_este_semestre' | 'vigente'
+
+export interface UltimaGestionCartera {
+  nota: string
+  fecha: string
+  proximoSeguimiento: string | null
+}
+
+export interface EmpresaCartera {
+  empresaId: string
+  nombre: string
+  fechaFin: string | null
+  pagada: boolean
+  horasContratadas: number | null
+  horasConsumidasEsteMes: number
+  estado: EstadoCartera
+  diasParaVencer: number | null
+  ultimaGestion: UltimaGestionCartera | null
+}
+
+export interface IndependientePorVencer {
+  coacheeId: string
+  nombre: string
+  sesionesRestantes: number
+}
+
+export interface ResumenCartera {
+  empresas: EmpresaCartera[]
+  independientesPorVencer: IndependientePorVencer[]
+}
+
+export function getCarteraEmpresas(): Promise<ResumenCartera> {
+  return apiRequest<ResumenCartera>('/negocio/cartera')
+}
+
+export interface SesionSinConfirmar {
+  sesionId: string
+  coacheeId: string
+  nombre: string
+  fechaHora: string
+}
+
+export interface ContratoUrgente {
+  empresaId: string
+  nombre: string
+  diasParaVencer: number | null
+  ultimaGestion: UltimaGestionCartera | null
+}
+
+export interface PagoPendiente {
+  empresaId: string
+  nombre: string
+  gastoDelPeriodo: number
+}
+
+export interface AtencionInmediata {
+  sesionesSinConfirmar: SesionSinConfirmar[]
+  contratosUrgentes: ContratoUrgente[]
+  pagosPendientes: PagoPendiente[]
+}
+
+export function getAtencionInmediata(): Promise<AtencionInmediata> {
+  return apiRequest<AtencionInmediata>('/negocio/atencion')
+}
+
+export interface ComparativoYCapacidad {
+  ingresoMesActual: number
+  ingresoMesAnterior: number
+  variacionIngresoPct: number | null
+  coachingsIniciadosMesActual: number
+  coachingsIniciadosMesAnterior: number
+  horasComprometidasSemana: number
+  horasDisponiblesSemana: number
+}
+
+export function getComparativo(): Promise<ComparativoYCapacidad> {
+  return apiRequest<ComparativoYCapacidad>('/negocio/comparativo')
+}
+
 export function enviarRecordatorioSesion(coacheeId: string): Promise<{ success: boolean }> {
   return apiRequest<{ success: boolean }>(`/negocio/coachees/${coacheeId}/recordatorio-sesion`, {
     method: 'POST',

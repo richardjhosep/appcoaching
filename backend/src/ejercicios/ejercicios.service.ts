@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { IsNull, Repository } from 'typeorm';
 import { Ejercicio } from './entities/ejercicio.entity';
 import { VersionEjercicio } from './entities/version-ejercicio.entity';
 import { CreateEjercicioDto } from './dto/create-ejercicio.dto';
@@ -12,8 +12,10 @@ import { UpdateEjercicioDto } from './dto/update-ejercicio.dto';
 import { CreateVersionDto } from './dto/create-version.dto';
 import { CoacheesService } from '../coachees/coachees.service';
 import { CompetenciasService } from '../competencias/competencias.service';
+import { PlanesDesarrolloService } from '../planes-desarrollo/planes-desarrollo.service';
 import { EstadoVersionEjercicio } from './enums/estado-version-ejercicio.enum';
 import { assignDefined } from '../common/assign-defined.util';
+import { finDelDiaChileAUtc } from '../common/chile-time.util';
 
 export interface EjercicioResumen {
   id: string;
@@ -21,6 +23,7 @@ export interface EjercicioResumen {
   consigna: string;
   competenciaId: string | null;
   activo: boolean;
+  fechaLimite: Date | null;
   createdAt: Date;
   competencia?: { id: string; nombre: string };
   numeroVersiones: number;
@@ -36,11 +39,12 @@ export class EjerciciosService {
     private readonly versiones: Repository<VersionEjercicio>,
     private readonly coachees: CoacheesService,
     private readonly competencias: CompetenciasService,
+    private readonly planesDesarrollo: PlanesDesarrolloService,
   ) {}
 
   private async assertCompetenciaExists(id: string): Promise<void> {
     if (!(await this.competencias.exists(id))) {
-      throw new NotFoundException('Competencia not found');
+      throw new NotFoundException('Competencia no encontrada.');
     }
   }
 
@@ -50,7 +54,7 @@ export class EjerciciosService {
       relations: { competencia: true },
     });
     if (!ejercicio) {
-      throw new NotFoundException('Ejercicio not found');
+      throw new NotFoundException('Ejercicio no encontrado.');
     }
     return ejercicio;
   }
@@ -58,9 +62,19 @@ export class EjerciciosService {
   private async resolveCoacheeId(actorUserId: string): Promise<string> {
     const coachee = await this.coachees.findByUserId(actorUserId);
     if (!coachee) {
-      throw new NotFoundException('Coachee profile not found');
+      throw new NotFoundException('Perfil de coachee no encontrado.');
     }
     return coachee.id;
+  }
+
+  // Mismo criterio que lib/formacionRecomendada.ts en el frontend — ver quiz.service.ts.
+  private async resolvePlanCompetenciaId(
+    coacheeId: string,
+  ): Promise<string | null> {
+    const plan = await this.planesDesarrollo
+      .getByCoacheeId(coacheeId)
+      .catch(() => null);
+    return plan?.competenciaId ?? null;
   }
 
   async create(dto: CreateEjercicioDto): Promise<Ejercicio> {
@@ -72,6 +86,9 @@ export class EjerciciosService {
         titulo: dto.titulo,
         consigna: dto.consigna,
         competenciaId: dto.competenciaId ?? null,
+        fechaLimite: dto.fechaLimite
+          ? finDelDiaChileAUtc(dto.fechaLimite)
+          : null,
       }),
     );
   }
@@ -88,7 +105,13 @@ export class EjerciciosService {
     if (dto.competenciaId !== undefined) {
       await this.assertCompetenciaExists(dto.competenciaId);
     }
-    assignDefined(ejercicio, dto as Partial<Ejercicio>);
+    const { fechaLimite, ...resto } = dto;
+    assignDefined(ejercicio, resto as Partial<Ejercicio>);
+    if (fechaLimite !== undefined) {
+      ejercicio.fechaLimite = fechaLimite
+        ? finDelDiaChileAUtc(fechaLimite)
+        : null;
+    }
     return this.ejercicios.save(ejercicio);
   }
 
@@ -126,7 +149,7 @@ export class EjerciciosService {
   async findOneParaCoachee(id: string): Promise<Ejercicio> {
     const ejercicio = await this.findOrThrow(id);
     if (!ejercicio.activo) {
-      throw new NotFoundException('Ejercicio not found');
+      throw new NotFoundException('Ejercicio no encontrado.');
     }
     return ejercicio;
   }
@@ -135,13 +158,26 @@ export class EjerciciosService {
     actorUserId: string,
   ): Promise<EjercicioResumen[]> {
     const coacheeId = await this.resolveCoacheeId(actorUserId);
+    const competenciaId = await this.resolvePlanCompetenciaId(coacheeId);
+    // A diferencia de Quiz/Flashcards/Mapas, `Ejercicio.competenciaId` es opcional: un
+    // ejercicio sin competencia es "general" y se muestra a cualquier coachee, tenga o no
+    // definida ya su competencia activa. Los que sí tienen competencia se filtran igual
+    // que el resto (mismo criterio de lib/formacionRecomendada.ts).
     const ejercicios = await this.ejercicios.find({
-      where: { activo: true },
+      where: competenciaId
+        ? [
+            { activo: true, competenciaId },
+            { activo: true, competenciaId: IsNull() },
+          ]
+        : { activo: true, competenciaId: IsNull() },
       relations: { competencia: true },
       order: { createdAt: 'DESC' },
     });
+    const vigentes = ejercicios.filter(
+      (e) => !e.fechaLimite || e.fechaLimite.getTime() >= Date.now(),
+    );
     return Promise.all(
-      ejercicios.map(async (ejercicio) => {
+      vigentes.map(async (ejercicio) => {
         const misVersiones = await this.versiones.find({
           where: { ejercicioId: ejercicio.id, coacheeId },
           order: { numeroVersion: 'DESC' },
@@ -152,6 +188,7 @@ export class EjerciciosService {
           consigna: ejercicio.consigna,
           competenciaId: ejercicio.competenciaId,
           activo: ejercicio.activo,
+          fechaLimite: ejercicio.fechaLimite,
           createdAt: ejercicio.createdAt,
           competencia: ejercicio.competencia
             ? {
@@ -186,7 +223,7 @@ export class EjerciciosService {
     const coacheeId = await this.resolveCoacheeId(actorUserId);
     const ejercicio = await this.findOrThrow(ejercicioId);
     if (!ejercicio.activo) {
-      throw new NotFoundException('Ejercicio not found');
+      throw new NotFoundException('Ejercicio no encontrado.');
     }
     const numeroVersion =
       (await this.versiones.count({ where: { ejercicioId, coacheeId } })) + 1;
@@ -209,7 +246,7 @@ export class EjerciciosService {
   ): Promise<VersionEjercicio> {
     const version = await this.versiones.findOne({ where: { id: versionId } });
     if (!version) {
-      throw new NotFoundException('Versión not found');
+      throw new NotFoundException('Versión no encontrada.');
     }
     version.comentarioCoach = comentarioCoach;
     version.estado = EstadoVersionEjercicio.CON_FEEDBACK;

@@ -5,6 +5,7 @@ import AppModal from '../../components/AppModal.vue'
 import Pagination from '../../components/Pagination.vue'
 import StatusToggle from '../../components/StatusToggle.vue'
 import IconButton from '../../components/IconButton.vue'
+import SkeletonBlock from '../../components/SkeletonBlock.vue'
 import { createEmpresaUser, deleteUser, listUsers, resetPassword, setUserActivo, type UserAccount } from '../../api/users'
 import { listEmpresas, type Empresa } from '../../api/empresas'
 import { ApiError } from '../../api/client'
@@ -184,12 +185,7 @@ async function eliminar(usuario: UserAccount) {
       </button>
     </div>
 
-    <div
-      v-if="loading"
-      class="text-sm text-[var(--color-ink)]/60"
-    >
-      Cargando…
-    </div>
+    <SkeletonBlock v-if="loading" />
     <div
       v-else
       class="space-y-3"

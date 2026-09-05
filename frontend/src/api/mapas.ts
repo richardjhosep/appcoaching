@@ -18,6 +18,7 @@ export interface Mapa {
   recursoId: string | null
   recurso?: { id: string; titulo: string } | null
   activo: boolean
+  fechaLimite: string | null
   createdAt: string
   updatedAt: string
 }
@@ -33,6 +34,7 @@ export interface MapaResumen {
   competencia?: { id: string; nombre: string }
   recursoId: string | null
   activo: boolean
+  fechaLimite: string | null
   createdAt: string
   totalNodos: number
 }
@@ -43,6 +45,7 @@ export function createMapa(input: {
   titulo: string
   competenciaId: string
   recursoId?: string
+  fechaLimite?: string
 }): Promise<Mapa> {
   return apiRequest<Mapa>('/mapas', { method: 'POST', body: input })
 }
@@ -53,7 +56,12 @@ export function listMapas(): Promise<Mapa[]> {
 
 export function updateMapa(
   id: string,
-  input: Partial<{ titulo: string; competenciaId: string; recursoId: string }>,
+  input: Partial<{
+    titulo: string
+    competenciaId: string
+    recursoId: string
+    fechaLimite: string | null
+  }>,
 ): Promise<Mapa> {
   return apiRequest<Mapa>(`/mapas/${id}`, { method: 'PATCH', body: input })
 }

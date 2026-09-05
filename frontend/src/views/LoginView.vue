@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { ApiError } from '../api/client'
 import AppLogo from '../components/AppLogo.vue'
+import PasswordField from '../components/PasswordField.vue'
 
 const auth = useAuthStore()
 const router = useRouter()
@@ -72,17 +73,14 @@ async function handleSubmit() {
           >
         </label>
 
-        <label class="mb-5 block text-sm font-medium text-[var(--color-ink)]/80">
-          Contraseña
-          <input
+        <div class="mb-5">
+          <PasswordField
             v-model="password"
-            type="password"
-            required
+            label="Contraseña"
             autocomplete="current-password"
-            placeholder="••••••••"
-            class="mt-1.5 w-full rounded-lg border border-[var(--color-line)] bg-[var(--color-ivory)]/60 px-3 py-2.5 text-sm text-[var(--color-ink)] transition-shadow focus:border-[var(--color-sage)] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[var(--color-sage)]/30"
-          >
-        </label>
+            input-class="w-full rounded-lg border border-[var(--color-line)] bg-[var(--color-ivory)]/60 px-3 py-2.5 pr-10 text-sm text-[var(--color-ink)] transition-shadow focus:border-[var(--color-sage)] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[var(--color-sage)]/30"
+          />
+        </div>
 
         <p
           v-if="error"

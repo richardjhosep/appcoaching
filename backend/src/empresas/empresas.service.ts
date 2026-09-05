@@ -6,14 +6,18 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Empresa } from './entities/empresa.entity';
+import { GestionRenovacion } from './entities/gestion-renovacion.entity';
 import { CreateEmpresaDto } from './dto/create-empresa.dto';
 import { UpdateEmpresaDto } from './dto/update-empresa.dto';
+import { CreateGestionDto } from './dto/create-gestion.dto';
 import { assignDefined } from '../common/assign-defined.util';
 
 @Injectable()
 export class EmpresasService {
   constructor(
     @InjectRepository(Empresa) private readonly empresas: Repository<Empresa>,
+    @InjectRepository(GestionRenovacion)
+    private readonly gestiones: Repository<GestionRenovacion>,
   ) {}
 
   async create(dto: CreateEmpresaDto): Promise<Empresa> {
@@ -21,7 +25,7 @@ export class EmpresasService {
       where: { nombre: dto.nombre },
     });
     if (existing) {
-      throw new ConflictException('A company with that name already exists');
+      throw new ConflictException('Ya existe una empresa con ese nombre.');
     }
     return this.empresas.save(this.empresas.create(dto));
   }
@@ -33,7 +37,7 @@ export class EmpresasService {
   async findById(id: string): Promise<Empresa> {
     const empresa = await this.empresas.findOne({ where: { id } });
     if (!empresa) {
-      throw new NotFoundException('Empresa not found');
+      throw new NotFoundException('Empresa no encontrada.');
     }
     return empresa;
   }
@@ -65,5 +69,39 @@ export class EmpresasService {
     const nombre = empresa.nombre;
     await this.empresas.remove(empresa);
     return nombre;
+  }
+
+  async crearGestion(
+    empresaId: string,
+    dto: CreateGestionDto,
+  ): Promise<GestionRenovacion> {
+    await this.findById(empresaId);
+    return this.gestiones.save(
+      this.gestiones.create({
+        empresaId,
+        nota: dto.nota,
+        proximoSeguimiento: dto.proximoSeguimiento ?? null,
+      }),
+    );
+  }
+
+  async listGestionDeEmpresa(empresaId: string): Promise<GestionRenovacion[]> {
+    await this.findById(empresaId);
+    return this.gestiones.find({
+      where: { empresaId },
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  // Una consulta agrupada en JS en vez de N+1 — volumen bajo (una fila por empresa), evita
+  // pelear con un GROUP BY/DISTINCT ON de Postgres para algo que carteraEmpresas() necesita
+  // para todas las empresas a la vez.
+  async ultimaGestionPorEmpresa(): Promise<Map<string, GestionRenovacion>> {
+    const todas = await this.gestiones.find({ order: { createdAt: 'DESC' } });
+    const mapa = new Map<string, GestionRenovacion>();
+    for (const gestion of todas) {
+      if (!mapa.has(gestion.empresaId)) mapa.set(gestion.empresaId, gestion);
+    }
+    return mapa;
   }
 }

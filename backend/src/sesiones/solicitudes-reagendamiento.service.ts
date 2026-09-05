@@ -33,7 +33,7 @@ export class SolicitudesReagendamientoService {
   ): Promise<SolicitudReagendamiento> {
     const coachee = await this.coachees.findByUserId(actorUserId);
     if (!coachee) {
-      throw new NotFoundException('Coachee profile not found');
+      throw new NotFoundException('Perfil de coachee no encontrado.');
     }
     const sesion = await this.sesiones.findOneOwnedByCoachee(
       sesionId,
@@ -87,7 +87,7 @@ export class SolicitudesReagendamientoService {
       relations: { sesion: true, coachee: { user: true } },
     });
     if (!solicitud) {
-      throw new NotFoundException('Solicitud not found');
+      throw new NotFoundException('Solicitud no encontrada.');
     }
     const fechaOriginal = solicitud.sesion?.fechaHora.toISOString();
 

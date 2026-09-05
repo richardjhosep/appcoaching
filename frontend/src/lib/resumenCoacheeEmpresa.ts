@@ -10,6 +10,10 @@ export interface ResumenCoacheeEmpresa {
   competenciaNombre: string | null
   alertaPorVencer: boolean
   proximaSesionFecha: string | null
+  // Riesgo distinto de "alertaPorVencer" (que avisa que el ciclo casi termina): un proceso
+  // en curso, con sesiones pendientes, sin ninguna sesión agendada — nadie lo nota hasta que
+  // ya perdió mucho tiempo. Un coachee puede tener ambas alertas a la vez.
+  sinProximaSesion: boolean
 }
 
 export interface FuentesResumenCoachee {
@@ -41,5 +45,6 @@ export function resumirCoachee(fuentes: FuentesResumenCoachee): ResumenCoacheeEm
     competenciaNombre: plan?.competencia?.nombre ?? null,
     alertaPorVencer: cicloActual?.alertaPorVencer ?? false,
     proximaSesionFecha: proximaSesion?.fechaHora ?? null,
+    sinProximaSesion: !!cicloActual && cicloActual.sesionesRestantes > 0 && !proximaSesion,
   }
 }

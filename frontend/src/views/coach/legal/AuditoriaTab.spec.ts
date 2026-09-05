@@ -26,7 +26,7 @@ const coachees: CoacheeListItem[] = [
   { id: 'c1', nombre: 'Rodrigo Peña', empresaId: null, consentimientoInformado: true, consentimientoFecha: null },
 ]
 const empresas: Empresa[] = [
-  { id: 'e1', nombre: 'Andes Minerals', tarifaHora: 50000, isActive: true, pagada: true, horasContratadas: null },
+  { id: 'e1', nombre: 'Andes Minerals', tarifaHora: 50000, isActive: true, pagada: true, horasContratadas: null, fechaInicio: null, fechaFin: null },
 ]
 
 const logs: AuditLog[] = [

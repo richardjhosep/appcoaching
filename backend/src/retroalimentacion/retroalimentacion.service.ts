@@ -27,7 +27,7 @@ export class RetroalimentacionService {
   private async resolveCoacheeId(actorUserId: string): Promise<string> {
     const coachee = await this.coachees.findByUserId(actorUserId);
     if (!coachee) {
-      throw new NotFoundException('Coachee profile not found');
+      throw new NotFoundException('Perfil de coachee no encontrado.');
     }
     return coachee.id;
   }
@@ -41,7 +41,7 @@ export class RetroalimentacionService {
       where: { id: dto.cicloId, coacheeId },
     });
     if (!ciclo) {
-      throw new NotFoundException('Ciclo not found');
+      throw new NotFoundException('Ciclo no encontrado.');
     }
     const yaExiste = await this.retroalimentaciones.exists({
       where: { cicloId: dto.cicloId },

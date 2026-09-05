@@ -35,6 +35,19 @@ export function soloPermitir(
 
 export const MIMETYPES_PDF = ['application/pdf'] as const;
 
+export const MIMETYPES_IMAGEN = [
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+] as const;
+
+// Certificaciones del perfil del coach: aceptan tanto el PDF escaneado como una foto del
+// diploma — no tiene sentido restringir a uno solo de los dos formatos ahí.
+export const MIMETYPES_PDF_O_IMAGEN = [
+  ...MIMETYPES_PDF,
+  ...MIMETYPES_IMAGEN,
+] as const;
+
 export const MIMETYPES_RECURSO = [
   'application/pdf',
   'application/msword',

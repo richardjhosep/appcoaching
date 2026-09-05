@@ -2,12 +2,24 @@ import { apiRequest } from './client'
 
 export type EstadoSolicitudProceso = 'pendiente' | 'atendida'
 
+export interface RespuestaSatisfaccion {
+  categoria: string
+  valor: number
+}
+
 export interface Encuesta {
   id: string
   empresaId: string
+  cicloId: string | null
+  respuestas: RespuestaSatisfaccion[] | null
   calificacion: number
   comentario: string | null
   createdAt: string
+  ciclo?: {
+    id: string
+    fechaCierre: string | null
+    coachee?: { id: string; nombre: string }
+  }
 }
 
 export interface SolicitudProceso {
@@ -27,10 +39,14 @@ export interface KpisEmpresa {
   satisfaccionPromedio: number | null
 }
 
-export function crearEncuesta(calificacion: number, comentario?: string): Promise<Encuesta> {
+export function crearEncuesta(
+  cicloId: string,
+  respuestas: RespuestaSatisfaccion[],
+  comentario?: string,
+): Promise<Encuesta> {
   return apiRequest<Encuesta>('/satisfaccion/encuestas', {
     method: 'POST',
-    body: { calificacion, comentario },
+    body: { cicloId, respuestas, comentario },
   })
 }
 
@@ -70,4 +86,16 @@ export function getMisKpis(): Promise<KpisEmpresa> {
 
 export function getKpisDeEmpresa(empresaId: string): Promise<KpisEmpresa> {
   return apiRequest<KpisEmpresa>(`/satisfaccion/kpis/${empresaId}`)
+}
+
+export interface PuntoTendencia {
+  mes: string
+  etiqueta: string
+  satisfaccionPromedio: number | null
+  pctLogrado: number | null
+  tasaAsistencia: number | null
+}
+
+export function getMiTendencia(): Promise<PuntoTendencia[]> {
+  return apiRequest<PuntoTendencia[]>('/satisfaccion/tendencia/me')
 }

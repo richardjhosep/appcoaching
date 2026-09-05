@@ -40,6 +40,12 @@ export class CicloCoaching {
   @Column({ name: 'informe_final', type: 'text', nullable: true })
   informeFinal: string | null;
 
+  // Campo estructurado y aparte del informe (que es texto libre) — para que la empresa
+  // pueda ver "qué impacto tuvo esto en el negocio" como su propio dato en una grilla, sin
+  // tener que leer el informe completo buscándolo.
+  @Column({ name: 'impacto_negocio', type: 'text', nullable: true })
+  impactoNegocio: string | null;
+
   @Column({ name: 'informe_pdf_nombre', type: 'varchar', nullable: true })
   informePdfNombre: string | null;
 

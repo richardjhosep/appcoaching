@@ -5,6 +5,9 @@ import { MapaMental } from './entities/mapa-mental.entity';
 import { NodoMapa } from './entities/nodo-mapa.entity';
 import { Recurso } from '../recursos/entities/recurso.entity';
 import { CompetenciasService } from '../competencias/competencias.service';
+import { CoacheesService } from '../coachees/coachees.service';
+import { PlanesDesarrolloService } from '../planes-desarrollo/planes-desarrollo.service';
+import { finDelDiaChileAUtc } from '../common/chile-time.util';
 
 type PartialMapa = Partial<MapaMental>;
 type PartialNodo = Partial<NodoMapa>;
@@ -29,7 +32,11 @@ describe('MapasService', () => {
   };
   let recursos: { exists: jest.Mock<Promise<boolean>, unknown[]> };
   let competencias: { exists: jest.Mock<Promise<boolean>, [string]> };
+  let coachees: { findByUserId: jest.Mock };
+  let planesDesarrollo: { getByCoacheeId: jest.Mock };
 
+  const ACTOR_USER_ID = 'user-1';
+  const COACHEE_ID = 'coachee-1';
   const MAPA_ID = 'mapa-1';
 
   beforeEach(() => {
@@ -55,13 +62,47 @@ describe('MapasService', () => {
     };
     recursos = { exists: jest.fn<Promise<boolean>, unknown[]>() };
     competencias = { exists: jest.fn<Promise<boolean>, [string]>() };
+    coachees = { findByUserId: jest.fn() };
+    planesDesarrollo = { getByCoacheeId: jest.fn() };
+
+    coachees.findByUserId.mockResolvedValue({ id: COACHEE_ID });
 
     service = new MapasService(
       mapas as unknown as Repository<MapaMental>,
       nodos as unknown as Repository<NodoMapa>,
       recursos as unknown as Repository<Recurso>,
       competencias as unknown as CompetenciasService,
+      coachees as unknown as CoacheesService,
+      planesDesarrollo as unknown as PlanesDesarrolloService,
     );
+  });
+
+  describe('disponiblesParaCoachee', () => {
+    it('returns nothing when the coachee has no plan (no competencia to filter by)', async () => {
+      planesDesarrollo.getByCoacheeId.mockRejectedValue(
+        new NotFoundException(),
+      );
+
+      const resultado = await service.disponiblesParaCoachee(ACTOR_USER_ID);
+
+      expect(resultado).toEqual([]);
+      expect(mapas.find).not.toHaveBeenCalled();
+    });
+
+    it("only queries mapas matching the competencia of the coachee's plan", async () => {
+      planesDesarrollo.getByCoacheeId.mockResolvedValue({
+        competenciaId: 'comp-1',
+      });
+      mapas.find.mockResolvedValue([]);
+
+      await service.disponiblesParaCoachee(ACTOR_USER_ID);
+
+      expect(mapas.find).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { activo: true, competenciaId: 'comp-1' },
+        }),
+      );
+    });
   });
 
   describe('addNodo', () => {
@@ -149,6 +190,53 @@ describe('MapasService', () => {
       await expect(
         service.create({ titulo: 'Mapa', competenciaId: 'comp-1' }),
       ).rejects.toThrow(NotFoundException);
+    });
+
+    it('converts fechaLimite to the end of that day in Chile time', async () => {
+      competencias.exists.mockResolvedValue(true);
+
+      const mapa = await service.create({
+        titulo: 'Mapa',
+        competenciaId: 'comp-1',
+        fechaLimite: '2026-10-15',
+      });
+
+      expect(mapa.fechaLimite).toEqual(finDelDiaChileAUtc('2026-10-15'));
+    });
+  });
+
+  describe('update', () => {
+    it('sets and clears fechaLimite', async () => {
+      mapas.findOne.mockResolvedValue({ id: MAPA_ID });
+
+      const conFecha = await service.update(MAPA_ID, {
+        fechaLimite: '2026-10-15',
+      });
+      expect(conFecha.fechaLimite).toEqual(finDelDiaChileAUtc('2026-10-15'));
+
+      mapas.findOne.mockResolvedValue({
+        id: MAPA_ID,
+        fechaLimite: finDelDiaChileAUtc('2026-10-15'),
+      });
+      const sinFecha = await service.update(MAPA_ID, { fechaLimite: null });
+      expect(sinFecha.fechaLimite).toBeNull();
+    });
+  });
+
+  describe('disponiblesParaCoachee — fechaLimite', () => {
+    it('excludes a mapa whose fechaLimite already passed', async () => {
+      planesDesarrollo.getByCoacheeId.mockResolvedValue({
+        competenciaId: 'comp-1',
+      });
+      nodos.count.mockResolvedValue(0);
+      mapas.find.mockResolvedValue([
+        { id: 'vencido', fechaLimite: new Date('2020-01-01T00:00:00.000Z') },
+        { id: 'vigente', fechaLimite: null },
+      ]);
+
+      const resultado = await service.disponiblesParaCoachee(ACTOR_USER_ID);
+
+      expect(resultado.map((m) => m.id)).toEqual(['vigente']);
     });
   });
 });

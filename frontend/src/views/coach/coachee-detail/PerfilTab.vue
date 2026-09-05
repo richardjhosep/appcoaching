@@ -2,6 +2,7 @@
 import { onMounted, ref, watch } from 'vue'
 import { getCoachee, type Coachee } from '../../../api/coachees'
 import ConsentimientoInformado from '../../../components/ConsentimientoInformado.vue'
+import SkeletonBlock from '../../../components/SkeletonBlock.vue'
 
 const props = defineProps<{ coacheeId: string }>()
 
@@ -26,12 +27,7 @@ function onConsentimientoActualizado(actualizado: { consentimientoInformado: boo
 </script>
 
 <template>
-  <div
-    v-if="loading"
-    class="text-sm text-[var(--color-ink)]/60"
-  >
-    Cargando…
-  </div>
+  <SkeletonBlock v-if="loading" />
   <div
     v-else-if="coachee"
     class="space-y-4"

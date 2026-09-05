@@ -9,6 +9,8 @@ import { RepasoFlashcard } from './entities/repaso-flashcard.entity';
 import { Recurso } from '../recursos/entities/recurso.entity';
 import { CoacheesService } from '../coachees/coachees.service';
 import { CompetenciasService } from '../competencias/competencias.service';
+import { PlanesDesarrolloService } from '../planes-desarrollo/planes-desarrollo.service';
+import { finDelDiaChileAUtc } from '../common/chile-time.util';
 
 type PartialFlashcard = Partial<Flashcard>;
 type PartialRepaso = Partial<RepasoFlashcard>;
@@ -50,6 +52,7 @@ describe('FlashcardsService', () => {
     findByUserId: jest.Mock<Promise<{ id: string } | null>, [string]>;
   };
   let competencias: { exists: jest.Mock<Promise<boolean>, [string]> };
+  let planesDesarrollo: { getByCoacheeId: jest.Mock };
 
   const ACTOR_USER_ID = 'user-1';
   const COACHEE_ID = 'coachee-1';
@@ -79,10 +82,14 @@ describe('FlashcardsService', () => {
       findByUserId: jest.fn<Promise<{ id: string } | null>, [string]>(),
     };
     competencias = { exists: jest.fn<Promise<boolean>, [string]>() };
+    planesDesarrollo = { getByCoacheeId: jest.fn() };
 
     coachees.findByUserId.mockResolvedValue({ id: COACHEE_ID });
     repasos.exists.mockResolvedValue(false);
     repasos.findOne.mockResolvedValue(null);
+    planesDesarrollo.getByCoacheeId.mockResolvedValue({
+      competenciaId: 'comp-1',
+    });
 
     service = new FlashcardsService(
       flashcards as unknown as Repository<Flashcard>,
@@ -90,10 +97,34 @@ describe('FlashcardsService', () => {
       recursos as unknown as Repository<Recurso>,
       coachees as unknown as CoacheesService,
       competencias as unknown as CompetenciasService,
+      planesDesarrollo as unknown as PlanesDesarrolloService,
     );
   });
 
   describe('disponiblesParaCoachee', () => {
+    it('returns nothing when the coachee has no plan (no competencia to filter by)', async () => {
+      planesDesarrollo.getByCoacheeId.mockRejectedValue(
+        new NotFoundException(),
+      );
+
+      const resultado = await service.disponiblesParaCoachee(ACTOR_USER_ID);
+
+      expect(resultado).toEqual([]);
+      expect(flashcards.find).not.toHaveBeenCalled();
+    });
+
+    it("only queries flashcards matching the competencia of the coachee's plan", async () => {
+      flashcards.find.mockResolvedValue([]);
+
+      await service.disponiblesParaCoachee(ACTOR_USER_ID);
+
+      expect(flashcards.find).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { activo: true, competenciaId: 'comp-1' },
+        }),
+      );
+    });
+
     it('marks debeRepasar=true when the coachee never studied the card', async () => {
       flashcards.find.mockResolvedValue([{ id: FLASHCARD_ID, activo: true }]);
       repasos.findOne.mockResolvedValue(null);
@@ -183,6 +214,56 @@ describe('FlashcardsService', () => {
           competenciaId: 'comp-1',
         }),
       ).rejects.toThrow(NotFoundException);
+    });
+
+    it('converts fechaLimite to the end of that day in Chile time', async () => {
+      competencias.exists.mockResolvedValue(true);
+
+      const flashcard = await service.create({
+        anverso: 'Pregunta',
+        reverso: 'Respuesta',
+        competenciaId: 'comp-1',
+        fechaLimite: '2026-10-15',
+      });
+
+      expect(flashcard.fechaLimite).toEqual(finDelDiaChileAUtc('2026-10-15'));
+    });
+  });
+
+  describe('update', () => {
+    it('sets and clears fechaLimite', async () => {
+      flashcards.findOne.mockResolvedValue({ id: FLASHCARD_ID });
+
+      const conFecha = await service.update(FLASHCARD_ID, {
+        fechaLimite: '2026-10-15',
+      });
+      expect(conFecha.fechaLimite).toEqual(finDelDiaChileAUtc('2026-10-15'));
+
+      flashcards.findOne.mockResolvedValue({
+        id: FLASHCARD_ID,
+        fechaLimite: finDelDiaChileAUtc('2026-10-15'),
+      });
+      const sinFecha = await service.update(FLASHCARD_ID, {
+        fechaLimite: null,
+      });
+      expect(sinFecha.fechaLimite).toBeNull();
+    });
+  });
+
+  describe('disponiblesParaCoachee — fechaLimite', () => {
+    it('excludes a flashcard whose fechaLimite already passed', async () => {
+      flashcards.find.mockResolvedValue([
+        {
+          id: 'vencida',
+          activo: true,
+          fechaLimite: new Date('2020-01-01T00:00:00.000Z'),
+        },
+        { id: 'vigente', activo: true, fechaLimite: null },
+      ]);
+
+      const resultado = await service.disponiblesParaCoachee(ACTOR_USER_ID);
+
+      expect(resultado.map((f) => f.id)).toEqual(['vigente']);
     });
   });
 });

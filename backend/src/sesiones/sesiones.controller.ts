@@ -61,6 +61,12 @@ export class SesionesController {
   }
 
   @Roles(Role.COACHEE)
+  @Post(':id/confirmar')
+  confirmar(@Param('id') id: string, @CurrentUser() actor: AuthenticatedUser) {
+    return this.sesiones.confirmar(id, actor.id);
+  }
+
+  @Roles(Role.COACHEE)
   @Post(':id/reagendamiento')
   solicitarReagendamiento(
     @Param('id') id: string,
@@ -97,6 +103,25 @@ export class SesionesController {
         ...sesion,
         postSesion: await this.postSesiones.findForSesion(sesion.id),
       })),
+    );
+  }
+
+  // Declarada antes de ':id' — 'todas' es un segmento literal, no debe quedar atrás de un
+  // sibling con :param al mismo nivel. Agenda global del coach: todas las sesiones de todos
+  // los coachees, con el nombre de cada coachee (hoy WeekCalendar solo se usaba acotado a uno).
+  @Roles(Role.COACH)
+  @Get('todas')
+  findTodasConCoachee() {
+    return this.sesiones.findTodasConCoachee();
+  }
+
+  // Declarada antes de ':id' por el mismo criterio — bloque "Esta semana" del dashboard.
+  @Roles(Role.COACH)
+  @Get('semana')
+  findSemana(@Query('desde') desde: string, @Query('hasta') hasta: string) {
+    return this.sesiones.findEnRangoConCoachee(
+      new Date(desde),
+      new Date(hasta),
     );
   }
 

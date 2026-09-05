@@ -6,6 +6,7 @@ import { getResumenNegocio, getAlertas, getAvancePorArea, type ResumenNegocio, t
 import { updateEmpresa } from '../../../api/empresas'
 import { ApiError } from '../../../api/client'
 import NavIcon from '../../../components/NavIcon.vue'
+import SkeletonBlock from '../../../components/SkeletonBlock.vue'
 
 const router = useRouter()
 
@@ -105,12 +106,7 @@ function exportarExcel() {
     </button>
   </div>
 
-  <div
-    v-if="loading"
-    class="text-sm text-[var(--color-ink)]/60"
-  >
-    Cargando…
-  </div>
+  <SkeletonBlock v-if="loading" />
   <div
     v-else-if="resumen"
     class="space-y-4"

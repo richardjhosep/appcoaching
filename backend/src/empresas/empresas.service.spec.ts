@@ -2,8 +2,10 @@ import { ConflictException, NotFoundException } from '@nestjs/common';
 import { Repository } from 'typeorm';
 import { EmpresasService } from './empresas.service';
 import { Empresa } from './entities/empresa.entity';
+import { GestionRenovacion } from './entities/gestion-renovacion.entity';
 
 type PartialEmpresa = Partial<Empresa>;
+type PartialGestion = Partial<GestionRenovacion>;
 
 describe('EmpresasService', () => {
   let service: EmpresasService;
@@ -15,6 +17,11 @@ describe('EmpresasService', () => {
     save: jest.Mock<Promise<PartialEmpresa>, [PartialEmpresa]>;
     remove: jest.Mock<Promise<PartialEmpresa>, [PartialEmpresa]>;
     manager: { query: jest.Mock };
+  };
+  let gestionesRepo: {
+    find: jest.Mock<Promise<PartialGestion[]>, unknown[]>;
+    create: jest.Mock<PartialGestion, [PartialGestion]>;
+    save: jest.Mock<Promise<PartialGestion>, [PartialGestion]>;
   };
 
   beforeEach(() => {
@@ -29,7 +36,19 @@ describe('EmpresasService', () => {
       remove: jest.fn((data: PartialEmpresa) => Promise.resolve(data)),
       manager: { query: jest.fn().mockResolvedValue([{ total: 0 }]) },
     };
-    service = new EmpresasService(repo as unknown as Repository<Empresa>);
+    gestionesRepo = {
+      find: jest
+        .fn<Promise<PartialGestion[]>, unknown[]>()
+        .mockResolvedValue([]),
+      create: jest.fn((data: PartialGestion) => data),
+      save: jest.fn((data: PartialGestion) =>
+        Promise.resolve({ id: 'gestion-generated-id', ...data }),
+      ),
+    };
+    service = new EmpresasService(
+      repo as unknown as Repository<Empresa>,
+      gestionesRepo as unknown as Repository<GestionRenovacion>,
+    );
   });
 
   describe('create', () => {
@@ -98,6 +117,68 @@ describe('EmpresasService', () => {
 
       await expect(service.remove('e1')).rejects.toThrow(ConflictException);
       expect(repo.remove).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('crearGestion', () => {
+    it('crea una gestión de renovación para una empresa existente', async () => {
+      repo.findOne.mockResolvedValue({ id: 'e1', nombre: 'Andes Minerals' });
+
+      const gestion = await service.crearGestion('e1', {
+        nota: 'Llamada, esperando respuesta',
+        proximoSeguimiento: '2026-10-01',
+      });
+
+      expect(gestion).toEqual(
+        expect.objectContaining({
+          empresaId: 'e1',
+          nota: 'Llamada, esperando respuesta',
+          proximoSeguimiento: '2026-10-01',
+        }),
+      );
+    });
+
+    it('rechaza la gestión si la empresa no existe', async () => {
+      repo.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.crearGestion('missing', { nota: 'x' }),
+      ).rejects.toThrow(NotFoundException);
+      expect(gestionesRepo.save).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('listGestionDeEmpresa', () => {
+    it('lista la bitácora de una empresa, la más reciente primero', async () => {
+      repo.findOne.mockResolvedValue({ id: 'e1', nombre: 'Andes Minerals' });
+      gestionesRepo.find.mockResolvedValue([
+        { id: 'g2', empresaId: 'e1', nota: 'Más reciente' },
+        { id: 'g1', empresaId: 'e1', nota: 'Más antigua' },
+      ]);
+
+      const lista = await service.listGestionDeEmpresa('e1');
+
+      expect(lista).toHaveLength(2);
+      expect(gestionesRepo.find).toHaveBeenCalledWith({
+        where: { empresaId: 'e1' },
+        order: { createdAt: 'DESC' },
+      });
+    });
+  });
+
+  describe('ultimaGestionPorEmpresa', () => {
+    it('devuelve solo la más reciente por empresa (primera vista gana)', async () => {
+      gestionesRepo.find.mockResolvedValue([
+        { id: 'g2', empresaId: 'e1', nota: 'Más reciente' },
+        { id: 'g1', empresaId: 'e1', nota: 'Más antigua' },
+        { id: 'g3', empresaId: 'e2', nota: 'Única de e2' },
+      ]);
+
+      const mapa = await service.ultimaGestionPorEmpresa();
+
+      expect(mapa.get('e1')?.id).toBe('g2');
+      expect(mapa.get('e2')?.id).toBe('g3');
+      expect(mapa.size).toBe(2);
     });
   });
 });

@@ -205,6 +205,35 @@ describe('CiclosService', () => {
     });
   });
 
+  describe('updateImpactoNegocio', () => {
+    it('sets the field, independent of informeFinal', async () => {
+      ciclosRepo.findOne.mockResolvedValue({
+        id: 'ciclo-1',
+        totalSesiones: 10,
+        fechaCierre: null,
+        informeFinal: 'Informe ya escrito',
+        impactoNegocio: null,
+      });
+      sesionesRepo.count.mockResolvedValue(0);
+
+      const ciclo = await service.updateImpactoNegocio(
+        'ciclo-1',
+        'Redujo el tiempo de entrega en 20%.',
+      );
+
+      expect(ciclo.impactoNegocio).toBe('Redujo el tiempo de entrega en 20%.');
+      expect(ciclo.informeFinal).toBe('Informe ya escrito');
+    });
+
+    it('rejects when the ciclo does not exist', async () => {
+      ciclosRepo.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.updateImpactoNegocio('missing', 'texto'),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
+
   describe('generarBorradorInforme', () => {
     it('builds a draft from the plan, session count and avance even without a plan', async () => {
       ciclosRepo.findOne.mockResolvedValue({
@@ -263,7 +292,11 @@ describe('CiclosService', () => {
       );
       seguimiento.avanceGeneralForCoachee.mockResolvedValue(null);
       seguimiento.listLogrosForCoachee.mockResolvedValue([
-        { fecha: '2026-07-10', descripcion: 'Lideró la reunión de equipo' },
+        {
+          fecha: '2026-07-10',
+          descripcion: 'Lideró la reunión de equipo',
+          createdAt: new Date('2026-07-10'),
+        },
       ]);
 
       const ciclo = await service.generarBorradorInforme('ciclo-1');
@@ -272,6 +305,38 @@ describe('CiclosService', () => {
       expect(ciclo.informeFinal).toContain(
         '2026-07-10: Lideró la reunión de equipo',
       );
+    });
+
+    it("excludes logros created outside this ciclo's date window (from a previous ciclo)", async () => {
+      ciclosRepo.findOne.mockResolvedValue({
+        id: 'ciclo-2',
+        coacheeId: 'coachee-1',
+        totalSesiones: 10,
+        fechaApertura: new Date('2026-06-01'),
+        fechaCierre: new Date('2026-08-01'),
+      });
+      sesionesRepo.count.mockResolvedValue(3);
+      planesDesarrollo.getByCoacheeId.mockRejectedValue(
+        new NotFoundException(),
+      );
+      seguimiento.avanceGeneralForCoachee.mockResolvedValue(null);
+      seguimiento.listLogrosForCoachee.mockResolvedValue([
+        {
+          fecha: '2026-01-15',
+          descripcion: 'Logro del ciclo anterior',
+          createdAt: new Date('2026-01-15'), // antes de fechaApertura de ciclo-2
+        },
+        {
+          fecha: '2026-07-01',
+          descripcion: 'Logro de este ciclo',
+          createdAt: new Date('2026-07-01'), // dentro de la ventana
+        },
+      ]);
+
+      const ciclo = await service.generarBorradorInforme('ciclo-2');
+
+      expect(ciclo.informeFinal).toContain('Logro de este ciclo');
+      expect(ciclo.informeFinal).not.toContain('Logro del ciclo anterior');
     });
 
     it('includes the retroalimentación del coachee for this ciclo when it exists', async () => {

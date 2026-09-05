@@ -5,8 +5,15 @@ import AppShell from '../../components/AppShell.vue'
 import SectionCard from '../../components/SectionCard.vue'
 import EmptyState from '../../components/EmptyState.vue'
 import NavIcon from '../../components/NavIcon.vue'
-import { getMisKpis, type KpisEmpresa } from '../../api/satisfaccion'
+import { getMisKpis, getMiTendencia, type KpisEmpresa, type PuntoTendencia } from '../../api/satisfaccion'
+import TendenciaChart from '../../components/TendenciaChart.vue'
 import { getMyEmpresa, type Empresa } from '../../api/empresas'
+import {
+  getMiResumenFinanciero,
+  getMiResumenAcumulado,
+  type ResumenFinanzasEmpresa,
+  type ResumenAcumuladoEmpresa,
+} from '../../api/negocio'
 import { listCoachees, type CoacheeListItem } from '../../api/coachees'
 import { getPlanByCoachee } from '../../api/planesDesarrollo'
 import { getCiclosDeCoachee, type Ciclo } from '../../api/ciclos'
@@ -14,19 +21,39 @@ import { getAvanceDeCoachee } from '../../api/seguimiento'
 import { getProximaSesionDeCoachee } from '../../api/sesiones'
 import { resumirCoachee, type ResumenCoacheeEmpresa } from '../../lib/resumenCoacheeEmpresa'
 import { distribucionPorArea, competenciasTrabajadas } from '../../lib/distribucionEquipo'
+import { ultimosImpactos } from '../../lib/ultimosImpactos'
 import { iniciales } from '../../lib/avatar'
 import DonutChart, { type DonutSegment } from '../../components/DonutChart.vue'
+import SkeletonBlock from '../../components/SkeletonBlock.vue'
 
 const router = useRouter()
 const loading = ref(true)
 const kpis = ref<KpisEmpresa | null>(null)
+const tendencia = ref<PuntoTendencia[]>([])
 const empresa = ref<Empresa | null>(null)
-const filas = ref<{ coachee: CoacheeListItem; resumen: ResumenCoacheeEmpresa }[]>([])
+const finanzasMes = ref<ResumenFinanzasEmpresa | null>(null)
+const finanzasAcumuladas = ref<ResumenAcumuladoEmpresa | null>(null)
+const filas = ref<{ coachee: CoacheeListItem; resumen: ResumenCoacheeEmpresa; ciclos: Ciclo[] }[]>([])
 const competenciaSeleccionada = ref<string | null>(null)
 
 const formatoCLP = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 })
+const formatoFecha = (fecha: string) =>
+  new Date(fecha).toLocaleDateString('es-CL', { day: 'numeric', month: 'short', year: 'numeric' })
 
-const conAlerta = computed(() => filas.value.filter((f) => f.resumen.alertaPorVencer))
+const conAlerta = computed(() =>
+  filas.value.filter((f) => f.resumen.alertaPorVencer || f.resumen.sinProximaSesion),
+)
+
+// El impacto en el negocio es texto libre, no un número — no hay "top 5 por magnitud" posible
+// sin inventar un puntaje. Lo real y útil es "los más recientes": una vitrina de resultados
+// concretos en vez de un gráfico de barras que no tendría qué graficar.
+const impactosDestacados = computed(() => ultimosImpactos(filas.value))
+
+const etiquetaSemestre = computed(() => {
+  if (!finanzasAcumuladas.value) return ''
+  const { semestre, anio } = finanzasAcumuladas.value
+  return `${semestre === 1 ? '1er' : '2do'} semestre ${anio}`
+})
 
 // Paleta cíclica de la marca para categorías arbitrarias (departamentos) — "Sin asignar"
 // usa un neutro aparte para que se lea de inmediato como "dato pendiente", no como un
@@ -56,7 +83,7 @@ function toggleCompetencia(nombre: string) {
   competenciaSeleccionada.value = competenciaSeleccionada.value === nombre ? null : nombre
 }
 
-async function resumenDe(coachee: CoacheeListItem): Promise<ResumenCoacheeEmpresa> {
+async function resumenDe(coachee: CoacheeListItem): Promise<{ resumen: ResumenCoacheeEmpresa; ciclos: Ciclo[] }> {
   const [plan, ciclos, avanceRes, proximaSesion] = await Promise.all([
     getPlanByCoachee(coachee.id).catch(() => null),
     getCiclosDeCoachee(coachee.id),
@@ -64,22 +91,35 @@ async function resumenDe(coachee: CoacheeListItem): Promise<ResumenCoacheeEmpres
     getProximaSesionDeCoachee(coachee.id),
   ])
   const cicloActual: Ciclo | null = ciclos.find((c) => !c.fechaCierre) ?? null
-  return resumirCoachee({ plan, cicloActual, ciclos, avance: avanceRes.avance, proximaSesion })
+  const resumen = resumirCoachee({ plan, cicloActual, ciclos, avance: avanceRes.avance, proximaSesion })
+  return { resumen, ciclos }
 }
 
 onMounted(async () => {
   loading.value = true
-  const [k, e, coachees] = await Promise.all([getMisKpis(), getMyEmpresa(), listCoachees()])
+  const [k, e, coachees, fm, fa, t] = await Promise.all([
+    getMisKpis(),
+    getMyEmpresa(),
+    listCoachees(),
+    getMiResumenFinanciero(),
+    getMiResumenAcumulado(),
+    getMiTendencia(),
+  ])
   kpis.value = k
   empresa.value = e
+  finanzasMes.value = fm
+  finanzasAcumuladas.value = fa
+  tendencia.value = t
   filas.value = await Promise.all(
-    coachees.map(async (coachee) => ({ coachee, resumen: await resumenDe(coachee) })),
+    coachees.map(async (coachee) => ({ coachee, ...(await resumenDe(coachee)) })),
   )
   loading.value = false
 })
 
+// Ya no hay una página dedicada por coachee — la lista de Coachees abre el modal de
+// progreso directo si llega con este query param (ver CoacheesView.vue).
 function verCiclo(coacheeId: string) {
-  void router.push({ name: 'empresa-ciclo', params: { coacheeId } })
+  void router.push({ name: 'empresa-coachees', query: { coacheeId } })
 }
 </script>
 
@@ -88,12 +128,7 @@ function verCiclo(coacheeId: string) {
     <h1 class="mb-4 font-[family-name:var(--font-heading)] text-xl font-semibold">
       Resumen
     </h1>
-    <div
-      v-if="loading"
-      class="text-sm text-[var(--color-ink)]/60"
-    >
-      Cargando…
-    </div>
+    <SkeletonBlock v-if="loading" />
     <div
       v-else
       class="space-y-4"
@@ -169,7 +204,120 @@ function verCiclo(coacheeId: string) {
               {{ empresa.pagada ? 'Al día' : 'Pendiente' }}
             </p>
           </div>
+          <div>
+            <p class="text-xs text-[var(--color-ink)]/60">
+              Término de contrato
+            </p>
+            <p class="text-sm font-medium">
+              {{ empresa.fechaFin ? new Date(`${empresa.fechaFin}T00:00:00`).toLocaleDateString('es-CL', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Sin fecha registrada' }}
+            </p>
+          </div>
         </div>
+      </SectionCard>
+
+      <SectionCard
+        v-if="finanzasMes && finanzasAcumuladas"
+        title="Finanzas"
+        icon="negocio"
+      >
+        <div class="grid gap-4 sm:grid-cols-3">
+          <div>
+            <p class="text-xs text-[var(--color-ink)]/60">
+              Este mes
+            </p>
+            <p class="font-[family-name:var(--font-mono)] text-2xl">
+              {{ formatoCLP.format(finanzasMes.gastoDelPeriodo + finanzasMes.gastoProyectado) }}
+            </p>
+            <p class="text-xs text-[var(--color-ink)]/50">
+              Ejecutado {{ formatoCLP.format(finanzasMes.gastoDelPeriodo) }} · Agendado {{ formatoCLP.format(finanzasMes.gastoProyectado) }}
+            </p>
+          </div>
+          <div>
+            <p class="text-xs text-[var(--color-ink)]/60">
+              {{ etiquetaSemestre }}
+            </p>
+            <p class="font-[family-name:var(--font-mono)] text-2xl">
+              {{ formatoCLP.format(finanzasAcumuladas.gastoEjecutadoSemestre + finanzasAcumuladas.gastoAgendadoSemestre) }}
+            </p>
+            <p class="text-xs text-[var(--color-ink)]/50">
+              Ejecutado {{ formatoCLP.format(finanzasAcumuladas.gastoEjecutadoSemestre) }} · Agendado {{ formatoCLP.format(finanzasAcumuladas.gastoAgendadoSemestre) }}
+            </p>
+          </div>
+          <div>
+            <p class="text-xs text-[var(--color-ink)]/60">
+              Año {{ finanzasAcumuladas.anio }}
+            </p>
+            <p class="font-[family-name:var(--font-mono)] text-2xl">
+              {{ formatoCLP.format(finanzasAcumuladas.gastoEjecutadoAnio + finanzasAcumuladas.gastoAgendadoAnio) }}
+            </p>
+            <p class="text-xs text-[var(--color-ink)]/50">
+              Ejecutado {{ formatoCLP.format(finanzasAcumuladas.gastoEjecutadoAnio) }} · Agendado {{ formatoCLP.format(finanzasAcumuladas.gastoAgendadoAnio) }}
+            </p>
+          </div>
+        </div>
+        <p class="mt-3 text-xs text-[var(--color-ink)]/50">
+          "Ejecutado" son sesiones ya realizadas; "Agendado" son sesiones ya programadas que
+          todavía no ocurren — no es una proyección estimada, solo lo que ya está en la agenda.
+        </p>
+        <RouterLink
+          to="/empresa/finanzas"
+          class="mt-3 inline-block text-xs text-[var(--color-saltup)] hover:underline"
+        >
+          Ver detalle por coachee y proyección a 6 meses →
+        </RouterLink>
+      </SectionCard>
+
+      <SectionCard
+        title="Tendencia"
+        icon="progreso"
+      >
+        <TendenciaChart :puntos="tendencia" />
+        <p class="mt-3 text-xs text-[var(--color-ink)]/50">
+          Últimos 6 meses. Un mes sin encuestas, cierres de ciclo o sesiones registradas se
+          muestra vacío, no en cero — no hay dato, no es un mal resultado.
+        </p>
+      </SectionCard>
+
+      <SectionCard
+        title="Últimos impactos en el negocio"
+        icon="impacto"
+      >
+        <EmptyState
+          v-if="impactosDestacados.length === 0"
+          icon="impacto"
+          title="Todavía no hay impactos registrados"
+          description="Cuando tu coach cierre un proceso y registre su impacto en el negocio, va a aparecer acá."
+        />
+        <ul
+          v-else
+          class="space-y-3"
+        >
+          <li
+            v-for="item in impactosDestacados"
+            :key="`${item.coacheeNombre}-${item.fechaCierre}`"
+            class="rounded-xl border border-[var(--color-line)] p-3"
+          >
+            <div class="mb-1.5 flex flex-wrap items-center justify-between gap-2">
+              <div class="flex min-w-0 items-center gap-2">
+                <div class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--color-spark)]/10 text-[var(--color-spark)]">
+                  <NavIcon
+                    name="impacto"
+                    :size="12"
+                  />
+                </div>
+                <span class="truncate text-sm font-medium">{{ item.coacheeNombre }}</span>
+                <span
+                  v-if="item.competenciaNombre"
+                  class="shrink-0 text-xs text-[var(--color-ink)]/50"
+                >· {{ item.competenciaNombre }}</span>
+              </div>
+              <span class="shrink-0 text-xs text-[var(--color-ink)]/40">{{ formatoFecha(item.fechaCierre) }}</span>
+            </div>
+            <p class="text-sm text-[var(--color-ink)]/80">
+              {{ item.impacto }}
+            </p>
+          </li>
+        </ul>
       </SectionCard>
 
       <SectionCard
@@ -252,7 +400,7 @@ function verCiclo(coacheeId: string) {
           v-if="conAlerta.length === 0"
           icon="objetivo"
           title="Todo al día"
-          description="Ningún ciclo de tus coachees está por vencer."
+          description="Ningún ciclo está por vencer ni tiene sesiones pendientes sin agendar."
         />
         <ul
           v-else
@@ -271,7 +419,16 @@ function verCiclo(coacheeId: string) {
               {{ iniciales(fila.coachee.nombre) }}
             </div>
             <span class="flex-1 font-medium">{{ fila.coachee.nombre }}</span>
-            <span class="rounded-full bg-[var(--color-bronze)]/20 px-2 py-0.5 text-xs text-[var(--color-bronze)]">
+            <span
+              v-if="fila.resumen.sinProximaSesion"
+              class="rounded-full bg-[var(--color-danger)]/15 px-2 py-0.5 text-xs text-[var(--color-danger)]"
+            >
+              Sin sesión agendada
+            </span>
+            <span
+              v-if="fila.resumen.alertaPorVencer"
+              class="rounded-full bg-[var(--color-bronze)]/20 px-2 py-0.5 text-xs text-[var(--color-bronze)]"
+            >
               Ciclo por vencer
             </span>
             <NavIcon

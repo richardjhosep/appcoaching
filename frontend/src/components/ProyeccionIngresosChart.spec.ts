@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import ProyeccionIngresosChart from './ProyeccionIngresosChart.vue'
+import { VChart } from '../lib/echartsCore'
 import type { ProyeccionMes } from '../api/negocio'
 
 const meses: ProyeccionMes[] = [
@@ -21,21 +22,20 @@ const meses: ProyeccionMes[] = [
 ]
 
 describe('ProyeccionIngresosChart', () => {
-  it('renders one bar per month and defaults to the first month in the detail panel', () => {
+  it('passes one bar per month to the chart and defaults to the first month in the detail panel', () => {
     const wrapper = mount(ProyeccionIngresosChart, { props: { meses } })
 
-    const barras = wrapper.findAll('button').filter((b) => /'26/.test(b.text()))
-    expect(barras).toHaveLength(2)
+    const option = wrapper.findComponent(VChart).props('option') as { xAxis: { data: string[] } }
+    expect(option.xAxis.data).toEqual(["Ago '26", "Sep '26"])
     expect(wrapper.text()).toContain("Ago '26")
     expect(wrapper.text()).toContain('$500.000')
     expect(wrapper.text()).toContain('Felipe Cortes')
   })
 
-  it('switches the detail panel when a different month is clicked', async () => {
+  it('switches the detail panel when a different month is clicked on the chart', async () => {
     const wrapper = mount(ProyeccionIngresosChart, { props: { meses } })
 
-    const septiembre = wrapper.findAll('button').find((b) => b.text().includes("Sep '26"))
-    await septiembre!.trigger('click')
+    await wrapper.findComponent(VChart).vm.$emit('click', { dataIndex: 1 })
 
     expect(wrapper.text()).toContain('Sin actividad de coachees este mes.')
   })

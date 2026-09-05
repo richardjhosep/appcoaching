@@ -3,6 +3,7 @@ import { computed, onMounted, reactive, ref, watch, type ComponentPublicInstance
 import ProgresoLineaTiempo from '../../../components/ProgresoLineaTiempo.vue'
 import WeekCalendar from '../../../components/WeekCalendar.vue'
 import AppModal from '../../../components/AppModal.vue'
+import SkeletonBlock from '../../../components/SkeletonBlock.vue'
 import {
   actualizarAsistencia,
   actualizarRegistroSesion,
@@ -204,12 +205,7 @@ function onSelectSesion(id: string) {
 </script>
 
 <template>
-  <div
-    v-if="loading"
-    class="text-sm text-[var(--color-ink)]/60"
-  >
-    Cargando…
-  </div>
+  <SkeletonBlock v-if="loading" />
   <div v-else>
     <div
       v-if="solicitudesReagendamiento.length"

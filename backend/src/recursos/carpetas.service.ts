@@ -39,7 +39,7 @@ export class CarpetasService {
   async findOne(id: string): Promise<Carpeta> {
     const carpeta = await this.carpetas.findOne({ where: { id } });
     if (!carpeta) {
-      throw new NotFoundException('Carpeta not found');
+      throw new NotFoundException('Carpeta no encontrada.');
     }
     return carpeta;
   }
@@ -81,7 +81,7 @@ export class CarpetasService {
   ): Promise<AsignacionCarpeta> {
     await this.findOne(carpetaId);
     if (!(await this.coachees.exists(coacheeId))) {
-      throw new NotFoundException('Coachee not found');
+      throw new NotFoundException('Coachee no encontrado.');
     }
     let asignacion = await this.asignaciones.findOne({
       where: { carpetaId, coacheeId },
@@ -139,7 +139,7 @@ export class CarpetasService {
   async misCarpetas(actorUserId: string): Promise<Carpeta[]> {
     const coachee = await this.coachees.findByUserId(actorUserId);
     if (!coachee) {
-      throw new NotFoundException('Coachee profile not found');
+      throw new NotFoundException('Perfil de coachee no encontrado.');
     }
     const visiblesIds = await this.carpetasVisiblesIds(coachee.id);
     if (visiblesIds.size === 0) return [];

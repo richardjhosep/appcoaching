@@ -5,6 +5,7 @@ import AppModal from '../../components/AppModal.vue'
 import Pagination from '../../components/Pagination.vue'
 import StatusToggle from '../../components/StatusToggle.vue'
 import IconButton from '../../components/IconButton.vue'
+import SkeletonBlock from '../../components/SkeletonBlock.vue'
 import { createCoachee, deleteCoachee, listCoachees, setCoacheeActivo, updateCoachee, type CoacheeListItem } from '../../api/coachees'
 import { listEmpresas, type Empresa } from '../../api/empresas'
 import { ApiError } from '../../api/client'
@@ -234,12 +235,7 @@ async function eliminar(coachee: CoacheeListItem) {
       </button>
     </div>
 
-    <div
-      v-if="loading"
-      class="text-sm text-[var(--color-ink)]/60"
-    >
-      Cargando…
-    </div>
+    <SkeletonBlock v-if="loading" />
     <div
       v-else
       class="space-y-3"

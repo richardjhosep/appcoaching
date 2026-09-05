@@ -1,11 +1,13 @@
 import { ConflictException, NotFoundException } from '@nestjs/common';
-import { Repository } from 'typeorm';
+import { IsNull, Repository } from 'typeorm';
 import { EjerciciosService } from './ejercicios.service';
 import { Ejercicio } from './entities/ejercicio.entity';
 import { VersionEjercicio } from './entities/version-ejercicio.entity';
 import { CoacheesService } from '../coachees/coachees.service';
 import { CompetenciasService } from '../competencias/competencias.service';
+import { PlanesDesarrolloService } from '../planes-desarrollo/planes-desarrollo.service';
 import { EstadoVersionEjercicio } from './enums/estado-version-ejercicio.enum';
+import { finDelDiaChileAUtc } from '../common/chile-time.util';
 
 type PartialEjercicio = Partial<Ejercicio>;
 type PartialVersion = Partial<VersionEjercicio>;
@@ -29,6 +31,7 @@ describe('EjerciciosService', () => {
   };
   let coachees: { findByUserId: jest.Mock };
   let competencias: { exists: jest.Mock };
+  let planesDesarrollo: { getByCoacheeId: jest.Mock };
 
   const ACTOR_USER_ID = 'user-1';
   const COACHEE_ID = 'coachee-1';
@@ -56,6 +59,7 @@ describe('EjerciciosService', () => {
     };
     coachees = { findByUserId: jest.fn() };
     competencias = { exists: jest.fn() };
+    planesDesarrollo = { getByCoacheeId: jest.fn() };
 
     coachees.findByUserId.mockResolvedValue({ id: COACHEE_ID });
 
@@ -64,7 +68,43 @@ describe('EjerciciosService', () => {
       versiones as unknown as Repository<VersionEjercicio>,
       coachees as unknown as CoacheesService,
       competencias as unknown as CompetenciasService,
+      planesDesarrollo as unknown as PlanesDesarrolloService,
     );
+  });
+
+  describe('disponiblesParaCoachee', () => {
+    it('shows only competencia-matched + universal (no competencia) ejercicios when the coachee has a plan', async () => {
+      planesDesarrollo.getByCoacheeId.mockResolvedValue({
+        competenciaId: 'comp-1',
+      });
+      ejercicios.find.mockResolvedValue([]);
+
+      await service.disponiblesParaCoachee(ACTOR_USER_ID);
+
+      expect(ejercicios.find).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: [
+            { activo: true, competenciaId: 'comp-1' },
+            { activo: true, competenciaId: IsNull() },
+          ],
+        }),
+      );
+    });
+
+    it('shows only universal (no competencia) ejercicios when the coachee has no plan yet', async () => {
+      planesDesarrollo.getByCoacheeId.mockRejectedValue(
+        new NotFoundException(),
+      );
+      ejercicios.find.mockResolvedValue([]);
+
+      await service.disponiblesParaCoachee(ACTOR_USER_ID);
+
+      expect(ejercicios.find).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { activo: true, competenciaId: IsNull() },
+        }),
+      );
+    });
   });
 
   describe('create', () => {
@@ -88,6 +128,53 @@ describe('EjerciciosService', () => {
 
       expect(ejercicio.titulo).toBe('Mensaje difícil');
       expect(ejercicio.competenciaId).toBeNull();
+    });
+
+    it('converts fechaLimite to the end of that day in Chile time', async () => {
+      const ejercicio = await service.create({
+        titulo: 'Mensaje difícil',
+        consigna: 'Redacta un mensaje...',
+        fechaLimite: '2026-10-15',
+      });
+
+      expect(ejercicio.fechaLimite).toEqual(finDelDiaChileAUtc('2026-10-15'));
+    });
+  });
+
+  describe('update', () => {
+    it('sets and clears fechaLimite', async () => {
+      ejercicios.findOne.mockResolvedValue({ id: EJERCICIO_ID });
+
+      const conFecha = await service.update(EJERCICIO_ID, {
+        fechaLimite: '2026-10-15',
+      });
+      expect(conFecha.fechaLimite).toEqual(finDelDiaChileAUtc('2026-10-15'));
+
+      ejercicios.findOne.mockResolvedValue({
+        id: EJERCICIO_ID,
+        fechaLimite: finDelDiaChileAUtc('2026-10-15'),
+      });
+      const sinFecha = await service.update(EJERCICIO_ID, {
+        fechaLimite: null,
+      });
+      expect(sinFecha.fechaLimite).toBeNull();
+    });
+  });
+
+  describe('disponiblesParaCoachee — fechaLimite', () => {
+    it('excludes an ejercicio whose fechaLimite already passed', async () => {
+      planesDesarrollo.getByCoacheeId.mockResolvedValue({
+        competenciaId: 'comp-1',
+      });
+      versiones.find.mockResolvedValue([]);
+      ejercicios.find.mockResolvedValue([
+        { id: 'vencido', fechaLimite: new Date('2020-01-01T00:00:00.000Z') },
+        { id: 'vigente', fechaLimite: null },
+      ]);
+
+      const resultado = await service.disponiblesParaCoachee(ACTOR_USER_ID);
+
+      expect(resultado.map((e) => e.id)).toEqual(['vigente']);
     });
   });
 

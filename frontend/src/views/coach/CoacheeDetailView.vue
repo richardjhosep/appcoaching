@@ -5,6 +5,8 @@ import AppShell from '../../components/AppShell.vue'
 import BackLink from '../../components/BackLink.vue'
 import CicloStepper from '../../components/CicloStepper.vue'
 import NavIcon from '../../components/NavIcon.vue'
+import SkeletonBlock from '../../components/SkeletonBlock.vue'
+import TabBar from '../../components/TabBar.vue'
 import PerfilTab from './coachee-detail/PerfilTab.vue'
 import PlanTab from './coachee-detail/PlanTab.vue'
 import SesionesTab from './coachee-detail/SesionesTab.vue'
@@ -26,11 +28,11 @@ const plan = ref<PlanDesarrollo | null>(null)
 const loading = ref(true)
 
 type TabKey = 'perfil' | 'plan' | 'sesiones' | 'ciclo'
-const tabs: Array<{ key: TabKey; label: string }> = [
-  { key: 'perfil', label: 'Perfil' },
-  { key: 'plan', label: 'Plan' },
-  { key: 'sesiones', label: 'Sesiones' },
-  { key: 'ciclo', label: 'Ciclo e informes' },
+const tabs: Array<{ key: TabKey; label: string; icon: string }> = [
+  { key: 'perfil', label: 'Perfil', icon: 'contacto' },
+  { key: 'plan', label: 'Plan', icon: 'planes' },
+  { key: 'sesiones', label: 'Sesiones', icon: 'sesiones' },
+  { key: 'ciclo', label: 'Ciclo e informes', icon: 'habito' },
 ]
 
 const activeTab = computed<TabKey>(() => {
@@ -92,12 +94,7 @@ const planEstadoClase: Record<EstadoPlan, string> = {
       />
     </div>
 
-    <div
-      v-if="loading"
-      class="text-sm text-[var(--color-ink)]/60"
-    >
-      Cargando…
-    </div>
+    <SkeletonBlock v-if="loading" />
     <template v-else-if="coachee">
       <div class="mb-4 rounded-2xl border border-[var(--color-line)] bg-white p-4">
         <div class="flex flex-wrap items-start justify-between gap-4">
@@ -160,17 +157,12 @@ const planEstadoClase: Record<EstadoPlan, string> = {
         :plan="plan"
       />
 
-      <div class="mb-4 flex gap-1 border-b border-[var(--color-line)]">
-        <button
-          v-for="t in tabs"
-          :key="t.key"
-          class="border-b-2 px-3 py-2 text-sm"
-          :class="activeTab === t.key ? 'border-[var(--color-sage)] font-medium text-[var(--color-sage)]' : 'border-transparent text-[var(--color-ink)]/60'"
-          @click="irATab(t.key)"
-        >
-          {{ t.label }}
-        </button>
-      </div>
+      <TabBar
+        class="mb-4"
+        :tabs="tabs"
+        :model-value="activeTab"
+        @update:model-value="irATab"
+      />
 
       <PerfilTab
         v-if="activeTab === 'perfil'"

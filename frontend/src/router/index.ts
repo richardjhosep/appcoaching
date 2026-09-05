@@ -65,35 +65,36 @@ const routes: RouteRecordRaw[] = [
     meta: { roles: ['coachee'] },
   },
   {
-    path: '/coachee/quiz',
-    name: 'coachee-quiz',
-    component: () => import('../views/coachee/QuizView.vue'),
+    path: '/coachee/playground',
+    name: 'coachee-playground',
+    component: () => import('../views/coachee/PlaygroundView.vue'),
     meta: { roles: ['coachee'] },
   },
-  {
-    path: '/coachee/ejercicios',
-    name: 'coachee-ejercicios',
-    component: () => import('../views/coachee/EjerciciosView.vue'),
-    meta: { roles: ['coachee'] },
-  },
-  {
-    path: '/coachee/flashcards',
-    name: 'coachee-flashcards',
-    component: () => import('../views/coachee/FlashcardsView.vue'),
-    meta: { roles: ['coachee'] },
-  },
-  {
-    path: '/coachee/mapas',
-    name: 'coachee-mapas',
-    component: () => import('../views/coachee/MapasView.vue'),
-    meta: { roles: ['coachee'] },
-  },
+  // Quiz/Flashcards/Mapas/Ejercicios/Test de Estilo eran 5 rutas propias, consolidadas en
+  // /coachee/playground con pestañas — mismo patrón de redirect que el lado coach.
+  { path: '/coachee/quiz', redirect: '/coachee/playground?tab=quiz' },
+  { path: '/coachee/flashcards', redirect: '/coachee/playground?tab=flashcards' },
+  { path: '/coachee/mapas', redirect: '/coachee/playground?tab=mapas' },
+  { path: '/coachee/ejercicios', redirect: '/coachee/playground?tab=ejercicios' },
+  { path: '/coachee/test-estilo', redirect: '/coachee/playground?tab=test-estilo' },
   {
     path: '/coachee/ciclos/:cicloId/certificado',
     name: 'coachee-certificado',
     component: () => import('../views/coachee/CertificadoView.vue'),
     meta: { roles: ['coachee'] },
     props: true,
+  },
+  {
+    path: '/coachee/resumen',
+    name: 'coachee-resumen',
+    component: () => import('../views/coachee/EstadoProcesoView.vue'),
+    meta: { roles: ['coachee'] },
+  },
+  {
+    path: '/coachee/mi-coach',
+    name: 'coachee-mi-coach',
+    component: () => import('../views/coachee/MiCoachView.vue'),
+    meta: { roles: ['coachee'] },
   },
   {
     path: '/coach/dashboard',
@@ -114,27 +115,23 @@ const routes: RouteRecordRaw[] = [
     meta: { roles: ['coach'] },
   },
   {
-    path: '/coach/quiz',
-    name: 'coach-quiz',
-    component: () => import('../views/coach/QuizView.vue'),
+    path: '/coach/estudio',
+    name: 'coach-estudio',
+    component: () => import('../views/coach/EstudioView.vue'),
     meta: { roles: ['coach'] },
   },
+  // Quiz/Flashcards/Mapas/Ejercicios/Test de Estilo eran 5 rutas propias, consolidadas en
+  // /coach/estudio con pestañas — mismo patrón de redirect que /coach/auditoria y
+  // /coach/comercial más abajo, para no romper links/bookmarks viejos.
+  { path: '/coach/quiz', redirect: '/coach/estudio?tab=quiz' },
+  { path: '/coach/flashcards', redirect: '/coach/estudio?tab=flashcards' },
+  { path: '/coach/mapas', redirect: '/coach/estudio?tab=mapas' },
+  { path: '/coach/ejercicios', redirect: '/coach/estudio?tab=ejercicios' },
+  { path: '/coach/test-estilo', redirect: '/coach/estudio?tab=test-estilo' },
   {
-    path: '/coach/ejercicios',
-    name: 'coach-ejercicios',
-    component: () => import('../views/coach/EjerciciosView.vue'),
-    meta: { roles: ['coach'] },
-  },
-  {
-    path: '/coach/flashcards',
-    name: 'coach-flashcards',
-    component: () => import('../views/coach/FlashcardsView.vue'),
-    meta: { roles: ['coach'] },
-  },
-  {
-    path: '/coach/mapas',
-    name: 'coach-mapas',
-    component: () => import('../views/coach/MapasView.vue'),
+    path: '/coach/agenda',
+    name: 'coach-agenda',
+    component: () => import('../views/coach/AgendaView.vue'),
     meta: { roles: ['coach'] },
   },
   {
@@ -183,6 +180,18 @@ const routes: RouteRecordRaw[] = [
     meta: { roles: ['coach'] },
   },
   {
+    path: '/coach/configuracion',
+    name: 'coach-configuracion',
+    component: () => import('../views/coach/ConfiguracionView.vue'),
+    meta: { roles: ['coach'] },
+  },
+  {
+    path: '/coach/perfil',
+    name: 'coach-perfil',
+    component: () => import('../views/coach/PerfilView.vue'),
+    meta: { roles: ['coach'] },
+  },
+  {
     path: '/empresa/dashboard',
     name: 'empresa-dashboard',
     component: () => import('../views/empresa/DashboardView.vue'),
@@ -213,11 +222,10 @@ const routes: RouteRecordRaw[] = [
     meta: { roles: ['empresa'] },
   },
   {
-    path: '/empresa/coachees/:coacheeId/ciclo',
-    name: 'empresa-ciclo',
-    component: () => import('../views/empresa/CicloView.vue'),
+    path: '/empresa/informe',
+    name: 'empresa-informe',
+    component: () => import('../views/empresa/InformeEjecutivoView.vue'),
     meta: { roles: ['empresa'] },
-    props: true,
   },
   {
     path: '/empresa/coachees/:coacheeId/ciclos/:cicloId/certificado',
@@ -235,7 +243,9 @@ export const router = createRouter({
 
 function homeFor(role: string): string {
   if (role === 'coach') return '/coach/dashboard'
-  if (role === 'coachee') return '/coachee/plan'
+  // Mi Aprendizaje es el resumen pensado como aterrizaje (próxima sesión, tareas pendientes,
+  // progreso) — antes el login mandaba directo al plan, sin ese panorama general primero.
+  if (role === 'coachee') return '/coachee/mi-aprendizaje'
   return '/empresa/dashboard'
 }
 

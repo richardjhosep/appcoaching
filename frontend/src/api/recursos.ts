@@ -13,6 +13,7 @@ export interface Recurso {
   url: string | null
   archivoNombre: string | null
   archivoPath: string | null
+  fechaLimite: string | null
   createdAt: string
 }
 
@@ -41,6 +42,7 @@ export interface CreateRecursoInput {
   tipo: TipoRecurso
   url?: string
   archivo?: File
+  fechaLimite?: string
 }
 
 export function crearRecurso(input: CreateRecursoInput): Promise<Recurso> {
@@ -52,7 +54,21 @@ export function crearRecurso(input: CreateRecursoInput): Promise<Recurso> {
   if (input.competenciaId) form.set('competenciaId', input.competenciaId)
   if (input.url) form.set('url', input.url)
   if (input.archivo) form.set('archivo', input.archivo)
+  if (input.fechaLimite) form.set('fechaLimite', input.fechaLimite)
   return apiUpload<Recurso>('/recursos', form)
+}
+
+export function updateRecurso(
+  id: string,
+  input: Partial<{
+    titulo: string
+    descripcion: string
+    carpetaId: string
+    competenciaId: string
+    fechaLimite: string | null
+  }>,
+): Promise<Recurso> {
+  return apiRequest<Recurso>(`/recursos/${id}`, { method: 'PATCH', body: input })
 }
 
 export function listRecursos(carpetaId?: string, search?: string): Promise<Recurso[]> {

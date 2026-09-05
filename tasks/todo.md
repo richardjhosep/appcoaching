@@ -886,3 +886,1266 @@ de comunicación completo, y perfil del coach para empresa.
 comerciales identificados el 26-08 (facturación real, ROI, presupuesto por depto, HRIS) y el
 contenido de comportamientos para las ~13 competencias restantes del catálogo (falta que el
 usuario aporte el framework completo).
+
+---
+
+# Fix: visibilidad de Quiz/Flashcards/Mapas/Ejercicios por competencia — 2026-09-01
+
+## Contexto
+
+Tras el QA funcional + security-review de las 6 fases (ambos sin hallazgos), el usuario preguntó
+por trazabilidad real entre roles: ¿ven todos los coachees todo el contenido de Quiz/Flashcards/
+Mapas mentales/Ejercicios, sin importar el tópico que están trabajando? Investigación confirmó que
+sí — a diferencia de Biblioteca (que tiene `AsignacionRecurso` real), estos 4 módulos solo
+filtraban por `activo: true`, sin ningún filtro de competencia ni asignación. La tab "Formación"
+ya resolvía esto parcialmente (filtra client-side por competencia del plan) pero solo ahí — el nav
+principal de cada módulo seguía sin filtrar. Usuario confirmó vía AskUserQuestion: auto-filtro por
+competencia (mismo criterio que ya usa `lib/formacionRecomendada.ts`), sin asignación manual.
+
+## Pasos de ejecución
+
+- [x] Quiz/Flashcards/Mapas: `disponiblesParaCoachee` ahora resuelve la competencia del plan del
+      coachee (`PlanesDesarrolloService.getByCoacheeId`) y filtra `WHERE activo AND competenciaId
+      = <la del plan>`; sin plan/competencia definida, devuelve `[]` (mismo comportamiento que
+      Formación cuando `competenciaId` es `null`).
+- [x] Mapas necesitó además: agregar `CoacheesModule` (no lo tenía), y `disponiblesParaCoachee()`
+      pasó de no recibir ningún actor a recibir `actorUserId` (`MapasController.disponibles` ahora
+      inyecta `@CurrentUser()`) — sin cambio de contrato HTTP, cero cambios de frontend.
+- [x] Ejercicios (competenciaId opcional): filtro `competenciaId = <la del plan> OR
+      competenciaId IS NULL` — un ejercicio "general" sin tópico asociado se sigue viendo siempre,
+      incluso sin plan/competencia definida.
+- [x] Los 4 módulos importan `PlanesDesarrolloModule` (sin ciclo — verificado que
+      PlanesDesarrolloModule no depende de ninguno de los 4).
+- [x] 8 tests nuevos (2 por módulo) + specs existentes actualizados con el mock nuevo.
+
+## Verificación
+
+- `npm run lint` y `npm test` (357/357, +8) limpios.
+- `npm run build` + reinicio real del backend: bootstrap sin errores de dependencia circular.
+- Verificado con datos reales vía curl (cuenta `qa-paleta-verify`, competencia real "Liderazgo
+  situacional"): Quiz 3→1, Flashcards 4→2, Mapas 3→1 (los descartados eran de otras 2
+  competencias reales en la base), Ejercicios se mantuvo en 1 (el único existente no tiene
+  competencia asociada, correctamente universal).
+
+## Revisión
+
+Corregido un gap de diseño real (no un bug de código, sino una laguna de producto): con solo 1-2
+coachees de prueba no se notaba, pero con varios coachees en distintas competencias cada uno
+habría visto contenido irrelevante de los demás. Sin migración (no cambia schema). Sin cambios de
+frontend (mismos contratos HTTP, mismos response shapes).
+
+---
+
+# Ranking de Quiz (coach) + progreso propio (coachee) — 2026-09-01
+
+## Contexto
+
+El usuario preguntó si el coach sabe quién respondió cada quiz y "quién ganó". Hoy solo había una
+lista plana de intentos sin ordenar. Confirmado con el usuario (AskUserQuestion): el ranking es
+**solo para el coach** (coherente con la confidencialidad del modelo de coaching 1 a 1, explícita
+en la carta real de invitación ya analizada) — el coachee nunca ve el nombre ni el puntaje de otro
+coachee, solo su propia nota y progreso en el tiempo.
+
+## Pasos de ejecución
+
+- [x] Sin cambios de backend — `listIntentosDeQuiz` (coach) y `misIntentos` (coachee) ya
+      devolvían todo lo necesario.
+- [x] `frontend/src/lib/quizRanking.ts` (puro, testeado): agrupa intentos por coachee, se queda
+      con el mejor puntaje de cada uno, desempata por quién lo logró primero, ordena descendente.
+- [x] `views/coach/QuizView.vue`: sección "Resultados" → "Ranking" — posición numerada, medalla/
+      trofeo para el 1er lugar, cantidad de intentos si hubo más de uno.
+- [x] `views/coachee/QuizView.vue`: nueva sección "Tu progreso en este quiz" — SOLO sus propios
+      intentos (filtrados de `misIntentos()` por `quizId`), con indicador ↑/↓ vs. el intento
+      anterior y el mejor puntaje destacado. Nunca nombres ni puntajes de otros coachees.
+
+## Verificación
+
+- `npm run lint`, `npm run build` (autoritativo), `npx vitest run` → 301/301 (+6) limpios.
+- Backend sin cambios, no requirió reinicio.
+
+## Revisión
+
+Feature completa sin tocar backend — ambos endpoints ya exponían los datos, solo faltaba
+presentarlos bien. Diseño verificado contra el modelo de confidencialidad real del negocio antes
+de construir, no asumido.
+
+---
+
+# Módulo "Test de Estilo" (opción forzada A/B, perfil por categoría) — 2026-09-01
+
+## Contexto
+
+Usuario mostró `thomas-kilmann.vercel.app` (réplica del Thomas-Kilmann Conflict Mode Instrument,
+instrumento comercial con copyright de CPP/Wiley) y preguntó qué agrega valor ahora. Se descartó
+copiar sus 30 preguntas reales (violación de copyright) — en su lugar, se construyó la mecánica
+GENÉRICA (opción forzada A/B, categorías configurables por el coach, perfil por conteo), mismo
+patrón "coach autora su propio contenido" que Quiz/Flashcards/Mapas/Ejercicios. Fernando carga sus
+propias preguntas con la fuente que tenga derecho a usar.
+
+## Pasos de ejecución
+
+- [x] Backend `test-estilo/` (clon del patrón de `quiz/`): `TestEstilo` (competenciaId opcional,
+      igual que Ejercicios), `PreguntaEstilo` (opcionA/categoriaA/opcionB/categoriaB —
+      categoriaA/B con `@Exclude()`, igual mecanismo que `respuestaCorrecta` de Quiz, para no
+      sesgar la respuesta del coachee mostrando la categoría de antemano), `IntentoEstilo`
+      (respuestas ['A'|'B'], resultado {categoria: conteo}, categoriaDominante — empates se
+      juntan con " / ").
+  - [x] Mismo auto-filtro por competencia que Quiz/Flashcards/Mapas/Ejercicios (`disponibles`).
+  - [x] `remove()` bloqueado si ya tiene intentos (mismo guard que Quiz/Ejercicios).
+  - [x] 10 tests nuevos, migración `TestEstilo1788265028385` aplicada.
+- [x] Frontend: `api/testEstilo.ts`, `views/coach/TestEstiloView.vue` (crear test, agregar
+      preguntas A/B, "Perfiles de coachees" — SIN ranking, un test de estilo no tiene "mejor
+      puntaje", solo el perfil de cada uno con barras por categoría), `views/coachee/
+      TestEstiloView.vue` (responder eligiendo A o B, ver su propio perfil + historial de
+      intentos anteriores). `lib/testEstiloPerfil.ts` (puro, compartido entre ambas vistas).
+  - [x] Ícono nuevo `estilo` (espectro con marcador) en `NavIcon.vue`.
+  - [x] Rutas y nav agregados para coach y coachee.
+
+## Verificación
+
+- Backend: `npm run lint`, `npm test` → 367/367 (+10). Migración aplicada, backend reiniciado.
+- Frontend: `npm run lint`, `npm run build` (autoritativo), `npx vitest run` → 303/303 (+2).
+- Verificado end-to-end con curl real: creé un test de 3 preguntas sin competencia (universal),
+  confirmé que el coachee lo ve, que las categorías NO viajan a su respuesta antes de responder,
+  respondí (A,B,A) y confirmé el conteo/categoría dominante calculados correctamente, y que el
+  coach ve el perfil completo del coachee.
+
+## Revisión
+
+Herramienta reutilizable para cualquier instrumento de autopercepción de opción forzada A/B, no
+solo Thomas-Kilmann — el coach puede usarla para ese instrumento (con su propio contenido/
+licencia) o cualquier otro del mismo formato.
+
+---
+
+# QA de congruencia cross-rol + fix de las 2 incongruencias encontradas — 2026-09-01
+
+## Contexto
+
+Usuario pidió un QA end-to-end de CONGRUENCIA de información entre roles (coach/coachee/empresa),
+no solo "cada feature funciona". Se lanzó un agente dedicado con 8 puntos de verificación,
+incluyendo crear una segunda coachee de prueba ("QA Coachee B", competencia distinta) para probar
+fugas cross-coachee. Resultado: 7/8 PASS, 1 incongruencia confirmada + 1 hallazgo lateral no
+pedido, ambos corregidos.
+
+## Hallazgos y fixes
+
+**1. Autoevaluación de competencias — dato completo en backend, sin ninguna pantalla que lo
+muestre.** El coach (y empresa) ya podían pedir `GET /seguimiento/autoevaluaciones/:coacheeId`
+(nivel + ejemplo textual), pero ningún `.vue` del proyecto llamaba esa función (confirmado por
+grep exhaustivo). Fix: `PlanTab.vue` (coach) ahora carga y muestra las autoevaluaciones del
+coachee — fecha, competencia, nivel, descripción del nivel (cruzada con `Competencia.niveles`,
+mismo patrón que `DefinicionTab.vue`) y el ejemplo textual.
+
+**2. Informe de cierre arrastraba TODO el historial de logros, no solo los del ciclo.** Un
+coachee con 2 ciclos vería en el informe del segundo ciclo también los logros del primero, ya
+cerrado. Fix: `CiclosService.generarBorradorInforme()` ahora filtra los logros por `createdAt`
+dentro de la ventana `[fechaApertura, fechaCierre ?? ahora]` del ciclo — sin migración, sin
+cambio de schema, solo el filtro que faltaba.
+
+## Verificación
+
+- Backend: `npm run lint`, `npm test` → 368/368 (+1: ventana de logros con caso dentro/fuera).
+  Rebuild + reinicio real, sin migración (fix 2 no toca schema).
+- Frontend: `npm run lint`, `npm run build` (autoritativo), `npx vitest run` → 303/303 (sin
+  regresiones; `PlanTab.vue` no tenía spec previo, sin riesgo de ruptura).
+- Verificado con datos reales vía curl: los 2 logros existentes de la Coachee A (creados hoy)
+  quedan fuera de la ventana de su ciclo de agosto — el informe generado ahora muestra "Sin logros
+  registrados durante el proceso" en vez de arrastrarlos incorrectamente.
+
+## Revisión
+
+Las 8 áreas de congruencia cross-rol verificadas por el agente (competencia del plan, auto-filtro
+por competencia con 2 coachees reales, sesiones con notas privadas nunca filtradas, logros,
+retroalimentación, autoevaluación, ranking/perfiles sin fuga entre coachees, dashboard de empresa)
+quedan documentadas como PASS, con las 2 excepciones ya corregidas arriba. Cuenta de prueba nueva
+documentada: `qa-coachee-b-verify@test.com` / `Verificacion-CoacheeB-2026!` (competencia "Impacto
+e Influencia", sin empresa asociada) — reusable para QA futuro de fugas cross-coachee.
+
+## 2026-09-01 — Skeleton loaders + copy de "Mi Coach" (empresa)
+
+### Contexto
+
+El usuario compartió 9 capturas de X/Twitter (prompts de UX para dashboards/landing pages +
+lista de sitios de recursos de diseño + un hilo sobre optimización de tokens en Claude Code).
+Se cruzó cada idea contra el código real antes de aplicar nada (mismo criterio que la revisión
+del repo de best-practices): de 9 imágenes, solo 2 hallazgos eran reales y de bajo riesgo — el
+resto (dark mode, sidebar colapsable, copy de sitios de marketing público, herramientas de
+terceros no verificadas para Claude Code) se descartó explícitamente por no aplicar a esta app
+(B2B interna autenticada) o no ser un gap real hoy.
+
+### Pasos de ejecución
+
+1. **`SkeletonBlock.vue` (nuevo) + `.skeleton-shimmer`/`@keyframes skeleton-sweep` en
+   `styles.css`** (mismo criterio que `.fade-slide-*`/`.flip-card`: animación compartida, no por
+   componente; respeta `prefers-reduced-motion`).
+2. **Reemplazado el texto plano "Cargando…" en 39 archivos** (grep exhaustivo: 41 vistas/
+   componentes lo usaban) por `<SkeletonBlock v-if="..." />` — 33 reemplazos vía script Python
+   (patrón idéntico: `<div v-if="loading" class="text-sm text-[var(--color-ink)]/60">Cargando…
+   </div>`) + 6 manuales donde la condición tenía otro nombre (`cargandoDetalle`,
+   `cargandoContacto`, `vista === 'cargando'`: `MapasView`, `QuizView`, `TestEstiloView`,
+   `EjerciciosView` (coach), `AppShell` modal de contacto, `ConsentimientoView` público).
+3. **Copy de `PerfilCoachView.vue`**: agregada línea de apertura bajo el título, y sección nueva
+   "Contacto directo" con email/teléfono reales del coach (`fernando@saltup.cl`, +56 9 8412 7466)
+   — sacados del `Presupuesto_Coaching_ULS.pdf` real, no inventados. Antes la página no tenía
+   ninguna vía de contacto directo pese a ser su propósito ("que la empresa conozca a quién está
+   contratando").
+
+### Verificación
+
+- `npm run lint` → 0 errores (2 warnings preexistentes, no tocan estos archivos).
+- `npm run build` (autoritativo: `vue-tsc -b && vite build`) → limpio.
+- `npx vitest run` → 303/303, sin regresiones (`PerfilCoachView` no tenía spec previo).
+- Confirmado con grep que no queda ningún "Cargando…" plano fuera del propio componente.
+
+### Revisión
+
+Descartado explícitamente sin implementar: dark mode (cero soporte hoy, rediseño sistémico de
+tokens, no es quick win), sidebar colapsable (ya resuelto por `AppShell` nav groups), prompts de
+copy para sitios de marketing público (no aplica a un portal B2B autenticado), e instalar
+herramientas de terceros no verificadas para reducir tokens en Claude Code (mismo criterio que la
+revisión del repo de best-practices: no se adopta nada sin verificar necesidad real primero).
+
+## 2026-09-02 — Agenda del coach: disponibilidad + auto-reserva con aprobación
+
+### Contexto
+
+El usuario preguntó si se podía mejorar el panel de sesiones y si el coachee podía ver las horas
+disponibles del coach. Revisando el código real se confirmaron 3 gaps: `SesionesService.create()`/
+`update()` no validaban conflicto de horario (dos coachees se podían agendar a la misma hora sin
+error), no existía ninguna vista que juntara las sesiones de todos los coachees en un solo
+calendario para el coach, y no existía ningún concepto de "disponibilidad" del coach. Vía pregunta
+cerrada el usuario eligió el modelo **"Auto-reserva con aprobación"**: el coachee ve horas libres
+y pide una, el coach aprueba o rechaza con un clic. Plan formalizado y validado con un subagente
+Plan antes de construir (ver `~/.claude/plans/parallel-inventing-robin.md`).
+
+### Hallazgo crítico de zona horaria
+
+El backend corre con `TZ=UTC` (Dockerfile + arranque local), así que `Date.getDay()`/`getHours()`
+nativos leen en UTC, no en horario de Chile. Se centralizó la conversión correcta en
+`backend/src/sesiones/chile-time.util.ts` (`Intl.DateTimeFormat` con `timeZone: 'America/Santiago'`,
+sin hardcodear offset — Chile ha cambiado la ley de horario de verano varias veces), con specs que
+fijan casos donde la hora local cruza al día calendario UTC siguiente.
+
+### Backend (`backend/src/sesiones/`)
+
+- `sesiones.constants.ts` (`SESION_DURACION_MINUTOS = 60`, confirmado en el presupuesto real del
+  coach), `chile-time.util.ts` (+spec).
+- Entidades nuevas: `DisponibilidadCoach` (bloques semanales recurrentes, sin `coachId` — mono-coach)
+  y `SolicitudSesion` (enum propio `EstadoSolicitudSesion`, no se reusa `EstadoSolicitud` de
+  reagendamiento porque ahí no se distingue aprobado de rechazado).
+- `DisponibilidadService` (+spec): CRUD de bloques + `calcularSlotsLibres()` — cruza bloques
+  semanales, sesiones ya agendadas (cualquier coachee) y solicitudes pendientes.
+- `SolicitudesSesionService` (+spec, calcado de `solicitudes-reagendamiento.service.ts`): crea con
+  re-validación de que el slot sigue libre, aprobar llama a `SesionesService.create()` (reusa el
+  linkeo a ciclo abierto), notifica+emaila en ambos casos.
+- `SesionesService`: conflicto de horario en `create()`/`update()` (`ConflictException`),
+  `findTodasConCoachee()` para la agenda global.
+- Controllers nuevos `DisponibilidadController`/`SolicitudesSesionController` + `GET /sesiones/todas`
+  en el controller existente.
+- Notificaciones/email: 2 tipos nuevos (`SOLICITUD_SESION_CREADA`/`RESUELTA`) + 2 métodos nuevos en
+  `EmailService`.
+- Migración `1788318326845-DisponibilidadYSolicitudesSesion.ts`: 2 tablas, enum nativo nuevo,
+  **índice único parcial** `(fecha_hora_propuesta) WHERE estado='pendiente'` — cierra a nivel de
+  base de datos la carrera de dos coachees pidiendo el mismo slot casi al mismo tiempo (la
+  re-validación en el servicio es solo UX). `ALTER TYPE ... ADD VALUE` sobre el enum de
+  notificaciones existente, con `down()` vía el patrón rename-swap estándar de Postgres.
+
+### Frontend
+
+- `api/disponibilidad.ts`, `api/solicitudes-sesion.ts` (nuevos), `api/sesiones.ts` extendido
+  (`coachee?: {id, nombre}`, `getTodasLasSesiones()`).
+- `WeekCalendar.vue`: prop opcional `mostrarCoachee` (backward-compatible).
+- `DisponibilidadCalendar.vue` (nuevo, coachee): grilla semanal de solo horas libres — componente
+  separado de `WeekCalendar` a propósito, la interacción de click es distinta (siempre pide un
+  horario, nunca abre link ni hace scroll).
+- `views/coach/AgendaView.vue` (nuevo, `/coach/agenda`): solicitudes pendientes (aprobar/rechazar
+  inline) + calendario global + gestión de bloques de disponibilidad.
+- `views/coachee/SesionesView.vue`: bloque "Horas disponibles" + modal "Solicitar esta hora".
+- Nav/router: entrada "Mi agenda" en el grupo "Coaching" del coach, reusando el ícono `sesiones`
+  ya existente.
+
+### Verificación
+
+- Backend: `npm run lint`, `npm run build`, `npm test` → 398/398 (+30 tests nuevos). Migración
+  aplicada y revertida (`migration:run`/`migration:revert`) confirmando `down()` simétrico.
+- Frontend: `npm run lint`, `npm run build` (autoritativo), `npx vitest run` → 304/304 sin
+  regresiones.
+- Smoke test real con curl contra backend+DB locales (`coach@test.com` / `qa-paleta-verify@test.com`,
+  `qa-empresa-verify@test.com`): bloque de disponibilidad → slots devueltos en horario de Chile
+  correcto (verificado a mano) → solicitud de sesión → segunda solicitud al mismo horario rechazada
+  409 → aprobación crea la `Sesion` real → intento de agendar directo al mismo horario rechazado
+  409 → agenda global del coach muestra la sesión con el nombre del coachee → coachee la ve en
+  `/sesiones/me` → re-aprobar la misma solicitud rechazado 409 → rol EMPRESA sin acceso a ningún
+  endpoint nuevo (403 en los 3 probados). Datos de prueba limpiados al terminar.
+
+## 2026-09-02 — Fecha límite en Quiz, Flashcards, Mapas, Ejercicios, Test de Estilo y Recursos
+
+### Contexto
+
+El usuario preguntó si el contenido de estudio/retos tiene fecha de duración. Ninguna de las 6
+entidades la tenía — el único control de ciclo de vida era el toggle manual `activo`. Vía pregunta
+cerrada se eligió el modelo **"Fecha límite por ítem"**: el coach pone una fecha límite opcional al
+crear (o editar) cada ítem; pasada esa fecha, deja de aparecer como disponible para el coachee
+automáticamente.
+
+### Hallazgo de diseño reusado
+
+`chile-time.util.ts` (de la feature de agenda) se **relocalizó de `sesiones/` a `common/`** porque
+ahora lo usan 6 módulos sin relación entre sí. Se agregó `finDelDiaChileAUtc(fechaSimple)`: una
+fecha simple "YYYY-MM-DD" elegida en un `<input type="date">` se interpreta como el **fin de ese
+día en horario de Chile** (23:59), no como medianoche UTC — si no, el contenido habría quedado
+"vencido" desde la noche anterior en Chile.
+
+### Backend — mismo patrón en 6 módulos (`quiz/`, `flashcards/`, `mapas/`, `ejercicios/`,
+`test-estilo/`, `recursos/`)
+
+- Columna `fecha_limite` (timestamptz, nullable) en las 6 entidades.
+- `CreateXDto` gana `fechaLimite?: string`. `UpdateXDto` (`PartialType(OmitType(CreateXDto,
+  ['fechaLimite']))` + override propio con `@ValidateIf` — mismo patrón ya usado en
+  `UpdateCoacheeDto`) acepta además `null` explícito para quitarla.
+- `create()`/`update()`: conversión a `Date` vía `finDelDiaChileAUtc()`, separada del
+  `assignDefined()` genérico (asignar el string crudo sobre un campo `Date` habría sido un bug).
+- `disponiblesParaCoachee()` (o `misRecursos()` en Recursos): filtro adicional en JS —
+  `!item.fechaLimite || item.fechaLimite.getTime() >= Date.now()` — sin tocar el filtro de
+  competencia ya existente.
+- **Recursos es distinto a los otros 5**: no se filtra por competencia sino por
+  carpeta-visible/asignación-directa, y ya tenía `AsignacionRecurso.expiraEn` (vencimiento del
+  acceso puntual de UN coachee). La `fecha_limite` nueva es un concepto complementario, no
+  redundante: cuándo deja de estar disponible el recurso EN GENERAL, para cualquiera.
+- Migración única `1788356642011-FechaLimiteContenido.ts` (`ADD COLUMN` en las 6 tablas).
+
+### Frontend
+
+- `lib/fechaLimite.ts` (+spec): `formatearFechaLimite`, `fechaLimiteVencida`, `aInputDate` — este
+  último reusa `aFechaLocal()` de `dateRange.ts` (se exportó, antes era privado).
+- `components/FechaLimiteEditor.vue` (nuevo, reusado en los 6 módulos): control inline
+  poner/cambiar/quitar fecha límite de un ítem ya creado.
+- Los 6 `api/*.ts` ganan el campo + parámetro en create/update. `updateRecurso()` es nuevo (no
+  existía ninguna función de update para Recursos en el frontend).
+- Las 6 vistas de coach ganan el input en el form de creación + `FechaLimiteEditor` en la
+  lista/detalle. Las 6 vistas de coachee ganan un badge "Vence: …" cuando está seteada.
+
+### Verificación
+
+- Backend: `npm run lint`, `npm run build`, `npm test` → 421/421 (+30 tests nuevos: chile-time
+  relocalizado, create/update/disponibles por cada uno de los 6 módulos).
+- Migración aplicada y revertida (`migration:run`/`migration:revert`) confirmando `down()` simétrico.
+- Frontend: `npm run lint`, `npm run build` (autoritativo), `npx vitest run` → 311/311 sin
+  regresiones (fixtures de 6 specs existentes actualizados con el campo nuevo).
+- De paso: se encontró y borró `flashcards.service 2.ts`, un archivo duplicado espurio (permisos
+  distintos, sin trackear en git) que rompía `nest build` — mismo tipo de hallazgo que el
+  `settings.local 2.json` de antes en esta sesión.
+- Smoke test real con curl (`coach@test.com` / `qa-paleta-verify@test.com`): quiz con fecha límite
+  de 2020 → no aparece en `disponibles`; quiz con fecha límite de 2027 → sí aparece; quitar la
+  fecha límite del vencido → vuelve a aparecer. Confirmado a mano que "2020-01-01" se guardó como
+  "2020-01-02T02:59:00Z" (fin del 1 de enero en Chile, no medianoche UTC). Datos de prueba
+  limpiados al terminar.
+
+## 2026-09-02 — Rediseño estratégico del Dashboard del Coach
+
+### Contexto
+
+Requerimiento formal del usuario: el dashboard del coach era un panel operativo sin horizonte
+temporal claro ("Ingreso del período" era el mes en curso, sin decirlo). Se pidió que el coach
+entienda en segundos qué sesiones tiene esta semana, qué contratos vencen en el corto/mediano
+plazo, y su proyección económica — "¿esta información le sirve al coach para planificar su
+semana y tomar acciones concretas?" como criterio para cada elemento.
+
+Se cruzó el requerimiento contra el modelo real antes de diseñar. Hallazgo crítico confirmado con
+el usuario vía pregunta cerrada: `Empresa` no tenía ninguna fecha de contrato — sin eso, "qué
+contrato vence este mes" no se podía responder con datos reales (no con un proxy). El usuario
+eligió agregar el campo real. El resto de lo pedido **ya existía, construido y probado**, solo
+no estaba conectado al dashboard: `NegocioService.resumenComercial()`/`proyeccionMensual()`
+(con UI y el componente `ProyeccionIngresosChart.vue` ya en `/coach/negocio`), y
+`SesionesService.findTodasConCoachee()` (de la feature de Agenda, esta misma sesión).
+
+### Decisión de scope
+
+"Buscar nuevos prospectos" (empresas que todavía no son clientes) queda fuera — no existe ningún
+registro de "leads" en el sistema, y construirlo sería una feature de CRM aparte. Se cubre lo real:
+empresas existentes con contrato vencido/por vencer se marcan como que requieren renovar o cerrar.
+
+### Backend
+
+- `Empresa` gana `fechaInicio`/`fechaFin` (tipo Postgres `date`, no `timestamptz` — es una fecha
+  calendario de término de contrato, no un instante, así que no hace falta `chile-time.util`).
+  `CreateEmpresaDto`/`UpdateEmpresaDto` los aceptan opcionales.
+- `NegocioService.carteraEmpresas()` (nuevo): una sola función que cubre "por vencer este
+  mes/semestre" y "cartera general" a la vez — por cada empresa activa calcula un `estado`
+  (`sin_fecha` / `vencido` / `vence_este_mes` [≤30 días] / `vence_este_semestre` [31-180 días] /
+  `vigente`) y reusa `calcularResumenCobros()` para las horas consumidas del mes. Además agrega
+  `independientesPorVencer`: coachees sin empresa cuyo ciclo abierto está por vencer (reusa
+  `alertasSeguimiento()`/`CiclosService` ya existentes — los independientes no tienen "contrato"
+  con fecha, se cubren con la señal de sesiones restantes que ya existía).
+- `SesionesService.findEnRangoConCoachee()` (nuevo): sesiones de un rango con coachee **y su
+  empresa** cargados (`relations: { coachee: { empresa: true } }` — a diferencia de
+  `findTodasConCoachee()` de Agenda, acá hace falta también la empresa).
+- Rutas nuevas: `GET /negocio/cartera`, `GET /sesiones/semana?desde&hasta` (ambas COACH).
+- Migración `1788359513945-FechaContratoEmpresa.ts` (`ADD COLUMN` simple, sin enum ni conversión).
+
+### Frontend
+
+- `views/coach/DashboardView.vue` reescrito: franja de KPIs (sesiones esta semana, empresas por
+  renovar este mes, ingreso esperado del mes, empresas sin fecha de contrato) + "Esta semana"
+  (lista compacta agrupada por día, no el grid completo de `/coach/agenda`) + "Cartera de
+  empresas" (una sola lista ordenada por urgencia, con badge de estado y acción sugerida) +
+  "Proyección económica" (KPIs del mes + `ProyeccionIngresosChart` reusado tal cual) +
+  "Coachees que necesitan atención" (el panel operativo de siempre, se mantiene pero baja de
+  posición — sigue siendo accionable, a otro nivel).
+- `lib/sesionesPorDia.ts` (+spec): agrupa sesiones por día calendario local, nuevo.
+  `lib/dateRange.ts` ganó `aFechaLocal` exportado (antes privado, reusado acá).
+- `EmpresasView.vue` (coach) gana los 2 inputs de fecha en el form de crear/editar.
+- `api/empresas.ts`, `api/negocio.ts` (`getCarteraEmpresas`), `api/sesiones.ts`
+  (`getSesionesSemana`) actualizados con los campos/funciones nuevas.
+
+### Verificación
+
+- Backend: `npm run lint`, `npm run build`, `npm test` → 424/424 (+8 tests nuevos:
+  `carteraEmpresas()` con los 5 estados + filtro de independientes, `findEnRangoConCoachee()`).
+  Migración `migration:run`/`migration:revert` simétrica.
+- Frontend: `npm run lint`, `npm run build` (autoritativo), `npx vitest run` → 320/320 (+9 tests
+  nuevos en `DashboardView.spec.ts` para "Esta semana"/"Cartera de empresas", +4 en
+  `sesionesPorDia.spec.ts`; 6 fixtures de specs existentes actualizados con los campos nuevos de
+  `Empresa`).
+- Smoke test real con curl (`coach@test.com`): empresa con `fechaFin` a 20 días →
+  `estado: 'vence_este_mes'`, `diasParaVencer: 20`; empresa sin fecha → `estado: 'sin_fecha'`;
+  `/sesiones/semana` responde con coachee+empresa cargados; rol EMPRESA sin acceso a ninguno de
+  los 2 endpoints nuevos (403). Datos de prueba limpiados al terminar.
+
+### Follow-up — renombre a "Panorama" + fecha de término visible en más lugares
+
+- `AppShell.vue`/`DashboardView.vue` (coach): "Dashboard" → **"Panorama"** (título + ítem de
+  menú) — se descartó "Resumen" por chocar con la pestaña homónima que ya existe dentro de
+  `/coach/negocio` (confirmado con grep antes de proponerlo). Se dejó la URL `/coach/dashboard`
+  intacta a propósito, solo cambió el texto visible.
+- `views/coach/EmpresasView.vue`: la tabla de mantenedores ganó la columna "Término contrato"
+  (antes solo se veía en el formulario de crear/editar) — vacía se muestra en bronce como aviso.
+- `views/empresa/DashboardView.vue`: la tarjeta "Mi contrato" ganó una 4ª celda "Término de
+  contrato" — la propia empresa cliente ahora también puede ver cuándo vence su contrato, no
+  solo el coach.
+- Verificación: `npm run lint`, `npm run build`, `npx vitest run` → 322/322 (+3 tests nuevos:
+  columna con/sin fecha en la tabla del coach, fecha visible en la tarjeta de la empresa).
+
+## 2026-09-02 — Atención inmediata, gestión de renovación, comparativo y confirmación de sesión
+
+### Contexto
+
+Complemento al rediseño del Panorama ("Propuesta de mejoras — Dashboard del Coach"), 4 bloques
+priorizados por el usuario vía pregunta cerrada: **sí** a "quick wins con datos existentes",
+**sí** a "historial de gestión por empresa", **sí** a "confirmación de sesión por el coachee";
+**"pipeline de prospección" queda explícitamente pendiente/fuera de alcance** (no existe ningún
+concepto de "prospecto" en el sistema — sería un sub-sistema tipo CRM aparte).
+
+### Backend
+
+- `GestionRenovacion` (nuevo, módulo `empresas/`): bitácora append-only de gestión de renovación
+  por empresa (`nota`, `proximoSeguimiento` fecha opcional) — mismo criterio que `Logro`, no se
+  edita ni se borra. `EmpresasService` gana `crearGestion()`, `listGestionDeEmpresa()`,
+  `ultimaGestionPorEmpresa()` (agrupado en JS, evita N+1). Rutas `POST/GET /empresas/:id/gestion`.
+- `Sesion.confirmada` (nuevo, `default: false`) — la pone el propio coachee (a diferencia de
+  `asistio`, que registra el coach después). `SesionesService.confirmar()`, ruta
+  `POST /sesiones/:id/confirmar` (COACHEE).
+- `chile-time.util.ts` gana `inicioDelDiaChileAUtc()`, `fechaSimpleHoyChile()`,
+  `sumarDiasFechaSimple()` — necesarios para calcular "hoy/mañana" y "esta semana" en horario de
+  Chile desde un proceso que corre con `TZ=UTC`.
+- `NegocioService.carteraEmpresas()` extendido con `ultimaGestion` por empresa (el semáforo de
+  color se calcula en el frontend, es presentación). `NegocioService.atencionInmediata()`
+  (nuevo): sesiones de hoy/mañana sin confirmar, contratos que vencen en <15 días sin gestión
+  vigente (sin gestión, o con `proximoSeguimiento` ya pasado), empresas sin pagar. `NegocioService
+  .comparativoYCapacidad()` (nuevo): ingreso mes actual/anterior + variación %, coachings
+  iniciados actual/anterior, horas comprometidas de la semana vs. `DisponibilidadCoach` total.
+  Rutas `GET /negocio/atencion`, `GET /negocio/comparativo` (COACH).
+- Migración `1788362342328-GestionRenovacionYConfirmacionSesion.ts` (`gestiones_renovacion` +
+  `sesiones.confirmada`, un archivo con dos bloques).
+
+### Frontend
+
+- `lib/semaforoCartera.ts` (+spec, nuevo): rojo/amarillo/verde combinando `diasParaVencer` +
+  `ultimaGestion?.proximoSeguimiento` (mismo criterio de "urgente" que `atencionInmediata()`,
+  expresado en 3 niveles).
+- `views/coach/DashboardView.vue`: nueva sección **"Atención inmediata" primero en la página**
+  (antes que los KPIs, principio de UX del requerimiento) con 3 sub-listas, cada una con su
+  acción (Ver coachee / Gestionar / Ver empresa); KPI "Sesiones esta semana" pasa a mostrar horas
+  (`X/Y hrs`); filas de "Esta semana" ganan badge "Sin confirmar"; filas de "Cartera de empresas"
+  ganan el punto de color del semáforo y un modal "Gestionar" (historial + form de nueva entrada,
+  reusado desde ambas secciones); "Proyección económica" gana la variación vs. mes anterior junto
+  a "Ingreso del mes".
+- `views/coachee/SesionesView.vue`: botón "Confirmar asistencia" en el bloque de sesión futura
+  (junto a "Solicitar reagendamiento"); una vez confirmada se reemplaza por "✓ Confirmada".
+- `api/empresas.ts` (`GestionRenovacion`, `crearGestion`, `getGestionDeEmpresa`), `api/negocio.ts`
+  (`getAtencionInmediata`, `getComparativo`, tipos nuevos), `api/sesiones.ts` (`confirmarSesion`,
+  `Sesion.confirmada`).
+
+### Verificación
+
+- Backend: `npm run lint`, `npm run build`, `npm test` → 443/443 (+19 tests nuevos: gestión de
+  empresa, `confirmar()`, `atencionInmediata()`/`comparativoYCapacidad()` cubriendo urgente-con-
+  gestión vs. urgente-sin-gestión vs. gestión-vencida, + 6 de los nuevos helpers de
+  `chile-time.util`). Migración `migration:run`/`migration:revert` simétrica.
+- Frontend: `npm run lint`, `npm run build` (autoritativo, + cross-check con `tsc -p
+  tsconfig.app.json` por el punto ciego de `vue-tsc` en specs), `npx vitest run` → 339/339 (+17
+  tests nuevos: `semaforoCartera.spec.ts`, atención inmediata / modal de gestión / badge sin
+  confirmar / variación en `DashboardView.spec.ts`, confirmar asistencia en `SesionesView.spec.ts`
+  del coachee; fixtures de `Sesion`/`EmpresaCartera` en 4 specs existentes actualizados con los
+  campos nuevos).
+- Smoke test real con curl (`coach@test.com` + `qa-paleta-verify@test.com`): `POST .../gestion`
+  → aparece en `GET .../gestion` y en `ultimaGestion` de `/negocio/cartera`; `POST
+  /sesiones/:id/confirmar` como coachee → `confirmada: true` persistido; `/negocio/atencion` y
+  `/negocio/comparativo` responden con datos reales de producción. Backend reconstruido y
+  reiniciado (`node dist/main`, `TZ=UTC`); frontend dev server sigue corriendo (hot-reload).
+
+## 2026-09-02 — Fix: clic en sesión sin link de videollamada no hacía nada
+
+### Contexto
+
+Reporte del usuario: en su agenda, si una sesión futura no tiene link de videollamada
+registrado, hacer clic en el bloque "no abre nada y no dice nada". Causa raíz encontrada en
+`WeekCalendar.vue` (componente compartido por `/coach/agenda`, la pestaña "Sesiones" del
+detalle de coachee y "Mis sesiones" del coachee): `onClickBloque()` solo abría el link cuando
+`esFutura && linkVideollamada`; si faltaba el link, caía a `emit('select', bloque.id)` sin dar
+ninguna señal. Ese `emit` además resultaba en un no-op real en `/coach/agenda` (nunca escucha
+`@select`) y, incluso en las 2 vistas que sí lo escuchan, solo hace scroll-and-highlight sobre
+la lista de **sesiones pasadas** — una sesión futura nunca tiene una fila ahí, así que el clic
+tampoco hacía nada en esas vistas tampoco.
+
+### Frontend
+
+- `components/WeekCalendar.vue`: `onClickBloque()` ahora, para una sesión futura sin link,
+  muestra `notifyError('Sin enlace de videollamada', …)` en vez de caer al `emit('select', …)`
+  silencioso. El `title` del bloque también distingue el caso ("Sin enlace de videollamada
+  registrado" vs. "Abrir enlace de la videollamada").
+- `components/WeekCalendar.spec.ts` (nuevo — el componente no tenía specs): cubre abrir el link
+  cuando existe, mostrar la notificación cuando no existe (sin `emit('select')`), y que una
+  sesión pasada sigue emitiendo `select` como antes.
+
+### Verificación
+
+- Frontend: `npm run lint`, `npm run build`, `npx vitest run` → 343/343 (+4 tests nuevos). Vite
+  dev server recogió el cambio en caliente (hot-reload), sin reinicio necesario.
+
+## 2026-09-02 — Consolidar Quiz/Flashcards/Mapas/Ejercicios/Test de Estilo en un hub "Estudiar"
+
+### Contexto
+
+El coach tenía 5 ítems de menú casi idénticos apretados en "Trabajo" (7 ítems con Planes/
+Recursos). El usuario propuso cards + modal de creación; se analizó la complejidad real de las
+5 vistas antes de aceptar el diseño (Mapas usa un canvas interactivo `MapaCanvas.vue`,
+Ejercicios tiene versiones+feedback, Quiz tiene preguntas+ranking — ninguna cabe bien en un
+`AppModal` `max-w-2xl`, y menos con modal-dentro-de-modal para navegar lista→detalle). Se
+reusó en su lugar el patrón `NegocioView.vue`/`LegalView.vue` (pestañas por `?tab=`, ya probado
+2 veces en esta misma app) con el selector de pestaña como cards grandes en vez de texto chico,
+para acercarse a la idea original del usuario sin los problemas de espacio. Usuario aprobó
+("haz lo que indicas").
+
+### Frontend
+
+- Las 5 vistas (`views/coach/{Quiz,Flashcards,Mapas,Ejercicios,TestEstilo}View.vue`) se
+  movieron a `views/coach/estudio/*Tab.vue` — contenido idéntico, solo se sacó el wrapper
+  `<AppShell>` (cada una ya tenía el mismo esqueleto exacto: lista con card-grid → detalle con
+  `StatusToggle`/`Eliminar`/`FechaLimiteEditor`/`SectionCard`, + un `AppModal` de "Nuevo X" que
+  no se tocó — ahí es donde el flujo de creación ya funcionaba bien).
+- `views/coach/EstudioView.vue` (nuevo): 5 cards grandes (ícono + label + contador en vivo,
+  ej. "Quiz (4)", mismo criterio que los tabs de `DashboardView.vue` — "Coachees (3)") como
+  selector de pestaña — mismo mecanismo `?tab=` que Negocio/Legal. Los contadores salen de los
+  5 `list*()` que ya existían (`listQuizzes`, `listFlashcards`, `listMapas`, `listEjercicios`,
+  `listTestsEstilo`), llamados en paralelo al montar.
+- `router/index.ts`: 1 ruta nueva `coach-estudio` reemplaza las 5 anteriores; se agregaron 5
+  redirects (`/coach/quiz` → `/coach/estudio?tab=quiz`, etc.) con el mismo patrón que ya usaban
+  `/coach/auditoria`/`/coach/comercial` — ningún link/bookmark viejo rompe.
+- `AppShell.vue`: grupo "Trabajo" baja de 7 a 3 ítems (Planes, Recursos, **Estudiar** — mismo
+  label que ya usa el grupo del coachee para este mismo tipo de contenido). El lado coachee no
+  se tocó (ahí el flujo es de consumo, no de gestión).
+- Specs: `QuizView.spec.ts`/`FlashcardsView.spec.ts`/`MapasView.spec.ts` se movieron a
+  `estudio/*Tab.spec.ts` (mismos tests, import actualizado). `EstudioView.spec.ts` (nuevo,
+  calcado de `LegalView.spec.ts`): tab por defecto, cambio de tab por click actualiza
+  `route.query.tab`, contador en cada card. Ejercicios/Test de Estilo no tenían spec antes de
+  este cambio (gap preexistente, no se agregó cobertura nueva — fuera de alcance de un *move*).
+
+### Verificación
+
+- `npm run lint` (con `--fix` para la indentación que quedó de sacar el wrapper `<AppShell>`),
+  `npm run build` (vue-tsc + vite) + cross-check con `tsc -p tsconfig.app.json`, `npx vitest
+  run` → 348/348 (+5 tests nuevos de `EstudioView.spec.ts`).
+- Verificado en Chrome real (headless vía CDP, login `coach@test.com`): `/coach/quiz` viejo
+  redirige a `/coach/estudio?tab=quiz`; el menú "Trabajo" ya no tiene los 5 ítems sueltos;
+  los 5 contadores de las cards coinciden con los datos reales (Quiz 4, Flashcards 4, Mapas 3,
+  Ejercicios 1, Test de Estilo 1); clic en una card cambia de pestaña sin recargar; el detalle
+  de un mapa (canvas interactivo `MapaCanvas`) sigue funcionando igual dentro del hub.
+
+## 2026-09-02 — Perfil del coachee: Playground, landing en Mi Aprendizaje, montaña de progreso, tareas pendientes y resumen imprimible
+
+### Contexto
+
+Mismo pedido de consolidación que el coach, aplicado al coachee, más el usuario pidió
+explícitamente ponerse "en su rol" y evaluar la experiencia. Auditoría contra el código real
+(no supuestos) encontró 6 brechas concretas: Ejercicios/Test de Estilo invisibles en el resumen
+de aterrizaje; las actividades del plan de ejecución (las tareas/entregables reales) enterradas
+en una pestaña sin aparecer en ningún resumen; nada imprimible para un proceso **en curso**
+(solo el Certificado, y solo para ciclos ya cerrados); el avance mostrado como número+barra sin
+narrativa de crecimiento pese a tener los datos para una mejor historia; las 5 acciones "Ir a
+X →" de Mi Aprendizaje ya eran `<button>` pero estilizadas como texto subrayado; landing
+post-login en `/coachee/plan` en vez del resumen pensado para eso. Las 5 mejoras pedidas
+atacan directo estas 6 brechas.
+
+### Frontend
+
+- **Playground** (`views/coachee/PlaygroundView.vue`, nuevo): mismo patrón que
+  `EstudioView.vue` del coach — 5 cards grandes con contador (`listQuizzesDisponibles` y
+  equivalentes, ya existían) como selector `?tab=`. Las 5 vistas
+  (`views/coachee/{Quiz,Flashcards,Mapas,Ejercicios,TestEstilo}View.vue`) se movieron a
+  `views/coachee/playground/*Tab.vue` (mismo *move* mecánico que el coach). `NavIcon.vue` gana
+  el ícono `playground` (un gamepad simple). Menú: grupo "Estudiar" baja de 6 a 2 ítems
+  (Biblioteca se queda aparte — es material del coach, no herramienta de práctica; Playground
+  reemplaza los 5). `router/index.ts`: 1 ruta + 5 redirects, mismo patrón que el coach.
+- **Landing = Mi Aprendizaje**: `homeFor('coachee')` pasa de `/coachee/plan` a
+  `/coachee/mi-aprendizaje`.
+- **`MiAprendizajeView.vue` + `lib/miAprendizaje.ts`**: las 5 acciones "Ir a X →" pasan de
+  texto subrayado a chip/botón real (mismo lenguaje que ya usa el resto de la app). 2
+  `SectionCard` nuevas (Ejercicios, Test de Estilo) — `resumenAprendizaje()` gana
+  `ejercicios`/`testEstilo` (via `numeroVersiones===0`/`!yaRespondido`, campos que ya existían
+  en los DTOs). Nueva `SectionCard "Tareas pendientes"` **primero en la página** (mismo
+  principio que "Atención inmediata" del coach) — junta actividades del plan no completadas
+  (siempre, el campo de fecha es texto libre tipo "Semana 1", no fecha real) + contenido con
+  `fechaLimite` vencida o a ≤7 días de los 5 módulos + recursos (flashcards/mapas quedan fuera:
+  son repaso continuo, sin estado binario de "completado"). Nueva `SectionCard "Mi progreso"`
+  con la montaña compacta + botón a `/coachee/progreso`.
+- **Gráfico de montaña** (`lib/montanaProgreso.ts` + `components/MontanaProgreso.vue`, ambos
+  nuevos): reinterpreta `PuntoProgreso[]` (ya existía via `getMiLineaProgreso()`) como una
+  senda ascendente — cada sesión un punto, más alto cuanto mayor `cercaniaObjetivo`, SVG a mano
+  (mismo criterio que `DonutChart`/`MapaCanvas`). Usado en Mi Aprendizaje (compacto) y en
+  `ProgresoView.vue` (completo, reemplaza la barra plana de "Avance general" — renombrada "Tu
+  camino de crecimiento"; `ProgresoLineaTiempo` se mantiene tal cual debajo, da el detalle por
+  sesión que la montaña no da). Nota de implementación: el SVG usa
+  `preserveAspectRatio="none"` para verse panorámico, lo que distorsiona cualquier `<text>`
+  interno — el mensaje de estado vacío se resolvió como HTML superpuesto, no `<text>` de SVG.
+- **Resumen imprimible** (`views/coachee/EstadoProcesoView.vue` +
+  `components/EstadoProcesoContenido.vue`, nuevos): mismo patrón que
+  `CertificadoView.vue`/`CertificadoContenido.vue` (`window.print()`, clases `print:`), pero
+  para un proceso **en curso** — objetivo, competencia, inicio del ciclo, avance %, próxima
+  sesión, actividades pendientes/completadas, logros recientes. Ruta `/coachee/resumen`, botón
+  "Imprimir resumen" en Mi Aprendizaje y en Progreso. `CertificadoView.vue` no se tocó — sigue
+  siendo específicamente el certificado de cierre.
+
+### Verificación
+
+- `npm run lint` (con `--fix`), `npm run build` (vue-tsc + vite) + cross-check `tsc -p
+  tsconfig.app.json`, `npx vitest run` → 369/369 (+21 tests nuevos: `PlaygroundView.spec.ts`,
+  `montanaProgreso.spec.ts`, +8 en `miAprendizaje.spec.ts` para ejercicios/testEstilo/
+  tareasPendientes, +2 en `MiAprendizajeView.spec.ts`).
+- Real en Chrome (headless vía CDP, login `qa-paleta-verify@test.com`): login aterriza en Mi
+  Aprendizaje; tarjeta "Tareas pendientes" muestra una actividad real del plan; "Mi progreso"
+  muestra la montaña (estado vacío correcto, sin autoevaluación aún); `/coachee/quiz` viejo
+  redirige a `/coachee/playground?tab=quiz`; Playground con datos reales (Quiz 1, Flashcards 2,
+  Mapas 1, Ejercicios 1, Test de Estilo 1), clic en "Ejercicios" cambia de pestaña y muestra el
+  ejercicio real con feedback; `/coachee/resumen` genera el resumen imprimible con datos reales
+  (objetivo, inicio 15-ago-2026, 0 actividades completadas/1 pendiente, 2 logros); se corrigió
+  en vivo un bug de texto distorsionado en la montaña antes de dar por terminada la tarea.
+
+## 2026-09-02 — Fix: gráfico de progreso confuso/mal aprovechado (seguimiento a lo anterior)
+
+### Contexto
+
+3 rondas de feedback del usuario sobre `MontanaProgreso.vue` (recién construido): (1) se veía
+"pixeleado" — causa real: viewBox cuadrado estirado con `preserveAspectRatio="none"` dentro de
+una caja mucho más ancha que alta, escala no uniforme; (2) tras el fix, quedaba angosto con un
+hueco en blanco al lado — el modo `compact` limitaba el ancho a `max-w-sm` dentro de una card
+de ancho completo; (3) "¿qué significa cada montaña?" — ninguna, eran decorativas, sin dato
+real detrás, y el usuario pidió buscar "un gráfico representativo" preguntando si hacía falta
+una librería. Se confirmó que **ninguna** — todos los gráficos de la app (`DonutChart`,
+`MapaCanvas`, `ProgresoLineaTiempo`, `ProyeccionIngresosChart`) son SVG/CSS a mano, sin
+librería, y el patrón más simple (`ProyeccionIngresosChart`: barras con altura=valor, sin
+metáfora) es justo lo que la montaña no tenía.
+
+### Frontend
+
+- `lib/montanaProgreso.ts` → `lib/graficoProgreso.ts` (+ `components/MontanaProgreso.vue` →
+  `GraficoProgreso.vue`): se reemplazó la silueta decorativa por un gráfico de línea/área real
+  — eje Y con grilla en 0/25/50/75/100% (etiqueta solo en 0/50/100, sin recargar), área rellena
+  bajo la línea, puntos coloreados por nivel (mismo `nivelProgreso`/`coloresNivel` de siempre),
+  fechas de primera/última sesión como caption. Mismo viewBox panorámico (`aspect-[10/3]`)
+  calcado por el contenedor que ya se había corregido para evitar la distorsión — pero esta vez
+  las etiquetas de texto llevan un tamaño de fuente calibrado para esa escala (el primer intento
+  con `font-size` en unidades del viewBox salió gigante).
+- `views/coachee/ProgresoView.vue`: "Tu camino de crecimiento" y "Línea de tiempo" (antes 2
+  `SectionCard` apiladas a todo el ancho) se fusionaron en una sola, con `ProgresoLineaTiempo`
+  (el detalle por sesión, sin tocar) y `GraficoProgreso` (la tendencia) lado a lado en
+  `grid lg:grid-cols-2` — a mitad de ancho el gráfico de tendencia se ve proporcionado, no
+  estirado.
+- `views/coachee/MiAprendizajeView.vue`: se sacó el prop `compact` (ya no existe) de su uso de
+  `GraficoProgreso`.
+
+### Verificación
+
+- `npm run lint`, `npm run build`, `npx vitest run` → 372/372 (specs de la lib movidos y
+  actualizados a los nuevos nombres de función/export, +3 tests nuevos: grilla del eje Y y
+  cierre del polígono de área).
+- Verificado con una página HTML aislada (mismos valores de fuente/trazo que el componente) en
+  Chrome real: etiquetas de eje legibles a tamaño normal, sin gigantismo ni distorsión, a ancho
+  completo y a la mitad.
+
+## 2026-09-03 — Perfil del coach: LinkedIn, CV, certificaciones y foto (visible para coachee y empresa)
+
+### Contexto
+
+`views/empresa/PerfilCoachView.vue` tenía la identidad del coach ("Coach Fernando Ramos", bio,
+metodología) **hardcodeada**, sin backend — el propio archivo lo dejaba anotado como pendiente.
+El coachee no tenía ninguna pantalla equivalente. El usuario pidió que el coach pueda cargar su
+LinkedIn, CV y certificados (confirmó **lista estructurada**: nombre + entidad emisora + archivo
+propio por certificación, no un cajón de documentos sueltos), y en un segundo pedido agregó foto
+de perfil / avatar.
+
+### Backend
+
+- Módulo nuevo `perfil-coach/`: entidades `PerfilCoach` (una fila por coach, atada a
+  `coachUserId` — sin FK formal a `User` para no acoplar módulos) y `CertificacionCoach` (FK
+  `ON DELETE CASCADE`). Mismo patrón "1-a-1, crear-si-no-existe" que `PlanDesarrollo`.
+  `PerfilCoachService.obtenerDelCoach()` resuelve el único `Role.COACH` de la tabla `User` — no
+  existía ningún precedente de "resolver el coach" en el proyecto, se agregó desde cero.
+- `PerfilCoachController`: `GET/PATCH /perfil-coach/me` + `POST me/foto` + `POST me/cv` (COACH,
+  editable), `POST/DELETE me/certificaciones[/:id]` (COACH), `GET /perfil-coach` +
+  `/foto`/`/cv`/`/certificaciones/:id/archivo` (COACH+COACHEE+EMPRESA, solo lectura). Mismo
+  patrón `FileInterceptor`+`diskStorage`+`UPLOADS_DIR` compartido que `recursos`/`ciclos`/`legal`.
+- `common/file-type-filter.util.ts`: `MIMETYPES_IMAGEN` (nuevo, para la foto) y
+  `MIMETYPES_PDF_O_IMAGEN` (certificaciones — acepta el PDF escaneado o una foto del diploma).
+- Migración `1788462867393-PerfilCoach.ts`: `perfiles_coach` + `certificaciones_coach`.
+
+### Frontend
+
+- `api/perfilCoach.ts` (nuevo): tipos + `getMiPerfil`/`updateMiPerfil`/`subirFoto`/`subirCv`/
+  `agregarCertificacion`/`eliminarCertificacion`/`getPerfilCoach` (solo lectura) +
+  `obtenerUrlFoto` (blob→object URL para `<img>` inline, no lanza — devuelve `null` en 404).
+- `views/coach/PerfilView.vue` (nuevo, ruta `/coach/perfil`): formulario editable completo —
+  foto con upload inmediato al seleccionar archivo, datos de texto con botón Guardar, CV con
+  reemplazo inmediato, certificaciones con alta (nombre + entidad + fecha + archivo opcional) y
+  baja.
+- `components/PerfilCoachContenido.vue` (nuevo, **compartido** entre empresa y coachee): bloque
+  de solo lectura — foto/nombre/bio, metodología, certificaciones+CV, contacto (LinkedIn/email/
+  teléfono), con estados vacíos legibles para el perfil recién creado.
+- `views/empresa/PerfilCoachView.vue` reescrito (de contenido hardcodeado a `getPerfilCoach()` +
+  `<PerfilCoachContenido>`); `views/coachee/MiCoachView.vue` nuevo (mismo patrón, ruta
+  `/coachee/mi-coach`, primera vez que el coachee tiene esta pantalla).
+- `AppShell.vue`: "Mi perfil" en Administración (coach), "Mi Coach" en Mi proceso (coachee); y el
+  avatar del header (botón + panel de cuenta) ahora muestra la foto real del coach vía
+  `obtenerUrlFoto()` cuando `auth.user.role === 'coach'`, con fallback a las iniciales de
+  siempre — coachee y empresa no se tocan, siguen solo con iniciales.
+
+### Verificación
+
+- Backend: 10 tests nuevos en `perfil-coach.service.spec.ts` (crear-si-no-existe, resolver el
+  único coach, merge parcial, reemplazo de foto sin fallar si el archivo viejo no existe en
+  disco, alta/baja de certificación con validación de pertenencia) + 453/453 del total,
+  `npm run lint`/`build` limpios, `migration:run`/`revert`/`run` simétrico.
+- Frontend: `npm run lint`, `npm run build` (vue-tsc + vite) + cross-check `tsc -p
+  tsconfig.app.json`, `npx vitest run` → 384/384 (+13 tests nuevos: `PerfilView.spec.ts`,
+  `PerfilCoachContenido.spec.ts`, `MiCoachView.spec.ts`, `PerfilCoachView.spec.ts` de empresa).
+- Real en Chrome (headless vía CDP) + curl directo al backend: como `coach@test.com`, PATCH de
+  datos + subida real de foto/CV/certificación (con archivo) — todo persiste y se sirve
+  correctamente (`GET /perfil-coach/foto`·`/cv`·`/certificaciones/:id/archivo` → 200); en
+  `/coach/perfil` el formulario carga los datos reales y el avatar del header cambia a la foto
+  subida; en `/empresa/coach` y `/coachee/mi-coach` (como `qa-empresa-verify@test.com` y
+  `qa-paleta-verify@test.com`) se ve el mismo perfil real —ya no el texto hardcodeado— con
+  certificación y CV descargables, y el avatar de esos dos roles se mantiene en iniciales.
+
+## 2026-09-03 — Perfil del coach: sitio web + redes sociales (seguimiento a lo anterior)
+
+Consulta del usuario: "¿el coach puede ingresar sus links de redes sociales?" — hoy solo había
+LinkedIn. Se agregaron `sitioWeb`, `instagramUrl`, `facebookUrl`, `youtubeUrl` (elegidas por el
+usuario entre las opciones propuestas — no todas las redes, solo las más relevantes para un
+coach) al mismo `PerfilCoach` de la entrada anterior: columnas nuevas (migración
+`1788468925351-RedesSocialesPerfilCoach.ts`, `ALTER TABLE ADD COLUMN` × 4), campos en
+`UpdatePerfilCoachDto` (`@IsUrl()`, igual que `linkedinUrl` — el service no necesitó tocarse,
+`assignDefined` ya es genérico), inputs nuevos en el formulario de `PerfilView.vue` y links
+condicionales (solo se muestra el que esté seteado) en `PerfilCoachContenido.vue`. Backend
+453/453, frontend 386/386 (+2 tests nuevos), migración `revert`/`run` simétrica, verificado en
+vivo (curl + Chrome real) que los 5 links se guardan y aparecen correctamente en `/empresa/coach`
+y `/coachee/mi-coach`.
+
+## 2026-09-05 — Fix: "Invalid credentials" y otros mensajes de error en inglés
+
+El usuario reportó ver "Invalid credentials" al fallar el login y pidió barrer todo el aplicativo
+por frases en inglés. Se auditó el frontend completo (templates Vue, `lib/`, `api/`, `stores/`) —
+ya estaba 100% en español, sin hallazgos — y se encontró que el problema estaba concentrado en
+mensajes de excepción **hardcodeados en el backend**, que viajan tal cual al frontend porque
+`client.ts` muestra `err.message` directo. La validación de DTOs (`class-validator`) ya tenía un
+`spanishValidationExceptionFactory` que traduce todo automáticamente (incluye humanización de
+campos no listados) — no era la fuente del problema.
+
+- ~90 mensajes `NotFoundException`/`ConflictException`/`BadRequestException` en inglés
+  ("Coachee not found", "A user with that email already exists", etc.) traducidos a español en
+  23 archivos de servicio, vía script de reemplazo literal (los tests verifican el tipo de
+  excepción, no el texto, así que no se rompió ningún test).
+- `auth.service.ts`: "Invalid credentials" → "Credenciales inválidas.", "Invalid refresh token" →
+  "Token de actualización inválido.", "Refresh token revoked or expired" → traducido.
+- 3 `Exception()` sin argumento que usaban el default en inglés de Nest ("Unauthorized"/
+  "Forbidden"): `jwt.strategy.ts`, `ciclos.service.ts`, `coachees.service.ts` — ahora con mensaje
+  explícito en español.
+- Nuevo `common/spanish-throttler.guard.ts`: el `ThrottlerGuard` de `@nestjs/throttler` lanza
+  "ThrottlerException: Too Many Requests" de fábrica, sin vía de traducción por config — se
+  sobreescribió `throwThrottlingException()` para un mensaje en español, reemplaza a
+  `ThrottlerGuard` como `APP_GUARD` en `app.module.ts`.
+
+### Verificación
+
+`npm run build`/`lint`/`test` (453/453) en backend, `npx vitest run` (386/386, sin cambios —
+frontend no se tocó) en frontend. Verificado en vivo contra el backend reiniciado: login con
+password incorrecta → `"Credenciales inválidas."`; coachee inexistente → `"Coachee no
+encontrado."`; refresh token inválido → `"Token de actualización inválido."`; 25 requests
+seguidos → `"Demasiadas solicitudes. Intenta de nuevo en un momento."` (antes: en inglés).
+
+## 2026-09-05 — Coachees de empresa: tabs Activos/Cerrados, grilla real, modales, impacto en el negocio
+
+El usuario pidió mejorar `/empresa/coachees` (una sola tarjeta sparse mezclando activos y
+cerrados) — se le pidió "analiza, no hagas nada" primero. Del análisis salieron 3 decisiones
+confirmadas por el usuario: tabla real (no tarjetas), reemplazar la página aparte por modales, y
+agregar un campo estructurado nuevo de "impacto en el negocio" (no existía — el informe de
+cierre es un solo bloque de texto libre, sin ese dato separable).
+
+### Backend
+
+- `CicloCoaching.impactoNegocio` (text, nullable) — campo aparte del `informeFinal`, para que
+  la empresa lo vea como su propio dato en la grilla, no enterrado en el informe.
+- Migración `1788623448884-ImpactoNegocioCiclo.ts`, `PATCH /ciclos/:id/impacto-negocio`
+  (Role.COACH), `updateImpactoNegocio()` en el service — mismo patrón que `updateInformeFinal`.
+
+### Frontend — coach (flujo de cierre)
+
+- `CicloTab.vue`: nuevo textarea "Impacto en el negocio" + botón propio "Guardar impacto en el
+  negocio", junto al informe pero editable por separado.
+
+### Frontend — empresa (`CoacheesView.vue`, reescrito completo)
+
+- `TabBar` con **Activos**/**Procesos cerrados** (insignia con conteo), separados por el mismo
+  `estado` que ya calculaba `resumirCoachee()` — sin lógica nueva de negocio.
+- Grilla real (`<table>`) con columnas distintas por tab: Activos → competencia, avance+barra,
+  sesiones, próxima sesión; Cerrados → competencia, resultado, fecha de cierre, **impacto en
+  el negocio** (columna nueva, truncada con tooltip).
+- Botonera por fila que abre modales en vez de navegar a otra página: **Ver progreso**
+  (avance + ciclo en curso), **Historial** (reutiliza `HistorialCiclos.vue` tal cual),
+  **Certificado** (lista + vista previa inline reutilizando `CertificadoContenido.vue`, sin
+  apilar un modal sobre otro).
+- Se retiró `/empresa/coachees/:id/ciclo` (`CicloView.vue`, ruta `empresa-ciclo`) — todo lo que
+  mostraba ahora vive en los modales de la lista. El link desde "Necesita tu atención" en el
+  Resumen (`DashboardView.vue`) y desde `CertificadoView.vue` ahora apunta a
+  `/empresa/coachees` con `?coacheeId=` — la lista detecta el query param al montar y abre
+  directo el modal de progreso de ese coachee (mismo salto que antes, sin la página aparte).
+
+### Verificación
+
+Backend 457/457 (+2 tests de `updateImpactoNegocio`), migración `revert`/`run` simétrica.
+Frontend `npm run build`/`lint`, `npx vitest run` → 398/398 (reescritos los specs de
+`CoacheesView`, `CicloTab`, `DashboardView`; eliminado `CicloView.spec.ts` junto con la vista).
+Verificado en vivo con datos reales: seteé `impactoNegocio` vía curl en un ciclo real cerrado de
+Ferronor/QA Empresa Verify, confirmé en Chrome que aparece en la columna de la grilla, que
+"Certificado" lista ambos ciclos cerrados reales con vista previa funcionando (nombre real,
+objetivo real, resultado "Logrado"), que "Historial" muestra ambos ciclos, y que el campo
+"Impacto en el negocio" del coach se guarda por separado del informe.
+
+## 2026-09-05 — Rediseño UI/UX de Coachees empresa: menos plano, fecha inicio, impacto destacado
+
+Feedback directo del usuario sobre la entrega anterior: se veía "muy plano, muy apagado", el
+campo de impacto quedaba cortado, faltaba la fecha de inicio junto a la de cierre, y el
+historial mostraba el informe completo como un bloque de texto sin formato.
+
+- **Filas → tarjetas**: se reemplazó la tabla `<table>` densa por tarjetas por coachee (mismo
+  contenido, más aire, avatar más grande, hover con sombra) en ambos tabs.
+- **Fecha inicio + cierre**: ahora se muestran ambas (antes solo cierre), con formato legible
+  ("17 ago 2026" en vez de "17-08-2026").
+- **Resultado con color real**: nuevo `resultadoColor` en `lib/resultadoCiclo.ts` (sage/bronze/
+  danger según logrado/medianamente/no logrado) — antes el badge era siempre del mismo tono
+  neutro sin importar el resultado.
+- **"Impacto en el negocio" ya no se corta**: nuevo componente `ImpactoNegocioCallout.vue`
+  (reutilizado en la grilla y en el historial) — bloque destacado de ancho completo con su
+  propio ícono nuevo (`impacto`, un rayo — matching semántico y visual, no reciclado de otro
+  ícono) y su propio color de acento (`--color-spark`, el mismo tono "premium" que ya usa el
+  certificado), texto completo sin truncar, y estado vacío explícito ("Sin registrar todavía")
+  cuando el coach aún no lo completa.
+- **Historial rediseñado**: badge de resultado coloreado, ícono `chevron` (nuevo) para expandir/
+  colapsar en vez de una flecha reciclada, el impacto ahora aparece ahí también, el informe
+  final ya no es un bloque de texto libre suelto — vive en una caja con `max-h-64
+  overflow-y-auto` (ya no se come el modal entero), fechas con el mismo formato legible, y el
+  botón de descargar PDF pasó de link subrayado a píldora con ícono.
+- **Modal "Ver progreso" con más estructura**: encabezado con avatar, secciones "Avance
+  general"/"Ciclo en curso" con ícono + etiqueta (mismo lenguaje visual que el resto de la app),
+  resumen de reunión inicial en una caja legible en vez de texto plano.
+
+### Verificación
+
+`npm run build`/`lint`, `npx vitest run` → 400/400 (+2 tests nuevos de
+`ImpactoNegocioCallout.spec.ts`). Verificado en Chrome real con datos reales de Ferronor/QA
+Empresa Verify: el callout de impacto se ve completo con su ícono y color propios, el resultado
+"Logrado" aparece en verde, fecha inicio y cierre ambas visibles, el historial expandido muestra
+el impacto + el informe acotado con scroll, y el modal de progreso con datos reales (incluyendo
+un ciclo activo nuevo abierto para la prueba) se ve estructurado y legible.
+
+## 2026-09-05 — "Últimos impactos en el negocio" en el Resumen de empresa
+
+El usuario pidió "un gráfico top 5 de los últimos impactos en el negocio". Antes de construirlo
+se le explicó por qué un gráfico de barras no aplica: el impacto es texto libre que escribe el
+coach al cerrar un ciclo, no un número — no hay "top 5 por magnitud" sin inventar un puntaje
+que no existe. Lo real y útil es "los más recientes": una vitrina de resultados concretos.
+
+- `lib/ultimosImpactos.ts` (puro, testeado): junta los ciclos cerrados con `impactoNegocio` de
+  todos los coachees de la empresa, ordena por `fechaCierre` descendente, retorna los primeros
+  5 (parámetro `limite` configurable).
+- `DashboardView.vue` (empresa): nueva `SectionCard` "Últimos impactos en el negocio" (ícono
+  `impacto`, el rayo ya usado en la grilla de Coachees) entre "Finanzas" y "Distribución por
+  departamento" — sigue el arco costo→valor del dashboard. Cada ítem: coachee + competencia +
+  fecha + el impacto completo, mismo lenguaje visual (círculo spark) que `ImpactoNegocioCallout`.
+  Se extendió `filas`/`resumenDe()` para retener el `ciclos[]` crudo de cada coachee (antes solo
+  se guardaba el resumen derivado).
+
+### Verificación
+
+`npm run build`/`lint`, `npx vitest run` → 405/405 (+3 tests: `ultimosImpactos.spec.ts` y 2
+nuevos en `DashboardView.spec.ts`). Verificado en Chrome real con el impacto registrado
+anteriormente en QA Empresa Verify — aparece completo, con ícono y fecha, en el Resumen.
+
+## 2026-09-05 — Cerrando la brecha de satisfacción entre coach y empresa
+
+El usuario preguntó cómo funciona hoy la satisfacción desde la vista empresa: quién la llena,
+si es el subgerente o los coachees, y cómo se entera el coach del feedback de un ciclo hecho
+para una empresa. Se investigó el código (no se asumió nada) y se encontraron dos mecanismos
+totalmente separados, con una brecha real en cada dirección:
+
+- **`EncuestaSatisfaccion`**: la llena quien tenga la cuenta de la empresa (el subgerente/
+  contacto RRHH) — una calificación 1-5 general del servicio, sin ligar a un coachee o ciclo
+  puntual. Alimenta el KPI "Satisfacción promedio" del Resumen de empresa. El backend ya tenía
+  `GET /satisfaccion/encuestas/:empresaId` (Role.COACH) y el frontend un wrapper
+  (`getEncuestasDeEmpresa`) — **pero no existía ninguna pantalla donde el coach la viera**.
+- **`RetroalimentacionCierre`**: la llena el coachee al cerrar su ciclo (18 afirmaciones en 3
+  bloques + 4 preguntas abiertas) — el coach ya la ve en el detalle del coachee (`CicloTab.vue`).
+  El backend ya permitía `Role.EMPRESA` en `GET /retroalimentacion/coachee/:coacheeId` — **pero
+  ninguna vista de empresa la usaba**.
+
+Ambos casos eran endpoints ya construidos y nunca conectados a una pantalla — cero cambios de
+backend, solo wiring:
+
+- **Coach → `EmpresasView.vue`**: nuevo botón "Ver satisfacción" (ícono ojo) por empresa, abre
+  un modal con los KPIs (satisfacción promedio, tasa de asistencia, procesos terminados/en
+  curso) y el listado de encuestas respondidas (estrellas + comentario).
+- **Empresa → `CoacheesView.vue`**: nuevo botón "Feedback" (solo si el coachee tiene
+  retroalimentación registrada) en la pestaña "Procesos cerrados", junto a Historial y
+  Certificado — abre un modal con el feedback completo de cierre por ciclo (promedio general,
+  promedio por bloque, y las 4 respuestas abiertas), reutilizando `lib/retroalimentacionResumen.ts`
+  (ya compartido con `CicloTab.vue`, cero lógica nueva).
+
+### Verificación
+
+`npm run build`/`lint`, `npx vitest run` → 408/408 (+3 tests nuevos: modal de satisfacción del
+coach, modal de feedback de la empresa, y el caso sin retroalimentación). Verificado en vivo:
+envié una encuesta real como QA Empresa Verify (5★ + comentario) y confirmé que aparece en el
+modal del coach; abrí el modal de feedback en la empresa y se ven las dos retroalimentaciones
+reales de QA Paleta Verify con sus promedios y respuestas abiertas — dato que antes era
+invisible para la empresa pese a existir en la base desde hace semanas.
+
+## 2026-09-05 — Módulo de Configuración (grupo/clave/valor/estado)
+
+Al investigar de dónde salían las 18 afirmaciones de la retroalimentación de cierre, se
+encontró que vivían hardcodeadas en `frontend/src/lib/retroalimentacionPreguntas.ts` — ni el
+backend las validaba, ni existía ninguna tabla de configuración. El usuario pidió justo eso:
+"un módulo de configuración con todos los datos parametrizables, con grupo, clave, valor y
+estado".
+
+- **Backend — módulo nuevo `configuracion/`**: entidad `ParametroConfiguracion` (grupo, clave,
+  valor, estado) con índice único `(grupo, clave)`. A diferencia del sync siempre-sobrescribe
+  de `CompetenciasService` (`ON CONFLICT DO UPDATE`), acá el seed inicial usa `ON CONFLICT DO
+  NOTHING` (`.orIgnore()`) — la base manda una vez creado el dato, y un cambio futuro del seed
+  en código nunca pisa una edición del coach. Esquema de 2 niveles para el catálogo de
+  retroalimentación: el grupo índice `RETROALIMENTACION_BLOQUES` enumera los 3 bloques, y cada
+  nombre de bloque es a su vez un grupo con sus afirmaciones en orden — convención reusable
+  para cualquier catálogo futuro de 2 niveles. Endpoints: CRUD completo (Role.COACH) +
+  `GET /configuracion/retroalimentacion/preguntas` (COACH y COACHEE) que arma el catálogo desde
+  la parametrización. Migración `ParametrosConfiguracion`, 9 tests nuevos de servicio.
+- **Frontend**: `api/configuracion.ts` (wrapper CRUD + `getPreguntasRetroalimentacion`).
+  `ProgresoView.vue` (coachee) migrado de la constante estática a la API — mismo comportamiento
+  exacto, ahora editable sin deploy. Nueva pantalla `views/coach/ConfiguracionView.vue`
+  (`/coach/configuracion`, grupo "Administración"): tabla agrupada por grupo, filtro por grupo,
+  `StatusToggle` para estado, alta/edición vía modal, baja con confirmación — mismo patrón que
+  `UsuariosView.vue`. Ícono `configuracion` nuevo (engranaje) en `NavIcon.vue`. Se eliminó
+  `lib/retroalimentacionPreguntas.ts`, ya sin consumidores.
+
+### Verificación
+
+Backend: `npm run build`/`lint`, `npm test` → 466/466. Migración `migration:run`/`revert`/`run`
+simétrica. Restart real contra Postgres: confirmado el seed de 21 parámetros (3 bloques + 18
+afirmaciones) en el log de arranque. Frontend: `npm run build`/`lint`, `npx vitest run` →
+413/413 (+5 tests de `ConfiguracionView.spec.ts`). Verificado en Chrome real (headless vía CDP):
+como coach, `/coach/configuracion` lista los 21 parámetros agrupados correctamente; creé un
+parámetro nuevo, lo desactivé y lo eliminé por API, todo persistiendo contra la base real; como
+QA Paleta Verify, el modal de retroalimentación en `/coachee/progreso` sigue mostrando
+exactamente los mismos 3 bloques y 18 afirmaciones que antes, ahora servidos por la API.
+
+## 2026-09-05 — Encuesta de satisfacción: ligada a un ciclo, con categorías
+
+El usuario, tras entender cómo funcionaba la encuesta de satisfacción (un rating 1-5 suelto,
+sin relación con ningún proceso, que la empresa podía enviar cuantas veces quisiera), pidió las
+4 mejoras a la vez: ligarla a un coachee/ciclo, categorías en vez de una sola nota, limitar la
+frecuencia, y explicar mejor para qué sirve. Las primeras tres se resuelven con una sola
+decisión: la encuesta ahora se responde **por cada ciclo cerrado** (como ya hace la
+retroalimentación del coachee) — un registro único por ciclo da el contexto y limita la
+frecuencia a la vez, sin inventar una ventana de tiempo arbitraria.
+
+- **Categorías vía `configuracion/`**: 3 nuevas filas `grupo: 'SATISFACCION_CATEGORIAS'` en el
+  seed (comunicación, cumplimiento, resultados) — mismo mecanismo ya construido para las
+  afirmaciones de retroalimentación, editable sin deploy. Nueva ruta `GET
+  /configuracion/satisfaccion/categorias` (COACH, EMPRESA).
+- **`EncuestaSatisfaccion`**: gana `cicloId` (FK a `ciclos_coaching`, único — Postgres no
+  considera duplicadas las filas viejas con `null`) y `respuestas` (jsonb, `{categoria,
+  valor}[]`, igual shape que `RetroalimentacionCierre`). `calificacion` pasa a ser derivada
+  (promedio de `respuestas`) en vez de un input directo, así el KPI `AVG(calificacion)` no
+  cambia. `SatisfaccionService.crearEncuesta` valida que el ciclo pertenezca a la empresa (vía
+  su coachee) y pre-chequea la unicidad antes del insert — mismo patrón que
+  `RetroalimentacionService.addOwn`.
+- **`views/empresa/SatisfaccionView.vue`**: la sección "Encuesta de satisfacción" pasa de un
+  formulario suelto a una lista de "Pendientes de evaluar" (ciclos cerrados de cualquier
+  coachee de la empresa sin encuesta aún, cruzando `listCoachees()` + `getCiclosDeCoachee()`
+  con `getMisEncuestas()`) + "Respondidas" con el detalle por categoría. Un párrafo explica la
+  diferencia con la retroalimentación del coachee. "Solicitar un nuevo proceso" no cambió.
+- **`views/coach/EmpresasView.vue`**: el modal "Ver satisfacción" ahora muestra a qué
+  coachee/ciclo corresponde cada encuesta y su detalle por categoría; las encuestas viejas sin
+  ciclo se siguen mostrando como "Encuesta general (sin ciclo asociado)".
+
+### Verificación
+
+Backend: `satisfaccion.service.spec.ts` (+3 tests: ciclo inexistente, ciclo de otra empresa,
+duplicado) y `configuracion.service.spec.ts` (+1 test) → 470/470. `build`/`lint` limpios.
+Migración `migration:run`/`revert`/`run` simétrica. Restart real: nuevas rutas mapeadas, 24
+parámetros verificados en el log (21 + 3 categorías). Frontend: reescritura de
+`SatisfaccionView.spec.ts` (+3 tests) y fixture actualizado en `EmpresasView.spec.ts` → 415/415,
+`build`/`lint` limpios. Verificado en Chrome real (headless vía CDP): como QA Empresa Verify,
+completé una encuesta real sobre un ciclo cerrado de QA Paleta Verify — el ciclo desapareció de
+"Pendientes" y apareció en "Respondidas" con las 3 categorías y el comentario; como coach, el
+modal "Ver satisfacción" en Empresas mostró la misma encuesta con el coachee correcto y su
+detalle, junto a la encuesta vieja sin ciclo mostrada correctamente como "general".
+
+## 2026-09-05 — Retorno de la inversión en Finanzas (empresa)
+
+Se le pidió al usuario una evaluación honesta del portal de empresa como si fuera el
+subgerente que gestiona el programa: ¿tiene lo necesario para tomar decisiones? Confirmó 5
+brechas reales, y priorizó cerrar primero la más pedida al justificar presupuesto: puede ver
+cuánto gasta (Finanzas) y qué logró (resultado/impacto, en Coachees), pero son dos lugares
+separados que hay que cruzar mentalmente.
+
+Sin inventar ningún puntaje (`impactoNegocio` sigue siendo texto libre, decisión ya tomada
+para "Últimos impactos" — no hay ROI-en-dólares posible sin fabricar un valor): lo que sí es
+real y agregable es el costo (sesiones realizadas × tarifa) y el `resultado` categórico de
+cada ciclo cerrado.
+
+- `NegocioService.retornoParaEmpresa(empresaId)` (nuevo): por cada ciclo cerrado de la
+  empresa, calcula su costo real sumando las sesiones YA REALIZADAS que tienen ese
+  `cicloId` (campo que ya existía en `Sesion`, poblado al crear la sesión con un ciclo
+  abierto, nunca antes usado para agregar costos) × `tarifaEfectiva` (mismo cálculo que
+  `calcularResumenCobros`). Sin filtro de período — se lista el historial completo de
+  procesos cerrados, igual criterio que `HistorialCiclos`. Nueva ruta `GET
+  /negocio/empresa/retorno` (Role.EMPRESA).
+- `FinanzasView.vue`: nueva sección "Retorno de la inversión" al final — 3 KPIs (invertido en
+  procesos cerrados, costo promedio por proceso, % con objetivo logrado) + una tarjeta por
+  proceso cerrado (coachee, fecha, costo, badge de resultado reusando
+  `resultadoColor`/`resultadoLabel`, e `ImpactoNegocioCallout` cuando existe) — mismo
+  tratamiento visual que ya usa la pestaña "Procesos cerrados" de Coachees, cero componentes
+  nuevos.
+
+### Verificación
+
+Backend: 3 tests nuevos en `negocio.service.spec.ts` (costo solo cuenta sesiones realizadas,
+distribución de resultados, `costoPromedioPorProceso: null` sin procesos) → 473/473.
+`build`/`lint` limpios. Frontend: 2 tests nuevos en `FinanzasView.spec.ts` (empty state y KPIs
+con detalle) → 417/417, `build`/`lint` limpios. Verificado en Chrome real (headless vía CDP):
+como QA Empresa Verify, `/empresa/finanzas` muestra los 3 procesos cerrados de QA Paleta
+Verify con su resultado y el impacto real ya registrado; el costo salió $0 en los tres
+—verificado contra la base que es correcto: esas sesiones de prueba nunca quedaron ligadas a
+un `cicloId`, así que el cálculo está siendo honesto con datos de fixture incompletos, no hay
+bug.
+
+## 2026-09-05 — Alerta de riesgo: coachee activo sin próxima sesión agendada
+
+Tercera de las 5 brechas del portal de empresa: "Necesita tu atención" solo avisaba de ciclos
+por vencer, no de un proceso que simplemente se estancó — sigue "en curso" pero no tiene
+ninguna sesión agendada, y nadie lo nota hasta que ya perdió mucho tiempo. Cien por ciento
+frontend: la señal (`cicloActual.sesionesRestantes` + `proximaSesion`) ya la cargaban tanto
+`DashboardView.vue` como `CoacheesView.vue` de empresa, ambas vía `resumirCoachee()` — cero
+endpoints ni llamadas nuevas al backend.
+
+- `lib/resumenCoacheeEmpresa.ts`: `ResumenCoacheeEmpresa` gana `sinProximaSesion` — `true`
+  cuando el ciclo actual tiene sesiones pendientes y no hay ninguna próxima sesión agendada.
+- `DashboardView.vue` ("Necesita tu atención") y `CoacheesView.vue` (badge en la tarjeta del
+  coachee activo): nuevo badge "Sin sesión agendada" (danger, distinto del bronze de "Ciclo
+  por vencer" — es la señal más urgente), puede coexistir con el de "por vencer" si aplican
+  ambos.
+
+### Verificación
+
+`lib/resumenCoacheeEmpresa.spec.ts` (+4), `DashboardView.spec.ts` (+2), `CoacheesView.spec.ts`
+(+2) → 425/425. `build`/`lint` limpios (sin cambios de backend). Verificado en Chrome real:
+abrí un ciclo temporal para QA Paleta Verify sin agendar sesión, confirmé el badge en Resumen y
+en Coachees, y lo cerré de nuevo al terminar para no dejar el dato de prueba en un estado raro.
+
+## 2026-09-05 — Tendencia en el tiempo + Informe ejecutivo exportable
+
+Las 2 últimas brechas del portal de empresa, cerradas juntas porque el informe reutiliza la
+tendencia como una de sus secciones. Ninguna fabrica datos: se agregan por mes 3 señales que ya
+existen — `EncuestaSatisfaccion.calificacion`, `CicloCoaching.resultado`, `Sesion.asistio` —
+mismo criterio "cero puntajes inventados" de toda la sesión. El informe no genera un PDF con
+una librería nueva: reutiliza `window.print()` + `print:hidden`, patrón que `FinanzasView.vue`
+ya usaba y que `AppShell.vue` ya resuelve globalmente (oculta sidebar/header al imprimir).
+
+- **`SatisfaccionService.tendenciaParaEmpresa(empresaId, meses=6)`** (nuevo): ventana rodante
+  de 6 meses (más antiguo primero, `rangosMensuales`/`etiquetaMes` propios de este servicio,
+  espejo de `NegocioService.cobrosPorMeses` pero hacia atrás). Por mes: promedio de
+  satisfacción de las encuestas creadas ese mes, % de ciclos **cerrados ese mes** con
+  `resultado=logrado`, y tasa de asistencia de las sesiones de ese mes — cada uno `null`
+  (no cero) cuando no hay dato ese mes. Ruta `GET /satisfaccion/tendencia/me` (Role.EMPRESA).
+- **`components/TendenciaChart.vue`** (nuevo): 3 filas de mini-barras (Satisfacción /5,
+  % Procesos logrados, Asistencia %), normalizadas a su propia escala, con una sola fila de
+  etiquetas de mes compartida — mismo cálculo de altura que `ProyeccionGastoChart.vue`.
+  Nueva `SectionCard` "Tendencia" en `DashboardView.vue` (empresa), entre Finanzas e Últimos
+  impactos.
+- **`views/empresa/InformeEjecutivoView.vue`** (nuevo, `/empresa/informe`, nav "Informe"):
+  compone en una sola página imprimible — KPIs generales, Tendencia, Retorno de la inversión
+  completo (mismas tarjetas que Finanzas), Resumen financiero del período, e Impactos en el
+  negocio sin el límite de 5 del widget del Resumen. Cero endpoints nuevos más allá de
+  Tendencia — 100% reutilización de `api/*.ts` y componentes ya existentes.
+
+### Verificación
+
+Backend: 3 tests nuevos en `satisfaccion.service.spec.ts` → 476/476. `build`/`lint` limpios.
+Frontend: specs nuevos de `TendenciaChart.vue` (3) e `InformeEjecutivoView.vue` (3), +1 en
+`DashboardView.spec.ts` → 432/432, `build`/`lint` limpios. Verificado en Chrome real: la
+sección Tendencia del Resumen muestra barras reales de los últimos 6 meses (con meses vacíos
+en gris, no en cero); `/empresa/informe` arma las 5 secciones con datos reales; emulando el
+medio "print" vía CDP se confirmó que el sidebar y el header desaparecen y el contenido queda
+listo para imprimir/exportar a PDF desde el navegador.
+
+## 2026-09-05 — Pulido: sin impacto duplicado en el informe, Tendencia rediseñada
+
+El usuario notó dos cosas apenas vio el resultado: el impacto en el negocio salía dos veces en
+el informe ejecutivo (en "Retorno de la inversión" y otra vez en una sección aparte de
+"Impactos"), y pidió que Tendencia se viera más elegante — las barras planas no comunicaban
+bien.
+
+- **`InformeEjecutivoView.vue`**: se eliminó la sección "Impactos en el negocio" completa — el
+  dato ya vive en cada tarjeta de "Retorno de la inversión" junto a su costo y resultado, con
+  más contexto que una lista aparte. De paso se cae todo el fetch que solo existía para esa
+  sección (`listCoachees` + `getPlanByCoachee` + `getCiclosDeCoachee` + `ultimosImpactos`),
+  dejando la vista más simple.
+- **`TendenciaChart.vue` (rediseño completo)**: de 3 filas de barras planas a 3 tarjetas
+  (grid), cada una con el valor actual grande, una variación vs. el dato real anterior (▲/▼,
+  sage/danger) y un sparkline SVG suave en vez de barras — la línea solo conecta meses
+  *consecutivos* con dato real (un hueco corta la línea, nunca interpola un valor inventado),
+  con un punto marcado en cada mes real. Etiquetas de mes reducidas a solo el primero y el
+  último (rango), no una por mes — menos ruido visual.
+
+### Verificación
+
+`TendenciaChart.spec.ts` reescrito (5 tests: valor+variación, rango de meses, tramos de línea
+que saltan meses sin dato) e `InformeEjecutivoView.spec.ts` simplificado (sin los mocks que ya
+no aplican, +1 test que confirma el impacto aparece una sola vez) → 435/435. `build`/`lint`
+limpios (sin cambios de backend). Verificado en Chrome real: el informe ahora muestra el texto
+del impacto exactamente 1 vez (antes 2) y ya no existe la sección "Impactos en el negocio";
+Tendencia se ve como 3 tarjetas limpias con sparkline, tanto en el Resumen como en el Informe.
+
+## 2026-09-05 — Adopción de Apache ECharts en toda la app
+
+Ni siquiera el sparkline rediseñado de Tendencia se entendía — el problema real era la
+metodología (bucket mensual con volumen bajísimo de datos), no el dibujo a mano. El usuario
+pidió ir más allá: adoptar una librería de gráficos de verdad para **toda** la app, pensando en
+el futuro SaaS multi-coach/multi-empresa. Se evaluó primero **ApexCharts** y se descartó al
+verificar su LICENSE real (no de memoria): dejó de ser MIT, ahora es dual-license — gratis solo
+bajo $2M USD de facturación anual, y pide licencia OEM paga si se embebe en una plataforma que
+otros usuarios configuran (exactamente el escenario SaaS descrito). Se optó por **Apache
+ECharts** (`echarts`, Apache-2.0) + **vue-echarts** (MIT) — gratis para siempre, sin techo de
+facturación, sin cláusula OEM, y con renderer SVG (nítido al imprimir el Informe Ejecutivo, a
+diferencia de Chart.js que solo renderiza en canvas).
+
+- **Infraestructura nueva**: `lib/echartsCore.ts` (registro modular vía `echarts/core` — solo
+  `BarChart`/`LineChart`/`PieChart`/`GridComponent`/`LegendComponent`/`TooltipComponent`/
+  `SVGRenderer`, no `echarts` completo) y `lib/echartsTheme.ts` (`resolveColor()` para
+  convertir `var(--color-sage)` a un color real, y `baseOption()` compartida).
+- **5 componentes migrados**: `DonutChart`, `GraficoProgreso`, `ProyeccionGastoChart`,
+  `ProyeccionIngresosChart`, `TendenciaChart` (reconstruido: barras por métrica, solo meses
+  con dato, valor rotulado — resuelve a la vez "usar librería" y "que se entienda"). Mismo
+  prop API externo en cada uno — ninguna vista consumidora cambió. `ProgresoLineaTiempo.vue`
+  (anillos por sesión, N por lista) quedó **fuera a propósito**: no es un gráfico de
+  serie/comparación, y montar una instancia de ECharts por fila de una lista larga pesa más
+  de lo que aporta.
+- **Bug real encontrado y corregido**: vue-echarts inyecta `x-vue-echarts{height:100%}` como
+  CSS **sin cascade layer** — en Tailwind v4 (que sí pone sus utilidades en una layer), CSS
+  sin layer siempre gana sobre CSS con layer sin importar la especificidad. Poner una clase
+  Tailwind de alto (`h-28`, etc.) directo en `<VChart>` perdía contra esa regla y producía un
+  loop de resize sin control (se vio crecer un chart a 22.000px de alto en vivo). Fix: el alto
+  real siempre va en un `<div>` contenedor común (no afectado por el selector de vue-echarts),
+  `<VChart>` adentro solo recibe `h-full w-full` — mismo patrón que `DonutChart` ya usaba por
+  casualidad y por eso nunca mostró el bug.
+- **Estrategia de testing nueva**: `happy-dom` no da layout real, así que ECharts no puede
+  pintar de verdad en los tests — los specs de gráficos ahora verifican el `option` que cada
+  componente arma y le pasa a `<VChart>` (`wrapper.findComponent(VChart).props('option')`), no
+  el SVG renderizado. Documentado en el propio spec de `TendenciaChart` para que se repita.
+- `lib/graficoProgreso.ts` (+ su spec) se eliminó — quedó sin usar una vez que ECharts calcula
+  su propio layout de ejes (antes hacía la matemática de coordenadas a mano solo para el SVG
+  manual de `GraficoProgreso.vue`).
+
+### Verificación
+
+`npm audit`: `echarts`/`vue-echarts` no agregan ninguna vulnerabilidad nueva (las 4 existentes
+son de devDependencies/xlsx ya presentes, no relacionadas). `npm run build`/`lint` limpios,
+`npx vitest run` → 426/426 (specs de los 5 componentes migrados reescritos con la nueva
+estrategia, más los de sus vistas consumidoras actualizados donde el comportamiento cambió a
+propósito). Bundle: nuevo chunk compartido de ~575 kB (196 kB gzip) para echarts, cargado una
+sola vez y reusado por los 5 gráficos (confirmado que no se duplica por componente). Verificado
+en Chrome real: Tendencia y Proyección de ingresos/gasto muestran barras reales, rotuladas,
+correctamente dimensionadas tras el fix del bug de alto; clic en una barra de Proyección sigue
+abriendo el detalle por coachee/empresa; Donut y Distribución por departamento sin cambios
+visuales; confirmado que el renderer es 100% SVG (cero `<canvas>`) y se ve nítido emulando el
+medio "print".
+
+## 2026-09-05 — Ícono de mostrar/ocultar contraseña en Login
+
+El usuario preguntó por qué el login no tiene el ícono de ojo para ver la contraseña. La
+respuesta: nunca se construyó ahí — `LoginView.vue` usaba un `<input type="password">` crudo,
+mientras que el resto de los formularios de contraseña de la app (cambio de contraseña, tanto
+en `CambiarPasswordView.vue` como en el modal de `AppShell.vue`) ya usan
+`components/PasswordField.vue`, que sí tiene el toggle desde antes. No hacía falta construir
+nada nuevo, solo reusar lo que ya existía.
+
+- `PasswordField.vue`: nueva prop opcional `inputClass` — cuando se pasa, reemplaza por
+  completo la clase del input (el login tiene un estilo propio, fondo marfil + anillo de foco,
+  distinto del resto de la app); sin la prop, mantiene exactamente el estilo plano de siempre.
+  El caller que use `inputClass` es responsable de incluir `pr-10` (espacio para el botón de
+  ojo).
+- `LoginView.vue`: el campo de contraseña ahora usa `<PasswordField>` en vez del `<input>`
+  crudo, con su estilo original preservado vía `inputClass`.
+
+### Verificación
+
+Specs nuevos: `PasswordField.spec.ts` (4 tests: toggle, `update:modelValue`, `inputClass` vs.
+estilo por defecto, borde `invalid`) y `LoginView.spec.ts` (4 tests: toggle visible en el
+login, revela el valor real, login exitoso redirige, error se muestra) → 434/434. `build`/
+`lint` limpios (sin cambios de backend). Verificado en Chrome real: contraseña enmascarada por
+defecto con el mismo estilo ivory de antes, clic en el ojo revela el texto plano y el ícono
+cambia a ojo tachado.
+
+## 2026-09-05 — Dona de distribución de resultados en Retorno de la inversión
+
+El usuario preguntó si solo íbamos a usar gráficos de barra para todo — la respuesta honesta
+fue que no (Donut para composición, línea para progreso continuo, barra para montos por
+período), pero se identificó una oportunidad real: "Retorno de la inversión" mostraba el
+desglose de resultados como un solo número ("% con objetivo logrado"), escondiendo cuántos
+procesos quedaron parciales o sin lograr — el mismo tipo de dato (parte-del-todo) que
+`DonutChart` ya resuelve bien en "Distribución por departamento".
+
+- `lib/distribucionResultados.ts` (nuevo, puro): arma los segmentos logrado/medianamente_logrado/
+  no_logrado con su conteo y %, excluyendo los que están en cero (una dona con un segmento en
+  0% no aporta) — mismo criterio de "no rellenar con datos vacíos" del resto de la sesión.
+- `FinanzasView.vue` e `InformeEjecutivoView.vue`: el KPI de texto "Procesos con objetivo
+  logrado" se reemplazó por un `DonutChart` (reutilizado tal cual, sin cambios) con los 3
+  segmentos coloreados con `resultadoColor` — mismo componente que ya usa Distribución por
+  departamento/Competencias trabajadas, cero componentes nuevos de UI.
+
+### Verificación
+
+`distribucionResultados.spec.ts` (3 tests) + assertions nuevas sobre las props del `DonutChart`
+en `FinanzasView.spec.ts` e `InformeEjecutivoView.spec.ts` → 437/437. `build`/`lint` limpios
+(sin cambios de backend). Verificado en Chrome real: con los 4 procesos cerrados reales de QA
+Empresa Verify (todos "Logrado"), la dona muestra "4 procesos" en el centro y el segmento único
+correcto en la leyenda.

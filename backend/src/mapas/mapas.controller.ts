@@ -35,8 +35,8 @@ export class MapasController {
 
   @Roles(Role.COACHEE)
   @Get('disponibles')
-  disponibles() {
-    return this.mapas.disponiblesParaCoachee();
+  disponibles(@CurrentUser() actor: AuthenticatedUser) {
+    return this.mapas.disponiblesParaCoachee(actor.id);
   }
 
   @Roles(Role.COACH)

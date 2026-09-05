@@ -42,7 +42,7 @@ export class CoacheesService {
       return;
     }
     if (!(await this.empresas.exists(empresaId))) {
-      throw new NotFoundException('Empresa not found');
+      throw new NotFoundException('Empresa no encontrada.');
     }
   }
 
@@ -94,10 +94,10 @@ export class CoacheesService {
       relations: RELATIONS,
     });
     if (!coachee) {
-      throw new NotFoundException('Coachee not found');
+      throw new NotFoundException('Coachee no encontrado.');
     }
     if (actor.role === Role.EMPRESA && coachee.empresaId !== actor.empresaId) {
-      throw new ForbiddenException();
+      throw new ForbiddenException('No tienes acceso a este coachee.');
     }
     return coachee;
   }
@@ -116,7 +116,7 @@ export class CoacheesService {
     }
     const coachee = await this.coachees.findOne({ where: { id } });
     if (!coachee) {
-      throw new NotFoundException('Coachee not found');
+      throw new NotFoundException('Coachee no encontrado.');
     }
     assignDefined(coachee, dto);
     return this.coachees.save(coachee);
@@ -125,7 +125,7 @@ export class CoacheesService {
   async setActivo(id: string, activo: boolean): Promise<Coachee> {
     const coachee = await this.coachees.findOne({ where: { id } });
     if (!coachee) {
-      throw new NotFoundException('Coachee not found');
+      throw new NotFoundException('Coachee no encontrado.');
     }
     coachee.activo = activo;
     await this.users.setActivo(coachee.userId, activo);
@@ -135,7 +135,7 @@ export class CoacheesService {
   async setConsentimiento(id: string, informado: boolean): Promise<Coachee> {
     const coachee = await this.coachees.findOne({ where: { id } });
     if (!coachee) {
-      throw new NotFoundException('Coachee not found');
+      throw new NotFoundException('Coachee no encontrado.');
     }
     coachee.consentimientoInformado = informado;
     coachee.consentimientoFecha = informado ? new Date() : null;
@@ -153,7 +153,7 @@ export class CoacheesService {
       relations: { user: true },
     });
     if (!coachee) {
-      throw new NotFoundException('Coachee not found');
+      throw new NotFoundException('Coachee no encontrado.');
     }
 
     const token = randomBytes(32).toString('base64url');
@@ -214,7 +214,7 @@ export class CoacheesService {
   async remove(id: string): Promise<string> {
     const coachee = await this.coachees.findOne({ where: { id } });
     if (!coachee) {
-      throw new NotFoundException('Coachee not found');
+      throw new NotFoundException('Coachee no encontrado.');
     }
     const [{ total }] = await this.coachees.manager.query<[{ total: number }]>(
       `SELECT (
@@ -243,7 +243,7 @@ export class CoacheesService {
   ): Promise<Coachee> {
     const coachee = await this.coachees.findOne({ where: { userId } });
     if (!coachee) {
-      throw new NotFoundException('Coachee profile not found');
+      throw new NotFoundException('Perfil de coachee no encontrado.');
     }
     assignDefined(coachee, dto);
     return this.coachees.save(coachee);

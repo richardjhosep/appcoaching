@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import SkeletonBlock from '../../../components/SkeletonBlock.vue'
 import { onMounted, ref, watch } from 'vue'
 import { getAuditLog, type AuditLog } from '../../../api/audit'
 import { verboAuditoria } from '../../../lib/auditFormat'
@@ -110,12 +111,7 @@ function fechaHora(iso: string): { fecha: string; hora: string } {
       </button>
     </div>
 
-    <div
-      v-if="loading"
-      class="text-sm text-[var(--color-ink)]/60"
-    >
-      Cargando…
-    </div>
+    <SkeletonBlock v-if="loading" />
     <div v-else>
       <p
         v-if="logs.length === 0"

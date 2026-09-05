@@ -11,6 +11,7 @@ import { TipoRecurso } from './enums/tipo-recurso.enum';
 import { CoacheesService } from '../coachees/coachees.service';
 import { CarpetasService } from './carpetas.service';
 import { CompetenciasService } from '../competencias/competencias.service';
+import { finDelDiaChileAUtc } from '../common/chile-time.util';
 
 type PartialRecurso = Partial<Recurso>;
 type PartialAsignacion = Partial<AsignacionRecurso>;
@@ -150,6 +151,36 @@ describe('RecursosService', () => {
 
       expect(recurso.competenciaId).toBe('comp-1');
     });
+
+    it('converts fechaLimite to the end of that day in Chile time', async () => {
+      const recurso = await service.create({
+        titulo: 'Artículo',
+        tipo: TipoRecurso.LINK,
+        url: 'https://example.com',
+        carpetaId: 'carpeta-1',
+        fechaLimite: '2026-10-15',
+      });
+
+      expect(recurso.fechaLimite).toEqual(finDelDiaChileAUtc('2026-10-15'));
+    });
+  });
+
+  describe('update', () => {
+    it('sets and clears fechaLimite', async () => {
+      recursosRepo.findOne.mockResolvedValue({ id: 'r1' });
+
+      const conFecha = await service.update('r1', {
+        fechaLimite: '2026-10-15',
+      });
+      expect(conFecha.fechaLimite).toEqual(finDelDiaChileAUtc('2026-10-15'));
+
+      recursosRepo.findOne.mockResolvedValue({
+        id: 'r1',
+        fechaLimite: finDelDiaChileAUtc('2026-10-15'),
+      });
+      const sinFecha = await service.update('r1', { fechaLimite: null });
+      expect(sinFecha.fechaLimite).toBeNull();
+    });
   });
 
   describe('assignForCoachee', () => {
@@ -252,6 +283,24 @@ describe('RecursosService', () => {
       const result = await service.misRecursos('user-1');
 
       expect(result).toEqual([{ id: 'r2', carpetaId: 'carpeta-privada' }]);
+    });
+
+    it('excludes a resource whose fechaLimite already passed, even if its carpeta is visible', async () => {
+      coachees.findByUserId.mockResolvedValue({ id: 'c1' });
+      carpetas.carpetasVisiblesIds.mockResolvedValue(new Set(['carpeta-1']));
+      asignacionesRepo.find.mockResolvedValue([]);
+      recursosRepo.find.mockResolvedValue([
+        {
+          id: 'vencido',
+          carpetaId: 'carpeta-1',
+          fechaLimite: new Date('2020-01-01T00:00:00.000Z'),
+        },
+        { id: 'vigente', carpetaId: 'carpeta-1', fechaLimite: null },
+      ]);
+
+      const result = await service.misRecursos('user-1');
+
+      expect(result.map((r) => r.id)).toEqual(['vigente']);
     });
   });
 

@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppShell from '../../components/AppShell.vue'
+import TabBar from '../../components/TabBar.vue'
 import ContratosTab from './legal/ContratosTab.vue'
 import PrivacidadTab from './legal/PrivacidadTab.vue'
 import AuditoriaTab from './legal/AuditoriaTab.vue'
@@ -10,10 +11,10 @@ const route = useRoute()
 const router = useRouter()
 
 type TabKey = 'contratos' | 'privacidad' | 'auditoria'
-const tabs: Array<{ key: TabKey; label: string }> = [
-  { key: 'contratos', label: 'Contratos' },
-  { key: 'privacidad', label: 'Privacidad' },
-  { key: 'auditoria', label: 'Auditoría' },
+const tabs: Array<{ key: TabKey; label: string; icon: string }> = [
+  { key: 'contratos', label: 'Contratos', icon: 'legal' },
+  { key: 'privacidad', label: 'Privacidad', icon: 'password' },
+  { key: 'auditoria', label: 'Auditoría', icon: 'auditoria' },
 ]
 
 const activeTab = computed<TabKey>(() => {
@@ -32,17 +33,12 @@ function irATab(tab: TabKey) {
       Legal y auditoría
     </h1>
 
-    <div class="mb-4 flex gap-1 border-b border-[var(--color-line)]">
-      <button
-        v-for="t in tabs"
-        :key="t.key"
-        class="border-b-2 px-3 py-2 text-sm"
-        :class="activeTab === t.key ? 'border-[var(--color-sage)] font-medium text-[var(--color-sage)]' : 'border-transparent text-[var(--color-ink)]/60'"
-        @click="irATab(t.key)"
-      >
-        {{ t.label }}
-      </button>
-    </div>
+    <TabBar
+      class="mb-4"
+      :tabs="tabs"
+      :model-value="activeTab"
+      @update:model-value="irATab"
+    />
 
     <ContratosTab v-if="activeTab === 'contratos'" />
     <PrivacidadTab v-else-if="activeTab === 'privacidad'" />

@@ -2,7 +2,8 @@ import { ClassSerializerInterceptor, Module } from '@nestjs/common';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { ThrottlerModule } from '@nestjs/throttler';
+import { SpanishThrottlerGuard } from './common/spanish-throttler.guard';
 import configuration from './config/configuration';
 import { validateEnv } from './config/validate-env';
 import { HealthModule } from './health/health.module';
@@ -29,6 +30,9 @@ import { FlashcardsModule } from './flashcards/flashcards.module';
 import { MapasModule } from './mapas/mapas.module';
 import { RetroalimentacionModule } from './retroalimentacion/retroalimentacion.module';
 import { EjerciciosModule } from './ejercicios/ejercicios.module';
+import { TestEstiloModule } from './test-estilo/test-estilo.module';
+import { PerfilCoachModule } from './perfil-coach/perfil-coach.module';
+import { ConfiguracionModule } from './configuracion/configuracion.module';
 
 @Module({
   imports: [
@@ -75,9 +79,12 @@ import { EjerciciosModule } from './ejercicios/ejercicios.module';
     MapasModule,
     RetroalimentacionModule,
     EjerciciosModule,
+    TestEstiloModule,
+    PerfilCoachModule,
+    ConfiguracionModule,
   ],
   providers: [
-    { provide: APP_GUARD, useClass: ThrottlerGuard },
+    { provide: APP_GUARD, useClass: SpanishThrottlerGuard },
     { provide: APP_INTERCEPTOR, useClass: ClassSerializerInterceptor },
   ],
 })

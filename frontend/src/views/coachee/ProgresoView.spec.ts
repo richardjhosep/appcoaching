@@ -33,12 +33,17 @@ vi.mock('../../api/retroalimentacion', async () => {
   const actual = await vi.importActual<typeof import('../../api/retroalimentacion')>('../../api/retroalimentacion')
   return { ...actual, getMisRetroalimentaciones: vi.fn() }
 })
+vi.mock('../../api/configuracion', async () => {
+  const actual = await vi.importActual<typeof import('../../api/configuracion')>('../../api/configuracion')
+  return { ...actual, getPreguntasRetroalimentacion: vi.fn() }
+})
 
 import { getMiAvance, getMiLineaProgreso, getMisLogros, getMisEntradasDiario } from '../../api/seguimiento'
 import { getMisCiclos } from '../../api/ciclos'
 import { getMyCoachee } from '../../api/coachees'
 import { getOwnPlan } from '../../api/planesDesarrollo'
 import { getMisRetroalimentaciones } from '../../api/retroalimentacion'
+import { getPreguntasRetroalimentacion } from '../../api/configuracion'
 
 const router = createRouter({
   history: createMemoryHistory(),
@@ -57,6 +62,7 @@ const cicloCerrado: Ciclo = {
   resultado: 'logrado',
   resumenReunionInicial: null,
   informeFinal: null,
+  impactoNegocio: null,
   informePdfNombre: null,
   informePdfPath: null,
   sesionesRealizadas: 10,
@@ -113,6 +119,7 @@ async function mountView(ciclos: Ciclo[] = []) {
   vi.mocked(getMyCoachee).mockResolvedValue(coachee)
   vi.mocked(getOwnPlan).mockResolvedValue(plan)
   vi.mocked(getMisRetroalimentaciones).mockResolvedValue([])
+  vi.mocked(getPreguntasRetroalimentacion).mockResolvedValue([])
 
   const wrapper = mount(ProgresoView, { global: { plugins: [router] } })
   await flushPromises()

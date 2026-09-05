@@ -15,6 +15,7 @@ import { CoacheesService } from '../coachees/coachees.service';
 import { CarpetasService } from './carpetas.service';
 import { CompetenciasService } from '../competencias/competencias.service';
 import { assignDefined } from '../common/assign-defined.util';
+import { finDelDiaChileAUtc } from '../common/chile-time.util';
 
 @Injectable()
 export class RecursosService {
@@ -29,7 +30,7 @@ export class RecursosService {
 
   private async assertCompetenciaExists(id: string): Promise<void> {
     if (!(await this.competencias.exists(id))) {
-      throw new NotFoundException('Competencia not found');
+      throw new NotFoundException('Competencia no encontrada.');
     }
   }
 
@@ -61,6 +62,9 @@ export class RecursosService {
         url: dto.tipo === TipoRecurso.LINK ? dto.url! : null,
         archivoNombre: archivo?.originalname ?? null,
         archivoPath: archivo?.filename ?? null,
+        fechaLimite: dto.fechaLimite
+          ? finDelDiaChileAUtc(dto.fechaLimite)
+          : null,
       }),
     );
   }
@@ -81,7 +85,7 @@ export class RecursosService {
   async findOne(id: string): Promise<Recurso> {
     const recurso = await this.recursos.findOne({ where: { id } });
     if (!recurso) {
-      throw new NotFoundException('Recurso not found');
+      throw new NotFoundException('Recurso no encontrado.');
     }
     return recurso;
   }
@@ -100,13 +104,18 @@ export class RecursosService {
       carpetaId: dto.carpetaId,
       competenciaId: dto.competenciaId,
     });
+    if (dto.fechaLimite !== undefined) {
+      recurso.fechaLimite = dto.fechaLimite
+        ? finDelDiaChileAUtc(dto.fechaLimite)
+        : null;
+    }
     return this.recursos.save(recurso);
   }
 
   async remove(id: string): Promise<void> {
     const result = await this.recursos.delete(id);
     if (!result.affected) {
-      throw new NotFoundException('Recurso not found');
+      throw new NotFoundException('Recurso no encontrado.');
     }
   }
 
@@ -118,7 +127,7 @@ export class RecursosService {
   ): Promise<AsignacionRecurso> {
     await this.findOne(recursoId);
     if (!(await this.coachees.exists(coacheeId))) {
-      throw new NotFoundException('Coachee not found');
+      throw new NotFoundException('Coachee no encontrado.');
     }
     let asignacion = await this.asignaciones.findOne({
       where: { recursoId, coacheeId },
@@ -134,7 +143,7 @@ export class RecursosService {
   private async resolveCoacheeId(actorUserId: string): Promise<string> {
     const coachee = await this.coachees.findByUserId(actorUserId);
     if (!coachee) {
-      throw new NotFoundException('Coachee profile not found');
+      throw new NotFoundException('Perfil de coachee no encontrado.');
     }
     return coachee.id;
   }
@@ -164,7 +173,9 @@ export class RecursosService {
 
     const todos = await this.recursos.find({ order: { createdAt: 'DESC' } });
     return todos.filter(
-      (r) => carpetasVisibles.has(r.carpetaId) || recursoIdsDirectos.has(r.id),
+      (r) =>
+        (carpetasVisibles.has(r.carpetaId) || recursoIdsDirectos.has(r.id)) &&
+        (!r.fechaLimite || r.fechaLimite.getTime() >= ahora.getTime()),
     );
   }
 

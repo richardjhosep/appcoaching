@@ -261,6 +261,30 @@ withDefaults(defineProps<{ name: string; size?: number }>(), { size: 18 })
         stroke="none"
       />
     </template>
+    <template v-else-if="name === 'estilo'">
+      <path d="M4 12h16M4 12l4-4M4 12l4 4M20 12l-4-4M20 12l-4 4" /><circle
+        cx="12"
+        cy="12"
+        r="1.8"
+        fill="currentColor"
+        stroke="none"
+      />
+    </template>
+    <template v-else-if="name === 'playground'">
+      <path d="M7 8h10a4 4 0 0 1 4 4v2a3 3 0 0 1-3 3c-1 0-1.5-.5-2-1l-1-1H9l-1 1c-.5.5-1 1-2 1a3 3 0 0 1-3-3v-2a4 4 0 0 1 4-4z" /><path d="M7.5 12h3M9 10.5v3" /><circle
+        cx="15"
+        cy="11"
+        r="0.7"
+        fill="currentColor"
+        stroke="none"
+      /><circle
+        cx="17"
+        cy="13"
+        r="0.7"
+        fill="currentColor"
+        stroke="none"
+      />
+    </template>
     <template v-else-if="name === 'trofeo'">
       <path d="M8 4h8v4a4 4 0 0 1-8 0z" /><path d="M8 5H5a3 3 0 0 0 3 5" /><path d="M16 5h3a3 3 0 0 1-3 5" /><path d="M12 12v3" /><path d="M9 20h6" /><path d="M10 17h4v3h-4z" />
     </template>
@@ -270,6 +294,73 @@ withDefaults(defineProps<{ name: string; size?: number }>(), { size: 18 })
         cy="8"
         r="6.5"
       /><path d="M8.2 13.7L7 22l5-3 5 3-1.2-8.3" />
+    </template>
+    <template v-else-if="name === 'linkedin'">
+      <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4V9h4v1.5A5.98 5.98 0 0 1 16 8z" /><rect
+        x="2"
+        y="9"
+        width="4"
+        height="12"
+      /><circle
+        cx="4"
+        cy="4"
+        r="2"
+      />
+    </template>
+    <template v-else-if="name === 'instagram'">
+      <rect
+        x="2"
+        y="2"
+        width="20"
+        height="20"
+        rx="5"
+      /><circle
+        cx="12"
+        cy="12"
+        r="4"
+      /><circle
+        cx="17.5"
+        cy="6.5"
+        r="0.6"
+        fill="currentColor"
+        stroke="none"
+      />
+    </template>
+    <template v-else-if="name === 'facebook'">
+      <path d="M15 3h-2a5 5 0 0 0-5 5v3H5v4h3v6h4v-6h3l1-4h-4V8a1 1 0 0 1 1-1h3z" />
+    </template>
+    <template v-else-if="name === 'youtube'">
+      <path d="M22 8.2a3 3 0 0 0-2.1-2.1C18.1 5.6 12 5.6 12 5.6s-6.1 0-7.9.5A3 3 0 0 0 2 8.2a31 31 0 0 0-.5 5.8 31 31 0 0 0 .5 5.8 3 3 0 0 0 2.1 2.1c1.8.5 7.9.5 7.9.5s6.1 0 7.9-.5a3 3 0 0 0 2.1-2.1 31 31 0 0 0 .5-5.8 31 31 0 0 0-.5-5.8z" /><path
+        d="M9.9 17.1 15.8 14 9.9 10.9z"
+        fill="currentColor"
+        stroke="none"
+      />
+    </template>
+    <template v-else-if="name === 'sitio-web'">
+      <circle
+        cx="12"
+        cy="12"
+        r="9"
+      /><path d="M3 12h18M12 3a15 15 0 0 1 3.5 9 15 15 0 0 1-3.5 9 15 15 0 0 1-3.5-9A15 15 0 0 1 12 3z" />
+    </template>
+    <template v-else-if="name === 'enlace-externo'">
+      <path d="M17 13.5V18a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h4.5" /><path d="M14 3h7v7" /><path d="M10.5 13.5 21 3" />
+    </template>
+    <template v-else-if="name === 'impacto'">
+      <path
+        d="M13 2 4 14h6l-1 8 9-12h-6l1-8z"
+        stroke-linejoin="round"
+      />
+    </template>
+    <template v-else-if="name === 'chevron'">
+      <path d="M9 6l6 6-6 6" />
+    </template>
+    <template v-else-if="name === 'configuracion'">
+      <circle
+        cx="12"
+        cy="12"
+        r="3"
+      /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1.08-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9.6a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
     </template>
   </svg>
 </template>

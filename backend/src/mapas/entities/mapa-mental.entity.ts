@@ -37,6 +37,11 @@ export class MapaMental {
   @Column({ type: 'boolean', default: true })
   activo: boolean;
 
+  // Opcional — pasada esta fecha (fin del día en horario de Chile), el mapa deja de
+  // aparecer como disponible para el coachee sin que el coach tenga que desactivarlo a mano.
+  @Column({ name: 'fecha_limite', type: 'timestamptz', nullable: true })
+  fechaLimite: Date | null;
+
   @OneToMany(() => NodoMapa, (n) => n.mapa)
   nodos?: NodoMapa[];
 

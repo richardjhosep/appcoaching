@@ -12,6 +12,7 @@ import { EmpresasService } from './empresas.service';
 import { AuditService } from '../audit/audit.service';
 import { CreateEmpresaDto } from './dto/create-empresa.dto';
 import { UpdateEmpresaDto } from './dto/update-empresa.dto';
+import { CreateGestionDto } from './dto/create-gestion.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -72,5 +73,17 @@ export class EmpresasController {
       targetLabel: nombre,
     });
     return { success: true };
+  }
+
+  @Roles(Role.COACH)
+  @Post(':id/gestion')
+  crearGestion(@Param('id') id: string, @Body() dto: CreateGestionDto) {
+    return this.empresas.crearGestion(id, dto);
+  }
+
+  @Roles(Role.COACH)
+  @Get(':id/gestion')
+  listGestion(@Param('id') id: string) {
+    return this.empresas.listGestionDeEmpresa(id);
   }
 }

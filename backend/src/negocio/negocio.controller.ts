@@ -30,6 +30,18 @@ export class NegocioController {
     return this.negocio.proyeccionParaEmpresa(actor.empresaId ?? '');
   }
 
+  @Roles(Role.EMPRESA)
+  @Get('empresa/acumulado')
+  acumuladoEmpresa(@CurrentUser() actor: AuthenticatedUser) {
+    return this.negocio.resumenAcumuladoParaEmpresa(actor.empresaId ?? '');
+  }
+
+  @Roles(Role.EMPRESA)
+  @Get('empresa/retorno')
+  retornoEmpresa(@CurrentUser() actor: AuthenticatedUser) {
+    return this.negocio.retornoParaEmpresa(actor.empresaId ?? '');
+  }
+
   @Roles(Role.COACH)
   @Get('comercial')
   comercial(@Query('periodo') periodo: PeriodoComercial = 'mes') {
@@ -46,6 +58,24 @@ export class NegocioController {
   @Get('alertas')
   alertas() {
     return this.negocio.alertasSeguimiento();
+  }
+
+  @Roles(Role.COACH)
+  @Get('cartera')
+  cartera() {
+    return this.negocio.carteraEmpresas();
+  }
+
+  @Roles(Role.COACH)
+  @Get('atencion')
+  atencion() {
+    return this.negocio.atencionInmediata();
+  }
+
+  @Roles(Role.COACH)
+  @Get('comparativo')
+  comparativo() {
+    return this.negocio.comparativoYCapacidad();
   }
 
   @Roles(Role.COACH)

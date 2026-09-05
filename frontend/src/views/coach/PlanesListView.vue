@@ -3,6 +3,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import AppShell from '../../components/AppShell.vue'
 import Pagination from '../../components/Pagination.vue'
+import SkeletonBlock from '../../components/SkeletonBlock.vue'
 import {
   listPlanes,
   enviarRecordatorio,
@@ -182,12 +183,7 @@ async function recordar(coacheeId: string) {
       </option>
     </select>
 
-    <div
-      v-if="loading"
-      class="text-sm text-[var(--color-ink)]/60"
-    >
-      Cargando…
-    </div>
+    <SkeletonBlock v-if="loading" />
     <p
       v-else-if="planesVisibles.length === 0"
       class="text-sm text-[var(--color-ink)]/60"

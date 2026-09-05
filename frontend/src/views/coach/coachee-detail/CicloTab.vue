@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import HistorialCiclos from '../../../components/HistorialCiclos.vue'
+import SkeletonBlock from '../../../components/SkeletonBlock.vue'
 import {
   abrirCiclo,
+  actualizarImpactoNegocio,
   actualizarInformeFinal,
   actualizarResumen,
   cerrarCiclo,
@@ -40,6 +42,7 @@ const nuevoResumen = ref('')
 
 const resumenEdit = ref('')
 const informeEdit = ref('')
+const impactoEdit = ref('')
 const archivoPdf = ref<File | null>(null)
 const resultadoSeleccionado = ref<ResultadoCiclo | ''>('')
 
@@ -55,6 +58,7 @@ async function load() {
   retroalimentaciones.value = retros
   resumenEdit.value = actual?.resumenReunionInicial ?? ''
   informeEdit.value = actual?.informeFinal ?? ''
+  impactoEdit.value = actual?.impactoNegocio ?? ''
   loading.value = false
 }
 
@@ -122,6 +126,20 @@ async function guardarInforme() {
   }
 }
 
+async function guardarImpacto() {
+  if (!cicloActual.value) return
+  acting.value = true
+  error.value = null
+  try {
+    cicloActual.value = await actualizarImpactoNegocio(cicloActual.value.id, impactoEdit.value)
+    emit('ciclo-changed', cicloActual.value)
+  } catch (err) {
+    error.value = err instanceof ApiError ? err.message : 'No se pudo guardar el impacto en el negocio.'
+  } finally {
+    acting.value = false
+  }
+}
+
 function onArchivoChange(event: Event) {
   const input = event.target as HTMLInputElement
   archivoPdf.value = input.files?.[0] ?? null
@@ -161,12 +179,7 @@ async function cerrar() {
 </script>
 
 <template>
-  <div
-    v-if="loading"
-    class="text-sm text-[var(--color-ink)]/60"
-  >
-    Cargando…
-  </div>
+  <SkeletonBlock v-if="loading" />
   <div v-else>
     <p
       v-if="error"
@@ -267,6 +280,27 @@ async function cerrar() {
             Guardar informe
           </button>
         </div>
+
+        <label class="mb-2 block text-sm">
+          Impacto en el negocio
+          <textarea
+            v-model="impactoEdit"
+            rows="3"
+            placeholder="Ej. redujo el tiempo de entrega del área en 20%, mejoró la retención del equipo…"
+            class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+          />
+        </label>
+        <p class="mb-2 text-xs text-[var(--color-ink)]/50">
+          Aparte del informe: esto es lo que la empresa ve destacado en su panel como el
+          resultado concreto del proceso para el negocio.
+        </p>
+        <button
+          class="mb-4 rounded-lg border border-[var(--color-line)] px-3 py-2 text-xs hover:bg-[var(--color-parchment)]/50"
+          :disabled="acting"
+          @click="guardarImpacto"
+        >
+          Guardar impacto en el negocio
+        </button>
 
         <div class="mb-4">
           <label class="block text-sm">

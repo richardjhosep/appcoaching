@@ -22,6 +22,7 @@ import { AbrirCicloDto } from './dto/abrir-ciclo.dto';
 import { CerrarCicloDto } from './dto/cerrar-ciclo.dto';
 import { UpdateResumenDto } from './dto/update-resumen.dto';
 import { UpdateInformeFinalDto } from './dto/update-informe-final.dto';
+import { UpdateImpactoNegocioDto } from './dto/update-impacto-negocio.dto';
 import { UPLOADS_DIR } from '../recursos/uploads-dir.util';
 import { soloPermitir, MIMETYPES_PDF } from '../common/file-type-filter.util';
 import { CoacheesService } from '../coachees/coachees.service';
@@ -92,6 +93,15 @@ export class CiclosController {
     @Body() dto: UpdateInformeFinalDto,
   ) {
     return this.ciclos.updateInformeFinal(id, dto.informeFinal);
+  }
+
+  @Roles(Role.COACH)
+  @Patch(':id/impacto-negocio')
+  actualizarImpactoNegocio(
+    @Param('id') id: string,
+    @Body() dto: UpdateImpactoNegocioDto,
+  ) {
+    return this.ciclos.updateImpactoNegocio(id, dto.impactoNegocio);
   }
 
   @Roles(Role.COACH)

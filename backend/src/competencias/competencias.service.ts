@@ -44,7 +44,7 @@ export class CompetenciasService implements OnApplicationBootstrap {
   async findById(id: string): Promise<Competencia> {
     const competencia = await this.competencias.findOne({ where: { id } });
     if (!competencia) {
-      throw new NotFoundException('Competencia not found');
+      throw new NotFoundException('Competencia no encontrada.');
     }
     return competencia;
   }

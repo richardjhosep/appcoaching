@@ -1,15 +1,17 @@
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { changeOwnPassword } from '../api/users'
 import { getMyCoachee, updateOwnContact } from '../api/coachees'
+import { obtenerUrlFoto } from '../api/perfilCoach'
 import { ApiError } from '../api/client'
 import { notifyError, notifySuccess } from '../lib/notify'
 import { validateNewPassword } from '../lib/password'
 import AppLogo from './AppLogo.vue'
 import AppModal from './AppModal.vue'
 import NavIcon from './NavIcon.vue'
+import SkeletonBlock from './SkeletonBlock.vue'
 import BusquedaGlobal from './BusquedaGlobal.vue'
 import NotificationBell from './NotificationBell.vue'
 import PasswordField from './PasswordField.vue'
@@ -46,6 +48,15 @@ const avatarInitials = computed(() => {
   return auth.user?.email.slice(0, 2).toUpperCase() ?? '?'
 })
 
+// Solo el coach tiene un PerfilCoach con foto — para coachee/empresa el avatar se queda
+// en iniciales. Se carga una vez al montar el shell (no hay store global de perfil hoy).
+const avatarFotoUrl = ref<string | null>(null)
+onMounted(async () => {
+  if (auth.user?.role === 'coach') {
+    avatarFotoUrl.value = await obtenerUrlFoto()
+  }
+})
+
 interface NavItem {
   to: string
   label: string
@@ -54,7 +65,7 @@ interface NavItem {
 
 interface NavGroup {
   // Sin label = va pegado al grupo anterior, sin separador ni título (para que el
-  // primer grupo — Dashboard solo — no lleve una línea encima de la nada).
+  // primer grupo — Panorama solo — no lleve una línea encima de la nada).
   label?: string
   items: NavItem[]
 }
@@ -71,16 +82,17 @@ const coacheeNavGroups: NavGroup[] = [
       { to: '/coachee/plan', label: 'Plan', icon: 'planes' },
       { to: '/coachee/sesiones', label: 'Sesiones', icon: 'sesiones' },
       { to: '/coachee/progreso', label: 'Progreso', icon: 'progreso' },
+      { to: '/coachee/mi-coach', label: 'Mi Coach', icon: 'contacto' },
     ],
   },
   {
     label: 'Estudiar',
     items: [
       { to: '/coachee/biblioteca', label: 'Biblioteca', icon: 'biblioteca' },
-      { to: '/coachee/quiz', label: 'Quiz', icon: 'quiz' },
-      { to: '/coachee/flashcards', label: 'Flashcards', icon: 'flashcards' },
-      { to: '/coachee/mapas', label: 'Mapas mentales', icon: 'mapa' },
-      { to: '/coachee/ejercicios', label: 'Ejercicios', icon: 'ejercicios' },
+      // Quiz/Flashcards/Mapas/Ejercicios/Test de Estilo eran 5 ítems propios acá — ahora
+      // conviven en /coachee/playground como pestañas (ver PlaygroundView.vue). Biblioteca
+      // queda aparte: es material compartido por el coach, no una herramienta de práctica.
+      { to: '/coachee/playground', label: 'Playground', icon: 'playground' },
     ],
   },
 ]
@@ -89,12 +101,13 @@ const coacheeNavGroups: NavGroup[] = [
 // porque son la entidad central de la app — todo lo demás (planes, recursos) es "de un
 // coachee" —, después el trabajo de coaching en sí, y al final negocio/legal/admin.
 const coachNavGroups: NavGroup[] = [
-  { items: [{ to: '/coach/dashboard', label: 'Dashboard', icon: 'dashboard' }] },
+  { items: [{ to: '/coach/dashboard', label: 'Panorama', icon: 'dashboard' }] },
   {
     label: 'Coaching',
     items: [
       { to: '/coach/coachees', label: 'Coachees', icon: 'coachees' },
       { to: '/coach/empresas', label: 'Empresas', icon: 'empresas' },
+      { to: '/coach/agenda', label: 'Mi agenda', icon: 'sesiones' },
     ],
   },
   {
@@ -102,10 +115,11 @@ const coachNavGroups: NavGroup[] = [
     items: [
       { to: '/coach/planes', label: 'Planes', icon: 'planes' },
       { to: '/coach/recursos', label: 'Recursos', icon: 'recursos' },
-      { to: '/coach/quiz', label: 'Quiz', icon: 'quiz' },
-      { to: '/coach/flashcards', label: 'Flashcards', icon: 'flashcards' },
-      { to: '/coach/mapas', label: 'Mapas mentales', icon: 'mapa' },
-      { to: '/coach/ejercicios', label: 'Ejercicios', icon: 'ejercicios' },
+      // Quiz/Flashcards/Mapas/Ejercicios/Test de Estilo eran 5 ítems propios acá — muy
+      // parecidos entre sí (misma pantalla lista→detalle), ahora conviven en /coach/estudio
+      // como pestañas (ver EstudioView.vue), mismo label que ya usa el grupo "Estudiar" del
+      // coachee para este mismo tipo de contenido.
+      { to: '/coach/estudio', label: 'Estudiar', icon: 'biblioteca' },
     ],
   },
   {
@@ -114,6 +128,8 @@ const coachNavGroups: NavGroup[] = [
       { to: '/coach/negocio', label: 'Negocio', icon: 'negocio' },
       { to: '/coach/legal', label: 'Legal y auditoría', icon: 'legal' },
       { to: '/coach/usuarios', label: 'Usuarios', icon: 'usuarios' },
+      { to: '/coach/configuracion', label: 'Configuración', icon: 'configuracion' },
+      { to: '/coach/perfil', label: 'Mi perfil', icon: 'contacto' },
     ],
   },
 ]
@@ -124,6 +140,7 @@ const empresaNavGroups: NavGroup[] = [
       { to: '/empresa/dashboard', label: 'Resumen', icon: 'dashboard' },
       { to: '/empresa/coachees', label: 'Coachees', icon: 'coachees' },
       { to: '/empresa/finanzas', label: 'Finanzas', icon: 'negocio' },
+      { to: '/empresa/informe', label: 'Informe', icon: 'certificado' },
       { to: '/empresa/satisfaccion', label: 'Satisfacción', icon: 'satisfaccion' },
       { to: '/empresa/coach', label: 'Mi Coach', icon: 'contacto' },
     ],
@@ -270,7 +287,7 @@ async function guardarContacto() {
         <BusquedaGlobal />
       </div>
 
-      <nav class="flex-1 overflow-y-auto px-3 py-3">
+      <nav class="flex-1 select-none overflow-y-auto px-3 py-3">
         <div
           v-for="(group, i) in navGroups"
           :key="i"
@@ -327,10 +344,18 @@ async function guardarContacto() {
             <button
               type="button"
               aria-label="Cuenta"
-              class="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--color-ink)] text-xs font-semibold text-[var(--color-parchment)]"
+              class="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-[var(--color-ink)] text-xs font-semibold text-[var(--color-parchment)]"
               @click="userPanelOpen = !userPanelOpen"
             >
-              {{ avatarInitials }}
+              <img
+                v-if="avatarFotoUrl"
+                :src="avatarFotoUrl"
+                alt=""
+                class="h-full w-full object-cover"
+              >
+              <template v-else>
+                {{ avatarInitials }}
+              </template>
             </button>
             <button
               v-if="userPanelOpen"
@@ -343,8 +368,16 @@ async function guardarContacto() {
               class="absolute right-0 top-full z-30 mt-2 w-72 rounded-xl border border-[var(--color-line)] bg-white p-4 shadow-xl"
             >
               <div class="flex items-center gap-3">
-                <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--color-ink)] text-sm font-semibold text-[var(--color-parchment)]">
-                  {{ avatarInitials }}
+                <div class="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--color-ink)] text-sm font-semibold text-[var(--color-parchment)]">
+                  <img
+                    v-if="avatarFotoUrl"
+                    :src="avatarFotoUrl"
+                    alt=""
+                    class="h-full w-full object-cover"
+                  >
+                  <template v-else>
+                    {{ avatarInitials }}
+                  </template>
                 </div>
                 <div class="min-w-0">
                   <p class="truncate font-[family-name:var(--font-heading)] text-sm font-semibold">
@@ -466,12 +499,10 @@ async function guardarContacto() {
       title="Editar mis datos de contacto"
       @close="contactModalOpen = false"
     >
-      <p
+      <SkeletonBlock
         v-if="cargandoContacto"
-        class="text-sm text-[var(--color-ink)]/60"
-      >
-        Cargando…
-      </p>
+        :rows="2"
+      />
       <form
         v-else
         class="space-y-4"

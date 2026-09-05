@@ -1,4 +1,5 @@
 import {
+  IsDateString,
   IsEnum,
   IsOptional,
   IsString,
@@ -31,4 +32,11 @@ export class CreateRecursoDto {
   @IsOptional()
   @IsUUID()
   competenciaId?: string;
+
+  // Fecha simple "YYYY-MM-DD" — el servicio la interpreta como fin de ese día en Chile.
+  // Distinto de AsignacionRecurso.expiraEn: acá es cuándo deja de estar disponible el
+  // recurso EN GENERAL, no cuándo vence el acceso puntual de un coachee.
+  @IsOptional()
+  @IsDateString()
+  fechaLimite?: string;
 }

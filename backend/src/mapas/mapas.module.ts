@@ -6,6 +6,8 @@ import { Recurso } from '../recursos/entities/recurso.entity';
 import { MapasService } from './mapas.service';
 import { MapasController } from './mapas.controller';
 import { CompetenciasModule } from '../competencias/competencias.module';
+import { CoacheesModule } from '../coachees/coachees.module';
+import { PlanesDesarrolloModule } from '../planes-desarrollo/planes-desarrollo.module';
 import { AuditModule } from '../audit/audit.module';
 
 @Module({
@@ -14,6 +16,8 @@ import { AuditModule } from '../audit/audit.module';
     // motivo que en quiz.module.ts / flashcards.module.ts.
     TypeOrmModule.forFeature([MapaMental, NodoMapa, Recurso]),
     CompetenciasModule,
+    CoacheesModule,
+    PlanesDesarrolloModule,
     AuditModule,
   ],
   providers: [MapasService],

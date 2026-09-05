@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import ProyeccionGastoChart from './ProyeccionGastoChart.vue'
+import { VChart } from '../lib/echartsCore'
 import type { ProyeccionMesEmpresa } from '../api/negocio'
 
 const meses: ProyeccionMesEmpresa[] = [
@@ -16,11 +17,18 @@ describe('ProyeccionGastoChart', () => {
     expect(wrapper.text()).toContain('Ana')
   })
 
-  it('switches the detail when a different month is clicked', async () => {
+  it('passes both months to the chart, in order', () => {
     const wrapper = mount(ProyeccionGastoChart, { props: { meses } })
 
-    const buttons = wrapper.findAll('button')
-    await buttons[1].trigger('click')
+    const option = wrapper.findComponent(VChart).props('option') as { xAxis: { data: string[] }; series: [{ data: number[] }] }
+    expect(option.xAxis.data).toEqual(["Ago '26", "Sep '26"])
+    expect(option.series[0].data).toEqual([30000, 0])
+  })
+
+  it('switches the detail when a different month is clicked on the chart', async () => {
+    const wrapper = mount(ProyeccionGastoChart, { props: { meses } })
+
+    await wrapper.findComponent(VChart).vm.$emit('click', { dataIndex: 1 })
 
     expect(wrapper.text()).toContain('Sin actividad este mes')
     expect(wrapper.text()).not.toContain('Ana')

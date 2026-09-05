@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import SkeletonBlock from '../../../components/SkeletonBlock.vue'
 import { computed, onMounted, ref } from 'vue'
 import { getCumplimiento, type MedidaCumplimiento } from '../../../api/legal'
 
@@ -14,12 +15,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div
-    v-if="loading"
-    class="text-sm text-[var(--color-ink)]/60"
-  >
-    Cargando…
-  </div>
+  <SkeletonBlock v-if="loading" />
   <div
     v-else
     class="space-y-4"

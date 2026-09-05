@@ -12,6 +12,7 @@ const cicloAbierto: Ciclo = {
   resultado: null,
   resumenReunionInicial: null,
   informeFinal: null,
+  impactoNegocio: null,
   informePdfNombre: null,
   informePdfPath: null,
   sesionesRealizadas: 3,
@@ -107,11 +108,54 @@ describe('resumirCoachee', () => {
         fechaHora: '2026-09-01T10:00:00.000Z',
         linkVideollamada: null,
         resumenCompartido: null,
+        confirmada: false,
         postSesion: null,
       },
     })
 
     expect(r.alertaPorVencer).toBe(true)
     expect(r.proximaSesionFecha).toBe('2026-09-01T10:00:00.000Z')
+  })
+
+  describe('sinProximaSesion', () => {
+    const proximaSesion = {
+      id: 's1',
+      coacheeId: 'coachee-1',
+      fechaHora: '2026-09-01T10:00:00.000Z',
+      linkVideollamada: null,
+      resumenCompartido: null,
+      confirmada: false,
+      postSesion: null,
+    }
+
+    it('is true for an open cycle with sesiones pendientes and no próxima sesión agendada', () => {
+      const r = resumirCoachee({ plan: null, cicloActual: cicloAbierto, ciclos: [cicloAbierto], avance: null, proximaSesion: null })
+
+      expect(r.sinProximaSesion).toBe(true)
+    })
+
+    it('is false once a próxima sesión is agendada', () => {
+      const r = resumirCoachee({ plan: null, cicloActual: cicloAbierto, ciclos: [cicloAbierto], avance: null, proximaSesion })
+
+      expect(r.sinProximaSesion).toBe(false)
+    })
+
+    it('is false when there is no open cycle', () => {
+      const r = resumirCoachee({ plan: null, cicloActual: null, ciclos: [cicloCerrado], avance: null, proximaSesion: null })
+
+      expect(r.sinProximaSesion).toBe(false)
+    })
+
+    it('is false when the open cycle has no sesiones pendientes', () => {
+      const r = resumirCoachee({
+        plan: null,
+        cicloActual: { ...cicloAbierto, sesionesRestantes: 0 },
+        ciclos: [cicloAbierto],
+        avance: null,
+        proximaSesion: null,
+      })
+
+      expect(r.sinProximaSesion).toBe(false)
+    })
   })
 })

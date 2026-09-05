@@ -26,6 +26,15 @@ export class Empresa {
   @Column({ name: 'horas_contratadas', type: 'integer', nullable: true })
   horasContratadas: number | null;
 
+  // Término del contrato — fecha calendario, no un instante (por eso `date`, no
+  // `timestamptz`: sin hora ni zona horaria que resolver). Alimenta la "cartera de
+  // empresas" del dashboard del coach (qué contrato vence este mes/semestre).
+  @Column({ name: 'fecha_inicio', type: 'date', nullable: true })
+  fechaInicio: string | null;
+
+  @Column({ name: 'fecha_fin', type: 'date', nullable: true })
+  fechaFin: string | null;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

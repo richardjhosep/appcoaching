@@ -27,7 +27,7 @@ export class SeguimientoService {
   private async resolveCoacheeId(actorUserId: string): Promise<string> {
     const coachee = await this.coachees.findByUserId(actorUserId);
     if (!coachee) {
-      throw new NotFoundException('Coachee profile not found');
+      throw new NotFoundException('Perfil de coachee no encontrado.');
     }
     return coachee.id;
   }
@@ -60,7 +60,7 @@ export class SeguimientoService {
     const coacheeId = await this.resolveCoacheeId(actorUserId);
     const result = await this.logros.delete({ id: logroId, coacheeId });
     if (!result.affected) {
-      throw new NotFoundException('Logro not found');
+      throw new NotFoundException('Logro no encontrado.');
     }
   }
 
@@ -106,7 +106,7 @@ export class SeguimientoService {
   ): Promise<AutoevaluacionCompetencia> {
     const coacheeId = await this.resolveCoacheeId(actorUserId);
     if (!(await this.competencias.exists(dto.competenciaId))) {
-      throw new NotFoundException('Competencia not found');
+      throw new NotFoundException('Competencia no encontrada.');
     }
     return this.autoevaluaciones.save(
       this.autoevaluaciones.create({

@@ -270,7 +270,7 @@ export class LegalService {
   async obtenerAdicional(id: string): Promise<DocumentoAdicionalLegal> {
     const documento = await this.adicionales.findOne({ where: { id } });
     if (!documento) {
-      throw new NotFoundException('Documento not found');
+      throw new NotFoundException('Documento no encontrado.');
     }
     return documento;
   }
@@ -278,7 +278,7 @@ export class LegalService {
   async eliminarAdicional(id: string): Promise<void> {
     const result = await this.adicionales.delete(id);
     if (!result.affected) {
-      throw new NotFoundException('Documento not found');
+      throw new NotFoundException('Documento no encontrado.');
     }
   }
 }

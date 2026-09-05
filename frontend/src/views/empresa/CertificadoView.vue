@@ -6,6 +6,7 @@ import { getPlanByCoachee, type PlanDesarrollo } from '../../api/planesDesarroll
 import { getCiclosDeCoachee, type Ciclo } from '../../api/ciclos'
 import BackLink from '../../components/BackLink.vue'
 import CertificadoContenido from '../../components/CertificadoContenido.vue'
+import SkeletonBlock from '../../components/SkeletonBlock.vue'
 
 const props = defineProps<{ coacheeId: string; cicloId: string }>()
 const router = useRouter()
@@ -34,12 +35,7 @@ function imprimir() {
 
 <template>
   <div class="min-h-screen bg-[var(--color-ivory)] px-4 py-10 text-[var(--color-ink)] print:bg-white print:p-0">
-    <div
-      v-if="loading"
-      class="text-center text-sm text-[var(--color-ink)]/60"
-    >
-      Cargando…
-    </div>
+    <SkeletonBlock v-if="loading" />
     <div
       v-else-if="!ciclo || !ciclo.fechaCierre || !ciclo.resultado"
       class="mx-auto max-w-lg rounded-2xl border border-[var(--color-line)] bg-white p-6 text-center"
@@ -49,7 +45,7 @@ function imprimir() {
       </p>
       <BackLink
         label="Volver"
-        @click="router.push({ name: 'empresa-ciclo', params: { coacheeId: props.coacheeId } })"
+        @click="router.push({ name: 'empresa-coachees' })"
       />
     </div>
     <div
@@ -59,7 +55,7 @@ function imprimir() {
       <div class="mb-4 flex items-center justify-between print:hidden">
         <BackLink
           label="Volver"
-          @click="router.push({ name: 'empresa-ciclo', params: { coacheeId: props.coacheeId } })"
+          @click="router.push({ name: 'empresa-coachees' })"
         />
         <button
           class="rounded-lg bg-[var(--color-ink)] px-4 py-2 text-sm text-[var(--color-parchment)]"

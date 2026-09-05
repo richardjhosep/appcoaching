@@ -16,7 +16,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
 
   validate(payload: AccessTokenPayload): AuthenticatedUser {
     if (!payload.sub || !payload.role) {
-      throw new UnauthorizedException();
+      throw new UnauthorizedException('Sesión inválida o expirada.');
     }
     return {
       id: payload.sub,

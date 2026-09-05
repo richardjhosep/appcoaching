@@ -1,4 +1,11 @@
-import { IsOptional, IsString, IsUUID, MinLength } from 'class-validator';
+import {
+  IsDateString,
+  IsOptional,
+  IsString,
+  IsUUID,
+  MinLength,
+  ValidateIf,
+} from 'class-validator';
 
 export class UpdateRecursoDto {
   @IsOptional()
@@ -17,4 +24,10 @@ export class UpdateRecursoDto {
   @IsOptional()
   @IsUUID()
   competenciaId?: string;
+
+  // Acepta null explícito para quitar la fecha límite ya puesta.
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null)
+  @IsDateString()
+  fechaLimite?: string | null;
 }

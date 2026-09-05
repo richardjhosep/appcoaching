@@ -10,9 +10,11 @@ import { SolicitudProceso } from '../satisfaccion/entities/solicitud-proceso.ent
 import { EstadoSolicitudProceso } from '../satisfaccion/enums/estado-solicitud-proceso.enum';
 import { CicloCoaching } from '../ciclos/entities/ciclo-coaching.entity';
 import { ResultadoCiclo } from '../ciclos/enums/resultado-ciclo.enum';
+import { DisponibilidadCoach } from '../sesiones/entities/disponibilidad-coach.entity';
 import { CiclosService } from '../ciclos/ciclos.service';
 import { SeguimientoService } from '../seguimiento/seguimiento.service';
 import { EmailService } from '../email/email.service';
+import { EmpresasService } from '../empresas/empresas.service';
 import { ConfigService } from '@nestjs/config';
 import { NotFoundException } from '@nestjs/common';
 
@@ -29,6 +31,7 @@ describe('NegocioService', () => {
   let sesionesRepo: {
     find: jest.Mock;
     exists: jest.Mock;
+    count: jest.Mock;
   };
   let postSesionesRepo: { createQueryBuilder: jest.Mock };
   let empresasRepo: { find: jest.Mock };
@@ -37,6 +40,7 @@ describe('NegocioService', () => {
   let solicitudesProcesoRepo: { find: jest.Mock };
   let solicitudesReagendamientoRepo: { count: jest.Mock };
   let ciclosCoachingRepo: { count: jest.Mock; find: jest.Mock };
+  let disponibilidadRepo: { find: jest.Mock };
   let ciclosService: { findAllAbiertosConEstado: jest.Mock };
   let seguimiento: { avanceGeneralForCoachee: jest.Mock };
   let email: {
@@ -44,12 +48,17 @@ describe('NegocioService', () => {
     sendRecordatorioLogro: jest.Mock;
   };
   let config: { get: jest.Mock };
+  let empresasService: { ultimaGestionPorEmpresa: jest.Mock };
 
   const hace1h = new Date(Date.now() - 60 * 60 * 1000);
   const en1h = new Date(Date.now() + 60 * 60 * 1000);
 
   beforeEach(() => {
-    sesionesRepo = { find: jest.fn().mockResolvedValue([]), exists: jest.fn() };
+    sesionesRepo = {
+      find: jest.fn().mockResolvedValue([]),
+      exists: jest.fn(),
+      count: jest.fn().mockResolvedValue(0),
+    };
     postSesionesRepo = {
       createQueryBuilder: jest.fn(() => makeAvgQueryBuilder(null)),
     };
@@ -66,6 +75,7 @@ describe('NegocioService', () => {
       count: jest.fn().mockResolvedValue(0),
       find: jest.fn().mockResolvedValue([]),
     };
+    disponibilidadRepo = { find: jest.fn().mockResolvedValue([]) };
     ciclosService = {
       findAllAbiertosConEstado: jest.fn().mockResolvedValue([]),
     };
@@ -75,6 +85,9 @@ describe('NegocioService', () => {
       sendRecordatorioLogro: jest.fn().mockResolvedValue(undefined),
     };
     config = { get: jest.fn().mockReturnValue('http://localhost:5183') };
+    empresasService = {
+      ultimaGestionPorEmpresa: jest.fn().mockResolvedValue(new Map()),
+    };
 
     service = new NegocioService(
       sesionesRepo as unknown as Repository<Sesion>,
@@ -85,10 +98,12 @@ describe('NegocioService', () => {
       solicitudesProcesoRepo as unknown as Repository<SolicitudProceso>,
       solicitudesReagendamientoRepo as unknown as Repository<SolicitudReagendamiento>,
       ciclosCoachingRepo as unknown as Repository<CicloCoaching>,
+      disponibilidadRepo as unknown as Repository<DisponibilidadCoach>,
       ciclosService as unknown as CiclosService,
       seguimiento as unknown as SeguimientoService,
       email as unknown as EmailService,
       config as unknown as ConfigService,
+      empresasService as unknown as EmpresasService,
     );
   });
 
@@ -619,6 +634,164 @@ describe('NegocioService', () => {
     });
   });
 
+  describe('resumenAcumuladoParaEmpresa', () => {
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    it('splits a past session as ejecutado and a future one as agendado', async () => {
+      jest.useFakeTimers().setSystemTime(new Date(2026, 7, 15)); // 15-ago-2026 → 2do semestre
+
+      const coachee = {
+        id: 'c1',
+        nombre: 'Ana',
+        empresaId: 'e1',
+        tarifaPropia: null,
+        empresa: {
+          id: 'e1',
+          nombre: 'Empresa A',
+          tarifaHora: 30000,
+          horasContratadas: 40,
+          pagada: true,
+        },
+      };
+      coacheesRepo.find.mockResolvedValue([coachee]);
+      empresasRepo.find.mockResolvedValue([coachee.empresa]);
+      sesionesRepo.find.mockResolvedValue([
+        { coacheeId: 'c1', fechaHora: new Date(2026, 7, 10) }, // pasada (antes del 15-ago)
+        { coacheeId: 'c1', fechaHora: new Date(2026, 7, 20) }, // futura, mismo semestre/año
+      ]);
+
+      const resumen = await service.resumenAcumuladoParaEmpresa('e1');
+
+      expect(resumen).toEqual({
+        anio: 2026,
+        semestre: 2,
+        gastoEjecutadoSemestre: 30000,
+        gastoAgendadoSemestre: 30000,
+        gastoEjecutadoAnio: 30000,
+        gastoAgendadoAnio: 30000,
+      });
+    });
+
+    it('reports semestre 1 for a date in the first half of the year', async () => {
+      jest.useFakeTimers().setSystemTime(new Date(2026, 2, 1)); // 1-mar-2026
+
+      coacheesRepo.find.mockResolvedValue([]);
+      empresasRepo.find.mockResolvedValue([]);
+      sesionesRepo.find.mockResolvedValue([]);
+
+      const resumen = await service.resumenAcumuladoParaEmpresa('e1');
+
+      expect(resumen.semestre).toBe(1);
+      expect(resumen.gastoEjecutadoSemestre).toBe(0);
+    });
+  });
+
+  describe('retornoParaEmpresa', () => {
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    it('returns the empty shape when the empresa has no coachees', async () => {
+      coacheesRepo.find.mockResolvedValue([]);
+
+      const retorno = await service.retornoParaEmpresa('e1');
+
+      expect(retorno).toEqual({
+        costoTotalProcesosCerrados: 0,
+        costoPromedioPorProceso: null,
+        distribucionResultados: {
+          logrado: 0,
+          medianamente_logrado: 0,
+          no_logrado: 0,
+        },
+        procesos: [],
+      });
+    });
+
+    it('returns the empty shape when there are no ciclos cerrados yet', async () => {
+      coacheesRepo.find.mockResolvedValue([
+        {
+          id: 'c1',
+          nombre: 'Ana',
+          empresaId: 'e1',
+          tarifaPropia: null,
+          empresa: { tarifaHora: 20000 },
+        },
+      ]);
+      ciclosCoachingRepo.find.mockResolvedValue([]);
+
+      const retorno = await service.retornoParaEmpresa('e1');
+
+      expect(retorno.procesos).toEqual([]);
+      expect(retorno.costoPromedioPorProceso).toBeNull();
+    });
+
+    it('costs each ciclo by its realized sessions only, and aggregates resultado + costo across procesos', async () => {
+      jest.useFakeTimers().setSystemTime(new Date(2026, 7, 15));
+
+      coacheesRepo.find.mockResolvedValue([
+        {
+          id: 'c1',
+          nombre: 'Ana',
+          empresaId: 'e1',
+          tarifaPropia: null,
+          empresa: { tarifaHora: 20000 },
+        },
+      ]);
+      ciclosCoachingRepo.find.mockResolvedValue([
+        {
+          id: 'ciclo-1',
+          coacheeId: 'c1',
+          fechaApertura: new Date(2026, 5, 1),
+          fechaCierre: new Date(2026, 6, 1),
+          resultado: 'logrado',
+          impactoNegocio: 'Redujo el tiempo de respuesta en 20%.',
+        },
+        {
+          id: 'ciclo-2',
+          coacheeId: 'c1',
+          fechaApertura: new Date(2026, 4, 1),
+          fechaCierre: new Date(2026, 4, 20),
+          resultado: 'no_logrado',
+          impactoNegocio: null,
+        },
+      ]);
+      sesionesRepo.find.mockResolvedValue([
+        { cicloId: 'ciclo-1', fechaHora: new Date(2026, 5, 5) }, // realizada
+        { cicloId: 'ciclo-1', fechaHora: new Date(2026, 5, 12) }, // realizada
+        { cicloId: 'ciclo-1', fechaHora: new Date(2026, 8, 1) }, // futura — no cuenta
+        { cicloId: 'ciclo-2', fechaHora: new Date(2026, 4, 3) }, // realizada, pero ciclo-2 no_logrado
+      ]);
+
+      const retorno = await service.retornoParaEmpresa('e1');
+
+      expect(retorno.costoTotalProcesosCerrados).toBe(60000); // (2 + 1) sesiones realizadas × 20000
+      expect(retorno.costoPromedioPorProceso).toBe(30000); // 60000 / 2 procesos
+      expect(retorno.distribucionResultados).toEqual({
+        logrado: 1,
+        medianamente_logrado: 0,
+        no_logrado: 1,
+      });
+      expect(retorno.procesos).toEqual([
+        expect.objectContaining({
+          cicloId: 'ciclo-1',
+          coacheeNombre: 'Ana',
+          costo: 40000,
+          resultado: 'logrado',
+          impactoNegocio: 'Redujo el tiempo de respuesta en 20%.',
+        }),
+        expect.objectContaining({
+          cicloId: 'ciclo-2',
+          costo: 20000,
+          resultado: 'no_logrado',
+          impactoNegocio: null,
+        }),
+      ]);
+    });
+  });
+
   describe('proyeccionParaEmpresa', () => {
     afterEach(() => {
       jest.useRealTimers();
@@ -708,6 +881,352 @@ describe('NegocioService', () => {
       const resumen = await service.resumenNegocio();
 
       expect(resumen.satisfaccionPromedio).toBeNull();
+    });
+  });
+
+  describe('carteraEmpresas', () => {
+    function fechaEnDias(dias: number): string {
+      const d = new Date();
+      d.setDate(d.getDate() + dias);
+      return d.toISOString().slice(0, 10);
+    }
+
+    it('classifies each empresa by how far its fechaFin is', async () => {
+      empresasRepo.find.mockResolvedValue([
+        {
+          id: 'e-sin-fecha',
+          nombre: 'Sin Fecha',
+          fechaFin: null,
+          pagada: true,
+          horasContratadas: 10,
+        },
+        {
+          id: 'e-vencida',
+          nombre: 'Vencida',
+          fechaFin: fechaEnDias(-5),
+          pagada: true,
+          horasContratadas: 10,
+        },
+        {
+          id: 'e-este-mes',
+          nombre: 'Este Mes',
+          fechaFin: fechaEnDias(20),
+          pagada: true,
+          horasContratadas: 10,
+        },
+        {
+          id: 'e-este-semestre',
+          nombre: 'Este Semestre',
+          fechaFin: fechaEnDias(90),
+          pagada: true,
+          horasContratadas: 10,
+        },
+        {
+          id: 'e-vigente',
+          nombre: 'Vigente',
+          fechaFin: fechaEnDias(300),
+          pagada: true,
+          horasContratadas: 10,
+        },
+      ]);
+
+      const cartera = await service.carteraEmpresas();
+
+      const estadoPorNombre = Object.fromEntries(
+        cartera.empresas.map((e) => [e.nombre, e.estado]),
+      );
+      expect(estadoPorNombre).toEqual({
+        'Sin Fecha': 'sin_fecha',
+        Vencida: 'vencido',
+        'Este Mes': 'vence_este_mes',
+        'Este Semestre': 'vence_este_semestre',
+        Vigente: 'vigente',
+      });
+    });
+
+    it('only flags independientes (coachees without empresa) whose ciclo is about to expire', async () => {
+      ciclosService.findAllAbiertosConEstado.mockResolvedValue([
+        {
+          coacheeId: 'c-independiente',
+          coachee: { nombre: 'Independiente Uno', empresaId: null },
+          alertaPorVencer: true,
+          sesionesRestantes: 1,
+        },
+        {
+          coacheeId: 'c-de-empresa',
+          coachee: { nombre: 'De Empresa', empresaId: 'e1' },
+          alertaPorVencer: true,
+          sesionesRestantes: 1,
+        },
+        {
+          coacheeId: 'c-lejos',
+          coachee: { nombre: 'Lejos de vencer', empresaId: null },
+          alertaPorVencer: false,
+          sesionesRestantes: 8,
+        },
+      ]);
+
+      const cartera = await service.carteraEmpresas();
+
+      expect(cartera.independientesPorVencer).toEqual([
+        {
+          coacheeId: 'c-independiente',
+          nombre: 'Independiente Uno',
+          sesionesRestantes: 1,
+        },
+      ]);
+    });
+
+    it('attaches the ultimaGestion of each empresa from EmpresasService', async () => {
+      empresasRepo.find.mockResolvedValue([
+        {
+          id: 'e1',
+          nombre: 'Con Gestión',
+          fechaFin: null,
+          pagada: true,
+          horasContratadas: 10,
+        },
+        {
+          id: 'e2',
+          nombre: 'Sin Gestión',
+          fechaFin: null,
+          pagada: true,
+          horasContratadas: 10,
+        },
+      ]);
+      const fecha = new Date(2026, 7, 1);
+      empresasService.ultimaGestionPorEmpresa.mockResolvedValue(
+        new Map([
+          [
+            'e1',
+            {
+              nota: 'Llamada realizada',
+              createdAt: fecha,
+              proximoSeguimiento: '2026-09-01',
+            },
+          ],
+        ]),
+      );
+
+      const cartera = await service.carteraEmpresas();
+
+      const porNombre = Object.fromEntries(
+        cartera.empresas.map((e) => [e.nombre, e.ultimaGestion]),
+      );
+      expect(porNombre['Con Gestión']).toEqual({
+        nota: 'Llamada realizada',
+        fecha,
+        proximoSeguimiento: '2026-09-01',
+      });
+      expect(porNombre['Sin Gestión']).toBeNull();
+    });
+  });
+
+  describe('atencionInmediata', () => {
+    function fechaEnDias(dias: number): string {
+      const d = new Date();
+      d.setDate(d.getDate() + dias);
+      return d.toISOString().slice(0, 10);
+    }
+
+    it('lists today/tomorrow unconfirmed sessions with the coachee relation loaded', async () => {
+      sesionesRepo.find.mockImplementation(
+        (opts?: { relations?: { coachee?: boolean } }) => {
+          if (opts?.relations?.coachee) {
+            return Promise.resolve([
+              {
+                id: 's1',
+                coacheeId: 'c1',
+                coachee: { nombre: 'Ana' },
+                fechaHora: new Date(),
+              },
+            ]);
+          }
+          return Promise.resolve([]);
+        },
+      );
+
+      const atencion = await service.atencionInmediata();
+
+      expect(atencion.sesionesSinConfirmar).toEqual([
+        {
+          sesionId: 's1',
+          coacheeId: 'c1',
+          nombre: 'Ana',
+          fechaHora: expect.any(Date) as Date,
+        },
+      ]);
+    });
+
+    it('flags a contrato as urgente when it expires soon and has no gestión at all', async () => {
+      empresasRepo.find.mockResolvedValue([
+        {
+          id: 'e1',
+          nombre: 'Empresa Urgente',
+          fechaFin: fechaEnDias(10),
+          pagada: false,
+          horasContratadas: 10,
+        },
+      ]);
+
+      const atencion = await service.atencionInmediata();
+
+      expect(atencion.contratosUrgentes).toEqual([
+        {
+          empresaId: 'e1',
+          nombre: 'Empresa Urgente',
+          diasParaVencer: 10,
+          ultimaGestion: null,
+        },
+      ]);
+      expect(atencion.pagosPendientes).toEqual([
+        { empresaId: 'e1', nombre: 'Empresa Urgente', gastoDelPeriodo: 0 },
+      ]);
+    });
+
+    it('still flags a contrato as urgente when the last gestión proximoSeguimiento already passed', async () => {
+      empresasRepo.find.mockResolvedValue([
+        {
+          id: 'e1',
+          nombre: 'Empresa Urgente',
+          fechaFin: fechaEnDias(10),
+          pagada: true,
+          horasContratadas: 10,
+        },
+      ]);
+      empresasService.ultimaGestionPorEmpresa.mockResolvedValue(
+        new Map([
+          [
+            'e1',
+            {
+              nota: 'Se contactó hace tiempo',
+              createdAt: new Date(),
+              proximoSeguimiento: fechaEnDias(-5),
+            },
+          ],
+        ]),
+      );
+
+      const atencion = await service.atencionInmediata();
+
+      expect(atencion.contratosUrgentes).toHaveLength(1);
+    });
+
+    it('excludes a contrato urgente when there is a gestión with a future proximoSeguimiento', async () => {
+      empresasRepo.find.mockResolvedValue([
+        {
+          id: 'e1',
+          nombre: 'Empresa Con Seguimiento',
+          fechaFin: fechaEnDias(10),
+          pagada: true,
+          horasContratadas: 10,
+        },
+      ]);
+      empresasService.ultimaGestionPorEmpresa.mockResolvedValue(
+        new Map([
+          [
+            'e1',
+            {
+              nota: 'Llamada agendada',
+              createdAt: new Date(),
+              proximoSeguimiento: fechaEnDias(5),
+            },
+          ],
+        ]),
+      );
+
+      const atencion = await service.atencionInmediata();
+
+      expect(atencion.contratosUrgentes).toHaveLength(0);
+    });
+
+    it('does not flag a contrato that is not close to expiring', async () => {
+      empresasRepo.find.mockResolvedValue([
+        {
+          id: 'e1',
+          nombre: 'Empresa Tranquila',
+          fechaFin: fechaEnDias(90),
+          pagada: true,
+          horasContratadas: 10,
+        },
+      ]);
+
+      const atencion = await service.atencionInmediata();
+
+      expect(atencion.contratosUrgentes).toHaveLength(0);
+    });
+  });
+
+  describe('comparativoYCapacidad', () => {
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    it('combines ingreso mes actual/anterior, coachings iniciados, y horas comprometidas/disponibles', async () => {
+      jest.useFakeTimers().setSystemTime(new Date(2026, 7, 15)); // 15 ago 2026
+
+      const coachee = {
+        id: 'c1',
+        nombre: 'Ana',
+        empresaId: null,
+        tarifaPropia: 40000,
+        empresa: null,
+      };
+      coacheesRepo.find.mockResolvedValue([coachee]);
+
+      sesionesRepo.find
+        .mockResolvedValueOnce([
+          { coacheeId: 'c1', fechaHora: new Date(2026, 7, 10) },
+        ]) // mes actual
+        .mockResolvedValueOnce([]); // mes anterior
+
+      ciclosCoachingRepo.count
+        .mockResolvedValueOnce(4) // mes actual
+        .mockResolvedValueOnce(2); // mes anterior
+
+      sesionesRepo.count.mockResolvedValue(3); // 3 sesiones esta semana
+      disponibilidadRepo.find.mockResolvedValue([
+        { horaInicio: '09:00', horaFin: '13:00' }, // 4h
+        { horaInicio: '14:00', horaFin: '18:00' }, // 4h
+      ]);
+
+      const comparativo = await service.comparativoYCapacidad();
+
+      expect(comparativo.ingresoMesActual).toBe(40000);
+      expect(comparativo.ingresoMesAnterior).toBe(0);
+      expect(comparativo.variacionIngresoPct).toBeNull();
+      expect(comparativo.coachingsIniciadosMesActual).toBe(4);
+      expect(comparativo.coachingsIniciadosMesAnterior).toBe(2);
+      expect(comparativo.horasComprometidasSemana).toBe(3);
+      expect(comparativo.horasDisponiblesSemana).toBe(8);
+    });
+
+    it('computes a positive variación when ingreso grew vs. the previous month', async () => {
+      jest.useFakeTimers().setSystemTime(new Date(2026, 7, 15));
+
+      const coachee = {
+        id: 'c1',
+        nombre: 'Ana',
+        empresaId: null,
+        tarifaPropia: 10000,
+        empresa: null,
+      };
+      coacheesRepo.find.mockResolvedValue([coachee]);
+
+      sesionesRepo.find
+        .mockResolvedValueOnce([
+          { coacheeId: 'c1', fechaHora: new Date(2026, 7, 5) },
+          { coacheeId: 'c1', fechaHora: new Date(2026, 7, 6) },
+        ]) // mes actual: 20000
+        .mockResolvedValueOnce([
+          { coacheeId: 'c1', fechaHora: new Date(2026, 6, 5) },
+        ]); // mes anterior: 10000
+
+      const comparativo = await service.comparativoYCapacidad();
+
+      expect(comparativo.ingresoMesActual).toBe(20000);
+      expect(comparativo.ingresoMesAnterior).toBe(10000);
+      expect(comparativo.variacionIngresoPct).toBe(100);
     });
   });
 

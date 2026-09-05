@@ -4,31 +4,42 @@ import { useRouter } from 'vue-router'
 import AppShell from '../../components/AppShell.vue'
 import SectionCard from '../../components/SectionCard.vue'
 import EmptyState from '../../components/EmptyState.vue'
+import SkeletonBlock from '../../components/SkeletonBlock.vue'
+import GraficoProgreso from '../../components/GraficoProgreso.vue'
 import { getMisSesiones } from '../../api/sesiones'
 import { getMisRecursos, listMisAprendizajes } from '../../api/recursos'
 import { listQuizzesDisponibles } from '../../api/quiz'
 import { listFlashcardsDisponibles } from '../../api/flashcards'
 import { listMapasDisponibles } from '../../api/mapas'
-import { getMisEntradasDiario } from '../../api/seguimiento'
+import { listEjerciciosDisponibles } from '../../api/ejercicios'
+import { listTestsEstiloDisponibles } from '../../api/testEstilo'
+import { getMisEntradasDiario, getMiAvance, getMiLineaProgreso, type PuntoProgreso } from '../../api/seguimiento'
 import { getOwnPlan } from '../../api/planesDesarrollo'
-import { resumenAprendizaje, type ResumenAprendizaje } from '../../lib/miAprendizaje'
+import { resumenAprendizaje, type ResumenAprendizaje, type TipoTarea } from '../../lib/miAprendizaje'
 
 const router = useRouter()
 const loading = ref(true)
 const resumen = ref<ResumenAprendizaje | null>(null)
+const avance = ref<number | null>(null)
+const puntos = ref<PuntoProgreso[]>([])
 
 onMounted(async () => {
   loading.value = true
-  const [sesiones, recursos, aprendizajes, quizzes, flashcards, mapas, diario, plan] = await Promise.all([
-    getMisSesiones(),
-    getMisRecursos(),
-    listMisAprendizajes(),
-    listQuizzesDisponibles(),
-    listFlashcardsDisponibles(),
-    listMapasDisponibles(),
-    getMisEntradasDiario(),
-    getOwnPlan(),
-  ])
+  const [sesiones, recursos, aprendizajes, quizzes, flashcards, mapas, ejercicios, testEstilo, diario, plan, a, p] =
+    await Promise.all([
+      getMisSesiones(),
+      getMisRecursos(),
+      listMisAprendizajes(),
+      listQuizzesDisponibles(),
+      listFlashcardsDisponibles(),
+      listMapasDisponibles(),
+      listEjerciciosDisponibles(),
+      listTestsEstiloDisponibles(),
+      getMisEntradasDiario(),
+      getOwnPlan(),
+      getMiAvance(),
+      getMiLineaProgreso(),
+    ])
   resumen.value = resumenAprendizaje({
     sesiones,
     recursos,
@@ -36,14 +47,31 @@ onMounted(async () => {
     quizzes,
     flashcards,
     mapas,
+    ejercicios,
+    testEstilo,
     diario,
     planEstado: plan.estado,
+    actividades: plan.actividades,
   })
+  avance.value = a.avance
+  puntos.value = p
   loading.value = false
 })
 
-function ir(name: string) {
-  router.push({ name })
+function ir(name: string, query?: Record<string, string>) {
+  router.push({ name, query })
+}
+
+const tabDeTarea: Partial<Record<TipoTarea, string>> = {
+  quiz: 'quiz',
+  ejercicios: 'ejercicios',
+  'test-estilo': 'test-estilo',
+}
+
+function irATarea(tipo: TipoTarea) {
+  if (tipo === 'actividad') return ir('coachee-plan')
+  if (tipo === 'recurso') return ir('coachee-biblioteca')
+  return ir('coachee-playground', { tab: tabDeTarea[tipo]! })
 }
 
 function formatFecha(fecha: string): string {
@@ -53,16 +81,19 @@ function formatFecha(fecha: string): string {
 
 <template>
   <AppShell>
-    <h1 class="mb-4 font-[family-name:var(--font-heading)] text-xl font-semibold">
-      Mi Aprendizaje
-    </h1>
-
-    <div
-      v-if="loading"
-      class="text-sm text-[var(--color-ink)]/60"
-    >
-      Cargando…
+    <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+      <h1 class="font-[family-name:var(--font-heading)] text-xl font-semibold">
+        Mi Aprendizaje
+      </h1>
+      <RouterLink
+        to="/coachee/resumen"
+        class="rounded-full border border-[var(--color-line)] px-3 py-1.5 text-xs hover:bg-[var(--color-parchment)]/60"
+      >
+        Imprimir resumen
+      </RouterLink>
     </div>
+
+    <SkeletonBlock v-if="loading" />
 
     <EmptyState
       v-else-if="resumen!.vacio"
@@ -88,6 +119,59 @@ function formatFecha(fecha: string): string {
         </button>
       </p>
 
+      <!-- "¿Qué necesito hacer?" antes que cualquier otra cosa — mismo principio que
+           "Atención inmediata" en el dashboard del coach. -->
+      <SectionCard
+        title="Tareas pendientes"
+        icon="lista"
+      >
+        <p
+          v-if="resumen!.tareasPendientes.length === 0"
+          class="text-sm text-[var(--color-sage)]"
+        >
+          ✓ Nada pendiente por ahora.
+        </p>
+        <ul
+          v-else
+          class="space-y-1.5 text-sm"
+        >
+          <li
+            v-for="tarea in resumen!.tareasPendientes"
+            :key="`${tarea.tipo}-${tarea.id}`"
+            class="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[var(--color-line)]/60 px-3 py-2"
+          >
+            <span>
+              {{ tarea.titulo }}
+              <span :class="tarea.urgente ? 'text-[var(--color-danger)]' : 'text-[var(--color-ink)]/50'">
+                — {{ tarea.detalle }}
+              </span>
+            </span>
+            <button
+              class="rounded-full border border-[var(--color-line)] px-3 py-1 text-xs hover:bg-[var(--color-parchment)]/60"
+              @click="irATarea(tarea.tipo)"
+            >
+              Ver
+            </button>
+          </li>
+        </ul>
+      </SectionCard>
+
+      <SectionCard
+        title="Mi progreso"
+        icon="progreso"
+      >
+        <GraficoProgreso
+          :puntos="puntos"
+          :avance="avance"
+        />
+        <button
+          class="mt-3 rounded-full border border-[var(--color-line)] px-3 py-1 text-xs hover:bg-[var(--color-parchment)]/60"
+          @click="ir('coachee-progreso')"
+        >
+          Ver progreso completo
+        </button>
+      </SectionCard>
+
       <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <SectionCard
           title="Próxima sesión"
@@ -106,10 +190,10 @@ function formatFecha(fecha: string): string {
             Sin sesión agendada.
           </p>
           <button
-            class="mt-3 text-xs text-[var(--color-sage)] hover:underline"
+            class="mt-3 rounded-full border border-[var(--color-line)] px-3 py-1 text-xs hover:bg-[var(--color-parchment)]/60"
             @click="ir('coachee-sesiones')"
           >
-            Ver sesiones →
+            Ver sesiones
           </button>
         </SectionCard>
 
@@ -127,10 +211,10 @@ function formatFecha(fecha: string): string {
             {{ resumen!.recursos.total }} recurso{{ resumen!.recursos.total === 1 ? '' : 's' }} en total
           </p>
           <button
-            class="mt-3 text-xs text-[var(--color-sage)] hover:underline"
+            class="mt-3 rounded-full border border-[var(--color-line)] px-3 py-1 text-xs hover:bg-[var(--color-parchment)]/60"
             @click="ir('coachee-biblioteca')"
           >
-            Ir a Biblioteca →
+            Ir a Biblioteca
           </button>
         </SectionCard>
 
@@ -148,10 +232,10 @@ function formatFecha(fecha: string): string {
             {{ resumen!.quizzes.total }} disponible{{ resumen!.quizzes.total === 1 ? '' : 's' }}
           </p>
           <button
-            class="mt-3 text-xs text-[var(--color-sage)] hover:underline"
-            @click="ir('coachee-quiz')"
+            class="mt-3 rounded-full border border-[var(--color-line)] px-3 py-1 text-xs hover:bg-[var(--color-parchment)]/60"
+            @click="ir('coachee-playground', { tab: 'quiz' })"
           >
-            Ir a Quiz →
+            Ir a Quiz
           </button>
         </SectionCard>
 
@@ -169,10 +253,10 @@ function formatFecha(fecha: string): string {
             {{ resumen!.flashcards.total }} en total
           </p>
           <button
-            class="mt-3 text-xs text-[var(--color-sage)] hover:underline"
-            @click="ir('coachee-flashcards')"
+            class="mt-3 rounded-full border border-[var(--color-line)] px-3 py-1 text-xs hover:bg-[var(--color-parchment)]/60"
+            @click="ir('coachee-playground', { tab: 'flashcards' })"
           >
-            Ir a Flashcards →
+            Ir a Flashcards
           </button>
         </SectionCard>
 
@@ -184,10 +268,52 @@ function formatFecha(fecha: string): string {
             {{ resumen!.mapas.total }} disponible{{ resumen!.mapas.total === 1 ? '' : 's' }}
           </p>
           <button
-            class="mt-3 text-xs text-[var(--color-sage)] hover:underline"
-            @click="ir('coachee-mapas')"
+            class="mt-3 rounded-full border border-[var(--color-line)] px-3 py-1 text-xs hover:bg-[var(--color-parchment)]/60"
+            @click="ir('coachee-playground', { tab: 'mapas' })"
           >
-            Ir a Mapas mentales →
+            Ir a Mapas mentales
+          </button>
+        </SectionCard>
+
+        <SectionCard
+          title="Ejercicios"
+          icon="ejercicios"
+        >
+          <p
+            class="text-sm font-semibold"
+            :class="resumen!.ejercicios.sinEntregar > 0 ? 'text-[var(--color-bronze)]' : 'text-[var(--color-sage)]'"
+          >
+            {{ resumen!.ejercicios.sinEntregar > 0 ? `${resumen!.ejercicios.sinEntregar} sin entregar` : 'Al día' }}
+          </p>
+          <p class="text-xs text-[var(--color-ink)]/50">
+            {{ resumen!.ejercicios.total }} disponible{{ resumen!.ejercicios.total === 1 ? '' : 's' }}
+          </p>
+          <button
+            class="mt-3 rounded-full border border-[var(--color-line)] px-3 py-1 text-xs hover:bg-[var(--color-parchment)]/60"
+            @click="ir('coachee-playground', { tab: 'ejercicios' })"
+          >
+            Ir a Ejercicios
+          </button>
+        </SectionCard>
+
+        <SectionCard
+          title="Test de Estilo"
+          icon="estilo"
+        >
+          <p
+            class="text-sm font-semibold"
+            :class="resumen!.testEstilo.sinResponder > 0 ? 'text-[var(--color-bronze)]' : 'text-[var(--color-sage)]'"
+          >
+            {{ resumen!.testEstilo.sinResponder > 0 ? `${resumen!.testEstilo.sinResponder} sin responder` : 'Al día' }}
+          </p>
+          <p class="text-xs text-[var(--color-ink)]/50">
+            {{ resumen!.testEstilo.total }} disponible{{ resumen!.testEstilo.total === 1 ? '' : 's' }}
+          </p>
+          <button
+            class="mt-3 rounded-full border border-[var(--color-line)] px-3 py-1 text-xs hover:bg-[var(--color-parchment)]/60"
+            @click="ir('coachee-playground', { tab: 'test-estilo' })"
+          >
+            Ir a Test de Estilo
           </button>
         </SectionCard>
 

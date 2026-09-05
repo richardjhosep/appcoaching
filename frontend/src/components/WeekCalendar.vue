@@ -2,8 +2,15 @@
 import { computed, ref } from 'vue'
 import type { Sesion } from '../api/sesiones'
 import { inicioDeSemana } from '../lib/dateRange'
+import { notifyError } from '../lib/notify'
 
-const props = defineProps<{ sesiones: Sesion[]; puedeAgendar?: boolean }>()
+const props = defineProps<{
+  sesiones: Sesion[]
+  puedeAgendar?: boolean
+  // Agenda global del coach (todos los coachees a la vez): muestra el nombre del coachee
+  // dentro de cada bloque en vez de solo la hora.
+  mostrarCoachee?: boolean
+}>()
 const emit = defineEmits<{ select: [string]; 'nueva-sesion': [] }>()
 
 const HORA_INICIO = 7
@@ -36,6 +43,7 @@ interface Bloque {
   color: string
   esFutura: boolean
   linkVideollamada: string | null
+  nombreCoachee: string | null
 }
 
 function colorPara(sesion: Sesion, esFutura: boolean): string {
@@ -61,14 +69,23 @@ const bloquesPorDia = computed<Bloque[][]>(() =>
           color: colorPara(s, esFutura),
           esFutura,
           linkVideollamada: s.linkVideollamada,
+          nombreCoachee: props.mostrarCoachee ? (s.coachee?.nombre ?? null) : null,
         }
       }),
   ),
 )
 
+// Una sesión futura sin link no tiene nada útil que "seleccionar" (las vistas que escuchan
+// @select solo hacen scroll a la lista de sesiones pasadas) — antes eso hacía que el clic no
+// tuviera ningún efecto visible ni mensaje. Ahora se avisa explícitamente en vez de fallar en
+// silencio.
 function onClickBloque(bloque: Bloque) {
-  if (bloque.esFutura && bloque.linkVideollamada) {
-    window.open(bloque.linkVideollamada, '_blank', 'noopener')
+  if (bloque.esFutura) {
+    if (bloque.linkVideollamada) {
+      window.open(bloque.linkVideollamada, '_blank', 'noopener')
+      return
+    }
+    void notifyError('Sin enlace de videollamada', 'Esta sesión todavía no tiene un enlace de videollamada registrado.')
     return
   }
   emit('select', bloque.id)
@@ -167,10 +184,14 @@ const esHoy = (d: Date) => esMismoDia(d, new Date())
               class="absolute left-0.5 right-0.5 rounded px-1 py-0.5 text-left text-[11px] font-semibold leading-tight"
               :class="bloque.color"
               :style="{ top: `${bloque.top}px`, height: `${ALTO_HORA}px` }"
-              :title="bloque.esFutura && bloque.linkVideollamada ? 'Abrir enlace de la videollamada' : undefined"
+              :title="bloque.esFutura ? (bloque.linkVideollamada ? 'Abrir enlace de la videollamada' : 'Sin enlace de videollamada registrado') : undefined"
               @click="onClickBloque(bloque)"
             >
               {{ new Date(bloque.fechaHora).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' }) }}
+              <span
+                v-if="bloque.nombreCoachee"
+                class="block truncate font-normal"
+              >{{ bloque.nombreCoachee }}</span>
             </button>
           </div>
         </div>

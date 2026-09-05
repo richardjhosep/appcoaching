@@ -11,6 +11,7 @@ export interface Flashcard {
   recursoId: string | null
   recurso?: { id: string; titulo: string } | null
   activo: boolean
+  fechaLimite: string | null
   createdAt: string
   updatedAt: string
 }
@@ -23,6 +24,7 @@ export interface FlashcardConEstado {
   competencia?: { id: string; nombre: string }
   recursoId: string | null
   activo: boolean
+  fechaLimite: string | null
   proximaRevision: string | null
   debeRepasar: boolean
 }
@@ -44,6 +46,7 @@ export function createFlashcard(input: {
   reverso: string
   competenciaId: string
   recursoId?: string
+  fechaLimite?: string
 }): Promise<Flashcard> {
   return apiRequest<Flashcard>('/flashcards', { method: 'POST', body: input })
 }
@@ -58,7 +61,13 @@ export function getFlashcard(id: string): Promise<Flashcard> {
 
 export function updateFlashcard(
   id: string,
-  input: Partial<{ anverso: string; reverso: string; competenciaId: string; recursoId: string }>,
+  input: Partial<{
+    anverso: string
+    reverso: string
+    competenciaId: string
+    recursoId: string
+    fechaLimite: string | null
+  }>,
 ): Promise<Flashcard> {
   return apiRequest<Flashcard>(`/flashcards/${id}`, { method: 'PATCH', body: input })
 }

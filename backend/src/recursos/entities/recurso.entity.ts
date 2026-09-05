@@ -50,6 +50,13 @@ export class Recurso {
   @Column({ name: 'archivo_path', type: 'varchar', nullable: true })
   archivoPath: string | null;
 
+  // Opcional — pasada esta fecha (fin del día en horario de Chile), el recurso deja de
+  // aparecer en la biblioteca de CUALQUIER coachee, sin importar cómo obtuvo acceso
+  // (carpeta visible o asignación directa). Distinto de AsignacionRecurso.expiraEn, que es
+  // el vencimiento del acceso puntual de un coachee, no del recurso en sí.
+  @Column({ name: 'fecha_limite', type: 'timestamptz', nullable: true })
+  fechaLimite: Date | null;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 }

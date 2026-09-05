@@ -1,4 +1,11 @@
-import { IsInt, IsString, Min, MinLength } from 'class-validator';
+import {
+  IsDateString,
+  IsInt,
+  IsOptional,
+  IsString,
+  Min,
+  MinLength,
+} from 'class-validator';
 
 export class CreateEmpresaDto {
   @IsString()
@@ -8,4 +15,12 @@ export class CreateEmpresaDto {
   @IsInt()
   @Min(1)
   tarifaHora: number;
+
+  @IsOptional()
+  @IsDateString()
+  fechaInicio?: string;
+
+  @IsOptional()
+  @IsDateString()
+  fechaFin?: string;
 }

@@ -1,12 +1,17 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 
+// `inputClass`: para formularios con un estilo de input propio (ej. LoginView, con fondo
+// marfil y anillo de foco) — si se pasa, reemplaza por completo la clase por defecto, así que
+// debe incluir `pr-10` (espacio para el botón de ojo) y su propio color de borde para
+// `invalid` si lo necesita. Sin `inputClass`, se mantiene el estilo plano de siempre.
 defineProps<{
   modelValue: string
   label: string
   autocomplete?: string
   minlength?: number
   invalid?: boolean
+  inputClass?: string
 }>()
 const emit = defineEmits<{ 'update:modelValue': [string] }>()
 
@@ -23,8 +28,7 @@ const visible = ref(false)
         required
         :minlength="minlength"
         :autocomplete="autocomplete"
-        class="w-full rounded-lg border px-3 py-2 pr-10 text-sm"
-        :class="invalid ? 'border-[var(--color-danger)]' : 'border-[var(--color-line)]'"
+        :class="inputClass ?? ['w-full rounded-lg border px-3 py-2 pr-10 text-sm', invalid ? 'border-[var(--color-danger)]' : 'border-[var(--color-line)]']"
         @input="emit('update:modelValue', ($event.target as HTMLInputElement).value)"
       >
       <button

@@ -101,7 +101,7 @@ export class AuthService {
 
     if (!user || !user.isActive || !valid) {
       await this.audit.record('LOGIN_FAILED', { metadata: { email } });
-      throw new UnauthorizedException('Invalid credentials');
+      throw new UnauthorizedException('Credenciales inválidas.');
     }
 
     if (
@@ -130,19 +130,21 @@ export class AuthService {
         secret: this.config.get<string>('jwt.refreshSecret'),
       });
     } catch {
-      throw new UnauthorizedException('Invalid refresh token');
+      throw new UnauthorizedException('Token de actualización inválido.');
     }
 
     const key = this.refreshKey(payload.sub, payload.jti);
     const stillValid = await this.redis.get(key);
     if (!stillValid) {
-      throw new UnauthorizedException('Refresh token revoked or expired');
+      throw new UnauthorizedException(
+        'El token de actualización fue revocado o expiró.',
+      );
     }
     await this.redis.delete(key);
 
     const user = await this.users.findById(payload.sub);
     if (!user || !user.isActive) {
-      throw new UnauthorizedException('Invalid refresh token');
+      throw new UnauthorizedException('Token de actualización inválido.');
     }
     return this.issueTokens(user);
   }

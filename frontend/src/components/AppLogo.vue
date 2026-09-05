@@ -10,7 +10,7 @@ withDefaults(
 </script>
 
 <template>
-  <div class="flex items-center gap-2.5">
+  <div class="flex select-none items-center gap-2.5 cursor-default">
     <!-- Marca "nexus": un anillo partido en dos (coach + práctica) que se conectan en un
          punto central — el vínculo coach–coachee–empresa que la plataforma modela. -->
     <svg

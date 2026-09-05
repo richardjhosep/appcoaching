@@ -17,6 +17,7 @@ const cicloCerrado: Ciclo = {
   resultado: 'logrado',
   resumenReunionInicial: 'Reunión con RRHH.',
   informeFinal: 'Informe final completo.',
+  impactoNegocio: null,
   informePdfNombre: 'informe.pdf',
   informePdfPath: 'uuid.pdf',
   sesionesRealizadas: 10,

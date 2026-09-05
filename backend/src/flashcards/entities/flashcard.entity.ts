@@ -38,6 +38,11 @@ export class Flashcard {
   @Column({ type: 'boolean', default: true })
   activo: boolean;
 
+  // Opcional — pasada esta fecha (fin del día en horario de Chile), la flashcard deja de
+  // aparecer como disponible para el coachee sin que el coach tenga que desactivarla a mano.
+  @Column({ name: 'fecha_limite', type: 'timestamptz', nullable: true })
+  fechaLimite: Date | null;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

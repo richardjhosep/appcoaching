@@ -74,7 +74,7 @@ export class UsersService {
   async setActivo(id: string, isActive: boolean): Promise<User> {
     const user = await this.findById(id);
     if (!user) {
-      throw new NotFoundException('User not found');
+      throw new NotFoundException('Usuario no encontrado.');
     }
     user.isActive = isActive;
     return this.users.save(user);
@@ -124,7 +124,9 @@ export class UsersService {
   ): Promise<{ user: User; temporaryPassword: string | null }> {
     const existing = await this.findByEmail(email);
     if (existing) {
-      throw new ConflictException('A user with that email already exists');
+      throw new ConflictException(
+        'Ya existe un usuario con ese correo electrónico.',
+      );
     }
 
     let empresaId: string | null = null;
@@ -135,7 +137,7 @@ export class UsersService {
         );
       }
       if (!(await this.empresas.exists(options.empresaId))) {
-        throw new NotFoundException('Empresa not found');
+        throw new NotFoundException('Empresa no encontrada.');
       }
       empresaId = options.empresaId;
     }
@@ -172,11 +174,11 @@ export class UsersService {
   ): Promise<void> {
     const user = await this.findById(userId);
     if (!user) {
-      throw new NotFoundException('User not found');
+      throw new NotFoundException('Usuario no encontrado.');
     }
     const valid = await bcrypt.compare(currentPassword, user.passwordHash);
     if (!valid) {
-      throw new UnauthorizedException('Current password is incorrect');
+      throw new UnauthorizedException('La contraseña actual es incorrecta.');
     }
     user.passwordHash = await this.hash(newPassword);
     user.mustChangePassword = false;
@@ -187,7 +189,7 @@ export class UsersService {
   async resetPassword(userId: string): Promise<string> {
     const user = await this.findById(userId);
     if (!user) {
-      throw new NotFoundException('User not found');
+      throw new NotFoundException('Usuario no encontrado.');
     }
     const temporaryPassword = this.generateTempPassword();
     user.passwordHash = await this.hash(temporaryPassword);
@@ -201,7 +203,7 @@ export class UsersService {
   async remove(id: string, actorId: string): Promise<string> {
     const user = await this.findById(id);
     if (!user) {
-      throw new NotFoundException('User not found');
+      throw new NotFoundException('Usuario no encontrado.');
     }
     if (user.id === actorId) {
       throw new ForbiddenException('No puedes eliminar tu propia cuenta.');

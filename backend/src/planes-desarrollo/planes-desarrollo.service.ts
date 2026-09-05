@@ -47,7 +47,7 @@ export class PlanesDesarrolloService {
   private async resolveCoacheeId(actorUserId: string): Promise<string> {
     const coachee = await this.coachees.findByUserId(actorUserId);
     if (!coachee) {
-      throw new NotFoundException('Coachee profile not found');
+      throw new NotFoundException('Perfil de coachee no encontrado.');
     }
     return coachee.id;
   }
@@ -90,7 +90,7 @@ export class PlanesDesarrolloService {
       relations: { coachee: true, competencia: true },
     });
     if (!plan) {
-      throw new NotFoundException('Plan de desarrollo not found');
+      throw new NotFoundException('Plan de desarrollo no encontrado.');
     }
     return this.withObjetivos(plan);
   }
@@ -146,7 +146,7 @@ export class PlanesDesarrolloService {
       dto.competenciaId !== undefined &&
       !(await this.competencias.exists(dto.competenciaId))
     ) {
-      throw new NotFoundException('Competencia not found');
+      throw new NotFoundException('Competencia no encontrada.');
     }
 
     assignDefined(plan, dto);
@@ -245,7 +245,7 @@ export class PlanesDesarrolloService {
       where: { id: objetivoId, planId: plan.id },
     });
     if (!objetivo) {
-      throw new NotFoundException('Objetivo not found');
+      throw new NotFoundException('Objetivo no encontrado.');
     }
     assignDefined(objetivo, dto);
     return this.objetivos.save(objetivo);
@@ -258,7 +258,7 @@ export class PlanesDesarrolloService {
       planId: plan.id,
     });
     if (!result.affected) {
-      throw new NotFoundException('Objetivo not found');
+      throw new NotFoundException('Objetivo no encontrado.');
     }
   }
 
@@ -273,7 +273,7 @@ export class PlanesDesarrolloService {
       where: { id: objetivoId, planId },
     });
     if (!exists) {
-      throw new NotFoundException('Objetivo not found in this plan');
+      throw new NotFoundException('Objetivo no encontrado en este plan.');
     }
   }
 
@@ -308,7 +308,7 @@ export class PlanesDesarrolloService {
       where: { id: actividadId, planId: plan.id },
     });
     if (!actividad) {
-      throw new NotFoundException('Actividad not found');
+      throw new NotFoundException('Actividad no encontrada.');
     }
     if (dto.objetivoId !== undefined) {
       await this.assertObjetivoBelongsToPlan(dto.objetivoId, plan.id);
@@ -328,7 +328,7 @@ export class PlanesDesarrolloService {
       planId: plan.id,
     });
     if (!result.affected) {
-      throw new NotFoundException('Actividad not found');
+      throw new NotFoundException('Actividad no encontrada.');
     }
   }
 }

@@ -15,7 +15,9 @@ import { CreateFlashcardDto } from './dto/create-flashcard.dto';
 import { UpdateFlashcardDto } from './dto/update-flashcard.dto';
 import { CoacheesService } from '../coachees/coachees.service';
 import { CompetenciasService } from '../competencias/competencias.service';
+import { PlanesDesarrolloService } from '../planes-desarrollo/planes-desarrollo.service';
 import { assignDefined } from '../common/assign-defined.util';
+import { finDelDiaChileAUtc } from '../common/chile-time.util';
 
 const DIAS_POR_RESULTADO: Record<ResultadoRepaso, number> = {
   olvidado: 1,
@@ -47,6 +49,7 @@ export interface FlashcardConEstado {
   competencia?: { id: string; nombre: string };
   recursoId: string | null;
   activo: boolean;
+  fechaLimite: Date | null;
   proximaRevision: string | null;
   debeRepasar: boolean;
 }
@@ -61,17 +64,18 @@ export class FlashcardsService {
     @InjectRepository(Recurso) private readonly recursos: Repository<Recurso>,
     private readonly coachees: CoacheesService,
     private readonly competencias: CompetenciasService,
+    private readonly planesDesarrollo: PlanesDesarrolloService,
   ) {}
 
   private async assertCompetenciaExists(id: string): Promise<void> {
     if (!(await this.competencias.exists(id))) {
-      throw new NotFoundException('Competencia not found');
+      throw new NotFoundException('Competencia no encontrada.');
     }
   }
 
   private async assertRecursoExists(id: string): Promise<void> {
     if (!(await this.recursos.exists({ where: { id } }))) {
-      throw new NotFoundException('Recurso not found');
+      throw new NotFoundException('Recurso no encontrado.');
     }
   }
 
@@ -81,7 +85,7 @@ export class FlashcardsService {
       relations: { competencia: true, recurso: true },
     });
     if (!flashcard) {
-      throw new NotFoundException('Flashcard not found');
+      throw new NotFoundException('Flashcard no encontrada.');
     }
     return flashcard;
   }
@@ -89,9 +93,19 @@ export class FlashcardsService {
   private async resolveCoacheeId(actorUserId: string): Promise<string> {
     const coachee = await this.coachees.findByUserId(actorUserId);
     if (!coachee) {
-      throw new NotFoundException('Coachee profile not found');
+      throw new NotFoundException('Perfil de coachee no encontrado.');
     }
     return coachee.id;
+  }
+
+  // Mismo criterio que lib/formacionRecomendada.ts en el frontend — ver quiz.service.ts.
+  private async resolvePlanCompetenciaId(
+    coacheeId: string,
+  ): Promise<string | null> {
+    const plan = await this.planesDesarrollo
+      .getByCoacheeId(coacheeId)
+      .catch(() => null);
+    return plan?.competenciaId ?? null;
   }
 
   async create(dto: CreateFlashcardDto): Promise<Flashcard> {
@@ -105,6 +119,9 @@ export class FlashcardsService {
         reverso: dto.reverso,
         competenciaId: dto.competenciaId,
         recursoId: dto.recursoId ?? null,
+        fechaLimite: dto.fechaLimite
+          ? finDelDiaChileAUtc(dto.fechaLimite)
+          : null,
       }),
     );
   }
@@ -128,7 +145,13 @@ export class FlashcardsService {
     if (dto.recursoId !== undefined) {
       await this.assertRecursoExists(dto.recursoId);
     }
-    assignDefined(flashcard, dto as Partial<Flashcard>);
+    const { fechaLimite, ...resto } = dto;
+    assignDefined(flashcard, resto as Partial<Flashcard>);
+    if (fechaLimite !== undefined) {
+      flashcard.fechaLimite = fechaLimite
+        ? finDelDiaChileAUtc(fechaLimite)
+        : null;
+    }
     return this.flashcards.save(flashcard);
   }
 
@@ -155,15 +178,20 @@ export class FlashcardsService {
     actorUserId: string,
   ): Promise<FlashcardConEstado[]> {
     const coacheeId = await this.resolveCoacheeId(actorUserId);
+    const competenciaId = await this.resolvePlanCompetenciaId(coacheeId);
+    if (!competenciaId) return [];
     const flashcards = await this.flashcards.find({
-      where: { activo: true },
+      where: { activo: true, competenciaId },
       relations: { competencia: true },
       order: { createdAt: 'ASC' },
     });
+    const vigentes = flashcards.filter(
+      (f) => !f.fechaLimite || f.fechaLimite.getTime() >= Date.now(),
+    );
     const hoy = hoyISO();
 
     const conEstado = await Promise.all(
-      flashcards.map(async (flashcard) => {
+      vigentes.map(async (flashcard) => {
         const ultimoRepaso = await this.repasos.findOne({
           where: { flashcardId: flashcard.id, coacheeId },
           order: { createdAt: 'DESC' },
@@ -183,6 +211,7 @@ export class FlashcardsService {
             : undefined,
           recursoId: flashcard.recursoId,
           activo: flashcard.activo,
+          fechaLimite: flashcard.fechaLimite,
           proximaRevision,
           debeRepasar,
         };

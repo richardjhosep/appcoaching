@@ -6,6 +6,7 @@ import { getOwnPlan, type PlanDesarrollo } from '../../api/planesDesarrollo'
 import { getMisCiclos, type Ciclo } from '../../api/ciclos'
 import BackLink from '../../components/BackLink.vue'
 import CertificadoContenido from '../../components/CertificadoContenido.vue'
+import SkeletonBlock from '../../components/SkeletonBlock.vue'
 
 const props = defineProps<{ cicloId: string }>()
 const router = useRouter()
@@ -30,12 +31,7 @@ function imprimir() {
 
 <template>
   <div class="min-h-screen bg-[var(--color-ivory)] px-4 py-10 text-[var(--color-ink)] print:bg-white print:p-0">
-    <div
-      v-if="loading"
-      class="text-center text-sm text-[var(--color-ink)]/60"
-    >
-      Cargando…
-    </div>
+    <SkeletonBlock v-if="loading" />
     <div
       v-else-if="!ciclo || !ciclo.fechaCierre || !ciclo.resultado"
       class="mx-auto max-w-lg rounded-2xl border border-[var(--color-line)] bg-white p-6 text-center"

@@ -5,6 +5,7 @@ import CicloStepper from '../../components/CicloStepper.vue'
 import DefinicionTab from '../../components/plan-desarrollo/DefinicionTab.vue'
 import HabitoEjecucionTab from '../../components/plan-desarrollo/HabitoEjecucionTab.vue'
 import FormacionTab from '../../components/plan-desarrollo/FormacionTab.vue'
+import SkeletonBlock from '../../components/SkeletonBlock.vue'
 import { getOwnPlan, type PlanDesarrollo } from '../../api/planesDesarrollo'
 import { listCompetencias, type Competencia } from '../../api/competencias'
 import { getMiCicloActual, type Ciclo } from '../../api/ciclos'
@@ -50,12 +51,7 @@ function handleUpdated(updated: PlanDesarrollo) {
 
 <template>
   <AppShell>
-    <div
-      v-if="loading"
-      class="text-sm text-[var(--color-ink)]/60"
-    >
-      Cargando…
-    </div>
+    <SkeletonBlock v-if="loading" />
     <div v-else-if="plan">
       <h1 class="mb-4 font-[family-name:var(--font-heading)] text-xl font-semibold">
         Mi plan de desarrollo
