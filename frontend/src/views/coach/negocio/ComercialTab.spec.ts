@@ -29,10 +29,14 @@ vi.mock('../../../api/negocio', async () => {
     getProyeccionMensual: vi.fn(),
   }
 })
+vi.mock('../../../api/prospectos', () => ({
+  getPipelinePonderado: vi.fn(),
+}))
 
 import { getSolicitudes, atenderSolicitud } from '../../../api/satisfaccion'
 import { getCiclosCerrados } from '../../../api/ciclos'
 import { getResumenComercial, getProyeccionMensual } from '../../../api/negocio'
+import { getPipelinePonderado } from '../../../api/prospectos'
 
 const solicitudes: SolicitudProceso[] = [
   {
@@ -116,6 +120,7 @@ describe('ComercialTab', () => {
     vi.mocked(atenderSolicitud).mockResolvedValue({ ...solicitudes[0], estado: 'atendida' })
     vi.mocked(getResumenComercial).mockResolvedValue(resumenComercial)
     vi.mocked(getProyeccionMensual).mockResolvedValue(proyeccionMensual)
+    vi.mocked(getPipelinePonderado).mockResolvedValue(1500000)
   })
 
   it('shows the 12-month projected income chart', async () => {
@@ -167,6 +172,8 @@ describe('ComercialTab', () => {
     expect(text).toContain('Logrado (2)')
     expect(text).toContain('Medianamente logrado (0)')
     expect(text).toContain('No logrado (1)')
+    expect(text).toContain('Pipeline ponderado')
+    expect(text).toContain('$1.500.000')
   })
 
   it('switches the period and reloads the resumen', async () => {

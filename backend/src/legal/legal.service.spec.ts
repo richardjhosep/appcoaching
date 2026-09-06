@@ -32,7 +32,7 @@ describe('LegalService', () => {
     delete: jest.Mock;
   };
   let empresasRepo: { find: jest.Mock };
-  let coacheesRepo: { find: jest.Mock };
+  let coacheesRepo: { find: jest.Mock; findOne: jest.Mock };
 
   beforeEach(() => {
     jest.mocked(validarPdfSubido).mockResolvedValue(undefined);
@@ -54,7 +54,10 @@ describe('LegalService', () => {
       delete: jest.fn(),
     };
     empresasRepo = { find: jest.fn().mockResolvedValue([]) };
-    coacheesRepo = { find: jest.fn().mockResolvedValue([]) };
+    coacheesRepo = {
+      find: jest.fn().mockResolvedValue([]),
+      findOne: jest.fn(),
+    };
 
     service = new LegalService(
       documentosRepo as unknown as Repository<DocumentoLegal>,
@@ -390,6 +393,87 @@ describe('LegalService', () => {
       await expect(
         service.obtenerArchivo({}, TipoDocumentoLegal.CONTRATO),
       ).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe('misDocumentos', () => {
+    it('resuelve al documento de la EMPRESA cuando el coachee pertenece a una', async () => {
+      coacheesRepo.findOne.mockResolvedValue({
+        id: 'c1',
+        userId: 'user-1',
+        empresaId: 'empresa-1',
+      });
+      documentosRepo.findOne.mockImplementation(
+        ({
+          where,
+        }: {
+          where: { empresaId?: string; tipo: TipoDocumentoLegal };
+        }) =>
+          Promise.resolve(
+            where.empresaId === 'empresa-1' &&
+              where.tipo === TipoDocumentoLegal.CONTRATO
+              ? {
+                  estado: EstadoDocumentoLegal.FIRMADO,
+                  archivoPath: 'contrato-empresa.pdf',
+                }
+              : null,
+          ),
+      );
+
+      const resultado = await service.misDocumentos('user-1');
+
+      expect(resultado.alcance).toBe('empresa');
+      expect(resultado.contrato.estado).toBe(EstadoDocumentoLegal.FIRMADO);
+      expect(resultado.contrato.tieneArchivo).toBe(true);
+      expect(documentosRepo.findOne).toHaveBeenCalledWith({
+        where: { empresaId: 'empresa-1', tipo: TipoDocumentoLegal.CONTRATO },
+      });
+    });
+
+    it('resuelve al documento PROPIO cuando el coachee es independiente', async () => {
+      coacheesRepo.findOne.mockResolvedValue({
+        id: 'c2',
+        userId: 'user-2',
+        empresaId: null,
+      });
+      documentosRepo.findOne.mockResolvedValue(null);
+
+      const resultado = await service.misDocumentos('user-2');
+
+      expect(resultado.alcance).toBe('individual');
+      expect(documentosRepo.findOne).toHaveBeenCalledWith({
+        where: { coacheeId: 'c2', tipo: TipoDocumentoLegal.CONTRATO },
+      });
+      expect(documentosRepo.findOne).toHaveBeenCalledWith({
+        where: { coacheeId: 'c2', tipo: TipoDocumentoLegal.NDA },
+      });
+    });
+
+    it('lanza NotFoundException si el actor no tiene perfil de coachee', async () => {
+      coacheesRepo.findOne.mockResolvedValue(null);
+
+      await expect(service.misDocumentos('user-x')).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+  });
+
+  describe('obtenerArchivoPropio', () => {
+    it('nunca cruza al documento de otro coachee', async () => {
+      coacheesRepo.findOne.mockResolvedValue({
+        id: 'c1',
+        userId: 'user-1',
+        empresaId: null,
+      });
+      documentosRepo.findOne.mockResolvedValue({
+        archivoPath: 'mi-contrato.pdf',
+      });
+
+      await service.obtenerArchivoPropio('user-1', TipoDocumentoLegal.CONTRATO);
+
+      expect(documentosRepo.findOne).toHaveBeenCalledWith({
+        where: { coacheeId: 'c1', tipo: TipoDocumentoLegal.CONTRATO },
+      });
     });
   });
 

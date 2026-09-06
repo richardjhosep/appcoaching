@@ -28,11 +28,14 @@ import { NotificacionesModule } from './notificaciones/notificaciones.module';
 import { QuizModule } from './quiz/quiz.module';
 import { FlashcardsModule } from './flashcards/flashcards.module';
 import { MapasModule } from './mapas/mapas.module';
+import { MapasPersonalesModule } from './mapas-personales/mapas-personales.module';
+import { PizarraModule } from './pizarra/pizarra.module';
 import { RetroalimentacionModule } from './retroalimentacion/retroalimentacion.module';
 import { EjerciciosModule } from './ejercicios/ejercicios.module';
 import { TestEstiloModule } from './test-estilo/test-estilo.module';
 import { PerfilCoachModule } from './perfil-coach/perfil-coach.module';
 import { ConfiguracionModule } from './configuracion/configuracion.module';
+import { ProspectosModule } from './prospectos/prospectos.module';
 
 @Module({
   imports: [
@@ -63,6 +66,7 @@ import { ConfiguracionModule } from './configuracion/configuracion.module';
     SeedModule,
     EmpresasModule,
     CoacheesModule,
+    ProspectosModule,
     SesionesModule,
     CompetenciasModule,
     PlanesDesarrolloModule,
@@ -77,6 +81,8 @@ import { ConfiguracionModule } from './configuracion/configuracion.module';
     QuizModule,
     FlashcardsModule,
     MapasModule,
+    MapasPersonalesModule,
+    PizarraModule,
     RetroalimentacionModule,
     EjerciciosModule,
     TestEstiloModule,

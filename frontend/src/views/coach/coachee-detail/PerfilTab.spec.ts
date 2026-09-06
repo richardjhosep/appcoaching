@@ -5,14 +5,20 @@ import type { Coachee } from '../../../api/coachees'
 
 vi.mock('../../../api/coachees', async () => {
   const actual = await vi.importActual<typeof import('../../../api/coachees')>('../../../api/coachees')
-  return { ...actual, getCoachee: vi.fn(), setConsentimiento: vi.fn(), solicitarConsentimiento: vi.fn() }
+  return {
+    ...actual,
+    getCoachee: vi.fn(),
+    setConsentimiento: vi.fn(),
+    solicitarConsentimiento: vi.fn(),
+    obtenerUrlFotoDeCoachee: vi.fn(),
+  }
 })
 vi.mock('../../../lib/notify', () => ({
   notifySuccess: vi.fn(),
   notifyError: vi.fn(),
 }))
 
-import { getCoachee, setConsentimiento } from '../../../api/coachees'
+import { getCoachee, setConsentimiento, obtenerUrlFotoDeCoachee } from '../../../api/coachees'
 
 const coachee: Coachee = {
   id: 'c1',
@@ -24,6 +30,10 @@ const coachee: Coachee = {
   objetivoProceso: 'Liderazgo',
   tarifaPropia: 50000,
   areaGerencia: null,
+  fotoPath: null,
+  fotoNombre: null,
+  bio: null,
+  compartirPerfilConCoach: false,
   consentimientoInformado: false,
   consentimientoFecha: null,
 }
@@ -61,6 +71,30 @@ describe('PerfilTab', () => {
 
     expect(setConsentimiento).toHaveBeenCalledWith('c1', true)
     expect(wrapper.text()).toContain('Firmado')
+  })
+
+  it('shows a neutral message when the coachee has not shared their perfil personal', async () => {
+    const wrapper = mount(PerfilTab, { props: { coacheeId: 'c1' } })
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Este coachee no ha compartido su perfil personal contigo.')
+    expect(obtenerUrlFotoDeCoachee).not.toHaveBeenCalled()
+  })
+
+  it('shows the bio and requests the foto when compartirPerfilConCoach is true', async () => {
+    vi.mocked(getCoachee).mockResolvedValue({
+      ...coachee,
+      bio: 'Me gusta correr y leer.',
+      compartirPerfilConCoach: true,
+    })
+    vi.mocked(obtenerUrlFotoDeCoachee).mockResolvedValue(null)
+
+    const wrapper = mount(PerfilTab, { props: { coacheeId: 'c1' } })
+    await flushPromises()
+
+    expect(obtenerUrlFotoDeCoachee).toHaveBeenCalledWith('c1')
+    expect(wrapper.text()).toContain('Me gusta correr y leer.')
+    expect(wrapper.text()).not.toContain('no ha compartido su perfil personal')
   })
 
   it('reloads when the coacheeId prop changes', async () => {

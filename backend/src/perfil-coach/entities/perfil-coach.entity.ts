@@ -7,6 +7,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { CertificacionCoach } from './certificacion-coach.entity';
+import { ExperienciaCoach } from './experiencia-coach.entity';
 
 // Una fila por coach (hoy hay un solo coach, pero se ata a `coachUserId` en vez de ser un
 // singleton puro — si algún día se soporta multi-coach, no hay que migrar nada). Sin FK
@@ -67,6 +68,9 @@ export class PerfilCoach {
 
   @OneToMany(() => CertificacionCoach, (c) => c.perfil)
   certificaciones?: CertificacionCoach[];
+
+  @OneToMany(() => ExperienciaCoach, (e) => e.perfil)
+  experiencias?: ExperienciaCoach[];
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

@@ -1,4 +1,4 @@
-import { apiRequest } from './client'
+import { apiRequest, apiUpload, apiDownload } from './client'
 
 export interface CoacheeListItem {
   id: string
@@ -54,6 +54,10 @@ export interface Coachee {
   tarifaPropia?: number | null
   areaGerencia?: string | null
   activo?: boolean
+  fotoPath: string | null
+  fotoNombre: string | null
+  bio: string | null
+  compartirPerfilConCoach: boolean
   consentimientoInformado: boolean
   consentimientoFecha: string | null
 }
@@ -99,11 +103,41 @@ export function solicitarConsentimiento(id: string): Promise<{ success: boolean 
   })
 }
 
-export interface UpdateContactoInput {
+export interface UpdateMiPerfilInput {
   telefono?: string
   emailContacto?: string
+  bio?: string
+  compartirPerfilConCoach?: boolean
 }
 
-export function updateOwnContact(input: UpdateContactoInput): Promise<Coachee> {
-  return apiRequest<Coachee>('/coachees/me/contact', { method: 'PATCH', body: input })
+export function actualizarMiPerfil(input: UpdateMiPerfilInput): Promise<Coachee> {
+  return apiRequest<Coachee>('/coachees/me/perfil', { method: 'PATCH', body: input })
+}
+
+export function subirFotoCoachee(archivo: File): Promise<Coachee> {
+  const form = new FormData()
+  form.set('archivo', archivo)
+  return apiUpload<Coachee>('/coachees/me/foto', form)
+}
+
+/** Blob URL de la propia foto del coachee — null si todavía no tiene una (404 silenciado,
+ * mismo criterio que obtenerUrlFoto en api/perfilCoach.ts). */
+export async function obtenerUrlMiFotoCoachee(): Promise<string | null> {
+  try {
+    const blob = await apiDownload('/coachees/me/foto')
+    return URL.createObjectURL(blob)
+  } catch {
+    return null
+  }
+}
+
+/** Blob URL de la foto de un coachee específico — usado por el coach en PerfilTab.vue, solo
+ * cuando el coachee activó compartirPerfilConCoach (el frontend decide si llama esto). */
+export async function obtenerUrlFotoDeCoachee(id: string): Promise<string | null> {
+  try {
+    const blob = await apiDownload(`/coachees/${id}/foto`)
+    return URL.createObjectURL(blob)
+  } catch {
+    return null
+  }
 }

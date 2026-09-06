@@ -3,8 +3,10 @@ import { onMounted, reactive, ref } from 'vue'
 import AppShell from '../../components/AppShell.vue'
 import SectionCard from '../../components/SectionCard.vue'
 import SkeletonBlock from '../../components/SkeletonBlock.vue'
+import ExperienciaLogo from '../../components/ExperienciaLogo.vue'
 import { notifyError, notifySuccess } from '../../lib/notify'
 import { iniciales } from '../../lib/avatar'
+import { formatoPeriodo } from '../../lib/experienciaCoach'
 import { ApiError } from '../../api/client'
 import {
   getMiPerfil,
@@ -13,6 +15,8 @@ import {
   subirCv,
   agregarCertificacion,
   eliminarCertificacion,
+  agregarExperiencia,
+  eliminarExperiencia,
   obtenerUrlFoto,
   descargarCv,
   descargarCertificacion,
@@ -180,6 +184,68 @@ async function eliminarCert(id: string) {
 
 async function verCertificacion(id: string, nombre: string, archivoNombre: string | null) {
   await descargarCertificacion(id, archivoNombre ?? `${nombre}.pdf`)
+}
+
+// --- Experiencia ---
+const nuevaExp = reactive({
+  empresa: '',
+  cargo: '',
+  fechaInicio: '',
+  fechaFin: '',
+  descripcion: '',
+  logo: null as File | null,
+})
+const agregandoExp = ref(false)
+
+function onExpLogoChange(e: Event) {
+  nuevaExp.logo = (e.target as HTMLInputElement).files?.[0] ?? null
+}
+
+async function agregarExp() {
+  if (!nuevaExp.empresa.trim() || !nuevaExp.fechaInicio) return
+  agregandoExp.value = true
+  try {
+    const exp = await agregarExperiencia({
+      empresa: nuevaExp.empresa.trim(),
+      cargo: nuevaExp.cargo.trim() || undefined,
+      fechaInicio: nuevaExp.fechaInicio,
+      fechaFin: nuevaExp.fechaFin || undefined,
+      descripcion: nuevaExp.descripcion.trim() || undefined,
+      logo: nuevaExp.logo ?? undefined,
+    })
+    if (perfil.value) {
+      // Más reciente primero, igual criterio que ya aplica el backend.
+      perfil.value = {
+        ...perfil.value,
+        experiencias: [exp, ...(perfil.value.experiencias ?? [])].sort((a, b) =>
+          b.fechaInicio.localeCompare(a.fechaInicio),
+        ),
+      }
+    }
+    nuevaExp.empresa = ''
+    nuevaExp.cargo = ''
+    nuevaExp.fechaInicio = ''
+    nuevaExp.fechaFin = ''
+    nuevaExp.descripcion = ''
+    nuevaExp.logo = null
+    const logoInput = document.getElementById('exp-logo-input') as HTMLInputElement | null
+    if (logoInput) logoInput.value = ''
+  } catch (err) {
+    await notifyError('No se pudo agregar la experiencia', err instanceof ApiError ? err.message : 'Ocurrió un error inesperado.')
+  } finally {
+    agregandoExp.value = false
+  }
+}
+
+async function eliminarExp(id: string) {
+  try {
+    await eliminarExperiencia(id)
+    if (perfil.value) {
+      perfil.value = { ...perfil.value, experiencias: (perfil.value.experiencias ?? []).filter((e) => e.id !== id) }
+    }
+  } catch (err) {
+    await notifyError('No se pudo eliminar', err instanceof ApiError ? err.message : 'Ocurrió un error inesperado.')
+  }
 }
 </script>
 
@@ -369,6 +435,124 @@ async function verCertificacion(id: string, nombre: string, archivoNombre: strin
             >
           </label>
         </div>
+      </SectionCard>
+
+      <SectionCard
+        title="Experiencia"
+        icon="negocio"
+      >
+        <ul
+          v-if="perfil?.experiencias && perfil.experiencias.length > 0"
+          class="mb-3 space-y-2"
+        >
+          <li
+            v-for="exp in perfil.experiencias"
+            :key="exp.id"
+            class="flex items-start gap-3 rounded-lg border border-[var(--color-line)] p-2.5 text-sm"
+          >
+            <ExperienciaLogo
+              :experiencia-id="exp.id"
+              :tiene-logo="!!exp.logoPath"
+              :empresa="exp.empresa"
+            />
+            <div class="min-w-0 flex-1">
+              <p class="truncate font-medium">
+                {{ exp.cargo ? `${exp.cargo} · ${exp.empresa}` : exp.empresa }}
+              </p>
+              <p class="text-xs text-[var(--color-ink)]/60">
+                {{ formatoPeriodo(exp.fechaInicio, exp.fechaFin) }}
+              </p>
+              <p
+                v-if="exp.descripcion"
+                class="mt-1 text-xs text-[var(--color-ink)]/70"
+              >
+                {{ exp.descripcion }}
+              </p>
+            </div>
+            <button
+              type="button"
+              class="shrink-0 text-xs text-[var(--color-danger)]/70 hover:underline"
+              @click="eliminarExp(exp.id)"
+            >
+              Eliminar
+            </button>
+          </li>
+        </ul>
+        <p
+          v-else
+          class="mb-3 text-sm text-[var(--color-ink)]/50"
+        >
+          Sin experiencia registrada todavía.
+        </p>
+
+        <form
+          class="space-y-2 border-t border-[var(--color-line)] pt-3"
+          @submit.prevent="agregarExp"
+        >
+          <div class="grid gap-2 sm:grid-cols-2">
+            <label class="block text-xs">
+              Empresa
+              <input
+                v-model="nuevaExp.empresa"
+                type="text"
+                required
+                class="mt-0.5 w-full rounded-lg border border-[var(--color-line)] px-2 py-1.5 text-sm"
+              >
+            </label>
+            <label class="block text-xs">
+              Cargo
+              <input
+                v-model="nuevaExp.cargo"
+                type="text"
+                class="mt-0.5 w-full rounded-lg border border-[var(--color-line)] px-2 py-1.5 text-sm"
+              >
+            </label>
+          </div>
+          <div class="grid gap-2 sm:grid-cols-2">
+            <label class="block text-xs">
+              Fecha inicio
+              <input
+                v-model="nuevaExp.fechaInicio"
+                type="date"
+                required
+                class="mt-0.5 w-full rounded-lg border border-[var(--color-line)] px-2 py-1.5 text-sm"
+              >
+            </label>
+            <label class="block text-xs">
+              Fecha fin (vacío = actualidad)
+              <input
+                v-model="nuevaExp.fechaFin"
+                type="date"
+                class="mt-0.5 w-full rounded-lg border border-[var(--color-line)] px-2 py-1.5 text-sm"
+              >
+            </label>
+          </div>
+          <label class="block text-xs">
+            Descripción
+            <textarea
+              v-model="nuevaExp.descripcion"
+              rows="2"
+              class="mt-0.5 w-full rounded-lg border border-[var(--color-line)] px-2 py-1.5 text-sm"
+            />
+          </label>
+          <label class="block text-xs">
+            Logo de la empresa (opcional)
+            <input
+              id="exp-logo-input"
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              class="mt-0.5 block w-full text-xs file:mr-2 file:rounded-full file:border-0 file:bg-[var(--color-ink)] file:px-3 file:py-1 file:text-xs file:text-[var(--color-parchment)]"
+              @change="onExpLogoChange"
+            >
+          </label>
+          <button
+            type="submit"
+            class="rounded-lg bg-[var(--color-ink)] px-3 py-1.5 text-xs text-[var(--color-parchment)] disabled:opacity-50"
+            :disabled="agregandoExp"
+          >
+            {{ agregandoExp ? 'Agregando…' : '+ Agregar experiencia' }}
+          </button>
+        </form>
       </SectionCard>
 
       <SectionCard

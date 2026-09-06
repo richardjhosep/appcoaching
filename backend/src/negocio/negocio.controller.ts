@@ -48,6 +48,17 @@ export class NegocioController {
     return this.negocio.resumenComercial(periodo);
   }
 
+  // null si el coachee pertenece a una empresa — ese gasto es de la empresa, no algo que el
+  // coachee independiente autogestione.
+  @Roles(Role.COACHEE)
+  @Get('mi-inversion')
+  miInversion(
+    @Query('periodo') periodo: PeriodoComercial = 'mes',
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.negocio.miInversion(actor.id, periodo);
+  }
+
   @Roles(Role.COACH)
   @Get('proyeccion-mensual')
   proyeccionMensual() {

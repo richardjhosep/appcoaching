@@ -146,6 +146,49 @@ export class LegalService {
     });
   }
 
+  // Un coachee de empresa ve el contrato/NDA de SU EMPRESA con el coach (no tiene uno propio —
+  // el `@Unique` de DocumentoLegal es por empresa O por coachee, nunca ambos); un independiente
+  // ve el suyo. Nunca se cruzan.
+  private async resolverTargetDeCoachee(
+    coacheeUserId: string,
+  ): Promise<{ target: TargetLegal; alcance: 'empresa' | 'individual' }> {
+    const coachee = await this.coachees.findOne({
+      where: { userId: coacheeUserId },
+    });
+    if (!coachee) {
+      throw new NotFoundException('Perfil de coachee no encontrado.');
+    }
+    return coachee.empresaId
+      ? { target: { empresaId: coachee.empresaId }, alcance: 'empresa' }
+      : { target: { coacheeId: coachee.id }, alcance: 'individual' };
+  }
+
+  async misDocumentos(coacheeUserId: string): Promise<{
+    contrato: DocumentoLegalResumen;
+    nda: DocumentoLegalResumen;
+    alcance: 'empresa' | 'individual';
+  }> {
+    const { target, alcance } =
+      await this.resolverTargetDeCoachee(coacheeUserId);
+    const [contrato, nda] = await Promise.all([
+      this.obtenerArchivo(target, TipoDocumentoLegal.CONTRATO),
+      this.obtenerArchivo(target, TipoDocumentoLegal.NDA),
+    ]);
+    return {
+      contrato: aResumen(contrato ?? undefined),
+      nda: aResumen(nda ?? undefined),
+      alcance,
+    };
+  }
+
+  async obtenerArchivoPropio(
+    coacheeUserId: string,
+    tipo: TipoDocumentoLegal,
+  ): Promise<DocumentoLegal | null> {
+    const { target } = await this.resolverTargetDeCoachee(coacheeUserId);
+    return this.obtenerArchivo(target, tipo);
+  }
+
   async resumen(): Promise<ResumenLegal> {
     const [empresas, documentos, coachees] = await Promise.all([
       this.empresas.find({ order: { nombre: 'ASC' } }),

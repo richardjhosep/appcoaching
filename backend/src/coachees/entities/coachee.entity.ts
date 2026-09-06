@@ -54,6 +54,27 @@ export class Coachee {
   @Column({ type: 'boolean', default: true })
   activo: boolean;
 
+  // Presentación personal del propio coachee — distinta de `consentimientoInformado`
+  // (consentimiento legal del proceso de coaching, aceptado por link de correo). Esto es
+  // información que el coachee agrega voluntariamente sobre sí mismo.
+  @Column({ name: 'foto_path', type: 'varchar', nullable: true })
+  fotoPath: string | null;
+
+  @Column({ name: 'foto_nombre', type: 'varchar', nullable: true })
+  fotoNombre: string | null;
+
+  @Column({ type: 'text', nullable: true })
+  bio: string | null;
+
+  // Interruptor único (no granular por campo): si es falso, el coach no ve la foto ni la bio
+  // en PerfilTab.vue — opt-in, mismo criterio por defecto que consentimientoInformado.
+  @Column({
+    name: 'compartir_perfil_con_coach',
+    type: 'boolean',
+    default: false,
+  })
+  compartirPerfilConCoach: boolean;
+
   @Column({ name: 'consentimiento_informado', type: 'boolean', default: false })
   consentimientoInformado: boolean;
 

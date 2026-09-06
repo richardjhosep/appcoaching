@@ -2149,3 +2149,163 @@ en `FinanzasView.spec.ts` e `InformeEjecutivoView.spec.ts` → 437/437. `build`/
 (sin cambios de backend). Verificado en Chrome real: con los 4 procesos cerrados reales de QA
 Empresa Verify (todos "Logrado"), la dona muestra "4 procesos" en el centro y el segmento único
 correcto en la leyenda.
+
+## 2026-09-05 — Experiencia laboral en el perfil del coach
+
+El usuario pidió agregar al perfil del coach una sección de experiencia laboral (empresas a
+las que le ha prestado servicio), con los mismos campos que ya tienen las certificaciones
+(nombre, entidad/período, descripción) más logo de la empresa opcional con fallback a iniciales.
+Se implementó calcando casi 1:1 el patrón ya existente de `CertificacionCoach`.
+
+- Backend: entidad `ExperienciaCoach` (empresa, cargo opcional, fechaInicio requerida,
+  fechaFin opcional = "actualidad", descripción opcional, logo opcional vía el mismo
+  `FileInterceptor`/`MIMETYPES_IMAGEN` que usan foto/certificaciones), relación
+  `PerfilCoach.experiencias`, ordenadas por fecha de inicio descendente. Rutas nuevas:
+  `POST/DELETE /perfil-coach/me/experiencias` y `GET /perfil-coach/experiencias/:id/logo`
+  (mismos roles que el logo de certificación). Migración `ExperienciaCoach` (run/revert/run
+  simétrica).
+- Frontend: `lib/experienciaCoach.ts` con `formatoPeriodo()` — deliberadamente parsea año/mes
+  directo del string ISO (`slice(0,7)`) en vez de construir un `Date`, para no repetir el bug
+  de timezone ya documentado (UTC-medianoche corriéndose un mes hacia atrás en Chile);
+  testeado explícitamente para ese caso. `ExperienciaLogo.vue` (nuevo, reutilizado tal cual
+  en la vista editable del coach y en el bloque de solo lectura compartido
+  `PerfilCoachContenido.vue` que ya consumen coachee y empresa). `PerfilView.vue` gana una
+  `SectionCard` "Experiencia" entre "Datos" y "Certificaciones" con alta/baja.
+
+### Verificación
+
+Backend: `perfil-coach.service.spec.ts` +6 tests → 481/481, migración verificada run/revert/
+run, `lint` limpio. Frontend: `ExperienciaLogo.spec.ts` (3) y `experienciaCoach.spec.ts` (3)
+nuevos, `PerfilView.spec.ts` y `PerfilCoachContenido.spec.ts` actualizados → 446/446, `build`/
+`lint`/`tsc` limpios. Verificado en Chrome real: alta de una experiencia como coach, visible
+de inmediato con su fallback de iniciales; el mismo dato confirmado de solo lectura, en el
+mismo formato de fecha (sin corrimiento de mes), tanto en la vista del coachee (`/coachee/
+mi-coach`) como en la de la empresa (`/empresa/coach`) — dato de prueba eliminado al cierre
+para no dejar experiencia laboral ficticia en el perfil real del coach.
+
+## 2026-09-05 — Módulo Prospectos (pipeline comercial pre-cliente)
+
+Análisis del perfil de coach (gestión de coachees, ingresos, proyecciones, decisiones) reveló
+un hueco total: no existía ningún concepto de "lead"/prospecto — `Empresa` y `Coachee` se
+crean directamente como cliente firmado. Lo más cercano, `SolicitudProceso`, exige una empresa
+ya bajo contrato (renovación, no negocio nuevo). Se diseñó en modo planificación y se construyó
+el módulo completo calcando patrones ya probados (mantenedor de Coachees/Empresas, bitácora
+append-only de `GestionRenovacion`, catálogo editable de Configuración).
+
+- Backend: módulo `prospectos/` completo — entidad `Prospecto` (tipo persona/empresa, etapa
+  contactado→propuesta_enviada→negociación→ganado/perdido, valor estimado, trazabilidad de a
+  qué Empresa/Coachee se convirtió) + `GestionProspecto` (bitácora, copia exacta del patrón de
+  empresas). `findAll` resuelve el próximo seguimiento de cada prospecto en una sola pasada
+  (mismo criterio que `EmpresasService.ultimaGestionPorEmpresa`). `convertirAEmpresa`/
+  `convertirACoachee` reutilizan `EmpresasService.create`/`CoacheesService.create` tal cual —
+  cero duplicación de esa lógica. `pipelinePonderado()` con probabilidad fija por etapa
+  (10/40/65%, tabla de diseño no editable). Catálogo `FUENTES_PROSPECTO` agregado al seed de
+  Configuración (Referido/LinkedIn/Sitio web/Evento/Otro), editable por el coach sin deploy.
+  Migración nueva (2 tablas + 2 enums).
+- Frontend: `ProspectosView.vue` (mantenedor nuevo, calcado de `CoacheesView.vue`) con alta/
+  edición, filtros por etapa/fuente, y por fila: Gestionar (bitácora), Marcar Ganado (sub-modal
+  que precarga el alta de Empresa o Coachee según el tipo) y Marcar Perdido. Refactor previo:
+  se extrajo `GestionModal.vue` del modal de gestión de renovación que vivía inline en
+  `DashboardView.vue`, para reutilizarlo tal cual en Prospectos sin duplicar ~80 líneas de
+  markup — `DashboardView.vue` migrado a consumirlo sin cambios de comportamiento. KPI "Pipeline
+  ponderado" agregado a Comercial. Panorama gana una 4ª pestaña "Prospectos por seguir"
+  (vencidos o de hoy), informativa como la de Solicitudes comerciales (sin acciones, apunta al
+  mantenedor).
+
+### Verificación
+
+Backend: `prospectos.service.spec.ts` (12 tests nuevos) → 493/493, migración verificada run/
+revert/run, `lint`/`build` limpios. Frontend: `ProspectosView.spec.ts` (9), `GestionModal.spec.ts`
+(5, con el hallazgo de que `AppModal` teletransporta a `document.body` y por lo tanto no se
+limpia solo entre tests — hay que desmontar explícitamente), `etapaProspecto.spec.ts` (4),
+`DashboardView.spec.ts` y `ComercialTab.spec.ts` actualizados → 466/466, `build`/`lint`/`tsc`
+limpios. Verificado en Chrome real contra el backend/DB reales: alta de un prospecto tipo
+empresa, bitácora de seguimiento registrada, "Pipeline ponderado" mostrando el monto ponderado
+correcto (valor estimado × probabilidad de la etapa), conversión a Empresa confirmada por API
+(etapa pasa a "ganado", `convertidoEmpresaId` vinculado, Empresa real creada con la tarifa
+ingresada) y el pipeline ponderado bajando a $0 tras la conversión — datos de prueba eliminados
+al cierre.
+
+## 2026-09-05/06 — Perfil del coachee + herramientas personales de estudio
+
+El coachee prácticamente no tenía perfil propio (solo teléfono/email en un modal escondido del
+header, sin foto, sin presentación) mientras el coach ya tenía uno completo. Se diseñó en modo
+planificación y se construyeron 3 piezas independientes, todas confirmadas con el usuario antes
+de codificar: control de privacidad como interruptor único (no granular), pizarra de notas
+visuales estilo post-it (no dibujo libre), mapas/pizarra 100% privados (el coach nunca los ve).
+
+- **Perfil del coachee**: `Coachee` gana `fotoPath`/`fotoNombre` (mismo patrón de subida que
+  `PerfilCoach`), `bio` y `compartirPerfilConCoach` (opt-in, default falso — distinto del ya
+  existente `consentimientoInformado`, que es el consentimiento legal del proceso, no de esto).
+  Nueva página `coachee/PerfilView.vue` reemplaza el modal de `AppShell.vue` (removido junto
+  con ~70 líneas de código ahora muerto). `PerfilTab.vue` (vista del coach) gana una tarjeta
+  "Perfil personal" que solo muestra foto/bio si el coachee activó el interruptor — sin gate
+  en el backend (el coach ya ve el registro completo del coachee sin redacción, como con
+  cualquier otro campo), el frontend decide si pide la foto y si renderiza la bio.
+- **Mapas mentales personales ("Mis mapas")**: módulo nuevo `mapas-personales/`, calco de
+  `mapas/` pero sin competencia/recurso/fecha límite/activo (conceptos de contenido asignado
+  que acá no aplican) y con cada ruta resolviendo el `coacheeId` desde el JWT del actor, nunca
+  del body — un coachee no puede tocar ni ver el mapa de otro (probado explícitamente, incluida
+  la ruta por id). Nueva pestaña "Mis mapas" en Playground, distinta de "Mapas mentales" (la ya
+  existente, de solo lectura, asignada por el coach) para no mezclar ambos conceptos.
+- **Pizarra de notas**: módulo nuevo `pizarra/`, notas tipo post-it con posición libre — arrastre
+  con Pointer Events nativos (`NotaPizarra.vue`, sin librería, mismo criterio "a mano" que
+  `MapaCanvas.vue`), paleta fija de 5 colores pastel (`lib/colorNota.ts`, deliberadamente fuera
+  del set sage/bronze/danger del resto del sistema de diseño porque acá es contenido decorativo,
+  no comunica estado). Nueva pestaña "Mi pizarra" en Playground.
+- Ambos módulos nuevos son 100% `Role.COACHEE` — ni coach ni empresa tienen una sola ruta ahí.
+
+### Verificación
+
+Backend: 512/512 (specs nuevos de ownership para `MapasPersonalesService`/`PizarraService` —
+un coachee no puede tocar mapas/notas de otro), 3 migraciones nuevas verificadas run/revert/run,
+`lint`/`build` limpios. Frontend: 487/487 (`PerfilView.vue` coachee, `PerfilTab.vue` con las 2
+ramas del interruptor, `MisMapasTab.vue`, `PizarraTab.vue`, `NotaPizarra.vue` — incluye el caso
+de arrastre con la posición final exacta calculada), `build`/`lint`/`tsc` limpios (cross-check
+con `tsc` plano detectó y corrigió 3 fixtures de test que `vue-tsc` no marcó, blindspot ya
+conocido). Verificado en Chrome real + API directa contra el backend/DB reales: subida de bio +
+activación del interruptor confirmada visible para el coach solo después de activarlo; un
+coachee intentando `GET /mapas-personales` o `/pizarra` recibe 403 tanto en la lista como por
+id; mapa personal con nodo creado y visible en el canvas; pizarra con 2 notas renderizadas
+correctamente (estilo post-it, paleta de colores, texto editable) — datos de prueba eliminados
+al cierre en la cuenta QA compartida.
+
+## 2026-09-06 — Mis documentos + Mi inversión (coachee)
+
+Analizando el rol de coachee encontré 2 gaps reales de autogestión: `LegalController` era
+100% `Role.COACH` (el coachee no podía ver su propio Contrato/NDA aunque `DocumentoLegal` ya
+soporta uno por coachee independiente), y un independiente (paga de su bolsillo) no tenía
+ninguna vista de cuánto le corresponde pagar. Antes de construir la segunda parte verifiqué algo
+importante: el sistema **no rastrea un estado de "pagado" para independientes**
+(`negocio.service.ts` ya lo documentaba: su ingreso nunca lleva el gate de `pagada`) — fabricar
+un badge "Pagado/Pendiente" habría sido mentirle al coachee sobre algo que la app no sabe. Por
+eso la vista es un resumen honesto de lo generado en el período, no un estado de pago inventado.
+
+- `LegalService`/`LegalController`: 2 rutas nuevas `Role.COACHEE` (`GET documentos/me`,
+  `GET documentos/me/:tipo/archivo`) aprovechando que `RolesGuard` usa `getAllAndOverride` — un
+  `@Roles` de método pisa el de clase, así que se agregaron sin tocar el resto del controller
+  que sigue siendo `Role.COACH`. Un coachee de empresa ve el contrato/NDA de **su empresa**
+  (nunca uno propio — el `@Unique` de `DocumentoLegal` es por empresa O por coachee); un
+  independiente ve el suyo. Deliberadamente no se exponen los `adicionales` (documentos de
+  título libre que el coach pudo subir sin pensar en que el coachee los vea).
+- `NegocioService.miInversion()`: cero cálculo nuevo — reutiliza `calcularResumenCobros()` tal
+  cual y toma la fila del propio coachee en `porCoacheeGastoBruto` (la lista ya existente sin
+  gate de `pagada`). `null` si el coachee pertenece a una empresa (ese gasto es de la empresa).
+- Nueva página `coachee/CuentaView.vue` ("Mi cuenta"): sección "Mis documentos" (badges de
+  estado reutilizando `estadoVisual`/`lib/legalFormat.ts`) + sección "Mi inversión" (solo
+  independientes, selector de período con `TabBar.vue` ya usado en Comercial) — horas
+  realizadas, monto del período, proyectado, sin ningún badge de pago.
+
+### Verificación
+
+Backend: specs nuevos en `legal.service.spec.ts` (empresa vs. individual nunca se cruzan) y
+`negocio.service.spec.ts` (`null` para coachee de empresa, cifras correctas para independiente,
+cero actividad → ceros, no un error) → 520/520 (1 test preexistente y no relacionado,
+`atencionInmediata`, falló por sensibilidad a la hora del día al redondear días — confirmado con
+`git diff` que mi cambio es una adición pura de 44 líneas que nunca toca ese código; no es una
+regresión de esta sesión). Frontend: spec de `CuentaView.vue` (documentos con el alcance
+correcto, sección de inversión oculta/visible según corresponda, cambio de período) → 492/492.
+`build`/`lint`/`tsc` limpios en ambos lados. Verificado en Chrome real + API directa: coachee de
+empresa ve "Mis documentos" con el contrato de su empresa y sin "Mi inversión"; coachee
+independiente (cuenta de prueba desechable) ve su propio contrato/NDA y $0/$0 honesto sin
+actividad — cuenta de prueba desactivada al cierre (tenía historial y no podía borrarse).

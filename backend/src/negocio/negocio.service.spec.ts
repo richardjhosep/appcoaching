@@ -325,6 +325,75 @@ describe('NegocioService', () => {
     });
   });
 
+  describe('miInversion', () => {
+    it('returns null when the coachee belongs to an empresa', async () => {
+      coacheesRepo.findOne.mockResolvedValue({ id: 'c1', empresaId: 'e1' });
+
+      const resultado = await service.miInversion('user-1', 'mes');
+
+      expect(resultado).toBeNull();
+    });
+
+    it('returns null when the actor has no coachee profile', async () => {
+      coacheesRepo.findOne.mockResolvedValue(null);
+
+      const resultado = await service.miInversion('user-x', 'mes');
+
+      expect(resultado).toBeNull();
+    });
+
+    it('returns the honest período figures for an independent coachee with activity', async () => {
+      const coachee = {
+        id: 'c1',
+        nombre: 'Beto',
+        userId: 'user-1',
+        empresaId: null,
+        tarifaPropia: 40000,
+        empresa: null,
+      };
+      coacheesRepo.findOne.mockResolvedValue(coachee);
+      coacheesRepo.find.mockResolvedValue([coachee]);
+      sesionesRepo.find.mockResolvedValue([
+        { coacheeId: 'c1', fechaHora: hace1h },
+        { coacheeId: 'c1', fechaHora: en1h },
+      ]);
+
+      const resultado = await service.miInversion('user-1', 'mes');
+
+      expect(resultado).toEqual({
+        periodo: 'mes',
+        horasRealizadas: 1,
+        montoDelPeriodo: 40000,
+        montoProyectado: 40000,
+        tarifaPropia: 40000,
+      });
+    });
+
+    it('returns zeros, not an error, when the independent coachee had no activity', async () => {
+      const coachee = {
+        id: 'c1',
+        nombre: 'Beto',
+        userId: 'user-1',
+        empresaId: null,
+        tarifaPropia: 40000,
+        empresa: null,
+      };
+      coacheesRepo.findOne.mockResolvedValue(coachee);
+      coacheesRepo.find.mockResolvedValue([coachee]);
+      sesionesRepo.find.mockResolvedValue([]);
+
+      const resultado = await service.miInversion('user-1', 'mes');
+
+      expect(resultado).toEqual({
+        periodo: 'mes',
+        horasRealizadas: 0,
+        montoDelPeriodo: 0,
+        montoProyectado: 0,
+        tarifaPropia: 40000,
+      });
+    });
+  });
+
   describe('rangoDePeriodo', () => {
     afterEach(() => {
       jest.useRealTimers();

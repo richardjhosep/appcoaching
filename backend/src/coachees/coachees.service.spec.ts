@@ -196,25 +196,56 @@ describe('CoacheesService', () => {
     });
   });
 
-  describe('updateOwnContact', () => {
-    it('updates the contact fields for the coachee owning that userId', async () => {
+  describe('actualizarMiPerfil', () => {
+    it('updates the contact and presentation fields for the coachee owning that userId', async () => {
       repo.findOne.mockResolvedValue({ id: 'c1', userId: 'user-1' });
 
-      const updated = await service.updateOwnContact('user-1', {
+      const updated = await service.actualizarMiPerfil('user-1', {
         telefono: '+56911112222',
         emailContacto: 'personal@example.com',
+        bio: 'Me gusta correr y leer.',
+        compartirPerfilConCoach: true,
       });
 
       expect(updated.telefono).toBe('+56911112222');
       expect(updated.emailContacto).toBe('personal@example.com');
+      expect(updated.bio).toBe('Me gusta correr y leer.');
+      expect(updated.compartirPerfilConCoach).toBe(true);
     });
 
     it('throws NotFoundException when no coachee profile exists for that user', async () => {
       repo.findOne.mockResolvedValue(null);
 
-      await expect(service.updateOwnContact('user-x', {})).rejects.toThrow(
+      await expect(service.actualizarMiPerfil('user-x', {})).rejects.toThrow(
         NotFoundException,
       );
+    });
+  });
+
+  describe('actualizarMiFoto', () => {
+    it('replaces the previous foto and saves the new file info', async () => {
+      repo.findOne.mockResolvedValue({
+        id: 'c1',
+        userId: 'user-1',
+        fotoPath: null,
+      });
+
+      const archivo = {
+        filename: 'foto-coachee-abc.jpg',
+        originalname: 'yo.jpg',
+      } as Express.Multer.File;
+      const updated = await service.actualizarMiFoto('user-1', archivo);
+
+      expect(updated.fotoPath).toBe('foto-coachee-abc.jpg');
+      expect(updated.fotoNombre).toBe('yo.jpg');
+    });
+
+    it('throws NotFoundException when no coachee profile exists for that user', async () => {
+      repo.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.actualizarMiFoto('user-x', {} as Express.Multer.File),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 

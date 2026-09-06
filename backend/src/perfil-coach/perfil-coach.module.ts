@@ -2,12 +2,20 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { PerfilCoach } from './entities/perfil-coach.entity';
 import { CertificacionCoach } from './entities/certificacion-coach.entity';
+import { ExperienciaCoach } from './entities/experiencia-coach.entity';
 import { User } from '../users/entities/user.entity';
 import { PerfilCoachService } from './perfil-coach.service';
 import { PerfilCoachController } from './perfil-coach.controller';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([PerfilCoach, CertificacionCoach, User])],
+  imports: [
+    TypeOrmModule.forFeature([
+      PerfilCoach,
+      CertificacionCoach,
+      ExperienciaCoach,
+      User,
+    ]),
+  ],
   providers: [PerfilCoachService],
   controllers: [PerfilCoachController],
 })

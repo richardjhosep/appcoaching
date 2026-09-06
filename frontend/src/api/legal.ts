@@ -118,3 +118,20 @@ export async function descargarAdicional(id: string, nombreArchivo: string): Pro
 export function eliminarAdicional(id: string): Promise<void> {
   return apiRequest<void>(`/legal/adicionales/${id}`, { method: 'DELETE' })
 }
+
+export interface MisDocumentosLegales {
+  contrato: DocumentoLegal
+  nda: DocumentoLegal
+  alcance: 'empresa' | 'individual'
+}
+
+/** Solo lectura, del propio coachee — "empresa" si el contrato/NDA es el de su empresa con el
+ * coach, "individual" si es propio (coachee independiente). */
+export function getMisDocumentosLegales(): Promise<MisDocumentosLegales> {
+  return apiRequest<MisDocumentosLegales>('/legal/documentos/me')
+}
+
+export async function descargarMiAcuerdo(tipo: TipoDocumentoLegal, nombreArchivo: string): Promise<void> {
+  const blob = await apiDownload(`/legal/documentos/me/${tipo}/archivo`)
+  descargarBlob(blob, nombreArchivo)
+}

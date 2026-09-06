@@ -81,6 +81,21 @@ export function getResumenComercial(periodo: PeriodoComercial): Promise<ResumenC
   return apiRequest<ResumenComercial>(`/negocio/comercial?periodo=${periodo}`)
 }
 
+export interface MiInversion {
+  periodo: PeriodoComercial
+  horasRealizadas: number
+  montoDelPeriodo: number
+  montoProyectado: number
+  tarifaPropia: number
+}
+
+/** Solo aplica a coachees independientes — null si el coachee pertenece a una empresa (ese
+ * gasto es de la empresa, no algo que el coachee autogestione). No es un estado de pago: el
+ * sistema no rastrea si un independiente "pagó", solo cuánto generó en el período. */
+export function getMiInversion(periodo: PeriodoComercial): Promise<MiInversion | null> {
+  return apiRequest<MiInversion | null>(`/negocio/mi-inversion?periodo=${periodo}`)
+}
+
 export interface ContribuyenteMes {
   nombre: string
   monto: number

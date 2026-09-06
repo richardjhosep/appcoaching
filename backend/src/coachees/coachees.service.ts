@@ -9,12 +9,15 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import { randomBytes } from 'crypto';
+import { unlink } from 'fs/promises';
+import { join } from 'path';
+import { UPLOADS_DIR } from '../recursos/uploads-dir.util';
 import { Coachee } from './entities/coachee.entity';
 import { SolicitudConsentimiento } from './entities/solicitud-consentimiento.entity';
 import { EstadoSolicitudConsentimiento } from './enums/estado-solicitud-consentimiento.enum';
 import { CreateCoacheeDto } from './dto/create-coachee.dto';
 import { UpdateCoacheeDto } from './dto/update-coachee.dto';
-import { UpdateContactoDto } from './dto/update-contacto.dto';
+import { UpdateMiPerfilDto } from './dto/update-mi-perfil.dto';
 import { UsersService } from '../users/users.service';
 import { EmpresasService } from '../empresas/empresas.service';
 import { EmailService } from '../email/email.service';
@@ -237,15 +240,36 @@ export class CoacheesService {
     return coachee.nombre;
   }
 
-  async updateOwnContact(
+  async actualizarMiPerfil(
     userId: string,
-    dto: UpdateContactoDto,
+    dto: UpdateMiPerfilDto,
   ): Promise<Coachee> {
     const coachee = await this.coachees.findOne({ where: { userId } });
     if (!coachee) {
       throw new NotFoundException('Perfil de coachee no encontrado.');
     }
     assignDefined(coachee, dto);
+    return this.coachees.save(coachee);
+  }
+
+  private async borrarArchivoAnterior(path: string | null): Promise<void> {
+    if (!path) return;
+    await unlink(join(UPLOADS_DIR, path)).catch(() => {
+      // Best-effort: si ya no está o falla el borrado, no bloquea el reemplazo.
+    });
+  }
+
+  async actualizarMiFoto(
+    userId: string,
+    archivo: Express.Multer.File,
+  ): Promise<Coachee> {
+    const coachee = await this.coachees.findOne({ where: { userId } });
+    if (!coachee) {
+      throw new NotFoundException('Perfil de coachee no encontrado.');
+    }
+    await this.borrarArchivoAnterior(coachee.fotoPath);
+    coachee.fotoPath = archivo.filename;
+    coachee.fotoNombre = archivo.originalname;
     return this.coachees.save(coachee);
   }
 }

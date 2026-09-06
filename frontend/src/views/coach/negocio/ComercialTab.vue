@@ -14,6 +14,7 @@ import {
   type PeriodoComercial,
   type ProyeccionMes,
 } from '../../../api/negocio'
+import { getPipelinePonderado } from '../../../api/prospectos'
 import { ApiError } from '../../../api/client'
 import ProyeccionIngresosChart from '../../../components/ProyeccionIngresosChart.vue'
 import SkeletonBlock from '../../../components/SkeletonBlock.vue'
@@ -29,6 +30,7 @@ const atendiendo = ref<string | null>(null)
 
 const proyeccionMensual = ref<ProyeccionMes[]>([])
 const loadingProyeccion = ref(true)
+const pipelinePonderado = ref<number | null>(null)
 
 // --- Resumen comercial por período (KPIs) ------------------------------------
 
@@ -95,6 +97,9 @@ onMounted(() => {
   void load()
   void loadResumen()
   void loadProyeccion()
+  void getPipelinePonderado().then((v) => {
+    pipelinePonderado.value = v
+  })
 })
 
 async function marcarAtendida(id: string) {
@@ -195,6 +200,17 @@ function abrirNuevoProceso(coacheeId: string) {
         </p>
         <p class="font-[family-name:var(--font-mono)] text-2xl">
           {{ resumen.procesosCerrados }}
+        </p>
+      </div>
+      <div class="rounded-2xl border border-[var(--color-line)] bg-white p-4">
+        <p class="text-xs text-[var(--color-ink)]/60">
+          Pipeline ponderado
+        </p>
+        <p class="font-[family-name:var(--font-mono)] text-2xl text-[var(--color-bronze)]">
+          {{ pipelinePonderado !== null ? formatoCLP.format(pipelinePonderado) : '—' }}
+        </p>
+        <p class="text-xs text-[var(--color-ink)]/50">
+          Negocio probable, aún sin firmar
         </p>
       </div>
     </div>

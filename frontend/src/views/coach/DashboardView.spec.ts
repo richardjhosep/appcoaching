@@ -54,6 +54,9 @@ vi.mock('../../api/legal', async () => {
   const actual = await vi.importActual<typeof import('../../api/legal')>('../../api/legal')
   return { ...actual, getResumenLegal: vi.fn() }
 })
+vi.mock('../../api/prospectos', () => ({
+  listProspectos: vi.fn(),
+}))
 vi.mock('../../lib/notify', () => ({
   notifySuccess: vi.fn(),
   notifyError: vi.fn(),
@@ -76,6 +79,7 @@ import { getSolicitudes } from '../../api/satisfaccion'
 import { listCoachees } from '../../api/coachees'
 import { getResumenLegal } from '../../api/legal'
 import { getSesionesSemana } from '../../api/sesiones'
+import { listProspectos } from '../../api/prospectos'
 import { notifySuccess, notifyError } from '../../lib/notify'
 
 const resumen: ResumenNegocio = {
@@ -153,6 +157,7 @@ describe('DashboardView', () => {
     vi.mocked(getProyeccionMensual).mockResolvedValue([])
     vi.mocked(getSesionesSemana).mockResolvedValue([])
     vi.mocked(getAtencionInmediata).mockResolvedValue(atencionVacia)
+    vi.mocked(listProspectos).mockResolvedValue([])
     vi.mocked(getComparativo).mockResolvedValue(comparativoBase)
     vi.mocked(getGestionDeEmpresa).mockResolvedValue([])
     vi.mocked(enviarRecordatorio).mockResolvedValue(undefined)
@@ -614,6 +619,71 @@ describe('DashboardView', () => {
       await flushPromises()
 
       expect(wrapper.text()).toContain('↓ 8% vs. mes anterior')
+    })
+  })
+
+  describe('Prospectos por seguir tab', () => {
+    it('shows a prospecto whose próximo seguimiento is overdue', async () => {
+      vi.mocked(listProspectos).mockResolvedValue([
+        {
+          id: 'p1',
+          nombre: 'Minera Andes',
+          tipo: 'empresa',
+          contactoNombre: null,
+          email: null,
+          telefono: null,
+          fuente: null,
+          valorEstimado: null,
+          etapa: 'negociacion',
+          notas: null,
+          convertidoEmpresaId: null,
+          convertidoCoacheeId: null,
+          createdAt: '2026-08-01T00:00:00.000Z',
+          updatedAt: '2026-08-01T00:00:00.000Z',
+          proximoSeguimiento: '2020-01-01',
+        },
+      ])
+
+      const wrapper = mount(DashboardView, { global: { plugins: [router] } })
+      await flushPromises()
+
+      const prospectosTab = wrapper.findAll('button').find((b) => b.text().includes('Prospectos por seguir'))!
+      await prospectosTab.trigger('click')
+
+      expect(wrapper.text()).toContain('Minera Andes')
+      expect(wrapper.text()).toContain('venció hace')
+    })
+
+    it('does not list a prospecto whose próximo seguimiento is in the future', async () => {
+      const fechaFutura = new Date()
+      fechaFutura.setDate(fechaFutura.getDate() + 30)
+      vi.mocked(listProspectos).mockResolvedValue([
+        {
+          id: 'p1',
+          nombre: 'Minera Andes',
+          tipo: 'empresa',
+          contactoNombre: null,
+          email: null,
+          telefono: null,
+          fuente: null,
+          valorEstimado: null,
+          etapa: 'negociacion',
+          notas: null,
+          convertidoEmpresaId: null,
+          convertidoCoacheeId: null,
+          createdAt: '2026-08-01T00:00:00.000Z',
+          updatedAt: '2026-08-01T00:00:00.000Z',
+          proximoSeguimiento: fechaFutura.toISOString().slice(0, 10),
+        },
+      ])
+
+      const wrapper = mount(DashboardView, { global: { plugins: [router] } })
+      await flushPromises()
+
+      const prospectosTab = wrapper.findAll('button').find((b) => b.text().includes('Prospectos por seguir'))!
+      await prospectosTab.trigger('click')
+
+      expect(wrapper.text()).toContain('Ningún prospecto necesita seguimiento ahora mismo.')
     })
   })
 })

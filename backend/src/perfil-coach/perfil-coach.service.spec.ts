@@ -3,11 +3,13 @@ import { Repository } from 'typeorm';
 import { PerfilCoachService } from './perfil-coach.service';
 import { PerfilCoach } from './entities/perfil-coach.entity';
 import { CertificacionCoach } from './entities/certificacion-coach.entity';
+import { ExperienciaCoach } from './entities/experiencia-coach.entity';
 import { User } from '../users/entities/user.entity';
 import { Role } from '../auth/enums/role.enum';
 
 type PartialPerfil = Partial<PerfilCoach>;
 type PartialCertificacion = Partial<CertificacionCoach>;
+type PartialExperiencia = Partial<ExperienciaCoach>;
 type PartialUser = Partial<User>;
 
 describe('PerfilCoachService', () => {
@@ -22,6 +24,12 @@ describe('PerfilCoachService', () => {
     create: jest.Mock<PartialCertificacion, [PartialCertificacion]>;
     save: jest.Mock<Promise<PartialCertificacion>, [PartialCertificacion]>;
     remove: jest.Mock<Promise<PartialCertificacion>, [PartialCertificacion]>;
+  };
+  let experiencias: {
+    findOne: jest.Mock<Promise<PartialExperiencia | null>, unknown[]>;
+    create: jest.Mock<PartialExperiencia, [PartialExperiencia]>;
+    save: jest.Mock<Promise<PartialExperiencia>, [PartialExperiencia]>;
+    remove: jest.Mock<Promise<PartialExperiencia>, [PartialExperiencia]>;
   };
   let users: {
     findOne: jest.Mock<Promise<PartialUser | null>, unknown[]>;
@@ -43,10 +51,19 @@ describe('PerfilCoachService', () => {
       ),
       remove: jest.fn((data: PartialCertificacion) => Promise.resolve(data)),
     };
+    experiencias = {
+      findOne: jest.fn<Promise<PartialExperiencia | null>, unknown[]>(),
+      create: jest.fn((data: PartialExperiencia) => data),
+      save: jest.fn((data: PartialExperiencia) =>
+        Promise.resolve({ id: 'exp-generated-id', ...data }),
+      ),
+      remove: jest.fn((data: PartialExperiencia) => Promise.resolve(data)),
+    };
     users = { findOne: jest.fn<Promise<PartialUser | null>, unknown[]>() };
     service = new PerfilCoachService(
       perfiles as unknown as Repository<PerfilCoach>,
       certificaciones as unknown as Repository<CertificacionCoach>,
+      experiencias as unknown as Repository<ExperienciaCoach>,
       users as unknown as Repository<User>,
     );
   });
@@ -73,6 +90,22 @@ describe('PerfilCoachService', () => {
       expect(perfil).toEqual(
         expect.objectContaining({ coachUserId: 'u1', nombre: '' }),
       );
+    });
+
+    it('sorts experiencias with the most recent fechaInicio first', async () => {
+      perfiles.findOne.mockResolvedValue({
+        id: 'p1',
+        coachUserId: 'u1',
+        experiencias: [
+          { id: 'e1', fechaInicio: '2020-01-01' },
+          { id: 'e2', fechaInicio: '2023-06-01' },
+          { id: 'e3', fechaInicio: '2021-03-01' },
+        ],
+      });
+
+      const perfil = await service.obtenerOCrearPropio('u1');
+
+      expect(perfil.experiencias?.map((e) => e.id)).toEqual(['e2', 'e3', 'e1']);
     });
   });
 
@@ -186,6 +219,80 @@ describe('PerfilCoachService', () => {
 
       expect(certificaciones.remove).toHaveBeenCalledWith(
         expect.objectContaining({ id: 'cert-1' }),
+      );
+    });
+  });
+
+  describe('agregarExperiencia / eliminarExperiencia', () => {
+    it('creates an experiencia linked to the perfil, with an optional logo', async () => {
+      perfiles.findOne.mockResolvedValue({ id: 'p1', coachUserId: 'u1' });
+
+      const experiencia = await service.agregarExperiencia(
+        'u1',
+        {
+          empresa: 'Ferronor S.A.',
+          cargo: 'Coach Ejecutivo',
+          fechaInicio: '2022-01-01',
+        },
+        {
+          filename: 'logo-abc.jpg',
+          originalname: 'ferronor.jpg',
+        } as Express.Multer.File,
+      );
+
+      expect(experiencia).toEqual(
+        expect.objectContaining({
+          perfilCoachId: 'p1',
+          empresa: 'Ferronor S.A.',
+          cargo: 'Coach Ejecutivo',
+          fechaInicio: '2022-01-01',
+          fechaFin: null,
+          logoPath: 'logo-abc.jpg',
+          logoNombre: 'ferronor.jpg',
+        }),
+      );
+    });
+
+    it('creates an experiencia without a logo', async () => {
+      perfiles.findOne.mockResolvedValue({ id: 'p1', coachUserId: 'u1' });
+
+      const experiencia = await service.agregarExperiencia('u1', {
+        empresa: 'Otra Empresa',
+        fechaInicio: '2019-01-01',
+        fechaFin: '2021-01-01',
+      });
+
+      expect(experiencia).toEqual(
+        expect.objectContaining({
+          empresa: 'Otra Empresa',
+          cargo: null,
+          fechaFin: '2021-01-01',
+          logoPath: null,
+        }),
+      );
+    });
+
+    it('rejects deleting an experiencia that does not belong to the perfil', async () => {
+      perfiles.findOne.mockResolvedValue({ id: 'p1', coachUserId: 'u1' });
+      experiencias.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.eliminarExperiencia('u1', 'exp-ajena'),
+      ).rejects.toThrow(NotFoundException);
+      expect(experiencias.remove).not.toHaveBeenCalled();
+    });
+
+    it('deletes the experiencia when it belongs to the perfil', async () => {
+      perfiles.findOne.mockResolvedValue({ id: 'p1', coachUserId: 'u1' });
+      experiencias.findOne.mockResolvedValue({
+        id: 'exp-1',
+        perfilCoachId: 'p1',
+      });
+
+      await service.eliminarExperiencia('u1', 'exp-1');
+
+      expect(experiencias.remove).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'exp-1' }),
       );
     });
   });

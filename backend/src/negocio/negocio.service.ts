@@ -84,6 +84,18 @@ export interface ResumenCobros {
   ingresoProyectadoTotal: number;
 }
 
+// Resumen honesto de lo generado en el período por un coachee independiente — no un estado de
+// pago (el sistema no rastrea si un independiente "pagó", ver comentario en calcularResumenCobros
+// sobre por qué su ingreso nunca lleva el gate de `pagada`). `null` cuando el coachee pertenece
+// a una empresa: ese gasto es de la empresa, no algo que el coachee autogestione.
+export interface MiInversion {
+  periodo: PeriodoComercial;
+  horasRealizadas: number;
+  montoDelPeriodo: number;
+  montoProyectado: number;
+  tarifaPropia: number;
+}
+
 export interface ContribuyenteMes {
   nombre: string;
   monto: number;
@@ -528,6 +540,38 @@ export class NegocioService {
       procesosCerradosPorResultado: porResultado,
       reagendamientosSolicitados: reagendamientos,
       porCoachee: cobros.porCoachee,
+    };
+  }
+
+  /**
+   * Vista del propio coachee independiente sobre lo que ha generado en el período — reutiliza
+   * `calcularResumenCobros` tal cual (cero cálculo nuevo), tomando su fila de
+   * `porCoacheeGastoBruto` (la lista sin gate de `pagada`, correcta acá porque a un
+   * independiente nunca se le aplica ese gate). `null` si pertenece a una empresa: ese gasto es
+   * de la empresa, no del coachee.
+   */
+  async miInversion(
+    actorUserId: string,
+    periodo: PeriodoComercial,
+  ): Promise<MiInversion | null> {
+    const coachee = await this.coachees.findOne({
+      where: { userId: actorUserId },
+    });
+    if (!coachee || coachee.empresaId) {
+      return null;
+    }
+    const cobros = await this.calcularResumenCobros(
+      this.rangoDePeriodo(periodo),
+    );
+    const propio = cobros.porCoacheeGastoBruto.find(
+      (c) => c.coacheeId === coachee.id,
+    );
+    return {
+      periodo,
+      horasRealizadas: propio?.horasRealizadas ?? 0,
+      montoDelPeriodo: propio?.gastoBrutoDelPeriodo ?? 0,
+      montoProyectado: propio?.gastoBrutoProyectado ?? 0,
+      tarifaPropia: coachee.tarifaPropia ?? 0,
     };
   }
 

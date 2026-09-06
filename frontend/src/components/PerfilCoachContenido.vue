@@ -3,8 +3,10 @@ import { onMounted, ref, watch } from 'vue'
 import type { PerfilCoach } from '../api/perfilCoach'
 import { obtenerUrlFoto, descargarCv, descargarCertificacion } from '../api/perfilCoach'
 import { iniciales } from '../lib/avatar'
+import { formatoPeriodo } from '../lib/experienciaCoach'
 import SectionCard from './SectionCard.vue'
 import NavIcon from './NavIcon.vue'
+import ExperienciaLogo from './ExperienciaLogo.vue'
 
 const props = defineProps<{ perfil: PerfilCoach }>()
 
@@ -80,6 +82,40 @@ async function verCertificacion(id: string, nombre: string, archivoNombre: strin
       <p class="text-sm">
         {{ perfil.metodologia }}
       </p>
+    </SectionCard>
+
+    <SectionCard
+      v-if="perfil.experiencias && perfil.experiencias.length > 0"
+      title="Experiencia"
+      icon="negocio"
+    >
+      <ul class="space-y-2">
+        <li
+          v-for="exp in perfil.experiencias"
+          :key="exp.id"
+          class="flex items-start gap-3 rounded-lg border border-[var(--color-line)] p-2.5 text-sm"
+        >
+          <ExperienciaLogo
+            :experiencia-id="exp.id"
+            :tiene-logo="!!exp.logoPath"
+            :empresa="exp.empresa"
+          />
+          <div class="min-w-0">
+            <p class="truncate font-medium">
+              {{ exp.cargo ? `${exp.cargo} · ${exp.empresa}` : exp.empresa }}
+            </p>
+            <p class="text-xs text-[var(--color-ink)]/60">
+              {{ formatoPeriodo(exp.fechaInicio, exp.fechaFin) }}
+            </p>
+            <p
+              v-if="exp.descripcion"
+              class="mt-1 text-xs text-[var(--color-ink)]/70"
+            >
+              {{ exp.descripcion }}
+            </p>
+          </div>
+        </li>
+      </ul>
     </SectionCard>
 
     <SectionCard

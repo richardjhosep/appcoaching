@@ -3,7 +3,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { changeOwnPassword } from '../api/users'
-import { getMyCoachee, updateOwnContact } from '../api/coachees'
+import { obtenerUrlMiFotoCoachee } from '../api/coachees'
 import { obtenerUrlFoto } from '../api/perfilCoach'
 import { ApiError } from '../api/client'
 import { notifyError, notifySuccess } from '../lib/notify'
@@ -11,7 +11,6 @@ import { validateNewPassword } from '../lib/password'
 import AppLogo from './AppLogo.vue'
 import AppModal from './AppModal.vue'
 import NavIcon from './NavIcon.vue'
-import SkeletonBlock from './SkeletonBlock.vue'
 import BusquedaGlobal from './BusquedaGlobal.vue'
 import NotificationBell from './NotificationBell.vue'
 import PasswordField from './PasswordField.vue'
@@ -48,12 +47,14 @@ const avatarInitials = computed(() => {
   return auth.user?.email.slice(0, 2).toUpperCase() ?? '?'
 })
 
-// Solo el coach tiene un PerfilCoach con foto — para coachee/empresa el avatar se queda
-// en iniciales. Se carga una vez al montar el shell (no hay store global de perfil hoy).
+// Coach y coachee pueden tener foto propia — la empresa se queda en iniciales (no tiene un
+// perfil con foto). Se carga una vez al montar el shell (no hay store global de perfil hoy).
 const avatarFotoUrl = ref<string | null>(null)
 onMounted(async () => {
   if (auth.user?.role === 'coach') {
     avatarFotoUrl.value = await obtenerUrlFoto()
+  } else if (auth.user?.role === 'coachee') {
+    avatarFotoUrl.value = await obtenerUrlMiFotoCoachee()
   }
 })
 
@@ -83,6 +84,8 @@ const coacheeNavGroups: NavGroup[] = [
       { to: '/coachee/sesiones', label: 'Sesiones', icon: 'sesiones' },
       { to: '/coachee/progreso', label: 'Progreso', icon: 'progreso' },
       { to: '/coachee/mi-coach', label: 'Mi Coach', icon: 'contacto' },
+      { to: '/coachee/perfil', label: 'Mi perfil', icon: 'contacto' },
+      { to: '/coachee/cuenta', label: 'Mi cuenta', icon: 'legal' },
     ],
   },
   {
@@ -105,6 +108,7 @@ const coachNavGroups: NavGroup[] = [
   {
     label: 'Coaching',
     items: [
+      { to: '/coach/prospectos', label: 'Prospectos', icon: 'prospectos' },
       { to: '/coach/coachees', label: 'Coachees', icon: 'coachees' },
       { to: '/coach/empresas', label: 'Empresas', icon: 'empresas' },
       { to: '/coach/agenda', label: 'Mi agenda', icon: 'sesiones' },
@@ -204,46 +208,6 @@ async function guardarPassword() {
   }
 }
 
-// --- Editar mis datos de contacto (coachee) ---
-const contactModalOpen = ref(false)
-const cargandoContacto = ref(false)
-const guardandoContacto = ref(false)
-const contactForm = reactive({ telefono: '', emailContacto: '' })
-
-async function abrirEditarContacto() {
-  userPanelOpen.value = false
-  contactModalOpen.value = true
-  cargandoContacto.value = true
-  try {
-    const coachee = await getMyCoachee()
-    contactForm.telefono = coachee.telefono ?? ''
-    contactForm.emailContacto = coachee.emailContacto ?? ''
-  } catch (err) {
-    contactModalOpen.value = false
-    await notifyError(
-      'No se pudieron cargar tus datos de contacto',
-      err instanceof ApiError ? err.message : 'Ocurrió un error inesperado.',
-    )
-  } finally {
-    cargandoContacto.value = false
-  }
-}
-
-async function guardarContacto() {
-  guardandoContacto.value = true
-  try {
-    await updateOwnContact({
-      telefono: contactForm.telefono || undefined,
-      emailContacto: contactForm.emailContacto || undefined,
-    })
-    contactModalOpen.value = false
-    await notifySuccess('Datos de contacto actualizados')
-  } catch (err) {
-    await notifyError('No se pudo guardar', err instanceof ApiError ? err.message : 'Ocurrió un error inesperado.')
-  } finally {
-    guardandoContacto.value = false
-  }
-}
 </script>
 
 <template>
@@ -401,15 +365,6 @@ async function guardarContacto() {
                   <NavIcon name="password" />
                   Cambiar contraseña
                 </button>
-                <button
-                  v-if="auth.user.role === 'coachee'"
-                  type="button"
-                  class="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left text-sm hover:bg-[var(--color-parchment)]/50"
-                  @click="abrirEditarContacto"
-                >
-                  <NavIcon name="contacto" />
-                  Editar mis datos de contacto
-                </button>
               </div>
 
               <div class="mt-2 space-y-0.5 border-t border-[var(--color-line)] pt-2">
@@ -489,57 +444,6 @@ async function guardarContacto() {
             class="rounded-lg bg-[var(--color-ink)] px-4 py-2 text-sm text-[var(--color-parchment)] disabled:opacity-60"
           >
             {{ guardandoPassword ? 'Guardando…' : 'Guardar' }}
-          </button>
-        </div>
-      </form>
-    </AppModal>
-
-    <AppModal
-      v-if="contactModalOpen"
-      title="Editar mis datos de contacto"
-      @close="contactModalOpen = false"
-    >
-      <SkeletonBlock
-        v-if="cargandoContacto"
-        :rows="2"
-      />
-      <form
-        v-else
-        class="space-y-4"
-        @submit.prevent="guardarContacto"
-      >
-        <label class="block text-sm">
-          Teléfono
-          <input
-            v-model="contactForm.telefono"
-            type="tel"
-            class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
-          >
-        </label>
-
-        <label class="block text-sm">
-          Email de contacto
-          <input
-            v-model="contactForm.emailContacto"
-            type="email"
-            class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
-          >
-        </label>
-
-        <div class="flex justify-end gap-2 pt-2">
-          <button
-            type="button"
-            class="rounded-lg border border-[var(--color-line)] px-4 py-2 text-sm"
-            @click="contactModalOpen = false"
-          >
-            Cancelar
-          </button>
-          <button
-            type="submit"
-            :disabled="guardandoContacto"
-            class="rounded-lg bg-[var(--color-ink)] px-4 py-2 text-sm text-[var(--color-parchment)] disabled:opacity-60"
-          >
-            {{ guardandoContacto ? 'Guardando…' : 'Guardar' }}
           </button>
         </div>
       </form>

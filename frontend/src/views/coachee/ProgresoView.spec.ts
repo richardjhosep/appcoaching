@@ -76,6 +76,10 @@ const coachee: Coachee = {
   empresaId: null,
   telefono: null,
   emailContacto: null,
+  fotoPath: null,
+  fotoNombre: null,
+  bio: null,
+  compartirPerfilConCoach: false,
   consentimientoInformado: true,
   consentimientoFecha: null,
 }

@@ -10,6 +10,18 @@ export interface CertificacionCoach {
   createdAt: string
 }
 
+export interface ExperienciaCoach {
+  id: string
+  empresa: string
+  cargo: string | null
+  fechaInicio: string
+  fechaFin: string | null
+  descripcion: string | null
+  logoPath: string | null
+  logoNombre: string | null
+  createdAt: string
+}
+
 export interface PerfilCoach {
   id: string
   coachUserId: string
@@ -29,6 +41,7 @@ export interface PerfilCoach {
   cvPath: string | null
   cvNombre: string | null
   certificaciones?: CertificacionCoach[]
+  experiencias?: ExperienciaCoach[]
   createdAt: string
   updatedAt: string
 }
@@ -52,6 +65,15 @@ export interface CreateCertificacionInput {
   entidadEmisora?: string
   fecha?: string
   archivo?: File
+}
+
+export interface CreateExperienciaInput {
+  empresa: string
+  cargo?: string
+  fechaInicio: string
+  fechaFin?: string
+  descripcion?: string
+  logo?: File
 }
 
 function descargarBlob(blob: Blob, nombreArchivo: string): void {
@@ -95,6 +117,33 @@ export function agregarCertificacion(input: CreateCertificacionInput): Promise<C
 
 export function eliminarCertificacion(id: string): Promise<void> {
   return apiRequest<void>(`/perfil-coach/me/certificaciones/${id}`, { method: 'DELETE' })
+}
+
+export function agregarExperiencia(input: CreateExperienciaInput): Promise<ExperienciaCoach> {
+  const form = new FormData()
+  form.set('empresa', input.empresa)
+  if (input.cargo) form.set('cargo', input.cargo)
+  form.set('fechaInicio', input.fechaInicio)
+  if (input.fechaFin) form.set('fechaFin', input.fechaFin)
+  if (input.descripcion) form.set('descripcion', input.descripcion)
+  if (input.logo) form.set('logo', input.logo)
+  return apiUpload<ExperienciaCoach>('/perfil-coach/me/experiencias', form)
+}
+
+export function eliminarExperiencia(id: string): Promise<void> {
+  return apiRequest<void>(`/perfil-coach/me/experiencias/${id}`, { method: 'DELETE' })
+}
+
+/** URL de imagen "en vivo" (blob) para el logo de una experiencia, o null si no tiene o falla
+ * la carga — mismo criterio que `obtenerUrlFoto`, para que el llamador muestre el fallback de
+ * inicial sin manejar el error explícitamente. */
+export async function obtenerUrlLogoExperiencia(id: string): Promise<string | null> {
+  try {
+    const blob = await apiDownload(`/perfil-coach/experiencias/${id}/logo`)
+    return URL.createObjectURL(blob)
+  } catch {
+    return null
+  }
 }
 
 /** Perfil del coach, de solo lectura — usado por coachee y empresa. */

@@ -31,6 +31,10 @@ const coacheeBase: Coachee = {
   user: { id: 'u1', email: 'ana@test.com' },
   telefono: '+56 9 1234 5678',
   emailContacto: null,
+  fotoPath: null,
+  fotoNombre: null,
+  bio: null,
+  compartirPerfilConCoach: false,
   consentimientoInformado: true,
   consentimientoFecha: '2026-08-01T00:00:00.000Z',
 }

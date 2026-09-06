@@ -10,10 +10,11 @@ vi.mock('../api/perfilCoach', async () => {
     obtenerUrlFoto: vi.fn(),
     descargarCv: vi.fn(),
     descargarCertificacion: vi.fn(),
+    obtenerUrlLogoExperiencia: vi.fn(),
   }
 })
 
-import { obtenerUrlFoto } from '../api/perfilCoach'
+import { obtenerUrlFoto, obtenerUrlLogoExperiencia } from '../api/perfilCoach'
 
 const perfilBase: PerfilCoach = {
   id: 'p1',
@@ -36,6 +37,19 @@ const perfilBase: PerfilCoach = {
   certificaciones: [
     { id: 'c1', nombre: 'ICF ACC', entidadEmisora: 'International Coach Federation', fecha: null, archivoPath: 'cert-1.pdf', archivoNombre: 'icf.pdf', createdAt: '2026-01-01T00:00:00.000Z' },
   ],
+  experiencias: [
+    {
+      id: 'e1',
+      empresa: 'Ferronor S.A.',
+      cargo: 'Coach Ejecutivo',
+      fechaInicio: '2022-01-01T00:00:00.000Z',
+      fechaFin: null,
+      descripcion: 'Acompañamiento a jefaturas de operaciones.',
+      logoPath: null,
+      logoNombre: null,
+      createdAt: '2026-01-01T00:00:00.000Z',
+    },
+  ],
   createdAt: '2026-01-01T00:00:00.000Z',
   updatedAt: '2026-01-01T00:00:00.000Z',
 }
@@ -43,6 +57,7 @@ const perfilBase: PerfilCoach = {
 describe('PerfilCoachContenido', () => {
   beforeEach(() => {
     vi.mocked(obtenerUrlFoto).mockResolvedValue(null)
+    vi.mocked(obtenerUrlLogoExperiencia).mockResolvedValue(null)
   })
 
   it('shows bio, metodología, contacto and certificaciones from the perfil', async () => {
@@ -58,6 +73,16 @@ describe('PerfilCoachContenido', () => {
     expect(wrapper.text()).toContain('fernando@saltup.cl')
     expect(wrapper.text()).toContain('LinkedIn')
     expect(wrapper.text()).toContain('Sitio web')
+    expect(wrapper.text()).toContain('Coach Ejecutivo · Ferronor S.A.')
+    expect(wrapper.text()).toContain('ene 2022 — actualidad')
+    expect(wrapper.text()).toContain('Acompañamiento a jefaturas de operaciones.')
+  })
+
+  it('does not show the Experiencia section when the perfil has none', async () => {
+    const wrapper = mount(PerfilCoachContenido, { props: { perfil: { ...perfilBase, experiencias: [] } } })
+    await flushPromises()
+
+    expect(wrapper.text()).not.toContain('Experiencia')
   })
 
   it('only shows the redes sociales links that are set', async () => {

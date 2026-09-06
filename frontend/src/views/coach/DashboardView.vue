@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router'
 import AppShell from '../../components/AppShell.vue'
 import NavIcon from '../../components/NavIcon.vue'
 import SkeletonBlock from '../../components/SkeletonBlock.vue'
-import AppModal from '../../components/AppModal.vue'
+import GestionModal from '../../components/GestionModal.vue'
 import ProyeccionIngresosChart from '../../components/ProyeccionIngresosChart.vue'
 import {
   getResumenNegocio,
@@ -26,6 +26,8 @@ import {
   type ComparativoYCapacidad,
 } from '../../api/negocio'
 import { crearGestion, getGestionDeEmpresa, type GestionRenovacion } from '../../api/empresas'
+import { listProspectos, type Prospecto } from '../../api/prospectos'
+import { etapaEsCerrada } from '../../lib/etapaProspecto'
 import { listPlanes, enviarRecordatorio, type PlanDesarrollo } from '../../api/planesDesarrollo'
 import { getSolicitudes, type SolicitudProceso } from '../../api/satisfaccion'
 import { listCoachees, type CoacheeListItem } from '../../api/coachees'
@@ -57,8 +59,9 @@ const comercialMes = ref<ResumenComercial | null>(null)
 const proyeccionMensual = ref<ProyeccionMes[]>([])
 const atencion = ref<AtencionInmediata | null>(null)
 const comparativo = ref<ComparativoYCapacidad | null>(null)
+const prospectosLista = ref<Prospecto[]>([])
 
-type Tab = 'coachees' | 'empresas' | 'solicitudes'
+type Tab = 'coachees' | 'empresas' | 'solicitudes' | 'prospectos'
 const tab = ref<Tab>('coachees')
 
 const formatoCLP = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 })
@@ -83,6 +86,7 @@ async function load() {
     proyeccion,
     atencionData,
     comparativoData,
+    prospectos,
   ] = await Promise.all([
     getResumenNegocio(),
     getAlertas(),
@@ -97,6 +101,7 @@ async function load() {
     getProyeccionMensual(),
     getAtencionInmediata(),
     getComparativo(),
+    listProspectos(),
   ])
   resumen.value = r
   alertas.value = a
@@ -112,6 +117,7 @@ async function load() {
   proyeccionMensual.value = proyeccion
   atencion.value = atencionData
   comparativo.value = comparativoData
+  prospectosLista.value = prospectos
   loading.value = false
 }
 
@@ -223,13 +229,9 @@ const empresaGestion = ref<{ empresaId: string; nombre: string } | null>(null)
 const gestionHistorial = ref<GestionRenovacion[]>([])
 const gestionCargando = ref(false)
 const gestionGuardando = ref(false)
-const notaGestionForm = ref('')
-const proximoSeguimientoForm = ref('')
 
 async function abrirGestion(empresaId: string, nombre: string) {
   empresaGestion.value = { empresaId, nombre }
-  notaGestionForm.value = ''
-  proximoSeguimientoForm.value = ''
   gestionHistorial.value = []
   gestionModalAbierto.value = true
   gestionCargando.value = true
@@ -247,18 +249,12 @@ function cerrarGestion() {
   empresaGestion.value = null
 }
 
-async function guardarGestion() {
-  if (!empresaGestion.value || !notaGestionForm.value.trim()) return
+async function guardarGestion(nota: string, proximoSeguimiento: string | undefined) {
+  if (!empresaGestion.value) return
   gestionGuardando.value = true
   try {
-    await crearGestion(
-      empresaGestion.value.empresaId,
-      notaGestionForm.value.trim(),
-      proximoSeguimientoForm.value || undefined,
-    )
+    await crearGestion(empresaGestion.value.empresaId, nota, proximoSeguimiento)
     await notifySuccess('Gestión registrada')
-    notaGestionForm.value = ''
-    proximoSeguimientoForm.value = ''
     const [historial, carteraData, atencionData] = await Promise.all([
       getGestionDeEmpresa(empresaGestion.value.empresaId),
       getCarteraEmpresas(),
@@ -272,10 +268,6 @@ async function guardarGestion() {
   } finally {
     gestionGuardando.value = false
   }
-}
-
-function formatoFechaHora(iso: string): string {
-  return new Date(iso).toLocaleDateString('es-CL', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
 // --- "Atención inmediata": "¿qué necesito hacer hoy?" antes que cualquier métrica general ---
@@ -293,6 +285,27 @@ function textoVencimiento(dias: number | null): string {
   if (dias < 0) return `venció hace ${Math.abs(dias)} día${Math.abs(dias) === 1 ? '' : 's'}`
   if (dias === 0) return 'vence hoy'
   return `vence en ${dias} día${dias === 1 ? '' : 's'}`
+}
+
+// --- Prospectos con seguimiento vencido o para hoy — mismo criterio de "qué necesito hacer
+// hoy" del resto del Panorama, calculado en el cliente (proximoSeguimiento ya viene resuelto
+// desde el backend, ver ProspectosService.findAll). ---
+
+function diasHastaSeguimiento(iso: string): number {
+  const hoy = new Date()
+  hoy.setHours(0, 0, 0, 0)
+  const fecha = new Date(`${iso}T00:00:00`)
+  return Math.round((fecha.getTime() - hoy.getTime()) / 86400000)
+}
+
+const prospectosPorSeguir = computed(() =>
+  prospectosLista.value
+    .filter((p) => !etapaEsCerrada(p.etapa) && p.proximoSeguimiento && diasHastaSeguimiento(p.proximoSeguimiento) <= 0)
+    .sort((a, b) => (a.proximoSeguimiento ?? '').localeCompare(b.proximoSeguimiento ?? '')),
+)
+
+function irAProspectos() {
+  void router.push('/coach/prospectos')
 }
 
 // --- KPIs de arriba: responden directo el "criterio de éxito" del rediseño ---
@@ -889,6 +902,13 @@ const filasAtencion = computed<FilaAtencion[]>(() =>
           >
             Solicitudes comerciales ({{ solicitudesPendientes.length }})
           </button>
+          <button
+            class="border-b-2 px-3 py-2 text-sm"
+            :class="tab === 'prospectos' ? 'border-[var(--color-sage)] font-medium text-[var(--color-sage)]' : 'border-transparent text-[var(--color-ink)]/60'"
+            @click="tab = 'prospectos'"
+          >
+            Prospectos por seguir ({{ prospectosPorSeguir.length }})
+          </button>
         </div>
 
         <div v-if="tab === 'coachees'">
@@ -1012,7 +1032,7 @@ const filasAtencion = computed<FilaAtencion[]>(() =>
           </ul>
         </div>
 
-        <div v-else>
+        <div v-else-if="tab === 'solicitudes'">
           <p
             v-if="solicitudesPendientes.length === 0"
             class="text-sm text-[var(--color-ink)]/60"
@@ -1035,79 +1055,48 @@ const filasAtencion = computed<FilaAtencion[]>(() =>
             </li>
           </ul>
         </div>
-      </div>
-    </div>
 
-    <AppModal
-      v-if="gestionModalAbierto && empresaGestion"
-      :title="`Gestión de renovación — ${empresaGestion.nombre}`"
-      @close="cerrarGestion"
-    >
-      <div class="space-y-4">
-        <div>
-          <p class="mb-1.5 text-xs font-medium uppercase tracking-wide text-[var(--color-ink)]/50">
-            Historial
-          </p>
+        <div v-else>
           <p
-            v-if="gestionCargando"
-            class="text-sm text-[var(--color-ink)]/60"
+            v-if="prospectosPorSeguir.length === 0"
+            class="text-sm text-[var(--color-sage)]"
           >
-            Cargando…
-          </p>
-          <p
-            v-else-if="gestionHistorial.length === 0"
-            class="text-sm text-[var(--color-ink)]/60"
-          >
-            Todavía no hay gestión registrada para esta empresa.
+            ✓ Ningún prospecto necesita seguimiento ahora mismo.
           </p>
           <ul
             v-else
-            class="max-h-56 space-y-2 overflow-y-auto text-sm"
+            class="space-y-1.5 text-sm"
           >
             <li
-              v-for="g in gestionHistorial"
-              :key="g.id"
-              class="rounded-lg border border-[var(--color-line)]/60 px-3 py-2"
+              v-for="p in prospectosPorSeguir"
+              :key="p.id"
+              class="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[var(--color-line)]/60 px-3 py-2"
             >
-              <p class="text-xs text-[var(--color-ink)]/50">
-                {{ formatoFechaHora(g.createdAt) }}
-                <template v-if="g.proximoSeguimiento">
-                  · Próximo seguimiento: {{ formatoFechaFin(g.proximoSeguimiento) }}
-                </template>
-              </p>
-              <p>{{ g.nota }}</p>
+              <span>
+                {{ p.nombre }}
+                <span class="text-[var(--color-danger)]">— {{ textoVencimiento(diasHastaSeguimiento(p.proximoSeguimiento!)) }}</span>
+              </span>
+              <button
+                type="button"
+                class="rounded-full border border-[var(--color-line)] px-2 py-0.5 text-xs text-[var(--color-ink)]/70 hover:bg-[var(--color-parchment)]"
+                @click="irAProspectos"
+              >
+                Ver prospectos
+              </button>
             </li>
           </ul>
         </div>
-
-        <div class="border-t border-[var(--color-line)] pt-4">
-          <p class="mb-1.5 text-xs font-medium uppercase tracking-wide text-[var(--color-ink)]/50">
-            Nueva gestión
-          </p>
-          <textarea
-            v-model="notaGestionForm"
-            rows="3"
-            placeholder="¿Qué se conversó? ¿En qué quedó?"
-            class="mb-2 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm focus:border-[var(--color-sage)] focus:outline-none focus:ring-2 focus:ring-[var(--color-sage)]/30"
-          />
-          <label class="mb-3 block text-xs text-[var(--color-ink)]/60">
-            Próximo seguimiento (opcional)
-            <input
-              v-model="proximoSeguimientoForm"
-              type="date"
-              class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm focus:border-[var(--color-sage)] focus:outline-none focus:ring-2 focus:ring-[var(--color-sage)]/30"
-            >
-          </label>
-          <button
-            type="button"
-            class="w-full rounded-lg bg-[var(--color-ink)] px-3 py-2 text-sm text-[var(--color-parchment)] disabled:opacity-50"
-            :disabled="gestionGuardando || !notaGestionForm.trim()"
-            @click="guardarGestion"
-          >
-            {{ gestionGuardando ? 'Guardando…' : 'Registrar gestión' }}
-          </button>
-        </div>
       </div>
-    </AppModal>
+    </div>
+
+    <GestionModal
+      v-if="gestionModalAbierto && empresaGestion"
+      :title="`Gestión de renovación — ${empresaGestion.nombre}`"
+      :historial="gestionHistorial"
+      :cargando="gestionCargando"
+      :guardando="gestionGuardando"
+      @guardar="guardarGestion"
+      @close="cerrarGestion"
+    />
   </AppShell>
 </template>

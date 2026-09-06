@@ -5,10 +5,12 @@ import { unlink } from 'fs/promises';
 import { join } from 'path';
 import { PerfilCoach } from './entities/perfil-coach.entity';
 import { CertificacionCoach } from './entities/certificacion-coach.entity';
+import { ExperienciaCoach } from './entities/experiencia-coach.entity';
 import { User } from '../users/entities/user.entity';
 import { Role } from '../auth/enums/role.enum';
 import { UpdatePerfilCoachDto } from './dto/update-perfil-coach.dto';
 import { CreateCertificacionDto } from './dto/create-certificacion.dto';
+import { CreateExperienciaDto } from './dto/create-experiencia.dto';
 import { UPLOADS_DIR } from '../recursos/uploads-dir.util';
 import { assignDefined } from '../common/assign-defined.util';
 
@@ -19,6 +21,8 @@ export class PerfilCoachService {
     private readonly perfiles: Repository<PerfilCoach>,
     @InjectRepository(CertificacionCoach)
     private readonly certificaciones: Repository<CertificacionCoach>,
+    @InjectRepository(ExperienciaCoach)
+    private readonly experiencias: Repository<ExperienciaCoach>,
     @InjectRepository(User) private readonly users: Repository<User>,
   ) {}
 
@@ -27,12 +31,19 @@ export class PerfilCoachService {
   async obtenerOCrearPropio(coachUserId: string): Promise<PerfilCoach> {
     const existente = await this.perfiles.findOne({
       where: { coachUserId },
-      relations: { certificaciones: true },
+      relations: { certificaciones: true, experiencias: true },
     });
-    if (existente) return existente;
-    return this.perfiles.save(
-      this.perfiles.create({ coachUserId, nombre: '' }),
+    const perfil =
+      existente ??
+      (await this.perfiles.save(
+        this.perfiles.create({ coachUserId, nombre: '' }),
+      ));
+    // Más reciente primero — se ordena acá (no en la query) para no depender de si TypeORM
+    // aplica `order` sobre una relación one-to-many cargada aparte.
+    perfil.experiencias?.sort((a, b) =>
+      b.fechaInicio.localeCompare(a.fechaInicio),
     );
+    return perfil;
   }
 
   // Para coachee/empresa: hoy hay un solo coach en el sistema — se resuelve el usuario
@@ -114,5 +125,40 @@ export class PerfilCoachService {
     }
     await this.borrarArchivoAnterior(certificacion.archivoPath);
     await this.certificaciones.remove(certificacion);
+  }
+
+  async agregarExperiencia(
+    coachUserId: string,
+    dto: CreateExperienciaDto,
+    logo?: Express.Multer.File,
+  ): Promise<ExperienciaCoach> {
+    const perfil = await this.obtenerOCrearPropio(coachUserId);
+    return this.experiencias.save(
+      this.experiencias.create({
+        perfilCoachId: perfil.id,
+        empresa: dto.empresa,
+        cargo: dto.cargo ?? null,
+        fechaInicio: dto.fechaInicio,
+        fechaFin: dto.fechaFin ?? null,
+        descripcion: dto.descripcion ?? null,
+        logoPath: logo?.filename ?? null,
+        logoNombre: logo?.originalname ?? null,
+      }),
+    );
+  }
+
+  async eliminarExperiencia(
+    coachUserId: string,
+    experienciaId: string,
+  ): Promise<void> {
+    const perfil = await this.obtenerOCrearPropio(coachUserId);
+    const experiencia = await this.experiencias.findOne({
+      where: { id: experienciaId, perfilCoachId: perfil.id },
+    });
+    if (!experiencia) {
+      throw new NotFoundException('Experiencia no encontrada.');
+    }
+    await this.borrarArchivoAnterior(experiencia.logoPath);
+    await this.experiencias.remove(experiencia);
   }
 }

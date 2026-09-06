@@ -20,6 +20,7 @@ import type { Response } from 'express';
 import { PerfilCoachService } from './perfil-coach.service';
 import { UpdatePerfilCoachDto } from './dto/update-perfil-coach.dto';
 import { CreateCertificacionDto } from './dto/create-certificacion.dto';
+import { CreateExperienciaDto } from './dto/create-experiencia.dto';
 import { UPLOADS_DIR } from '../recursos/uploads-dir.util';
 import {
   soloPermitir,
@@ -120,6 +121,32 @@ export class PerfilCoachController {
     return this.perfilCoach.eliminarCertificacion(actor.id, id);
   }
 
+  @Roles(Role.COACH)
+  @Post('me/experiencias')
+  @UseInterceptors(
+    FileInterceptor('logo', {
+      storage: storageDe('logo-experiencia'),
+      limits: { fileSize: 5 * 1024 * 1024 },
+      fileFilter: soloPermitir(MIMETYPES_IMAGEN),
+    }),
+  )
+  agregarExperiencia(
+    @CurrentUser() actor: AuthenticatedUser,
+    @Body() dto: CreateExperienciaDto,
+    @UploadedFile() logo?: Express.Multer.File,
+  ) {
+    return this.perfilCoach.agregarExperiencia(actor.id, dto, logo);
+  }
+
+  @Roles(Role.COACH)
+  @Delete('me/experiencias/:id')
+  eliminarExperiencia(
+    @CurrentUser() actor: AuthenticatedUser,
+    @Param('id') id: string,
+  ) {
+    return this.perfilCoach.eliminarExperiencia(actor.id, id);
+  }
+
   // Declarada antes de ':id'-like siblings — acá no hay ninguno, pero se mantiene el criterio
   // del resto del proyecto (rutas literales primero).
   @Roles(Role.COACH, Role.COACHEE, Role.EMPRESA)
@@ -167,5 +194,18 @@ export class PerfilCoachController {
       join(UPLOADS_DIR, certificacion.archivoPath),
       certificacion.archivoNombre ?? certificacion.archivoPath,
     );
+  }
+
+  @Roles(Role.COACH, Role.COACHEE, Role.EMPRESA)
+  @Get('experiencias/:id/logo')
+  async logoExperiencia(@Param('id') id: string, @Res() res: Response) {
+    const perfil = await this.perfilCoach.obtenerDelCoach();
+    const experiencia = perfil.experiencias?.find((e) => e.id === id);
+    if (!experiencia?.logoPath) {
+      throw new NotFoundException(
+        'Esta experiencia no tiene un logo asociado.',
+      );
+    }
+    res.sendFile(join(UPLOADS_DIR, experiencia.logoPath));
   }
 }

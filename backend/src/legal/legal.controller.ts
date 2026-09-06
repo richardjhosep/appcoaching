@@ -62,6 +62,28 @@ export class LegalController {
     return this.legal.cumplimiento();
   }
 
+  // Rutas de solo lectura del propio coachee — @Roles de método pisa el @Roles(Role.COACH) de
+  // la clase (RolesGuard usa getAllAndOverride). Deliberadamente no se exponen los
+  // `adicionales`: son documentos de título libre que el coach pudo subir sin pensar en que el
+  // coachee los vea.
+  @Roles(Role.COACHEE)
+  @Get('documentos/me')
+  misDocumentos(@CurrentUser() actor: AuthenticatedUser) {
+    return this.legal.misDocumentos(actor.id);
+  }
+
+  @Roles(Role.COACHEE)
+  @Get('documentos/me/:tipo/archivo')
+  async descargarMiArchivo(
+    @Param('tipo', new ParseEnumPipe(TipoDocumentoLegal))
+    tipo: TipoDocumentoLegal,
+    @CurrentUser() actor: AuthenticatedUser,
+    @Res() res: Response,
+  ) {
+    const documento = await this.legal.obtenerArchivoPropio(actor.id, tipo);
+    this.enviarArchivo(documento, res);
+  }
+
   @Put('documentos/empresa/:empresaId/:tipo')
   @UseInterceptors(ARCHIVO_INTERCEPTOR)
   async upsertDocumentoEmpresa(

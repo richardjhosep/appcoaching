@@ -23,6 +23,10 @@ const BLOQUE_COORDINACION = 'Coordinación de sesiones y otros aspectos';
 // plana (sin índice de bloques, a diferencia de retroalimentación) porque son solo 3 categorías.
 const GRUPO_SATISFACCION_CATEGORIAS = 'SATISFACCION_CATEGORIAS';
 
+// Fuentes de origen de un prospecto (módulo Prospectos) — lista plana editable por el coach,
+// igual que las categorías de satisfacción.
+const GRUPO_FUENTES_PROSPECTO = 'FUENTES_PROSPECTO';
+
 export const PARAMETROS_SEED: ParametroSeed[] = [
   {
     grupo: 'RETROALIMENTACION_BLOQUES',
@@ -189,4 +193,26 @@ export const PARAMETROS_SEED: ParametroSeed[] = [
       'El proceso generó resultados concretos para el coachee y la empresa.',
     estado: true,
   },
+
+  // Fuentes de prospecto
+  {
+    grupo: GRUPO_FUENTES_PROSPECTO,
+    clave: '1',
+    valor: 'Referido',
+    estado: true,
+  },
+  {
+    grupo: GRUPO_FUENTES_PROSPECTO,
+    clave: '2',
+    valor: 'LinkedIn',
+    estado: true,
+  },
+  {
+    grupo: GRUPO_FUENTES_PROSPECTO,
+    clave: '3',
+    valor: 'Sitio web',
+    estado: true,
+  },
+  { grupo: GRUPO_FUENTES_PROSPECTO, clave: '4', valor: 'Evento', estado: true },
+  { grupo: GRUPO_FUENTES_PROSPECTO, clave: '5', valor: 'Otro', estado: true },
 ];

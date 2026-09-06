@@ -107,6 +107,9 @@ withDefaults(defineProps<{ name: string; size?: number }>(), { size: 18 })
     <template v-else-if="name === 'biblioteca'">
       <path d="M4 4.5v15l4-2 4 2 4-2 4 2v-15l-4-2-4 2-4-2z" />
     </template>
+    <template v-else-if="name === 'prospectos'">
+      <path d="M4 4h16l-6 8v6l-4 2v-8z" />
+    </template>
     <template v-else-if="name === 'coachees'">
       <circle
         cx="9"
@@ -224,6 +227,15 @@ withDefaults(defineProps<{ name: string; size?: number }>(), { size: 18 })
         height="10"
         rx="1.5"
       />
+    </template>
+    <template v-else-if="name === 'pizarra'">
+      <rect
+        x="3"
+        y="4"
+        width="18"
+        height="13"
+        rx="1.5"
+      /><path d="M8 21h8M12 17v4" />
     </template>
     <template v-else-if="name === 'mapa'">
       <circle

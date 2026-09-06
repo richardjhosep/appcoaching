@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import PerfilView from './PerfilView.vue'
-import type { PerfilCoach, CertificacionCoach } from '../../api/perfilCoach'
+import type { PerfilCoach, CertificacionCoach, ExperienciaCoach } from '../../api/perfilCoach'
 
 vi.mock('../../api/perfilCoach', async () => {
   const actual = await vi.importActual<typeof import('../../api/perfilCoach')>('../../api/perfilCoach')
@@ -14,7 +14,10 @@ vi.mock('../../api/perfilCoach', async () => {
     subirCv: vi.fn(),
     agregarCertificacion: vi.fn(),
     eliminarCertificacion: vi.fn(),
+    agregarExperiencia: vi.fn(),
+    eliminarExperiencia: vi.fn(),
     obtenerUrlFoto: vi.fn(),
+    obtenerUrlLogoExperiencia: vi.fn(),
     descargarCv: vi.fn(),
     descargarCertificacion: vi.fn(),
   }
@@ -31,7 +34,10 @@ import {
   subirCv,
   agregarCertificacion,
   eliminarCertificacion,
+  agregarExperiencia,
+  eliminarExperiencia,
   obtenerUrlFoto,
+  obtenerUrlLogoExperiencia,
 } from '../../api/perfilCoach'
 import { notifySuccess, notifyError } from '../../lib/notify'
 
@@ -54,6 +60,7 @@ const perfilVacio: PerfilCoach = {
   cvPath: null,
   cvNombre: null,
   certificaciones: [],
+  experiencias: [],
   createdAt: '2026-01-01T00:00:00.000Z',
   updatedAt: '2026-01-01T00:00:00.000Z',
 }
@@ -63,6 +70,7 @@ describe('PerfilView', () => {
     setActivePinia(createPinia())
     vi.mocked(getMiPerfil).mockResolvedValue(perfilVacio)
     vi.mocked(obtenerUrlFoto).mockResolvedValue(null)
+    vi.mocked(obtenerUrlLogoExperiencia).mockResolvedValue(null)
   })
 
   it('loads the perfil into the form fields on mount', async () => {
@@ -156,6 +164,64 @@ describe('PerfilView', () => {
 
     expect(agregarCertificacion).toHaveBeenCalledWith(expect.objectContaining({ nombre: 'ICF ACC' }))
     expect(wrapper.text()).toContain('ICF ACC')
+  })
+
+  it('adds an experiencia with the entered fields', async () => {
+    const nuevaExp: ExperienciaCoach = {
+      id: 'e1',
+      empresa: 'Ferronor S.A.',
+      cargo: 'Coach Ejecutivo',
+      fechaInicio: '2022-01-01T00:00:00.000Z',
+      fechaFin: null,
+      descripcion: null,
+      logoPath: null,
+      logoNombre: null,
+      createdAt: '2026-01-01T00:00:00.000Z',
+    }
+    vi.mocked(agregarExperiencia).mockResolvedValue(nuevaExp)
+    const wrapper = mount(PerfilView)
+    await flushPromises()
+
+    const forms = wrapper.findAll('form')
+    const expForm = forms[1]
+    await expForm.find('input[type="text"]').setValue('Ferronor S.A.')
+    await expForm.find('input[type="date"]').setValue('2022-01-01')
+    await expForm.trigger('submit')
+    await flushPromises()
+
+    expect(agregarExperiencia).toHaveBeenCalledWith(
+      expect.objectContaining({ empresa: 'Ferronor S.A.', fechaInicio: '2022-01-01' }),
+    )
+    expect(wrapper.text()).toContain('Ferronor S.A.')
+  })
+
+  it('deletes an experiencia', async () => {
+    vi.mocked(getMiPerfil).mockResolvedValue({
+      ...perfilVacio,
+      experiencias: [
+        {
+          id: 'e1',
+          empresa: 'Ferronor S.A.',
+          cargo: null,
+          fechaInicio: '2022-01-01T00:00:00.000Z',
+          fechaFin: null,
+          descripcion: null,
+          logoPath: null,
+          logoNombre: null,
+          createdAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+    })
+    vi.mocked(eliminarExperiencia).mockResolvedValue(undefined)
+    const wrapper = mount(PerfilView)
+    await flushPromises()
+
+    const eliminarBtn = wrapper.findAll('button').find((b) => b.text() === 'Eliminar')
+    await eliminarBtn!.trigger('click')
+    await flushPromises()
+
+    expect(eliminarExperiencia).toHaveBeenCalledWith('e1')
+    expect(wrapper.text()).not.toContain('Ferronor S.A.')
   })
 
   it('deletes a certificación', async () => {
