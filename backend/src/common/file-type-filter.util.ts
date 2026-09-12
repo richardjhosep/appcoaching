@@ -59,6 +59,16 @@ export const MIMETYPES_RECURSO = [
   'video/quicktime',
   'video/x-msvideo',
   'video/webm',
+  // Audio: antes rechazado de plano — necesario para que un coach pueda subir una
+  // grabación (nota de voz, podcast propio) y que se clasifique como tal en la
+  // Biblioteca (ver categoria-recurso.util.ts).
+  'audio/mpeg',
+  'audio/mp4',
+  'audio/x-m4a',
+  'audio/wav',
+  'audio/x-wav',
+  'audio/ogg',
+  'audio/webm',
 ] as const;
 
 const PDF_MAGIC_BYTES = Buffer.from('%PDF-');

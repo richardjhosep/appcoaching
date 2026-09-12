@@ -84,11 +84,16 @@ function toggleCompetencia(nombre: string) {
 }
 
 async function resumenDe(coachee: CoacheeListItem): Promise<{ resumen: ResumenCoacheeEmpresa; ciclos: Ciclo[] }> {
+  // Cada llamada va protegida con su propio fallback: esto va dentro de un Promise.all
+  // por-coachee que a su vez corre en el Promise.all de onMounted (línea ~113). Sin el
+  // .catch, un solo coachee con un error puntual en cualquiera de estas 4 llamadas hacía
+  // rechazar TODO el Resumen y lo dejaba pegado en el skeleton para siempre, sin mostrar
+  // ningún número — ni siquiera el de los demás coachees que sí cargaron bien.
   const [plan, ciclos, avanceRes, proximaSesion] = await Promise.all([
     getPlanByCoachee(coachee.id).catch(() => null),
-    getCiclosDeCoachee(coachee.id),
-    getAvanceDeCoachee(coachee.id),
-    getProximaSesionDeCoachee(coachee.id),
+    getCiclosDeCoachee(coachee.id).catch(() => []),
+    getAvanceDeCoachee(coachee.id).catch(() => ({ avance: null })),
+    getProximaSesionDeCoachee(coachee.id).catch(() => null),
   ])
   const cicloActual: Ciclo | null = ciclos.find((c) => !c.fechaCierre) ?? null
   const resumen = resumirCoachee({ plan, cicloActual, ciclos, avance: avanceRes.avance, proximaSesion })

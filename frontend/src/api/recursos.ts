@@ -1,6 +1,7 @@
 import { apiRequest, apiUpload, apiDownload } from './client'
 
 export type TipoRecurso = 'archivo' | 'link'
+export type CategoriaRecurso = 'texto' | 'audio' | 'video'
 
 export interface Recurso {
   id: string
@@ -10,6 +11,10 @@ export interface Recurso {
   competenciaId: string | null
   competencia?: { id: string; nombre: string }
   tipo: TipoRecurso
+  // Calculada automáticamente al crear el recurso (mimetype real del archivo, o si el
+  // link apunta a una plataforma de video conocida) — nunca la elige el coach. Puede
+  // quedar sin categoría (null) si no calza con nada reconocible.
+  categoria: CategoriaRecurso | null
   url: string | null
   archivoNombre: string | null
   archivoPath: string | null

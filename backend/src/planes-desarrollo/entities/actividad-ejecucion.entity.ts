@@ -32,10 +32,13 @@ export class ActividadEjecucion {
   @Column({ type: 'text' })
   actividad: string;
 
-  @Column({ name: 'fecha_inicio', type: 'varchar', nullable: true })
+  // Fecha calendario real (no un instante — por eso `date`, no `timestamptz`, mismo
+  // criterio que Empresa.fechaInicio/fechaFin). Antes era texto libre ("Semana 1"), sin
+  // relación con las fechas reales del ciclo del coachee.
+  @Column({ name: 'fecha_inicio', type: 'date', nullable: true })
   fechaInicio: string | null;
 
-  @Column({ name: 'fecha_fin', type: 'varchar', nullable: true })
+  @Column({ name: 'fecha_fin', type: 'date', nullable: true })
   fechaFin: string | null;
 
   @Column({

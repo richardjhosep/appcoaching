@@ -52,6 +52,7 @@ const recursoEnRaiz: Recurso = {
   carpetaId: 'cp1',
   competenciaId: null,
   tipo: 'link',
+  categoria: null,
   url: 'https://example.com',
   archivoNombre: null,
   archivoPath: null,
@@ -66,6 +67,7 @@ const recursoEnSub: Recurso = {
   carpetaId: 'cp2',
   competenciaId: null,
   tipo: 'link',
+  categoria: null,
   url: 'https://example.com/2',
   archivoNombre: null,
   archivoPath: null,
@@ -110,6 +112,7 @@ describe('BibliotecaView', () => {
       carpetaId: 'carpeta-invisible',
       competenciaId: null,
       tipo: 'link',
+      categoria: null,
       url: 'https://example.com/3',
       archivoNombre: null,
       archivoPath: null,
@@ -123,6 +126,27 @@ describe('BibliotecaView', () => {
 
     expect(wrapper.text()).toContain('Compartidos contigo directamente')
     expect(wrapper.text()).toContain('Compartido puntualmente')
+  })
+
+  it('filters resources by categoria, independent of folder navigation', async () => {
+    const recursoTexto: Recurso = { ...recursoEnRaiz, id: 'r-texto', titulo: 'PDF de liderazgo', categoria: 'texto' }
+    const recursoVideo: Recurso = { ...recursoEnRaiz, id: 'r-video', titulo: 'Charla en video', categoria: 'video' }
+    vi.mocked(getMisRecursos).mockResolvedValue([recursoTexto, recursoVideo])
+
+    const wrapper = mount(BibliotecaView)
+    await flushPromises()
+    const carpetaCard = wrapper.findAll('button').find((b) => b.text().includes('Liderazgo'))
+    await carpetaCard!.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('PDF de liderazgo')
+    expect(wrapper.text()).toContain('Charla en video')
+
+    const filtroVideo = wrapper.findAll('button').find((b) => b.text().trim() === 'Video')
+    await filtroVideo!.trigger('click')
+
+    expect(wrapper.text()).not.toContain('PDF de liderazgo')
+    expect(wrapper.text()).toContain('Charla en video')
   })
 
   it('opens a resource and loads its aprendizajes', async () => {

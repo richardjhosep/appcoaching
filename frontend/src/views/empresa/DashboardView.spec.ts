@@ -280,4 +280,25 @@ describe('DashboardView (empresa)', () => {
     expect(wrapper.text()).toContain('QA Paleta Verify')
     expect(wrapper.text()).toContain('Redujo el tiempo de entrega del área en 20%.')
   })
+
+  it('still renders the other coachees when one of them fails to load its ciclos/avance/próxima sesión', async () => {
+    // Regresión: antes, un solo coachee cuya llamada de ciclos/avance/próxima sesión
+    // rechazara (error transitorio del backend, condición de carrera, etc.) hacía
+    // rechazar todo el Promise.all de onMounted y dejaba el Resumen pegado en el
+    // skeleton para siempre — sin mostrar ni siquiera el conteo de los demás coachees.
+    const coacheeRoto: CoacheeListItem = { ...coachee, id: 'coachee-roto', nombre: 'Coachee Roto' }
+    vi.mocked(listCoachees).mockResolvedValue([coachee, coacheeRoto])
+    vi.mocked(getCiclosDeCoachee).mockImplementation((coacheeId) =>
+      coacheeId === 'coachee-roto'
+        ? Promise.reject(new Error('falla transitoria'))
+        : Promise.resolve([cicloConImpacto]),
+    )
+
+    const wrapper = await mountView()
+
+    // Si el Promise.all hubiera rechazado, loading.value nunca vuelve a false y esto
+    // seguiría mostrando el SkeletonBlock en vez del contenido real.
+    expect(wrapper.text()).toContain('QA Paleta Verify')
+    expect(wrapper.text()).toContain('Redujo el tiempo de entrega del área en 20%.')
+  })
 })

@@ -383,7 +383,7 @@ async function enviar() {
             :key="n.nivel"
             :value="n.nivel"
           >
-            Nivel {{ n.nivel }} — {{ n.descripcion }}
+            Nivel {{ n.nivel }}
           </option>
         </select>
       </label>

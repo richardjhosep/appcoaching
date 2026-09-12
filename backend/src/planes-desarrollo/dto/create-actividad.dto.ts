@@ -1,4 +1,5 @@
 import {
+  IsDateString,
   IsEnum,
   IsOptional,
   IsString,
@@ -16,11 +17,11 @@ export class CreateActividadDto {
   actividad: string;
 
   @IsOptional()
-  @IsString()
+  @IsDateString()
   fechaInicio?: string;
 
   @IsOptional()
-  @IsString()
+  @IsDateString()
   fechaFin?: string;
 
   @IsOptional()

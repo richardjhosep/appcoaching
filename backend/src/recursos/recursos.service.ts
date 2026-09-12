@@ -16,6 +16,10 @@ import { CarpetasService } from './carpetas.service';
 import { CompetenciasService } from '../competencias/competencias.service';
 import { assignDefined } from '../common/assign-defined.util';
 import { finDelDiaChileAUtc } from '../common/chile-time.util';
+import {
+  categoriaPorMimetype,
+  categoriaPorUrl,
+} from './categoria-recurso.util';
 
 @Injectable()
 export class RecursosService {
@@ -36,7 +40,7 @@ export class RecursosService {
 
   async create(
     dto: CreateRecursoDto,
-    archivo?: { originalname: string; filename: string },
+    archivo?: { originalname: string; filename: string; mimetype: string },
   ): Promise<Recurso> {
     if (dto.tipo === TipoRecurso.LINK && !dto.url) {
       throw new BadRequestException(
@@ -52,6 +56,10 @@ export class RecursosService {
     if (dto.competenciaId) {
       await this.assertCompetenciaExists(dto.competenciaId);
     }
+    const categoria =
+      dto.tipo === TipoRecurso.ARCHIVO
+        ? categoriaPorMimetype(archivo!.mimetype)
+        : categoriaPorUrl(dto.url!);
     return this.recursos.save(
       this.recursos.create({
         titulo: dto.titulo,
@@ -59,6 +67,7 @@ export class RecursosService {
         carpetaId: dto.carpetaId,
         competenciaId: dto.competenciaId ?? null,
         tipo: dto.tipo,
+        categoria,
         url: dto.tipo === TipoRecurso.LINK ? dto.url! : null,
         archivoNombre: archivo?.originalname ?? null,
         archivoPath: archivo?.filename ?? null,

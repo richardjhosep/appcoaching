@@ -26,6 +26,7 @@ import {
   updateRecurso,
   type Recurso,
   type TipoRecurso,
+  type CategoriaRecurso,
 } from '../../api/recursos'
 import { listCoachees, type CoacheeListItem } from '../../api/coachees'
 import { listCompetencias, type Competencia } from '../../api/competencias'
@@ -58,6 +59,18 @@ function seleccionar(id: string | null) {
 async function loadRecursos() {
   recursos.value = seleccionadaId.value ? await listRecursos(seleccionadaId.value) : []
 }
+
+// Filtro por formato (texto/audio/video), independiente de la navegación por carpetas.
+const FILTROS_CATEGORIA: { value: CategoriaRecurso | null; label: string }[] = [
+  { value: null, label: 'Todos' },
+  { value: 'texto', label: 'Texto' },
+  { value: 'audio', label: 'Audio' },
+  { value: 'video', label: 'Video' },
+]
+const categoriaFiltro = ref<CategoriaRecurso | null>(null)
+const recursosFiltrados = computed(() =>
+  recursos.value.filter((r) => !categoriaFiltro.value || r.categoria === categoriaFiltro.value),
+)
 
 onMounted(async () => {
   const [cs, cc, comps] = await Promise.all([listCarpetas(), listCoachees(), listCompetencias()])
@@ -212,6 +225,21 @@ async function guardarFechaLimite(recurso: Recurso, fechaLimite: string | null) 
     )
   } finally {
     guardandoFechaLimiteId.value = null
+  }
+}
+
+async function renombrarRecurso(recurso: Recurso) {
+  const titulo = await promptDialog({
+    title: 'Renombrar archivo',
+    inputLabel: 'Título',
+    inputValue: recurso.titulo,
+  })
+  if (!titulo || titulo === recurso.titulo) return
+  try {
+    const actualizado = await updateRecurso(recurso.id, { titulo })
+    recursos.value = recursos.value.map((r) => (r.id === actualizado.id ? actualizado : r))
+  } catch (err) {
+    await notifyError('No se pudo renombrar el archivo', err instanceof ApiError ? err.message : undefined)
   }
 }
 
@@ -533,21 +561,45 @@ async function alternarPublica() {
             </div>
           </div>
 
-          <p class="mb-2 text-xs font-medium uppercase tracking-wide text-[var(--color-ink)]/45">
-            Archivos
-          </p>
+          <div class="mb-2 flex items-center justify-between gap-2">
+            <p class="text-xs font-medium uppercase tracking-wide text-[var(--color-ink)]/45">
+              Archivos
+            </p>
+            <div
+              v-if="recursos.length"
+              class="flex flex-wrap gap-1"
+            >
+              <button
+                v-for="f in FILTROS_CATEGORIA"
+                :key="f.label"
+                class="rounded-full border px-2.5 py-0.5 text-[11px]"
+                :class="categoriaFiltro === f.value
+                  ? 'border-[var(--color-ink)] bg-[var(--color-ink)] text-[var(--color-parchment)]'
+                  : 'border-[var(--color-line)] hover:bg-[var(--color-parchment)]/50'"
+                @click="categoriaFiltro = f.value"
+              >
+                {{ f.label }}
+              </button>
+            </div>
+          </div>
           <p
             v-if="recursos.length === 0"
             class="text-sm text-[var(--color-ink)]/50"
           >
             Esta carpeta todavía no tiene archivos.
           </p>
+          <p
+            v-else-if="recursosFiltrados.length === 0"
+            class="text-sm text-[var(--color-ink)]/50"
+          >
+            Ningún archivo de esta carpeta calza con el filtro elegido.
+          </p>
           <div
             v-else
             class="space-y-2"
           >
             <div
-              v-for="r in recursos"
+              v-for="r in recursosFiltrados"
               :key="r.id"
               class="flex items-center gap-3 rounded-2xl border border-[var(--color-line)] bg-white p-3"
             >
@@ -573,6 +625,12 @@ async function alternarPublica() {
                 @click="abrirAccesoRecurso(r)"
               >
                 Compartir
+              </button>
+              <button
+                class="shrink-0 text-xs text-[var(--color-ink)]/70 hover:underline"
+                @click="renombrarRecurso(r)"
+              >
+                Renombrar
               </button>
               <button
                 class="shrink-0 text-xs text-[var(--color-danger)] hover:underline"

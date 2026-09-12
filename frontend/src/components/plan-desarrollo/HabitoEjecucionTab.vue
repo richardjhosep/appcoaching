@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { reactive, ref } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
 import {
   updateOwnPlan,
   addActividad,
@@ -9,6 +9,7 @@ import {
   type PlanDesarrollo,
   type EstadoActividad,
 } from '../../api/planesDesarrollo'
+import { getMiCicloActual } from '../../api/ciclos'
 import { ApiError } from '../../api/client'
 import { notifyError, notifySuccess } from '../../lib/notify'
 import SectionCard from '../SectionCard.vue'
@@ -33,6 +34,18 @@ const form = reactive({
 const saving = ref(false)
 const error = ref<string | null>(null)
 const nuevaActividad = reactive({ objetivoId: '', actividad: '', fechaInicio: '', fechaFin: '' })
+
+// Cota inferior de los date pickers: no tiene sentido planificar una actividad antes de
+// que el ciclo de coaching haya empezado. Sin ciclo abierto (plan aún no aprobado, por
+// ejemplo) simplemente no se acota.
+const fechaAperturaCiclo = ref<string | null>(null)
+onMounted(async () => {
+  const ciclo = await getMiCicloActual().catch(() => null)
+  fechaAperturaCiclo.value = ciclo ? ciclo.fechaApertura.slice(0, 10) : null
+})
+
+const formatoFecha = (fecha: string) =>
+  new Date(`${fecha}T00:00:00`).toLocaleDateString('es-CL', { day: 'numeric', month: 'short', year: 'numeric' })
 
 // Sin watch a props.plan por la misma razón que `form` arriba; las actividades agregadas
 // después de montar el componente reciben su entrada en agregarActividad().
@@ -209,7 +222,7 @@ function objetivoDescripcion(objetivoId: string): string {
           <p>{{ a.actividad }}</p>
           <p class="text-xs text-[var(--color-ink)]/60">
             Objetivo: {{ objetivoDescripcion(a.objetivoId) }}
-            <span v-if="a.fechaInicio"> · {{ a.fechaInicio }}<span v-if="a.fechaFin"> – {{ a.fechaFin }}</span></span>
+            <span v-if="a.fechaInicio"> · {{ formatoFecha(a.fechaInicio) }}<span v-if="a.fechaFin"> – {{ formatoFecha(a.fechaFin) }}</span></span>
           </p>
           <div class="mt-1 flex items-center gap-2">
             <select
@@ -277,18 +290,24 @@ function objetivoDescripcion(objetivoId: string): string {
           placeholder="Actividad"
           class="rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm sm:col-span-2"
         >
-        <input
-          v-model="nuevaActividad.fechaInicio"
-          type="text"
-          placeholder="Inicio (ej. Semana 1)"
-          class="rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
-        >
-        <input
-          v-model="nuevaActividad.fechaFin"
-          type="text"
-          placeholder="Fin (ej. Semana 3)"
-          class="rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
-        >
+        <label class="text-sm">
+          Inicio
+          <input
+            v-model="nuevaActividad.fechaInicio"
+            type="date"
+            :min="fechaAperturaCiclo ?? undefined"
+            class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+          >
+        </label>
+        <label class="text-sm">
+          Fin
+          <input
+            v-model="nuevaActividad.fechaFin"
+            type="date"
+            :min="nuevaActividad.fechaInicio || fechaAperturaCiclo || undefined"
+            class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+          >
+        </label>
         <button
           class="w-fit rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm hover:bg-[var(--color-parchment)]/50 sm:col-span-2"
           @click="agregarActividad"

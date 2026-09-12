@@ -50,12 +50,15 @@ const formatoFecha = (fecha: string) =>
   new Date(fecha).toLocaleDateString('es-CL', { day: 'numeric', month: 'short', year: 'numeric' })
 
 async function cargarFila(coachee: CoacheeListItem): Promise<FilaCoachee> {
+  // Cada llamada va protegida con su propio fallback: sin el .catch, un solo coachee con
+  // un error puntual en cualquiera de estas 5 llamadas hacía rechazar TODO el
+  // Promise.all de onMounted y dejaba la lista pegada en el skeleton para siempre.
   const [plan, ciclos, avanceRes, proximaSesion, retroalimentaciones] = await Promise.all([
     getPlanByCoachee(coachee.id).catch(() => null),
-    getCiclosDeCoachee(coachee.id),
-    getAvanceDeCoachee(coachee.id),
-    getProximaSesionDeCoachee(coachee.id),
-    getRetroalimentacionesDeCoachee(coachee.id),
+    getCiclosDeCoachee(coachee.id).catch(() => []),
+    getAvanceDeCoachee(coachee.id).catch(() => ({ avance: null })),
+    getProximaSesionDeCoachee(coachee.id).catch(() => null),
+    getRetroalimentacionesDeCoachee(coachee.id).catch(() => []),
   ])
   const cicloActual = ciclos.find((c) => !c.fechaCierre) ?? null
   const resumen = resumirCoachee({ plan, cicloActual, ciclos, avance: avanceRes.avance, proximaSesion })

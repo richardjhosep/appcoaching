@@ -7,6 +7,7 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { TipoRecurso } from '../enums/tipo-recurso.enum';
+import { CategoriaRecurso } from '../enums/categoria-recurso.enum';
 import { Carpeta } from './carpeta.entity';
 import { Competencia } from '../../competencias/entities/competencia.entity';
 
@@ -40,6 +41,13 @@ export class Recurso {
 
   @Column({ type: 'enum', enum: TipoRecurso })
   tipo: TipoRecurso;
+
+  // Formato (texto/audio/video), calculado automáticamente al crear el recurso — nunca
+  // lo elige el coach. Nullable: un archivo cuyo mimetype no calza con ninguna categoría
+  // conocida, o un link que no apunta a una plataforma de video reconocida, ver
+  // categoria-recurso.util.ts.
+  @Column({ type: 'enum', enum: CategoriaRecurso, nullable: true })
+  categoria: CategoriaRecurso | null;
 
   @Column({ type: 'varchar', nullable: true })
   url: string | null;

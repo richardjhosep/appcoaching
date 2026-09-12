@@ -119,11 +119,64 @@ describe('RecursosService', () => {
     it('creates an archivo resource from the uploaded file', async () => {
       const recurso = await service.create(
         { titulo: 'PDF', tipo: TipoRecurso.ARCHIVO, carpetaId: 'carpeta-1' },
-        { originalname: 'manual.pdf', filename: 'uuid-generado.pdf' },
+        {
+          originalname: 'manual.pdf',
+          filename: 'uuid-generado.pdf',
+          mimetype: 'application/pdf',
+        },
       );
 
       expect(recurso.archivoNombre).toBe('manual.pdf');
       expect(recurso.archivoPath).toBe('uuid-generado.pdf');
+      expect(recurso.categoria).toBe('texto');
+    });
+
+    it('classifies an uploaded video file by its real mimetype', async () => {
+      const recurso = await service.create(
+        { titulo: 'Video', tipo: TipoRecurso.ARCHIVO, carpetaId: 'carpeta-1' },
+        {
+          originalname: 'clip.mp4',
+          filename: 'uuid-generado.mp4',
+          mimetype: 'video/mp4',
+        },
+      );
+
+      expect(recurso.categoria).toBe('video');
+    });
+
+    it('classifies an uploaded audio file by its real mimetype', async () => {
+      const recurso = await service.create(
+        {
+          titulo: 'Podcast',
+          tipo: TipoRecurso.ARCHIVO,
+          carpetaId: 'carpeta-1',
+        },
+        {
+          originalname: 'episodio.mp3',
+          filename: 'uuid-generado.mp3',
+          mimetype: 'audio/mpeg',
+        },
+      );
+
+      expect(recurso.categoria).toBe('audio');
+    });
+
+    it('classifies a YouTube link as video, and any other link as uncategorized', async () => {
+      const youtube = await service.create({
+        titulo: 'Charla',
+        tipo: TipoRecurso.LINK,
+        url: 'https://youtube.com/watch?v=abc',
+        carpetaId: 'carpeta-1',
+      });
+      const otro = await service.create({
+        titulo: 'Artículo',
+        tipo: TipoRecurso.LINK,
+        url: 'https://blog.example.com/post',
+        carpetaId: 'carpeta-1',
+      });
+
+      expect(youtube.categoria).toBe('video');
+      expect(otro.categoria).toBeNull();
     });
 
     it('rejects a competenciaId that does not exist', async () => {

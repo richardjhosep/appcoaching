@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import SkeletonBlock from '../SkeletonBlock.vue'
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import type { PlanDesarrollo } from '../../api/planesDesarrollo'
 import { getMisRecursos, type Recurso } from '../../api/recursos'
@@ -8,7 +8,16 @@ import { listQuizzesDisponibles, type QuizResumen } from '../../api/quiz'
 import { listFlashcardsDisponibles, type FlashcardConEstado } from '../../api/flashcards'
 import { listMapasDisponibles, type MapaResumen } from '../../api/mapas'
 import { listCompetencias, type Competencia } from '../../api/competencias'
+import {
+  listarRecursosPersonales,
+  crearRecursoPersonal,
+  eliminarRecursoPersonal,
+  type RecursoPersonal,
+  type CategoriaRecursoPersonal,
+} from '../../api/recursosPersonales'
 import { formacionDe } from '../../lib/formacionRecomendada'
+import { ApiError } from '../../api/client'
+import { notifyError } from '../../lib/notify'
 import SectionCard from '../SectionCard.vue'
 import EmptyState from '../EmptyState.vue'
 import RecursoIcono from '../RecursoIcono.vue'
@@ -22,23 +31,71 @@ const quizzes = ref<QuizResumen[]>([])
 const flashcards = ref<FlashcardConEstado[]>([])
 const mapas = ref<MapaResumen[]>([])
 const competencias = ref<Competencia[]>([])
+const misRecursos = ref<RecursoPersonal[]>([])
 
 onMounted(async () => {
   loading.value = true
-  const [r, q, f, m, comps] = await Promise.all([
+  const [r, q, f, m, comps, propios] = await Promise.all([
     getMisRecursos(),
     listQuizzesDisponibles(),
     listFlashcardsDisponibles(),
     listMapasDisponibles(),
     listCompetencias(),
+    listarRecursosPersonales(),
   ])
   recursos.value = r
   quizzes.value = q
   flashcards.value = f
   mapas.value = m
   competencias.value = comps
+  misRecursos.value = propios
   loading.value = false
 })
+
+// Material que el propio coachee encontró y quiere registrar — a diferencia de todo lo
+// de arriba (asignado por el coach), esto es 100% suyo y no depende de la competencia
+// del plan, por eso se muestra siempre, no solo cuando hay competenciaId.
+const CATEGORIAS: { value: CategoriaRecursoPersonal; label: string }[] = [
+  { value: 'libro', label: 'Libro' },
+  { value: 'articulo', label: 'Artículo' },
+  { value: 'video', label: 'Video' },
+  { value: 'podcast', label: 'Podcast' },
+  { value: 'practica_guiada', label: 'Práctica guiada' },
+]
+const categoriaLabel = (c: CategoriaRecursoPersonal) => CATEGORIAS.find((o) => o.value === c)?.label ?? c
+
+const nuevoRecurso = reactive({ categoria: '' as CategoriaRecursoPersonal | '', titulo: '', url: '', notas: '' })
+const guardandoRecurso = ref(false)
+const errorRecurso = ref<string | null>(null)
+
+async function agregarRecursoPersonal() {
+  if (!nuevoRecurso.categoria || !nuevoRecurso.titulo.trim()) return
+  guardandoRecurso.value = true
+  errorRecurso.value = null
+  try {
+    const creado = await crearRecursoPersonal({
+      categoria: nuevoRecurso.categoria,
+      titulo: nuevoRecurso.titulo.trim(),
+      url: nuevoRecurso.url.trim() || undefined,
+      notas: nuevoRecurso.notas.trim() || undefined,
+    })
+    misRecursos.value = [creado, ...misRecursos.value]
+    nuevoRecurso.categoria = ''
+    nuevoRecurso.titulo = ''
+    nuevoRecurso.url = ''
+    nuevoRecurso.notas = ''
+  } catch (err) {
+    errorRecurso.value = err instanceof ApiError ? err.message : 'No se pudo agregar el material.'
+    await notifyError('No se pudo agregar el material', errorRecurso.value)
+  } finally {
+    guardandoRecurso.value = false
+  }
+}
+
+async function borrarRecursoPersonal(id: string) {
+  await eliminarRecursoPersonal(id)
+  misRecursos.value = misRecursos.value.filter((r) => r.id !== id)
+}
 
 const formacion = computed(() =>
   formacionDe(props.plan.competenciaId, {
@@ -185,6 +242,112 @@ const notasAntiguas = computed(() =>
         </button>
       </SectionCard>
     </template>
+
+    <SectionCard
+      v-if="!loading"
+      title="Mis materiales de formación"
+      icon="formacion"
+    >
+      <p class="mb-3 text-xs text-[var(--color-ink)]/60">
+        Libros, artículos, videos, podcasts o prácticas que tú mismo encontraste — independiente
+        de lo que tu coach te haya asignado arriba.
+      </p>
+
+      <p
+        v-if="errorRecurso"
+        class="mb-2 text-sm text-[var(--color-danger)]"
+      >
+        {{ errorRecurso }}
+      </p>
+
+      <ul
+        v-if="misRecursos.length"
+        class="mb-3 space-y-2"
+      >
+        <li
+          v-for="r in misRecursos"
+          :key="r.id"
+          class="rounded-lg border border-[var(--color-line)] p-2 text-sm"
+        >
+          <div class="flex items-start justify-between gap-2">
+            <div>
+              <span class="mr-2 rounded bg-[var(--color-parchment)] px-1.5 py-0.5 text-xs text-[var(--color-ink)]/70">
+                {{ categoriaLabel(r.categoria) }}
+              </span>
+              <a
+                v-if="r.url"
+                :href="r.url"
+                target="_blank"
+                rel="noopener"
+                class="font-medium underline"
+              >{{ r.titulo }}</a>
+              <span
+                v-else
+                class="font-medium"
+              >{{ r.titulo }}</span>
+              <p
+                v-if="r.notas"
+                class="mt-1 text-xs text-[var(--color-ink)]/60"
+              >
+                {{ r.notas }}
+              </p>
+            </div>
+            <button
+              class="shrink-0 text-xs text-[var(--color-bronze)] hover:underline"
+              @click="borrarRecursoPersonal(r.id)"
+            >
+              Quitar
+            </button>
+          </div>
+        </li>
+      </ul>
+
+      <div class="grid gap-2 sm:grid-cols-2">
+        <select
+          v-model="nuevoRecurso.categoria"
+          class="rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+        >
+          <option
+            value=""
+            disabled
+          >
+            Categoría
+          </option>
+          <option
+            v-for="c in CATEGORIAS"
+            :key="c.value"
+            :value="c.value"
+          >
+            {{ c.label }}
+          </option>
+        </select>
+        <input
+          v-model="nuevoRecurso.titulo"
+          type="text"
+          placeholder="Título"
+          class="rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+        >
+        <input
+          v-model="nuevoRecurso.url"
+          type="text"
+          placeholder="Link (opcional)"
+          class="rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm sm:col-span-2"
+        >
+        <textarea
+          v-model="nuevoRecurso.notas"
+          rows="2"
+          placeholder="Notas (opcional) — ¿por qué te sirvió?"
+          class="rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm sm:col-span-2"
+        />
+        <button
+          class="w-fit rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm hover:bg-[var(--color-parchment)]/50 disabled:opacity-60 sm:col-span-2"
+          :disabled="guardandoRecurso || !nuevoRecurso.categoria || !nuevoRecurso.titulo.trim()"
+          @click="agregarRecursoPersonal"
+        >
+          {{ guardandoRecurso ? 'Guardando…' : 'Agregar' }}
+        </button>
+      </div>
+    </SectionCard>
 
     <details
       v-if="notasAntiguas.length"

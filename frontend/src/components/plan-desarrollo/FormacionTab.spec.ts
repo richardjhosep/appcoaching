@@ -24,12 +24,27 @@ vi.mock('../../api/competencias', async () => {
   const actual = await vi.importActual<typeof import('../../api/competencias')>('../../api/competencias')
   return { ...actual, listCompetencias: vi.fn() }
 })
+vi.mock('../../api/recursosPersonales', async () => {
+  const actual =
+    await vi.importActual<typeof import('../../api/recursosPersonales')>('../../api/recursosPersonales')
+  return {
+    ...actual,
+    listarRecursosPersonales: vi.fn(),
+    crearRecursoPersonal: vi.fn(),
+    eliminarRecursoPersonal: vi.fn(),
+  }
+})
 
 import { getMisRecursos } from '../../api/recursos'
 import { listQuizzesDisponibles } from '../../api/quiz'
 import { listFlashcardsDisponibles } from '../../api/flashcards'
 import { listMapasDisponibles } from '../../api/mapas'
 import { listCompetencias } from '../../api/competencias'
+import {
+  listarRecursosPersonales,
+  crearRecursoPersonal,
+  type RecursoPersonal,
+} from '../../api/recursosPersonales'
 
 const router = createRouter({
   history: createMemoryHistory(),
@@ -83,6 +98,7 @@ function mockEmptySources() {
     { id: 'comp-1', nombre: 'Comunicación', definicion: 'def', niveles: [] },
     { id: 'comp-2', nombre: 'Liderazgo', definicion: 'def', niveles: [] },
   ])
+  vi.mocked(listarRecursosPersonales).mockResolvedValue([])
 }
 
 describe('FormacionTab', () => {
@@ -155,6 +171,83 @@ describe('FormacionTab', () => {
 
     expect(wrapper.text()).toContain('Notas antiguas de formación')
     expect(wrapper.text()).toContain('Crucial Conversations')
-    expect(wrapper.find('textarea').exists()).toBe(false)
+    // Las notas antiguas son de solo lectura — no debe haber ningún input editable
+    // dentro de ese bloque puntual (el textarea de "Mis materiales" es otra cosa).
+    const detalle = wrapper.find('details')
+    expect(detalle.find('textarea').exists()).toBe(false)
+    expect(detalle.find('input').exists()).toBe(false)
+  })
+
+  describe('Mis materiales de formación', () => {
+    it('shows even when the plan has no competencia set', async () => {
+      const wrapper = mount(FormacionTab, {
+        props: { plan: basePlan() },
+        global: { plugins: [router] },
+      })
+      await flushPromises()
+
+      expect(wrapper.text()).toContain('Mis materiales de formación')
+      expect(wrapper.text()).toContain('Define primero una competencia')
+    })
+
+    it('lists recursos personales already registered', async () => {
+      vi.mocked(listarRecursosPersonales).mockResolvedValue([
+        {
+          id: 'rp-1',
+          coacheeId: 'coachee-1',
+          categoria: 'libro',
+          titulo: 'Crucial Conversations',
+          url: null,
+          notas: 'Muy útil para feedback difícil',
+          createdAt: '2026-01-01T00:00:00.000Z',
+        },
+      ])
+
+      const wrapper = mount(FormacionTab, {
+        props: { plan: basePlan() },
+        global: { plugins: [router] },
+      })
+      await flushPromises()
+
+      expect(wrapper.text()).toContain('Libro')
+      expect(wrapper.text()).toContain('Crucial Conversations')
+      expect(wrapper.text()).toContain('Muy útil para feedback difícil')
+    })
+
+    it('adds a new recurso personal and prepends it to the list', async () => {
+      const creado: RecursoPersonal = {
+        id: 'rp-2',
+        coacheeId: 'coachee-1',
+        categoria: 'video',
+        titulo: 'Charla TED sobre feedback',
+        url: 'https://example.com/charla',
+        notas: null,
+        createdAt: '2026-01-02T00:00:00.000Z',
+      }
+      vi.mocked(crearRecursoPersonal).mockResolvedValue(creado)
+
+      const wrapper = mount(FormacionTab, {
+        props: { plan: basePlan() },
+        global: { plugins: [router] },
+      })
+      await flushPromises()
+
+      const selects = wrapper.findAll('select')
+      const categoriaSelect = selects[selects.length - 1]
+      await categoriaSelect.setValue('video')
+      await wrapper.find('input[placeholder="Título"]').setValue('Charla TED sobre feedback')
+      await wrapper.find('input[placeholder="Link (opcional)"]').setValue('https://example.com/charla')
+      const agregarBtn = wrapper.findAll('button').find((b) => b.text() === 'Agregar')
+      await agregarBtn!.trigger('click')
+      await flushPromises()
+
+      expect(crearRecursoPersonal).toHaveBeenCalledWith({
+        categoria: 'video',
+        titulo: 'Charla TED sobre feedback',
+        url: 'https://example.com/charla',
+        notas: undefined,
+      })
+      expect(wrapper.text()).toContain('Charla TED sobre feedback')
+    })
   })
 })

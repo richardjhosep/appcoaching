@@ -29,6 +29,7 @@ vi.mock('../../api/recursos', async () => {
     removeRecurso: vi.fn(),
     asignarRecurso: vi.fn(),
     getAsignacionesDeRecurso: vi.fn(),
+    updateRecurso: vi.fn(),
   }
 })
 
@@ -48,8 +49,10 @@ vi.mock('../../lib/notify', () => ({
   promptDialog: vi.fn(),
 }))
 
+import { promptDialog } from '../../lib/notify'
+
 import { listCarpetas, getAsignacionesDeCarpeta } from '../../api/carpetas'
-import { crearRecurso, listRecursos, getAsignacionesDeRecurso, asignarRecurso } from '../../api/recursos'
+import { crearRecurso, listRecursos, getAsignacionesDeRecurso, asignarRecurso, updateRecurso } from '../../api/recursos'
 import { listCoachees } from '../../api/coachees'
 import { listCompetencias } from '../../api/competencias'
 
@@ -69,6 +72,7 @@ const recurso: Recurso = {
   carpetaId: 'cp1',
   competenciaId: null,
   tipo: 'link',
+  categoria: null,
   url: 'https://example.com',
   archivoNombre: null,
   archivoPath: null,
@@ -123,6 +127,27 @@ describe('RecursosView', () => {
 
     expect(listRecursos).toHaveBeenCalledWith('cp1')
     expect(wrapper.text()).toContain('Manual de ejercicios')
+  })
+
+  it('filters the folder resources by categoria', async () => {
+    const recursoTexto: Recurso = { ...recurso, id: 'r-texto', titulo: 'Guía en PDF', categoria: 'texto' }
+    const recursoVideo: Recurso = { ...recurso, id: 'r-video', titulo: 'Charla en video', categoria: 'video' }
+    vi.mocked(listRecursos).mockResolvedValue([recursoTexto, recursoVideo])
+
+    wrapper = mount(RecursosView)
+    await flushPromises()
+    const nodo = wrapper.findAll('li').find((li) => li.text().includes('Liderazgo'))
+    await nodo!.find('div').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Guía en PDF')
+    expect(wrapper.text()).toContain('Charla en video')
+
+    const filtroTexto = wrapper.findAll('button').find((b) => b.text().trim() === 'Texto')
+    await filtroTexto!.trigger('click')
+
+    expect(wrapper.text()).toContain('Guía en PDF')
+    expect(wrapper.text()).not.toContain('Charla en video')
   })
 
   it('opens the access modal for a resource and lists coachees to share with', async () => {
@@ -221,5 +246,51 @@ describe('RecursosView', () => {
     )
     // The modal closes itself after a successful upload.
     expect(document.body.textContent).not.toContain('Subir archivo a «Liderazgo»')
+  })
+
+  it('renames a resource through the "Renombrar" button', async () => {
+    vi.mocked(promptDialog).mockResolvedValueOnce('Manual de ejercicios v2')
+    vi.mocked(updateRecurso).mockResolvedValueOnce({ ...recurso, titulo: 'Manual de ejercicios v2' })
+
+    wrapper = mount(RecursosView)
+    await flushPromises()
+
+    const nodo = wrapper.findAll('li').find((li) => li.text().includes('Liderazgo'))
+    await nodo!.find('div').trigger('click')
+    await flushPromises()
+
+    // Hay dos botones "Renombrar" en pantalla — el de la carpeta (toolbar) y el
+    // del recurso, en ese orden en el DOM; el del recurso es el segundo.
+    const renombrarBtn = wrapper.findAll('button').filter((b) => b.text() === 'Renombrar').at(1)
+    await renombrarBtn!.trigger('click')
+    await flushPromises()
+
+    expect(promptDialog).toHaveBeenCalledWith(
+      expect.objectContaining({ inputValue: 'Manual de ejercicios' }),
+    )
+    expect(updateRecurso).toHaveBeenCalledWith('r1', { titulo: 'Manual de ejercicios v2' })
+    expect(wrapper.text()).toContain('Manual de ejercicios v2')
+  })
+
+  it('does not call the API when renaming is cancelled or left unchanged', async () => {
+    wrapper = mount(RecursosView)
+    await flushPromises()
+
+    const nodo = wrapper.findAll('li').find((li) => li.text().includes('Liderazgo'))
+    await nodo!.find('div').trigger('click')
+    await flushPromises()
+
+    const renombrarBtn = wrapper.findAll('button').filter((b) => b.text() === 'Renombrar').at(1)
+
+    vi.mocked(updateRecurso).mockClear()
+    vi.mocked(promptDialog).mockResolvedValueOnce(null)
+    await renombrarBtn!.trigger('click')
+    await flushPromises()
+    expect(updateRecurso).not.toHaveBeenCalled()
+
+    vi.mocked(promptDialog).mockResolvedValueOnce('Manual de ejercicios')
+    await renombrarBtn!.trigger('click')
+    await flushPromises()
+    expect(updateRecurso).not.toHaveBeenCalled()
   })
 })

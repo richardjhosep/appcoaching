@@ -13,6 +13,7 @@ import {
   descargarArchivo,
   type Recurso,
   type Aprendizaje,
+  type CategoriaRecurso,
 } from '../../api/recursos'
 import { ApiError } from '../../api/client'
 import { buildArbol, breadcrumbDe, idsDescendientes } from '../../lib/carpetaArbol'
@@ -38,9 +39,23 @@ const subcarpetas = computed(() =>
     .filter((c) => c.parentId === seleccionadaId.value)
     .sort((a, b) => a.nombre.localeCompare(b.nombre)),
 )
-const recursosDeCarpeta = computed(() =>
-  seleccionadaId.value ? misRecursos.value.filter((r) => r.carpetaId === seleccionadaId.value) : [],
-)
+
+// Filtro por formato — independiente de la navegación por carpetas, se aplica sobre
+// cualquiera de las dos listas de recursos de abajo.
+const FILTROS_CATEGORIA: { value: CategoriaRecurso | null; label: string }[] = [
+  { value: null, label: 'Todos' },
+  { value: 'texto', label: 'Texto' },
+  { value: 'audio', label: 'Audio' },
+  { value: 'video', label: 'Video' },
+]
+const categoriaFiltro = ref<CategoriaRecurso | null>(null)
+
+const recursosDeCarpeta = computed(() => {
+  if (!seleccionadaId.value) return []
+  return misRecursos.value.filter(
+    (r) => r.carpetaId === seleccionadaId.value && (!categoriaFiltro.value || r.categoria === categoriaFiltro.value),
+  )
+})
 
 /**
  * Archivos compartidos puntualmente cuya carpeta no es visible (ni pública ni con acceso
@@ -48,7 +63,9 @@ const recursosDeCarpeta = computed(() =>
  */
 const recursosSueltos = computed(() => {
   const idsDeCarpetasVisibles = new Set(carpetas.value.map((c) => c.id))
-  return misRecursos.value.filter((r) => !idsDeCarpetasVisibles.has(r.carpetaId))
+  return misRecursos.value.filter(
+    (r) => !idsDeCarpetasVisibles.has(r.carpetaId) && (!categoriaFiltro.value || r.categoria === categoriaFiltro.value),
+  )
 })
 
 function totalRecursosEn(carpetaId: string): number {
@@ -117,25 +134,130 @@ async function descargar(r: Recurso) {
 
     <SkeletonBlock v-if="loading" />
 
-    <template v-else-if="!carpetaActual">
-      <EmptyState
-        v-if="arbol.length === 0 && recursosSueltos.length === 0"
-        icon="biblioteca"
-        title="Todavía no tienes acceso a ninguna carpeta"
-        description="Cuando tu coach te comparta material, va a aparecer acá organizado por carpetas."
-      />
+    <template v-else>
+      <div class="mb-4 flex flex-wrap gap-2">
+        <button
+          v-for="f in FILTROS_CATEGORIA"
+          :key="f.label"
+          class="rounded-full border px-3 py-1 text-xs"
+          :class="categoriaFiltro === f.value
+            ? 'border-[var(--color-ink)] bg-[var(--color-ink)] text-[var(--color-parchment)]'
+            : 'border-[var(--color-line)] hover:bg-[var(--color-parchment)]/50'"
+          @click="categoriaFiltro = f.value"
+        >
+          {{ f.label }}
+        </button>
+      </div>
+
+      <template v-if="!carpetaActual">
+        <EmptyState
+          v-if="arbol.length === 0 && recursosSueltos.length === 0"
+          icon="biblioteca"
+          title="Todavía no tienes acceso a ninguna carpeta"
+          description="Cuando tu coach te comparta material, va a aparecer acá organizado por carpetas."
+        />
+        <template v-else>
+          <TransitionGroup
+            v-if="arbol.length"
+            name="fade-slide"
+            tag="div"
+            class="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4"
+          >
+            <button
+              v-for="c in arbol"
+              :key="c.id"
+              class="flex flex-col items-start gap-3 rounded-2xl border border-[var(--color-line)] bg-white p-4 text-left transition-all hover:-translate-y-0.5 hover:border-[var(--color-sage)] hover:shadow-md"
+              @click="seleccionar(c.id)"
+            >
+              <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-[var(--color-parchment)] text-[var(--color-ink)]/70">
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                ><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /></svg>
+              </div>
+              <div>
+                <p class="text-sm font-medium">
+                  {{ c.nombre }}
+                </p>
+                <p class="text-xs text-[var(--color-ink)]/50">
+                  {{ totalRecursosEn(c.id) }} recurso{{ totalRecursosEn(c.id) === 1 ? '' : 's' }}
+                </p>
+              </div>
+            </button>
+          </TransitionGroup>
+
+          <template v-if="recursosSueltos.length">
+            <p class="mb-2 text-xs font-medium uppercase tracking-wide text-[var(--color-ink)]/45">
+              Compartidos contigo directamente
+            </p>
+            <TransitionGroup
+              name="fade-slide"
+              tag="div"
+              class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4"
+            >
+              <button
+                v-for="r in recursosSueltos"
+                :key="r.id"
+                class="flex flex-col items-center gap-2 rounded-2xl border border-[var(--color-line)] bg-white p-4 text-center transition-all hover:-translate-y-0.5 hover:border-[var(--color-sage)] hover:shadow-md"
+                @click="abrirRecurso(r)"
+              >
+                <RecursoIcono
+                  :recurso="r"
+                  size="lg"
+                />
+                <p class="line-clamp-2 text-xs font-medium">
+                  {{ r.titulo }}
+                </p>
+                <p
+                  v-if="formatearFechaLimite(r.fechaLimite)"
+                  class="text-[11px] text-[var(--color-bronze)]"
+                >
+                  {{ formatearFechaLimite(r.fechaLimite) }}
+                </p>
+              </button>
+            </TransitionGroup>
+          </template>
+        </template>
+      </template>
+
       <template v-else>
-        <TransitionGroup
-          v-if="arbol.length"
-          name="fade-slide"
-          tag="div"
+        <nav class="mb-4 flex flex-wrap items-center gap-1 text-sm text-[var(--color-ink)]/60">
+          <button
+            class="hover:text-[var(--color-ink)] hover:underline"
+            @click="seleccionar(null)"
+          >
+            Mi biblioteca
+          </button>
+          <template
+            v-for="(m, i) in migas"
+            :key="m.id"
+          >
+            <span class="opacity-40">/</span>
+            <button
+              class="hover:underline"
+              :class="i === migas.length - 1 ? 'font-medium text-[var(--color-ink)]' : 'hover:text-[var(--color-ink)]'"
+              @click="seleccionar(m.id)"
+            >
+              {{ m.nombre }}
+            </button>
+          </template>
+        </nav>
+
+        <div
+          v-if="subcarpetas.length"
           class="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4"
         >
           <button
-            v-for="c in arbol"
-            :key="c.id"
+            v-for="s in subcarpetas"
+            :key="s.id"
             class="flex flex-col items-start gap-3 rounded-2xl border border-[var(--color-line)] bg-white p-4 text-left transition-all hover:-translate-y-0.5 hover:border-[var(--color-sage)] hover:shadow-md"
-            @click="seleccionar(c.id)"
+            @click="seleccionar(s.id)"
           >
             <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-[var(--color-parchment)] text-[var(--color-ink)]/70">
               <svg
@@ -151,139 +273,50 @@ async function descargar(r: Recurso) {
             </div>
             <div>
               <p class="text-sm font-medium">
-                {{ c.nombre }}
+                {{ s.nombre }}
               </p>
               <p class="text-xs text-[var(--color-ink)]/50">
-                {{ totalRecursosEn(c.id) }} recurso{{ totalRecursosEn(c.id) === 1 ? '' : 's' }}
+                {{ totalRecursosEn(s.id) }} recurso{{ totalRecursosEn(s.id) === 1 ? '' : 's' }}
               </p>
             </div>
           </button>
-        </TransitionGroup>
+        </div>
 
-        <template v-if="recursosSueltos.length">
-          <p class="mb-2 text-xs font-medium uppercase tracking-wide text-[var(--color-ink)]/45">
-            Compartidos contigo directamente
-          </p>
-          <TransitionGroup
-            name="fade-slide"
-            tag="div"
-            class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4"
-          >
-            <button
-              v-for="r in recursosSueltos"
-              :key="r.id"
-              class="flex flex-col items-center gap-2 rounded-2xl border border-[var(--color-line)] bg-white p-4 text-center transition-all hover:-translate-y-0.5 hover:border-[var(--color-sage)] hover:shadow-md"
-              @click="abrirRecurso(r)"
-            >
-              <RecursoIcono
-                :recurso="r"
-                size="lg"
-              />
-              <p class="line-clamp-2 text-xs font-medium">
-                {{ r.titulo }}
-              </p>
-              <p
-                v-if="formatearFechaLimite(r.fechaLimite)"
-                class="text-[11px] text-[var(--color-bronze)]"
-              >
-                {{ formatearFechaLimite(r.fechaLimite) }}
-              </p>
-            </button>
-          </TransitionGroup>
-        </template>
-      </template>
-    </template>
+        <EmptyState
+          v-if="recursosDeCarpeta.length === 0 && subcarpetas.length === 0"
+          icon="biblioteca"
+          title="Esta carpeta está vacía"
+          description="Todavía no hay recursos guardados acá."
+        />
 
-    <template v-else>
-      <nav class="mb-4 flex flex-wrap items-center gap-1 text-sm text-[var(--color-ink)]/60">
-        <button
-          class="hover:text-[var(--color-ink)] hover:underline"
-          @click="seleccionar(null)"
+        <TransitionGroup
+          v-if="recursosDeCarpeta.length"
+          name="fade-slide"
+          tag="div"
+          class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4"
         >
-          Mi biblioteca
-        </button>
-        <template
-          v-for="(m, i) in migas"
-          :key="m.id"
-        >
-          <span class="opacity-40">/</span>
           <button
-            class="hover:underline"
-            :class="i === migas.length - 1 ? 'font-medium text-[var(--color-ink)]' : 'hover:text-[var(--color-ink)]'"
-            @click="seleccionar(m.id)"
+            v-for="r in recursosDeCarpeta"
+            :key="r.id"
+            class="flex flex-col items-center gap-2 rounded-2xl border border-[var(--color-line)] bg-white p-4 text-center transition-all hover:-translate-y-0.5 hover:border-[var(--color-sage)] hover:shadow-md"
+            @click="abrirRecurso(r)"
           >
-            {{ m.nombre }}
+            <RecursoIcono
+              :recurso="r"
+              size="lg"
+            />
+            <p class="line-clamp-2 text-xs font-medium">
+              {{ r.titulo }}
+            </p>
+            <p
+              v-if="formatearFechaLimite(r.fechaLimite)"
+              class="text-[11px] text-[var(--color-bronze)]"
+            >
+              {{ formatearFechaLimite(r.fechaLimite) }}
+            </p>
           </button>
-        </template>
-      </nav>
-
-      <div
-        v-if="subcarpetas.length"
-        class="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4"
-      >
-        <button
-          v-for="s in subcarpetas"
-          :key="s.id"
-          class="flex flex-col items-start gap-3 rounded-2xl border border-[var(--color-line)] bg-white p-4 text-left transition-all hover:-translate-y-0.5 hover:border-[var(--color-sage)] hover:shadow-md"
-          @click="seleccionar(s.id)"
-        >
-          <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-[var(--color-parchment)] text-[var(--color-ink)]/70">
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="1.8"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            ><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /></svg>
-          </div>
-          <div>
-            <p class="text-sm font-medium">
-              {{ s.nombre }}
-            </p>
-            <p class="text-xs text-[var(--color-ink)]/50">
-              {{ totalRecursosEn(s.id) }} recurso{{ totalRecursosEn(s.id) === 1 ? '' : 's' }}
-            </p>
-          </div>
-        </button>
-      </div>
-
-      <EmptyState
-        v-if="recursosDeCarpeta.length === 0 && subcarpetas.length === 0"
-        icon="biblioteca"
-        title="Esta carpeta está vacía"
-        description="Todavía no hay recursos guardados acá."
-      />
-
-      <TransitionGroup
-        v-if="recursosDeCarpeta.length"
-        name="fade-slide"
-        tag="div"
-        class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4"
-      >
-        <button
-          v-for="r in recursosDeCarpeta"
-          :key="r.id"
-          class="flex flex-col items-center gap-2 rounded-2xl border border-[var(--color-line)] bg-white p-4 text-center transition-all hover:-translate-y-0.5 hover:border-[var(--color-sage)] hover:shadow-md"
-          @click="abrirRecurso(r)"
-        >
-          <RecursoIcono
-            :recurso="r"
-            size="lg"
-          />
-          <p class="line-clamp-2 text-xs font-medium">
-            {{ r.titulo }}
-          </p>
-          <p
-            v-if="formatearFechaLimite(r.fechaLimite)"
-            class="text-[11px] text-[var(--color-bronze)]"
-          >
-            {{ formatearFechaLimite(r.fechaLimite) }}
-          </p>
-        </button>
-      </TransitionGroup>
+        </TransitionGroup>
+      </template>
     </template>
 
     <AppModal
