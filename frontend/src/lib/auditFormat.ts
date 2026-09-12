@@ -54,6 +54,10 @@ export function verboAuditoria(log: AuditLog): string {
       return `Eliminó la cuenta de ${target ?? 'un usuario'}.`
     case 'PASSWORD_RESET':
       return `Restableció la contraseña de ${target ?? 'un usuario'}.`
+    case 'PASSWORD_RESET_REQUESTED':
+      return 'Pidió un enlace para restablecer su contraseña.'
+    case 'PASSWORD_RESET_VIA_TOKEN':
+      return 'Restableció su contraseña con el enlace enviado por correo.'
     case 'EMPRESA_ELIMINADA':
       return `Eliminó la empresa ${target ?? '(nombre no disponible)'}.`
     case 'COACHEE_ELIMINADO':

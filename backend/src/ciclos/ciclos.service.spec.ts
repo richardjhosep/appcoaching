@@ -29,7 +29,10 @@ describe('CiclosService', () => {
     create: jest.Mock<PartialCiclo, [PartialCiclo]>;
     save: jest.Mock<Promise<PartialCiclo>, [PartialCiclo]>;
   };
-  let sesionesRepo: { count: jest.Mock<Promise<number>, unknown[]> };
+  let sesionesRepo: {
+    count: jest.Mock<Promise<number>, unknown[]>;
+    delete: jest.Mock<Promise<{ affected: number }>, unknown[]>;
+  };
   let coachees: {
     exists: jest.Mock;
     findByUserId: jest.Mock;
@@ -54,6 +57,9 @@ describe('CiclosService', () => {
     };
     sesionesRepo = {
       count: jest.fn<Promise<number>, unknown[]>().mockResolvedValue(0),
+      delete: jest
+        .fn<Promise<{ affected: number }>, unknown[]>()
+        .mockResolvedValue({ affected: 0 }),
     };
     coachees = {
       exists: jest.fn(),
@@ -171,6 +177,39 @@ describe('CiclosService', () => {
       expect(ciclo.resultado).toBe(ResultadoCiclo.LOGRADO);
       expect(ciclo.fechaCierre).toBeInstanceOf(Date);
       expect(ciclo.alertaPorVencer).toBe(false);
+    });
+
+    it('cancels sessions still in the future for this ciclo and reports how many', async () => {
+      ciclosRepo.findOne.mockResolvedValue({
+        id: 'ciclo-1',
+        coacheeId: 'coachee-1',
+        fechaCierre: null,
+        totalSesiones: 8,
+      });
+      planesDesarrollo.getByCoacheeId.mockResolvedValue({ estado: 'aprobado' });
+      sesionesRepo.delete.mockResolvedValue({ affected: 5 });
+
+      const ciclo = await service.cerrar('ciclo-1', ResultadoCiclo.LOGRADO);
+
+      expect(sesionesRepo.delete).toHaveBeenCalledWith(
+        expect.objectContaining({ cicloId: 'ciclo-1' }),
+      );
+      expect(ciclo.sesionesFuturasCanceladas).toBe(5);
+    });
+
+    it('reports 0 cancelled sessions when none were left in the future', async () => {
+      ciclosRepo.findOne.mockResolvedValue({
+        id: 'ciclo-1',
+        coacheeId: 'coachee-1',
+        fechaCierre: null,
+        totalSesiones: 8,
+      });
+      planesDesarrollo.getByCoacheeId.mockResolvedValue({ estado: 'aprobado' });
+      sesionesRepo.delete.mockResolvedValue({ affected: 0 });
+
+      const ciclo = await service.cerrar('ciclo-1', ResultadoCiclo.LOGRADO);
+
+      expect(ciclo.sesionesFuturasCanceladas).toBe(0);
     });
   });
 

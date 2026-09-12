@@ -20,10 +20,22 @@ const formatoCLP = new Intl.NumberFormat('es-CL', {
 })
 
 const mesActivo = computed(() => props.meses[mesActivoIndex.value] ?? null)
+
+// `mes.total` es coachees + empresas combinado — no sirve para esta vista, que muestra
+// una sola fuente a la vez. El monto grande y las barras deben salir de la misma lista
+// que ya se filtra para el desglose de abajo, o quedan describiendo cosas distintas
+// (ej. mostrar $35.000 en la pestaña "Empresa" cuando ese monto es en realidad de un
+// coachee independiente y no hay actividad de empresas ese mes).
+function totalParaVista(mes: ProyeccionMes, v: Vista): number {
+  const lista = v === 'coachee' ? mes.porCoachee : mes.porEmpresa
+  return lista.reduce((suma, c) => suma + c.monto, 0)
+}
+
 const desgloseActivo = computed(() => {
   if (!mesActivo.value) return []
   return vista.value === 'coachee' ? mesActivo.value.porCoachee : mesActivo.value.porEmpresa
 })
+const totalActivo = computed(() => (mesActivo.value ? totalParaVista(mesActivo.value, vista.value) : 0))
 
 const option = computed(() => {
   const sage = resolveColor('--color-sage')
@@ -41,7 +53,7 @@ const option = computed(() => {
     series: [
       {
         type: 'bar',
-        data: props.meses.map((m) => m.total),
+        data: props.meses.map((m) => totalParaVista(m, vista.value)),
         barMaxWidth: 20,
         itemStyle: {
           color: (p: { dataIndex: number }) => (p.dataIndex === mesActivoIndex.value ? sage : sageClaro),
@@ -102,7 +114,7 @@ function onClick(params: { dataIndex: number }) {
           {{ mesActivo.etiqueta }}
         </p>
         <p class="font-[family-name:var(--font-mono)] text-xl text-[var(--color-sage)]">
-          {{ formatoCLP.format(mesActivo.total) }}
+          {{ formatoCLP.format(totalActivo) }}
         </p>
       </div>
       <p

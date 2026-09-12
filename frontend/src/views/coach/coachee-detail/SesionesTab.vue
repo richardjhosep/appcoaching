@@ -3,6 +3,7 @@ import { computed, onMounted, reactive, ref, watch, type ComponentPublicInstance
 import ProgresoLineaTiempo from '../../../components/ProgresoLineaTiempo.vue'
 import WeekCalendar from '../../../components/WeekCalendar.vue'
 import AppModal from '../../../components/AppModal.vue'
+import ReagendarSesionModal from '../../../components/ReagendarSesionModal.vue'
 import SkeletonBlock from '../../../components/SkeletonBlock.vue'
 import {
   actualizarAsistencia,
@@ -26,6 +27,7 @@ import {
 } from '../../../api/solicitudes-reagendamiento'
 import { ApiError } from '../../../api/client'
 import { nivelProgreso, coloresNivel } from '../../../lib/nivelProgreso'
+import { aDatetimeLocal } from '../../../lib/dateRange'
 
 const props = defineProps<{ coacheeId: string }>()
 
@@ -55,8 +57,10 @@ const agendando = ref(false)
 const modalAgendarOpen = ref(false)
 const errorAgendar = ref<string | null>(null)
 
-function abrirModalAgendar() {
-  nuevaFecha.value = ''
+// `fechaHoraPrefill` viene de elegir un slot vacío en el calendario (clic o arrastre) —
+// el botón "+ Nueva sesión" la deja vacía para que el coach escriba la fecha a mano.
+function abrirModalAgendar(fechaHoraPrefill?: string) {
+  nuevaFecha.value = fechaHoraPrefill ? aDatetimeLocal(new Date(fechaHoraPrefill)) : ''
   nuevoLink.value = ''
   errorAgendar.value = null
   modalAgendarOpen.value = true
@@ -202,6 +206,19 @@ function onSelectSesion(id: string) {
     if (highlightedId.value === id) highlightedId.value = null
   }, 2000)
 }
+
+// --- Reagendar sesión directamente desde el calendario ----------------------
+const sesionAReagendar = ref<Sesion | null>(null)
+
+function abrirReagendar(sesionId: string) {
+  sesionAReagendar.value = sesiones.value.find((s) => s.id === sesionId) ?? null
+}
+
+function onReagendada(actualizada: Sesion) {
+  const idx = sesiones.value.findIndex((s) => s.id === actualizada.id)
+  if (idx !== -1) sesiones.value[idx] = actualizada
+  sesionAReagendar.value = null
+}
 </script>
 
 <template>
@@ -300,8 +317,11 @@ function onSelectSesion(id: string) {
       class="mb-4"
       :sesiones="sesiones"
       puede-agendar
+      puede-editar
       @select="onSelectSesion"
-      @nueva-sesion="abrirModalAgendar"
+      @nueva-sesion="abrirModalAgendar()"
+      @crear-en="abrirModalAgendar"
+      @reagendar="abrirReagendar"
     />
 
     <div class="mb-4 rounded-2xl border border-[var(--color-line)] bg-white p-4">
@@ -579,5 +599,12 @@ function onSelectSesion(id: string) {
         </div>
       </form>
     </AppModal>
+
+    <ReagendarSesionModal
+      v-if="sesionAReagendar"
+      :sesion="sesionAReagendar"
+      @close="sesionAReagendar = null"
+      @reagendada="onReagendada"
+    />
   </div>
 </template>

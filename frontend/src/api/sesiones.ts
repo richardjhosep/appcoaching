@@ -79,6 +79,20 @@ export function actualizarAsistencia(sesionId: string, asistio: boolean): Promis
   })
 }
 
+// Reagendar directamente una sesión ya fijada — a diferencia de solicitarReagendamiento
+// (que es el coachee pidiendo un cambio para que el coach responda), esto es el coach
+// moviendo la fecha/hora de una sesión por su propia cuenta.
+export function reagendarSesion(
+  sesionId: string,
+  fechaHora: string,
+  linkVideollamada?: string,
+): Promise<Sesion> {
+  return apiRequest<Sesion>(`/sesiones/${sesionId}`, {
+    method: 'PATCH',
+    body: { fechaHora, linkVideollamada: linkVideollamada || undefined },
+  })
+}
+
 export interface RegistroSesionInput {
   resumenCompartido?: string
   notasPrivadas?: string

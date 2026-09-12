@@ -21,6 +21,7 @@ import {
 } from '../../../api/retroalimentacion'
 import { promedioPorBloque, promedioGeneral } from '../../../lib/retroalimentacionResumen'
 import { ApiError } from '../../../api/client'
+import { notifySuccess } from '../../../lib/notify'
 
 const props = defineProps<{ coacheeId: string }>()
 const emit = defineEmits<{ 'ciclo-changed': [Ciclo | null] }>()
@@ -170,6 +171,13 @@ async function cerrar() {
     cicloActual.value = null
     resultadoSeleccionado.value = ''
     emit('ciclo-changed', null)
+    if (cerrado.sesionesFuturasCanceladas) {
+      const n = cerrado.sesionesFuturasCanceladas
+      void notifySuccess(
+        'Ciclo cerrado',
+        `Se ${n === 1 ? 'canceló' : `cancelaron ${n}`} sesión${n === 1 ? '' : 'es'} futura${n === 1 ? '' : 's'} que quedaban agendadas sin realizar.`,
+      )
+    }
   } catch (err) {
     error.value = err instanceof ApiError ? err.message : 'No se pudo cerrar el ciclo.'
   } finally {

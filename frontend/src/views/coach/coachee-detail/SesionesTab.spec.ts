@@ -6,7 +6,7 @@ import type { SolicitudReagendamiento } from '../../../api/solicitudes-reagendam
 
 vi.mock('../../../api/sesiones', async () => {
   const actual = await vi.importActual<typeof import('../../../api/sesiones')>('../../../api/sesiones')
-  return { ...actual, getSesionesDeCoachee: vi.fn() }
+  return { ...actual, getSesionesDeCoachee: vi.fn(), reagendarSesion: vi.fn(), agendarSesion: vi.fn() }
 })
 vi.mock('../../../api/seguimiento', async () => {
   const actual = await vi.importActual<typeof import('../../../api/seguimiento')>('../../../api/seguimiento')
@@ -26,7 +26,7 @@ vi.mock('../../../api/solicitudes-reagendamiento', async () => {
   }
 })
 
-import { getSesionesDeCoachee } from '../../../api/sesiones'
+import { getSesionesDeCoachee, reagendarSesion, agendarSesion, type Sesion } from '../../../api/sesiones'
 import { getAvanceDeCoachee, getLineaProgresoDeCoachee, getLogrosDeCoachee } from '../../../api/seguimiento'
 import { getSolicitudesReagendamiento, responderSolicitudReagendamiento } from '../../../api/solicitudes-reagendamiento'
 
@@ -106,5 +106,83 @@ describe('SesionesTab — solicitudes de reagendamiento', () => {
       respuestaCoach: 'Nos vemos el jueves',
     })
     expect(wrapper.text()).not.toContain('Solicitudes de reagendamiento')
+  })
+})
+
+describe('SesionesTab — reagendar directamente desde el calendario', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    vi.mocked(getAvanceDeCoachee).mockResolvedValue({ avance: null })
+    vi.mocked(getLineaProgresoDeCoachee).mockResolvedValue([])
+    vi.mocked(getLogrosDeCoachee).mockResolvedValue([])
+    vi.mocked(getSolicitudesReagendamiento).mockResolvedValue([])
+  })
+
+  it('abre el modal de reagendar al hacer clic en el lápiz de una sesión y actualiza la lista', async () => {
+    // Hoy a una hora fija — así siempre cae en la semana que muestra el calendario,
+    // sin depender de qué día de la semana real se ejecute el test.
+    const hoy = new Date()
+    hoy.setHours(15, 0, 0, 0)
+    const sesionHoy: Sesion = {
+      id: 'sesion-hoy',
+      coacheeId: 'coachee-1',
+      fechaHora: hoy.toISOString(),
+      linkVideollamada: null,
+      resumenCompartido: null,
+      confirmada: true,
+      postSesion: null,
+    }
+    vi.mocked(getSesionesDeCoachee).mockResolvedValue([sesionHoy])
+    const actualizada = { ...sesionHoy, fechaHora: new Date(hoy.getTime() + 86_400_000).toISOString() }
+    vi.mocked(reagendarSesion).mockResolvedValue(actualizada)
+
+    const wrapper = mount(SesionesTab, { props: { coacheeId: 'coachee-1' } })
+    await flushPromises()
+
+    const lapiz = wrapper.find('button[title="Reagendar esta sesión"]')
+    expect(lapiz.exists()).toBe(true)
+    await lapiz.trigger('click')
+    await flushPromises()
+
+    const modal = new DOMWrapper(document.body)
+    expect(modal.text()).toContain('Reagendar sesión')
+
+    await modal.find('form').trigger('submit')
+    await flushPromises()
+
+    expect(reagendarSesion).toHaveBeenCalledWith('sesion-hoy', expect.any(String), undefined)
+    // El modal se cierra y el calendario refleja la nueva fecha de la sesión actualizada.
+    expect(document.body.textContent).not.toContain('Reagendar sesión')
+  })
+
+  it('abre "Agendar sesión" pre-llenado al hacer clic sobre un slot vacío del calendario', async () => {
+    vi.mocked(getSesionesDeCoachee).mockResolvedValue([])
+    vi.mocked(agendarSesion).mockResolvedValue({
+      id: 'nueva',
+      coacheeId: 'coachee-1',
+      fechaHora: '2026-09-21T12:00:00.000Z',
+      linkVideollamada: null,
+      resumenCompartido: null,
+      confirmada: false,
+      postSesion: null,
+    })
+
+    const wrapper = mount(SesionesTab, { props: { coacheeId: 'coachee-1' } })
+    await flushPromises()
+
+    const grilla = wrapper.find('[data-testid="columna-dia-0"]')
+    await grilla.trigger('mousedown', { clientY: 96 }) // 07:00 + 2h = 09:00
+    window.dispatchEvent(new MouseEvent('mouseup'))
+    await flushPromises()
+
+    const modal = new DOMWrapper(document.body)
+    expect(modal.text()).toContain('Agendar sesión')
+    const input = modal.find('input[type="datetime-local"]').element as HTMLInputElement
+    expect(input.value.endsWith('T09:00')).toBe(true)
+
+    await modal.find('form').trigger('submit')
+    await flushPromises()
+
+    expect(agendarSesion).toHaveBeenCalledWith('coachee-1', expect.any(String), undefined)
   })
 })

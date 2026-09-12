@@ -162,7 +162,11 @@ export class CiclosController {
       userId: actor.id,
       targetType: 'Coachee',
       targetId: ciclo.coacheeId,
-      metadata: { cicloId: id, resultado: dto.resultado },
+      metadata: {
+        cicloId: id,
+        resultado: dto.resultado,
+        sesionesFuturasCanceladas: ciclo.sesionesFuturasCanceladas,
+      },
     });
     return ciclo;
   }

@@ -87,6 +87,12 @@ describe('verboAuditoria', () => {
     expect(
       verboAuditoria(log({ action: 'PASSWORD_RESET', targetLabel: 'ana@test.com' })),
     ).toBe('Restableció la contraseña de ana@test.com.')
+    expect(verboAuditoria(log({ action: 'PASSWORD_RESET_REQUESTED' }))).toBe(
+      'Pidió un enlace para restablecer su contraseña.',
+    )
+    expect(verboAuditoria(log({ action: 'PASSWORD_RESET_VIA_TOKEN' }))).toBe(
+      'Restableció su contraseña con el enlace enviado por correo.',
+    )
   })
 
   it('formats the deletion actions using the label captured before the row was removed', () => {

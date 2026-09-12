@@ -5,7 +5,9 @@ import SectionCard from '../../components/SectionCard.vue'
 import WeekCalendar from '../../components/WeekCalendar.vue'
 import EmptyState from '../../components/EmptyState.vue'
 import SkeletonBlock from '../../components/SkeletonBlock.vue'
-import { getTodasLasSesiones, type Sesion } from '../../api/sesiones'
+import ReagendarSesionModal from '../../components/ReagendarSesionModal.vue'
+import AppModal from '../../components/AppModal.vue'
+import { agendarSesion, getTodasLasSesiones, type Sesion } from '../../api/sesiones'
 import {
   crearBloqueDisponibilidad,
   eliminarBloqueDisponibilidad,
@@ -17,8 +19,10 @@ import {
   responderSolicitudSesion,
   type SolicitudSesion,
 } from '../../api/solicitudes-sesion'
+import { listCoachees, type CoacheeListItem } from '../../api/coachees'
 import { ApiError } from '../../api/client'
 import { notifyError, notifySuccess } from '../../lib/notify'
+import { aDatetimeLocal } from '../../lib/dateRange'
 
 const DIAS_LABEL = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
 
@@ -26,6 +30,11 @@ const loading = ref(true)
 const sesiones = ref<Sesion[]>([])
 const bloques = ref<BloqueDisponibilidad[]>([])
 const solicitudes = ref<SolicitudSesion[]>([])
+const coachees = ref<CoacheeListItem[]>([])
+
+const coacheesActivos = computed(() =>
+  [...coachees.value].filter((c) => c.activo !== false).sort((a, b) => a.nombre.localeCompare(b.nombre)),
+)
 
 const bloquesPorDia = computed(() => {
   const grupos: BloqueDisponibilidad[][] = Array.from({ length: 7 }, () => [])
@@ -35,14 +44,16 @@ const bloquesPorDia = computed(() => {
 
 async function load() {
   loading.value = true
-  const [s, b, sol] = await Promise.all([
+  const [s, b, sol, cc] = await Promise.all([
     getTodasLasSesiones(),
     listBloquesDisponibilidad(),
     getSolicitudesSesionPendientes(),
+    listCoachees(),
   ])
   sesiones.value = s
   bloques.value = b
   solicitudes.value = sol
+  coachees.value = cc
   loading.value = false
 }
 
@@ -104,6 +115,53 @@ async function agregarBloque() {
 async function quitarBloque(id: string) {
   await eliminarBloqueDisponibilidad(id)
   bloques.value = bloques.value.filter((b) => b.id !== id)
+}
+
+// --- Reagendar sesión desde la agenda general -------------------------------
+const sesionAReagendar = ref<Sesion | null>(null)
+
+function abrirReagendar(sesionId: string) {
+  sesionAReagendar.value = sesiones.value.find((s) => s.id === sesionId) ?? null
+}
+
+function onReagendada(actualizada: Sesion) {
+  sesiones.value = sesiones.value.map((s) => (s.id === actualizada.id ? actualizada : s))
+  sesionAReagendar.value = null
+}
+
+// --- Nueva sesión desde la agenda general -----------------------------------
+// A diferencia del detalle de un coachee (donde el coachee es implícito), acá hay que
+// elegir a quién es la sesión — se puede abrir vacío ("+ Nueva sesión") o prellenado con
+// la fecha/hora elegida con un clic o arrastre sobre la grilla.
+const modalNuevaSesionOpen = ref(false)
+const nuevaSesionForm = ref({ coacheeId: '', fechaHora: '', link: '' })
+const agendandoNueva = ref(false)
+const errorNuevaSesion = ref<string | null>(null)
+
+function abrirNuevaSesion(fechaHoraPrefill?: string) {
+  nuevaSesionForm.value = {
+    coacheeId: '',
+    fechaHora: fechaHoraPrefill ? aDatetimeLocal(new Date(fechaHoraPrefill)) : '',
+    link: '',
+  }
+  errorNuevaSesion.value = null
+  modalNuevaSesionOpen.value = true
+}
+
+async function crearNuevaSesion() {
+  const { coacheeId, fechaHora, link } = nuevaSesionForm.value
+  if (!coacheeId || !fechaHora) return
+  errorNuevaSesion.value = null
+  agendandoNueva.value = true
+  try {
+    const sesion = await agendarSesion(coacheeId, new Date(fechaHora).toISOString(), link || undefined)
+    sesiones.value = [...sesiones.value, sesion]
+    modalNuevaSesionOpen.value = false
+  } catch (err) {
+    errorNuevaSesion.value = err instanceof ApiError ? err.message : 'No se pudo agendar la sesión.'
+  } finally {
+    agendandoNueva.value = false
+  }
 }
 </script>
 
@@ -168,6 +226,11 @@ async function quitarBloque(id: string) {
       <WeekCalendar
         :sesiones="sesiones"
         mostrar-coachee
+        puede-agendar
+        puede-editar
+        @reagendar="abrirReagendar"
+        @nueva-sesion="abrirNuevaSesion()"
+        @crear-en="abrirNuevaSesion"
       />
 
       <SectionCard
@@ -264,5 +327,86 @@ async function quitarBloque(id: string) {
         </div>
       </SectionCard>
     </div>
+
+    <ReagendarSesionModal
+      v-if="sesionAReagendar"
+      :sesion="sesionAReagendar"
+      @close="sesionAReagendar = null"
+      @reagendada="onReagendada"
+    />
+
+    <AppModal
+      v-if="modalNuevaSesionOpen"
+      title="Agendar sesión"
+      @close="modalNuevaSesionOpen = false"
+    >
+      <form
+        class="space-y-4"
+        @submit.prevent="crearNuevaSesion"
+      >
+        <p
+          v-if="errorNuevaSesion"
+          class="text-sm text-[var(--color-danger)]"
+        >
+          {{ errorNuevaSesion }}
+        </p>
+        <label class="block text-sm">
+          Coachee
+          <select
+            v-model="nuevaSesionForm.coacheeId"
+            required
+            class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+          >
+            <option
+              value=""
+              disabled
+            >
+              Elige un coachee
+            </option>
+            <option
+              v-for="c in coacheesActivos"
+              :key="c.id"
+              :value="c.id"
+            >
+              {{ c.nombre }}
+            </option>
+          </select>
+        </label>
+        <label class="block text-sm">
+          Fecha y hora
+          <input
+            v-model="nuevaSesionForm.fechaHora"
+            type="datetime-local"
+            required
+            class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+          >
+        </label>
+        <label class="block text-sm">
+          Link de videollamada (opcional)
+          <input
+            v-model="nuevaSesionForm.link"
+            type="url"
+            placeholder="https://…"
+            class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+          >
+        </label>
+        <div class="flex justify-end gap-2 pt-2">
+          <button
+            type="button"
+            class="rounded-lg border border-[var(--color-line)] px-4 py-2 text-sm"
+            @click="modalNuevaSesionOpen = false"
+          >
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            :disabled="agendandoNueva"
+            class="rounded-lg bg-[var(--color-ink)] px-4 py-2 text-sm text-[var(--color-parchment)] disabled:opacity-60"
+          >
+            {{ agendandoNueva ? 'Agendando…' : 'Agendar sesión' }}
+          </button>
+        </div>
+      </form>
+    </AppModal>
   </AppShell>
 </template>

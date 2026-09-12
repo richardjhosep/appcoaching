@@ -17,6 +17,8 @@ export interface Ciclo {
   sesionesRealizadas: number
   sesionesRestantes: number
   alertaPorVencer: boolean
+  /** Solo viene en la respuesta de cerrarCiclo(): cuántas sesiones futuras sin realizar se cancelaron al cerrar. */
+  sesionesFuturasCanceladas?: number
 }
 
 export function abrirCiclo(

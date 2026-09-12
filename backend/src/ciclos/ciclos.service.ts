@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { IsNull, LessThanOrEqual, Not, Repository } from 'typeorm';
+import { IsNull, LessThanOrEqual, MoreThan, Not, Repository } from 'typeorm';
 import { CicloCoaching } from './entities/ciclo-coaching.entity';
 import { Sesion } from '../sesiones/entities/sesion.entity';
 import { AbrirCicloDto } from './dto/abrir-ciclo.dto';
@@ -91,7 +91,10 @@ export class CiclosService {
     return this.attachEstado(ciclo);
   }
 
-  async cerrar(id: string, resultado: ResultadoCiclo): Promise<CicloConEstado> {
+  async cerrar(
+    id: string,
+    resultado: ResultadoCiclo,
+  ): Promise<CicloConEstado & { sesionesFuturasCanceladas: number }> {
     const ciclo = await this.findOne(id);
     if (ciclo.fechaCierre) {
       throw new ConflictException('El ciclo ya está cerrado.');
@@ -110,7 +113,19 @@ export class CiclosService {
     ciclo.fechaCierre = new Date();
     ciclo.resultado = resultado;
     await this.ciclos.save(ciclo);
-    return this.attachEstado(ciclo);
+
+    // Cerrar el ciclo antes de agotar las sesiones contratadas deja sesiones
+    // futuras agendadas sin dueño — sin esto, el coachee seguía viendo "tu
+    // próxima sesión" (y el resumen imprimible) de un proceso que ya cerró.
+    const { affected } = await this.sesiones.delete({
+      cicloId: id,
+      fechaHora: MoreThan(new Date()),
+    });
+
+    return {
+      ...(await this.attachEstado(ciclo)),
+      sesionesFuturasCanceladas: affected ?? 0,
+    };
   }
 
   async updateResumen(id: string, resumen: string): Promise<CicloConEstado> {

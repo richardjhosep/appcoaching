@@ -2,6 +2,13 @@ export function aFechaLocal(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
+// Formato "YYYY-MM-DDTHH:mm" que exige <input type="datetime-local"> — a diferencia de
+// aFechaLocal, incluye hora/minuto porque estos usos son para agendar/reagendar una sesión.
+export function aDatetimeLocal(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${aFechaLocal(d)}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
 export function primerDiaDelMes(): string {
   const d = new Date()
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`

@@ -1,17 +1,29 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import type { Sesion } from '../api/sesiones'
 import { inicioDeSemana } from '../lib/dateRange'
 import { notifyError } from '../lib/notify'
 
 const props = defineProps<{
   sesiones: Sesion[]
+  // También habilita crear una sesión con un clic (o clic sostenido) sobre un slot vacío
+  // de la grilla, además del botón "+ Nueva sesión".
   puedeAgendar?: boolean
+  // Habilita el lápiz de "reagendar" en cada bloque. Independiente de `puedeAgendar`
+  // (crear sesiones nuevas) porque la agenda general del coach permite editar las sesiones
+  // ya fijadas pero no crear una desde ahí — eso sigue viviendo en el detalle del coachee.
+  puedeEditar?: boolean
   // Agenda global del coach (todos los coachees a la vez): muestra el nombre del coachee
   // dentro de cada bloque en vez de solo la hora.
   mostrarCoachee?: boolean
 }>()
-const emit = defineEmits<{ select: [string]; 'nueva-sesion': [] }>()
+const emit = defineEmits<{
+  select: [string]
+  'nueva-sesion': []
+  reagendar: [string]
+  // Fecha/hora (ISO) elegida al hacer clic o arrastrar sobre un slot vacío de la grilla.
+  'crear-en': [string]
+}>()
 
 const HORA_INICIO = 7
 const HORA_FIN = 21
@@ -91,6 +103,75 @@ function onClickBloque(bloque: Bloque) {
   emit('select', bloque.id)
 }
 
+// --- Línea de "ahora" --------------------------------------------------------
+const ahora = ref(new Date())
+let tickAhora: ReturnType<typeof setInterval> | undefined
+
+onMounted(() => {
+  tickAhora = setInterval(() => {
+    ahora.value = new Date()
+  }, 60_000)
+})
+onUnmounted(() => {
+  if (tickAhora) clearInterval(tickAhora)
+})
+
+const topAhora = computed(() => {
+  const horaDecimal = ahora.value.getHours() + ahora.value.getMinutes() / 60
+  if (horaDecimal < HORA_INICIO || horaDecimal > HORA_FIN) return null
+  return (horaDecimal - HORA_INICIO) * ALTO_HORA
+})
+
+// --- Crear sesión con clic/arrastre sobre un slot vacío -----------------------
+// Simple a propósito: no hay duración editable (una sesión es un punto en el tiempo, no
+// un rango), así que el arrastre solo sirve de feedback visual — la hora que se usa es
+// siempre la de donde empezó el gesto, redondeada a los 15 minutos más cercanos.
+const arrastre = ref<{ diaIndex: number; inicioY: number; actualY: number } | null>(null)
+let contenedorArrastre: HTMLElement | null = null
+
+function fechaDesdeY(dia: Date, y: number): Date {
+  const minutosSnap = Math.round(((y / ALTO_HORA) * 60) / 15) * 15
+  const totalMin = Math.min(Math.max(minutosSnap, 0), (HORA_FIN - HORA_INICIO) * 60) + HORA_INICIO * 60
+  const fecha = new Date(dia)
+  fecha.setHours(Math.floor(totalMin / 60), totalMin % 60, 0, 0)
+  return fecha
+}
+
+function iniciarArrastre(event: MouseEvent, diaIndex: number) {
+  if (!props.puedeAgendar) return
+  // No interferir con el clic de una sesión existente (bloque) ni su lápiz de editar.
+  if ((event.target as HTMLElement).closest('button')) return
+  const contenedor = event.currentTarget as HTMLElement
+  contenedorArrastre = contenedor
+  const y = event.clientY - contenedor.getBoundingClientRect().top
+  arrastre.value = { diaIndex, inicioY: y, actualY: y }
+  window.addEventListener('mousemove', moverArrastre)
+  window.addEventListener('mouseup', soltarArrastre)
+}
+
+function moverArrastre(event: MouseEvent) {
+  if (!arrastre.value || !contenedorArrastre) return
+  const y = event.clientY - contenedorArrastre.getBoundingClientRect().top
+  arrastre.value = { ...arrastre.value, actualY: Math.min(Math.max(y, 0), ALTO_TOTAL) }
+}
+
+function soltarArrastre() {
+  window.removeEventListener('mousemove', moverArrastre)
+  window.removeEventListener('mouseup', soltarArrastre)
+  if (!arrastre.value) return
+  const { diaIndex, inicioY } = arrastre.value
+  const fecha = fechaDesdeY(diasSemana.value[diaIndex]!, inicioY)
+  arrastre.value = null
+  contenedorArrastre = null
+  emit('crear-en', fecha.toISOString())
+}
+
+const horaVistaPrevia = computed(() => {
+  if (!arrastre.value) return ''
+  const fecha = fechaDesdeY(diasSemana.value[arrastre.value.diaIndex]!, arrastre.value.inicioY)
+  return fecha.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })
+})
+
 function semanaAnterior() {
   semanaBase.value = sumarDias(semanaBase.value, -7)
 }
@@ -169,8 +250,11 @@ const esHoy = (d: Date) => esMismoDia(d, new Date())
             <span>{{ diasLabel[i] }} {{ diaLabel(dia) }}</span>
           </div>
           <div
+            :data-testid="`columna-dia-${i}`"
             class="relative border-t border-[var(--color-line)]"
+            :class="puedeAgendar ? 'cursor-crosshair' : ''"
             :style="{ height: `${ALTO_TOTAL}px` }"
+            @mousedown="iniciarArrastre($event, i)"
           >
             <div
               v-for="h in horas"
@@ -178,21 +262,63 @@ const esHoy = (d: Date) => esMismoDia(d, new Date())
               class="border-b border-[var(--color-line)]/50"
               :style="{ height: `${ALTO_HORA}px` }"
             />
-            <button
+            <div
+              v-if="esHoy(dia) && topAhora !== null"
+              data-testid="linea-ahora"
+              class="pointer-events-none absolute left-0 right-0 z-10 border-t-2 border-[var(--color-danger)]"
+              :style="{ top: `${topAhora}px` }"
+            >
+              <span class="absolute -left-1 -top-[3px] h-[7px] w-[7px] rounded-full bg-[var(--color-danger)]" />
+            </div>
+            <div
+              v-if="arrastre && arrastre.diaIndex === i"
+              class="pointer-events-none absolute left-0.5 right-0.5 z-10 rounded border-2 border-dashed border-[var(--color-sage)] bg-[var(--color-sage)]/10"
+              :style="{
+                top: `${Math.min(arrastre.inicioY, arrastre.actualY)}px`,
+                height: `${Math.max(16, Math.abs(arrastre.actualY - arrastre.inicioY))}px`,
+              }"
+            >
+              <span class="block px-1 py-0.5 text-[10px] font-medium text-[var(--color-sage)]">
+                {{ horaVistaPrevia }}
+              </span>
+            </div>
+            <div
               v-for="bloque in bloquesPorDia[i]"
               :key="bloque.id"
-              class="absolute left-0.5 right-0.5 rounded px-1 py-0.5 text-left text-[11px] font-semibold leading-tight"
-              :class="bloque.color"
+              class="group absolute left-0.5 right-0.5"
               :style="{ top: `${bloque.top}px`, height: `${ALTO_HORA}px` }"
-              :title="bloque.esFutura ? (bloque.linkVideollamada ? 'Abrir enlace de la videollamada' : 'Sin enlace de videollamada registrado') : undefined"
-              @click="onClickBloque(bloque)"
             >
-              {{ new Date(bloque.fechaHora).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' }) }}
-              <span
-                v-if="bloque.nombreCoachee"
-                class="block truncate font-normal"
-              >{{ bloque.nombreCoachee }}</span>
-            </button>
+              <button
+                class="h-full w-full rounded px-1 py-0.5 text-left text-[11px] font-semibold leading-tight"
+                :class="bloque.color"
+                :title="bloque.esFutura ? (bloque.linkVideollamada ? 'Abrir enlace de la videollamada' : 'Sin enlace de videollamada registrado') : undefined"
+                @click="onClickBloque(bloque)"
+              >
+                {{ new Date(bloque.fechaHora).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' }) }}
+                <span
+                  v-if="bloque.nombreCoachee"
+                  class="block truncate font-normal"
+                >{{ bloque.nombreCoachee }}</span>
+              </button>
+              <button
+                v-if="puedeEditar"
+                type="button"
+                title="Reagendar esta sesión"
+                class="absolute right-0.5 top-0.5 rounded p-0.5 opacity-0 hover:bg-black/10 group-hover:opacity-100"
+                @click="emit('reagendar', bloque.id)"
+              >
+                <svg
+                  width="10"
+                  height="10"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                ><path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>
+              </button>
+            </div>
           </div>
         </div>
       </div>
