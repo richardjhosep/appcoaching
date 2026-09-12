@@ -10,6 +10,8 @@ import {
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 import { Empresa } from '../../empresas/entities/empresa.entity';
+import { Moneda } from '../../common/moneda.enum';
+import { numericTransformer } from '../../common/numeric-column.transformer';
 
 @Entity('coachees')
 export class Coachee {
@@ -33,8 +35,26 @@ export class Coachee {
   @JoinColumn({ name: 'empresa_id' })
   empresa?: Empresa | null;
 
-  @Column({ name: 'tarifa_propia', type: 'integer', nullable: true })
+  // `numeric`, mismo criterio que Empresa.tarifaHora: en UF el monto es fraccionario.
+  // Solo aplica a un coachee independiente (sin empresa) — irrelevante en `tarifaPropiaMoneda`
+  // cuando esto es null.
+  @Column({
+    name: 'tarifa_propia',
+    type: 'numeric',
+    precision: 12,
+    scale: 2,
+    nullable: true,
+    transformer: numericTransformer,
+  })
   tarifaPropia: number | null;
+
+  @Column({
+    name: 'tarifa_propia_moneda',
+    type: 'enum',
+    enum: Moneda,
+    default: Moneda.CLP,
+  })
+  tarifaPropiaMoneda: Moneda;
 
   @Column({ name: 'jefe_directo', type: 'varchar', nullable: true })
   jefeDirecto: string | null;

@@ -1,12 +1,14 @@
 import {
   IsEmail,
-  IsInt,
+  IsEnum,
+  IsNumber,
   IsOptional,
   IsString,
   IsUUID,
   Min,
   MinLength,
 } from 'class-validator';
+import { Moneda } from '../../common/moneda.enum';
 
 export class CreateCoacheeDto {
   @IsString()
@@ -28,10 +30,15 @@ export class CreateCoacheeDto {
   @IsString()
   objetivoProceso?: string;
 
+  // `IsNumber` (no `IsInt`): en UF el monto es fraccionario (ej. 3.5).
   @IsOptional()
-  @IsInt()
+  @IsNumber()
   @Min(1)
   tarifaPropia?: number;
+
+  @IsOptional()
+  @IsEnum(Moneda)
+  tarifaPropiaMoneda?: Moneda;
 
   @IsOptional()
   @IsString()

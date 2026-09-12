@@ -11,6 +11,8 @@ import { listEmpresas, type Empresa } from '../../api/empresas'
 import { ApiError } from '../../api/client'
 import { notifyError, notifySuccess, confirmDialog } from '../../lib/notify'
 import { dentroDeRango } from '../../lib/dateRange'
+import { formatCLP, formatUF, type Moneda } from '../../lib/moneda'
+import TarifaInput from '../../components/TarifaInput.vue'
 
 const PAGE_SIZE = 12
 
@@ -41,7 +43,10 @@ function estaActivo(c: CoacheeListItem): boolean {
   return c.activo !== false
 }
 
-const formatoCLP = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 })
+function formatoTarifaPropia(c: CoacheeListItem): string {
+  if (!c.tarifaPropia) return '—'
+  return c.tarifaPropiaMoneda === 'uf' ? formatUF(c.tarifaPropia) : formatCLP(c.tarifaPropia)
+}
 
 const filtradas = computed(() => {
   const q = search.value.trim().toLowerCase()
@@ -80,19 +85,11 @@ const form = reactive({
   jefeDirecto: '',
   objetivoProceso: '',
   tarifaPropia: null as number | null,
+  tarifaPropiaMoneda: 'clp' as Moneda,
   areaGerencia: '',
 })
 const errors = reactive<{ nombre?: string; email?: string; tarifaPropia?: string }>({})
 const serverErrors = ref<Record<string, string>>({})
-
-const formatoMiles = new Intl.NumberFormat('es-CL')
-const tarifaPropiaDisplay = computed<string>({
-  get: () => (form.tarifaPropia !== null ? formatoMiles.format(form.tarifaPropia) : ''),
-  set: (value: string) => {
-    const digits = value.replace(/\D/g, '')
-    form.tarifaPropia = digits ? Number(digits) : null
-  },
-})
 
 function abrirCrear() {
   editando.value = null
@@ -102,6 +99,7 @@ function abrirCrear() {
   form.jefeDirecto = ''
   form.objetivoProceso = ''
   form.tarifaPropia = null
+  form.tarifaPropiaMoneda = 'clp'
   form.areaGerencia = ''
   errors.nombre = undefined
   errors.email = undefined
@@ -118,6 +116,7 @@ function abrirEditar(coachee: CoacheeListItem) {
   form.jefeDirecto = coachee.jefeDirecto ?? ''
   form.objetivoProceso = coachee.objetivoProceso ?? ''
   form.tarifaPropia = coachee.tarifaPropia ?? null
+  form.tarifaPropiaMoneda = coachee.tarifaPropiaMoneda ?? 'clp'
   form.areaGerencia = coachee.areaGerencia ?? ''
   errors.nombre = undefined
   errors.email = undefined
@@ -129,8 +128,10 @@ function abrirEditar(coachee: CoacheeListItem) {
 function validar(): boolean {
   errors.nombre = form.nombre.trim().length < 2 ? 'El nombre debe tener al menos 2 caracteres.' : undefined
   errors.email = !editando.value && !/.+@.+\..+/.test(form.email.trim()) ? 'Ingresa un email válido.' : undefined
-  errors.tarifaPropia = form.tarifaPropia !== null && (form.tarifaPropia <= 0 || !Number.isInteger(form.tarifaPropia))
-    ? 'La tarifa propia debe ser un entero mayor a 0.'
+  // En UF el monto es fraccionario (ej. 3.5) — el entero solo se exige en CLP.
+  errors.tarifaPropia = form.tarifaPropia !== null
+    && (form.tarifaPropia <= 0 || (form.tarifaPropiaMoneda === 'clp' && !Number.isInteger(form.tarifaPropia)))
+    ? 'La tarifa propia debe ser mayor a 0.'
     : undefined
   return !errors.nombre && !errors.email && !errors.tarifaPropia
 }
@@ -147,6 +148,7 @@ async function guardar() {
         jefeDirecto: form.jefeDirecto || undefined,
         objetivoProceso: form.objetivoProceso || undefined,
         tarifaPropia: form.tarifaPropia ?? undefined,
+        tarifaPropiaMoneda: form.tarifaPropiaMoneda,
         areaGerencia: form.areaGerencia || undefined,
       })
       modalOpen.value = false
@@ -160,6 +162,7 @@ async function guardar() {
         jefeDirecto: form.jefeDirecto || undefined,
         objetivoProceso: form.objetivoProceso || undefined,
         tarifaPropia: form.tarifaPropia ?? undefined,
+        tarifaPropiaMoneda: form.tarifaPropiaMoneda,
         areaGerencia: form.areaGerencia || undefined,
       })
       modalOpen.value = false
@@ -367,7 +370,7 @@ async function eliminar(coachee: CoacheeListItem) {
                 {{ c.areaGerencia ?? '—' }}
               </td>
               <td class="px-4 py-3 font-[family-name:var(--font-mono)] text-xs">
-                {{ c.tarifaPropia ? formatoCLP.format(c.tarifaPropia) : '—' }}
+                {{ formatoTarifaPropia(c) }}
               </td>
               <td class="px-4 py-3">
                 <StatusToggle
@@ -486,20 +489,12 @@ async function eliminar(coachee: CoacheeListItem) {
           >
         </label>
 
-        <label class="block text-sm">
-          Tarifa propia por hora, CLP (opcional)
-          <input
-            v-model="tarifaPropiaDisplay"
-            type="text"
-            inputmode="numeric"
-            class="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
-            :class="errors.tarifaPropia || serverErrors.tarifaPropia ? 'border-[var(--color-danger)]' : 'border-[var(--color-line)]'"
-          >
-          <span
-            v-if="errors.tarifaPropia || serverErrors.tarifaPropia"
-            class="mt-1 block text-xs text-[var(--color-danger)]"
-          >{{ errors.tarifaPropia || serverErrors.tarifaPropia }}</span>
-        </label>
+        <TarifaInput
+          v-model="form.tarifaPropia"
+          v-model:moneda="form.tarifaPropiaMoneda"
+          label="Tarifa propia por hora (opcional)"
+          :error="errors.tarifaPropia || serverErrors.tarifaPropia"
+        />
 
         <label class="block text-sm">
           Objetivo del proceso (opcional)

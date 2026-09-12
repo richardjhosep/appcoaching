@@ -189,6 +189,7 @@ describe('ProspectosView', () => {
       id: 'e1',
       nombre: 'Minera Andes',
       tarifaHora: 45000,
+      tarifaHoraMoneda: 'clp',
       isActive: true,
       pagada: false,
       horasContratadas: null,

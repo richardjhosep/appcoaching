@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { mount, flushPromises, DOMWrapper } from '@vue/test-utils'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { mount, flushPromises, DOMWrapper, type VueWrapper } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { createRouter, createWebHistory } from 'vue-router'
 import CoacheesView from './CoacheesView.vue'
@@ -19,6 +19,9 @@ vi.mock('../../lib/notify', () => ({
   notifyError: vi.fn(),
   confirmDialog: vi.fn().mockResolvedValue(true),
 }))
+vi.mock('../../api/indicadores', () => ({
+  getUfHoy: vi.fn().mockResolvedValue({ valorUf: 39000, fecha: '2026-09-12', fuente: 'cmf', desactualizado: false }),
+}))
 
 import { listCoachees, createCoachee, setCoacheeActivo } from '../../api/coachees'
 import { listEmpresas } from '../../api/empresas'
@@ -27,7 +30,7 @@ import { confirmDialog, notifySuccess } from '../../lib/notify'
 const hoyIso = new Date().toISOString()
 
 const empresas: Empresa[] = [
-  { id: 'e1', nombre: 'Orbiflex', tarifaHora: 25000, isActive: true, pagada: true, horasContratadas: 10, fechaInicio: null, fechaFin: null, createdAt: hoyIso },
+  { id: 'e1', nombre: 'Orbiflex', tarifaHora: 25000, tarifaHoraMoneda: 'clp', isActive: true, pagada: true, horasContratadas: 10, fechaInicio: null, fechaFin: null, createdAt: hoyIso },
 ]
 
 const coachees: CoacheeListItem[] = [
@@ -38,6 +41,15 @@ const coachees: CoacheeListItem[] = [
 const router = createRouter({ history: createWebHistory(), routes: [{ path: '/coach/coachees/:id', component: { template: '<div />' } }] })
 
 describe('CoacheesView', () => {
+  let wrapper: VueWrapper
+
+  afterEach(() => {
+    // AppModal renders through a Teleport a <body>; sin desmontar, un modal dejado
+    // abierto por un test (ej. el de validación fallida, que nunca cierra el modal)
+    // queda en el DOM para el siguiente y contamina sus `.find()`.
+    wrapper?.unmount()
+  })
+
   beforeEach(() => {
     setActivePinia(createPinia())
     vi.mocked(listCoachees).mockResolvedValue(coachees)
@@ -45,7 +57,7 @@ describe('CoacheesView', () => {
   })
 
   it('shows the list of coachees with estado', async () => {
-    const wrapper = mount(CoacheesView, { global: { plugins: [router] } })
+    wrapper = mount(CoacheesView, { global: { plugins: [router] } })
     await flushPromises()
 
     expect(wrapper.text()).toContain('Ana Soto')
@@ -58,7 +70,7 @@ describe('CoacheesView', () => {
       { id: 'c3', nombre: 'Coachee Antiguo', empresaId: null, activo: true, consentimientoInformado: false, consentimientoFecha: null, createdAt: '2020-01-01T00:00:00.000Z' },
     ])
 
-    const wrapper = mount(CoacheesView, { global: { plugins: [router] } })
+    wrapper = mount(CoacheesView, { global: { plugins: [router] } })
     await flushPromises()
 
     expect(wrapper.text()).toContain('Coachee Antiguo')
@@ -66,7 +78,7 @@ describe('CoacheesView', () => {
   })
 
   it('filters by search text', async () => {
-    const wrapper = mount(CoacheesView, { global: { plugins: [router] } })
+    wrapper = mount(CoacheesView, { global: { plugins: [router] } })
     await flushPromises()
 
     await wrapper.find('input[type="search"]').setValue('Beto')
@@ -77,7 +89,7 @@ describe('CoacheesView', () => {
   })
 
   it('shows validation errors instead of submitting an invalid coachee', async () => {
-    const wrapper = mount(CoacheesView, { global: { plugins: [router] } })
+    wrapper = mount(CoacheesView, { global: { plugins: [router] } })
     await flushPromises()
 
     const nuevoBtn = wrapper.findAll('button').find((b) => b.text() === '+ Nuevo Coachee')
@@ -93,7 +105,7 @@ describe('CoacheesView', () => {
 
   it('creates a coachee when the form is valid', async () => {
     vi.mocked(createCoachee).mockResolvedValue({ coachee: coachees[0], temporaryPassword: null })
-    const wrapper = mount(CoacheesView, { global: { plugins: [router] } })
+    wrapper = mount(CoacheesView, { global: { plugins: [router] } })
     await flushPromises()
 
     const nuevoBtn = wrapper.findAll('button').find((b) => b.text() === '+ Nuevo Coachee')
@@ -108,9 +120,33 @@ describe('CoacheesView', () => {
     expect(createCoachee).toHaveBeenCalledWith(expect.objectContaining({ nombre: 'Carla Nueva', email: 'carla@example.com' }))
   })
 
+  it('creates a coachee with a tarifa propia in UF', async () => {
+    vi.mocked(createCoachee).mockResolvedValue({ coachee: coachees[0], temporaryPassword: null })
+    wrapper = mount(CoacheesView, { global: { plugins: [router] } })
+    await flushPromises()
+
+    const nuevoBtn = wrapper.findAll('button').find((b) => b.text() === '+ Nuevo Coachee')
+    await nuevoBtn!.trigger('click')
+    await flushPromises()
+    const modal = new DOMWrapper(document.body)
+    await modal.find('input[type="text"]').setValue('Carla Nueva')
+    await modal.find('input[type="email"]').setValue('carla@example.com')
+    await modal.find('input[type="number"]').setValue(3.5)
+    // El último <select> del documento es el de moneda de TarifaInput — los anteriores
+    // son los filtros de la página y el de Empresa del propio formulario.
+    const selects = modal.findAll('select')
+    await selects[selects.length - 1].setValue('uf')
+    await modal.find('form').trigger('submit')
+    await flushPromises()
+
+    expect(createCoachee).toHaveBeenCalledWith(
+      expect.objectContaining({ tarifaPropia: 3.5, tarifaPropiaMoneda: 'uf' }),
+    )
+  })
+
   it('confirms by email instead of showing the password on screen when one was generated', async () => {
     vi.mocked(createCoachee).mockResolvedValue({ coachee: coachees[0], temporaryPassword: 'temp-pass' })
-    const wrapper = mount(CoacheesView, { global: { plugins: [router] } })
+    wrapper = mount(CoacheesView, { global: { plugins: [router] } })
     await flushPromises()
 
     const nuevoBtn = wrapper.findAll('button').find((b) => b.text() === '+ Nuevo Coachee')
@@ -131,7 +167,7 @@ describe('CoacheesView', () => {
 
   it('toggles estado after confirmation', async () => {
     vi.mocked(setCoacheeActivo).mockResolvedValue({ ...coachees[0], activo: false })
-    const wrapper = mount(CoacheesView, { global: { plugins: [router] } })
+    wrapper = mount(CoacheesView, { global: { plugins: [router] } })
     await flushPromises()
 
     await wrapper.find('button[type="button"]').trigger('click')

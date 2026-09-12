@@ -25,6 +25,7 @@ vi.mock('../../api/empresas', async () => {
   const actual = await vi.importActual<typeof import('../../api/empresas')>('../../api/empresas')
   return { ...actual, getMyEmpresa: vi.fn() }
 })
+vi.mock('../../api/indicadores', () => ({ getUfHoy: vi.fn() }))
 
 import {
   getMiResumenFinanciero,
@@ -33,6 +34,7 @@ import {
   getMiRetornoInversion,
 } from '../../api/negocio'
 import { getMyEmpresa } from '../../api/empresas'
+import { getUfHoy } from '../../api/indicadores'
 
 const resumenPendiente: ResumenFinanzasEmpresa = {
   pagada: false,
@@ -103,6 +105,7 @@ const empresa: Empresa = {
   id: 'empresa-1',
   nombre: 'QA Empresa Verify',
   tarifaHora: 30000,
+  tarifaHoraMoneda: 'clp',
   isActive: true,
   pagada: false,
   horasContratadas: 40,
@@ -123,6 +126,7 @@ describe('FinanzasView (empresa)', () => {
     vi.mocked(getMiResumenAcumulado).mockResolvedValue(acumulado)
     vi.mocked(getMyEmpresa).mockResolvedValue(empresa)
     vi.mocked(getMiRetornoInversion).mockResolvedValue(retornoVacio)
+    vi.mocked(getUfHoy).mockResolvedValue({ valorUf: 40000, fecha: '2026-09-12', fuente: 'cmf', desactualizado: false })
   })
 
   it('shows gasto del período, horas and the "Pendiente" badge when not pagada', async () => {
@@ -133,6 +137,24 @@ describe('FinanzasView (empresa)', () => {
     expect(wrapper.text()).toContain('$150.000')
     expect(wrapper.text()).toContain('5 / 40')
     expect(wrapper.text()).toContain('Pendiente')
+  })
+
+  it('shows the daily UF glosa and converts amounts to UF when toggled — totals stay computed in CLP, only the display changes', async () => {
+    vi.mocked(getMiResumenFinanciero).mockResolvedValue(resumenPendiente)
+
+    const wrapper = await mountView()
+
+    expect(wrapper.text()).toContain('UF 12 sept 2026')
+    expect(wrapper.text()).toContain('$40.000')
+    expect(wrapper.text()).toContain('$150.000')
+    expect(wrapper.text()).not.toContain('3,75 UF')
+
+    const ufBtn = wrapper.findAll('button').find((b) => b.text() === 'UF')
+    await ufBtn!.trigger('click')
+
+    // 150.000 CLP / 40.000 CLP por UF = 3,75 UF
+    expect(wrapper.text()).toContain('3,75 UF')
+    expect(wrapper.text()).not.toContain('$150.000')
   })
 
   it('shows the "Al día" badge and $0 pendiente once pagada', async () => {

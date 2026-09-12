@@ -24,6 +24,7 @@ import { EmailService } from '../email/email.service';
 import { Role } from '../auth/enums/role.enum';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { assignDefined } from '../common/assign-defined.util';
+import { Moneda } from '../common/moneda.enum';
 
 const RELATIONS = { empresa: true, user: true };
 const SOLICITUD_CONSENTIMIENTO_TTL_DIAS = 7;
@@ -68,6 +69,7 @@ export class CoacheesService {
         jefeDirecto: dto.jefeDirecto ?? null,
         objetivoProceso: dto.objetivoProceso ?? null,
         tarifaPropia: dto.tarifaPropia ?? null,
+        tarifaPropiaMoneda: dto.tarifaPropiaMoneda ?? Moneda.CLP,
         areaGerencia: dto.areaGerencia ?? null,
       }),
     );

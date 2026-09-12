@@ -26,6 +26,8 @@ import { CiclosService } from '../ciclos/ciclos.service';
 import { SeguimientoService } from '../seguimiento/seguimiento.service';
 import { EmailService } from '../email/email.service';
 import { EmpresasService } from '../empresas/empresas.service';
+import { IndicadoresService } from '../indicadores/indicadores.service';
+import { Moneda } from '../common/moneda.enum';
 import {
   diaYHoraLocalChile,
   fechaSimpleHoyChile,
@@ -276,10 +278,34 @@ export class NegocioService {
     private readonly email: EmailService,
     private readonly config: ConfigService,
     private readonly empresasService: EmpresasService,
+    private readonly indicadores: IndicadoresService,
   ) {}
 
-  private tarifaEfectiva(coachee: Coachee): number {
-    return coachee.tarifaPropia ?? coachee.empresa?.tarifaHora ?? 0;
+  /**
+   * Tarifa de un coachee YA convertida a CLP — nunca se suma un monto en UF crudo a un
+   * total. `valorUf` se resuelve UNA vez por llamada a `calcularResumenCobros()`/
+   * `procesosCerradosDelRango()` (no por cada coachee) y se pasa hacia abajo, para no
+   * repetir el fetch/lookup dentro de un loop.
+   */
+  private tarifaEfectiva(coachee: Coachee, valorUf: number): number {
+    const { monto, moneda } =
+      coachee.tarifaPropia != null
+        ? { monto: coachee.tarifaPropia, moneda: coachee.tarifaPropiaMoneda }
+        : coachee.empresa
+          ? {
+              monto: coachee.empresa.tarifaHora,
+              moneda: coachee.empresa.tarifaHoraMoneda,
+            }
+          : { monto: 0, moneda: Moneda.CLP };
+    return moneda === Moneda.UF ? Math.round(monto * valorUf) : monto;
+  }
+
+  /** Valor UF a usar en los cálculos de este request — 0 si no hay ninguno disponible
+   * (CMF caída y nunca se cacheó nada): las tarifas en UF simplemente no aportan hasta
+   * que haya un valor, en vez de reventar todo el panel de negocio. */
+  private async valorUfDelDia(): Promise<number> {
+    const valor = await this.indicadores.getOrFetchHoy();
+    return valor?.valorUf ?? 0;
   }
 
   private mesActualRango(): { inicio: Date; fin: Date } {
@@ -316,10 +342,11 @@ export class NegocioService {
     const { inicio, fin } = rango;
     const now = new Date();
 
-    const [coachees, sesionesDelMes, empresas] = await Promise.all([
+    const [coachees, sesionesDelMes, empresas, valorUf] = await Promise.all([
       this.coachees.find({ relations: { empresa: true } }),
       this.sesiones.find({ where: { fechaHora: Between(inicio, fin) } }),
       this.empresas.find({ order: { nombre: 'ASC' } }),
+      this.valorUfDelDia(),
     ]);
     const coacheeMap = new Map(coachees.map((c) => [c.id, c]));
 
@@ -360,7 +387,7 @@ export class NegocioService {
       const coachee = coacheeMap.get(sesion.coacheeId);
       if (!coachee) continue;
 
-      const tarifa = this.tarifaEfectiva(coachee);
+      const tarifa = this.tarifaEfectiva(coachee, valorUf);
       const realizada = sesion.fechaHora <= now;
       // Un coachee independiente (sin empresa) siempre paga directamente al coach;
       // solo el ingreso ligado a una empresa se condiciona a que esté marcada como pagada.
@@ -968,9 +995,12 @@ export class NegocioService {
     });
     if (ciclosCerrados.length === 0) return vacio;
 
-    const sesionesDeCiclos = await this.sesiones.find({
-      where: { cicloId: In(ciclosCerrados.map((c) => c.id)) },
-    });
+    const [sesionesDeCiclos, valorUf] = await Promise.all([
+      this.sesiones.find({
+        where: { cicloId: In(ciclosCerrados.map((c) => c.id)) },
+      }),
+      this.valorUfDelDia(),
+    ]);
     const now = new Date();
     const sesionesRealizadasPorCiclo = new Map<string, number>();
     for (const sesion of sesionesDeCiclos) {
@@ -986,7 +1016,7 @@ export class NegocioService {
 
     const procesos: ProcesoConRetorno[] = ciclosCerrados.map((ciclo) => {
       const coachee = coacheeMap.get(ciclo.coacheeId)!;
-      const tarifa = this.tarifaEfectiva(coachee);
+      const tarifa = this.tarifaEfectiva(coachee, valorUf);
       const sesionesRealizadas = sesionesRealizadasPorCiclo.get(ciclo.id) ?? 0;
       const costo = sesionesRealizadas * tarifa;
       costoTotalProcesosCerrados += costo;

@@ -5,6 +5,8 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { Moneda } from '../../common/moneda.enum';
+import { numericTransformer } from '../../common/numeric-column.transformer';
 
 @Entity('empresas')
 export class Empresa {
@@ -14,8 +16,25 @@ export class Empresa {
   @Column({ unique: true })
   nombre: string;
 
-  @Column({ name: 'tarifa_hora', type: 'integer' })
+  // `numeric` (no `integer`): en UF el monto es fraccionario (ej. 3.5 UF/hora). El valor
+  // se interpreta según `tarifaHoraMoneda` — NegocioService lo convierte a CLP con el
+  // valor UF del día antes de sumarlo a cualquier total (ver IndicadoresService).
+  @Column({
+    name: 'tarifa_hora',
+    type: 'numeric',
+    precision: 12,
+    scale: 2,
+    transformer: numericTransformer,
+  })
   tarifaHora: number;
+
+  @Column({
+    name: 'tarifa_hora_moneda',
+    type: 'enum',
+    enum: Moneda,
+    default: Moneda.CLP,
+  })
+  tarifaHoraMoneda: Moneda;
 
   @Column({ name: 'is_active', default: true })
   isActive: boolean;

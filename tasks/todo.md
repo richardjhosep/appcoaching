@@ -2226,6 +2226,120 @@ correcto (valor estimado × probabilidad de la etapa), conversión a Empresa con
 ingresada) y el pipeline ponderado bajando a $0 tras la conversión — datos de prueba eliminados
 al cierre.
 
+## 2026-09-12 — Backlog: recorte de autoevaluación, bug de Resumen empresa, fechas reales, materiales propios del coachee, categoría de recursos
+
+Cinco items chicos/medianos del backlog, todos con decisión ya tomada por el usuario o
+diagnosticados en el momento — nada de esto requirió texto de plan aparte, se construyó y
+verificó directo en la app real.
+
+- **#4 — Autoevaluación repetía la descripción del nivel**: en `DefinicionTab.vue`, el
+  `&lt;select&gt;` de nivel mostraba `Nivel N — descripción completa`, redundante con lo que ya
+  aparece arriba en "Nivel actual"/"Nivel objetivo". Recorte a solo `Nivel N`; el detalle
+  (`comportamientos`) se sigue mostrando debajo una vez elegido.
+- **#8 — Empresa/Resumen no mostraba el número al asignar coachee**: diagnosticado con un
+  subagente de exploración. No es un bug de conteo (backend y persistencia de `empresaId`
+  están bien) sino un defecto de robustez real: en `DashboardView.vue` y
+  `CoacheesView.vue` (empresa), el `Promise.all` por-coachee (ciclos/avance/próxima
+  sesión/retroalimentaciones) solo protegía `getPlanByCoachee` con `.catch` — un solo coachee
+  con un error puntual en cualquiera de las otras llamadas rechazaba TODO el `Promise.all` de
+  `onMounted`, dejando el Resumen pegado en el skeleton para siempre sin mostrar nada. Fix:
+  `.catch` con fallback seguro en cada llamada. Confirmé el bug reproduciéndolo con un test que
+  falla sin el fix y pasa con él. La otra hipótesis (datos "stale" si la pestaña ya estaba
+  abierta cuando el coach asigna) es el patrón arquitectónico de toda la app (refetch solo
+  `onMounted`, sin reactividad entre sesiones) — no se tocó, sería una feature aparte.
+- **#5 — "Semana X" → fecha real**: `ActividadEjecucion.fechaInicio/fechaFin` eran `varchar`
+  libre (confirmado con datos de prueba tipo `"w4rqweqewtewq"`, borrados). Pasan a `date` real
+  (mismo criterio que `Empresa.fechaInicio/fechaFin`), con migración que castea de forma seguro
+  (regex-guardada, lo que no calce con `YYYY-MM-DD` queda `NULL` en vez de romper). El
+  `&lt;input type="date"&gt;` en `HabitoEjecucionTab.vue` se acota con `min` a la
+  `fechaApertura` del ciclo abierto del coachee (`getMiCicloActual()`, ya existía).
+- **#6 — Coachee registrando sus propios materiales de formación**: confirmado que era una
+  restricción de backend, no solo de UI (`POST/PATCH/DELETE /recursos` son 100% `Role.COACH`).
+  Nuevo módulo `recursos-personales/` replicando el patrón exacto de `MapaPersonal`/
+  `NotaPizarra` (entidad separada, 100% privada, `Role.COACHEE` exclusivo, `coacheeId` resuelto
+  del JWT nunca del body) — reemplaza en espíritu los 5 campos de texto libre ya deprecados
+  (`formacionLibros/Articulos/Videos/Podcasts/PracticaGuiada`) por filas estructuradas con
+  categoría (mismas 5: libro/artículo/video/podcast/práctica guiada), título, link opcional y
+  notas. Nueva sección "Mis materiales de formación" en `FormacionTab.vue`, visible siempre
+  (no depende de que el plan tenga competencia asignada, a diferencia de todo lo demás en esa
+  pestaña).
+- **#14 — Clasificar recursos por texto/audio/video**: `Recurso` gana columna `categoria`
+  (nullable), calculada automáticamente al crear el recurso — nunca la elige el coach. Para
+  `archivo`: por el mimetype REAL que multer capturó al subir (no la extensión del nombre),
+  lo que obligó a ampliar `MIMETYPES_RECURSO` para aceptar audio (antes rechazado de plano).
+  Para `link`: solo si apunta a una plataforma de video conocida (youtube/vimeo, mismo criterio
+  que ya usaba `esYoutube()` en el frontend); cualquier otro link queda sin categoría, no se
+  adivina. Migración con backfill best-effort para los recursos ya existentes (por extensión
+  del nombre en archivos, por URL en links). Filtro por categoría (chips Todos/Texto/Audio/
+  Video) agregado en `RecursosView.vue` (coach) y `BibliotecaView.vue` (coachee), client-side
+  sobre la lista ya cargada.
+
+### Verificación
+
+Backend: 539/539 (specs nuevos para `RecursosPersonalesService` con ownership, y para
+`categoriaPorMimetype`/`categoriaPorUrl` vía `RecursosService.create`), 3 migraciones nuevas
+(`FechasActividadEjecucionReales`, `RecursosPersonales`, `CategoriaRecurso`) verificadas
+run/revert/run contra la DB de prueba, con inspección directa del backfill real (7 recursos
+existentes → 4 categorizados correctamente). `lint`/`tsc` limpios (23 errores de `tsc` plano
+preexistentes en archivos no tocados esta sesión, confirmado con `git stash` que ya estaban en
+`HEAD`). Frontend: 530/530 (specs nuevos para `HabitoEjecucionTab.vue`, sección nueva de
+`FormacionTab.vue`, filtros de `BibliotecaView.vue`/`RecursosView.vue`, y el test de regresión
+del bug de `DashboardView.vue` que falla sin el fix), `build`/`lint`/`vue-tsc` limpios.
+Verificado en Chrome real (headless vía CDP crudo — la extensión no tenía permiso para
+localhost en esta sesión) contra el backend/DB reales con la cuenta QA
+`qa-coachee-b-verify@test.com`: date pickers reales con `min` acotado al ciclo, sección "Mis
+materiales de formación" visible, chips de filtro por categoría en Biblioteca — contraseña
+temporal de la cuenta QA invalidada al cierre.
+
+## 2026-09-12 (tarde) — Contratos en UF (#1/#2)
+
+Empresa y Coachee (tarifa propia de independientes) ahora pueden pactarse en UF además de
+CLP, con conversión a CLP tomando el valor UF real del día desde la API oficial de la CMF
+(`api.cmfchile.cl`, requiere `CMF_API_KEY` — el usuario ya la registró y quedó en
+`backend/.env`, nunca en el repo). Decisión de diseño clave, confirmada antes de construir:
+como `NegocioService` nunca guarda montos históricos por transacción (todo se calcula en vivo
+a partir de la tarifa VIGENTE cada vez que se pide un reporte), no hace falta ningún historial
+de valores UF — el valor de HOY alcanza para cualquier conversión, sea el período que sea.
+
+- **`IndicadoresService`** (módulo nuevo `indicadores/`): cachea en `indicadores_economicos`
+  (una fila por día) lo que la CMF publicó — UF y también el Dólar (se guarda, pero no se
+  expone en ningún DTO/vista todavía, tal como se pidió). Cadena de resolución: caché de hoy →
+  fetch a la CMF → último valor cacheado (`desactualizado: true`) → `null` si nunca hubo nada.
+  El Dólar necesita fallback al mes completo porque la CMF no lo publica fines de semana
+  (a diferencia de la UF, que sí trae el mes completo por adelantado). `POST
+  /indicadores/uf/manual` (`Role.COACH`) permite tipear el valor a mano si la CMF está caída
+  o si `CMF_API_KEY` no está configurada — no depende de la API externa para funcionar.
+- **Modelo de datos**: `Empresa.tarifaHora`/`Coachee.tarifaPropia` pasan de `integer` a
+  `numeric(12,2)` (en UF el monto es fraccionario, ej. 3.5) + un `tarifaHoraMoneda`/
+  `tarifaPropiaMoneda` (`enum: clp|uf`) cada uno. `NegocioService.tarifaEfectiva()` resuelve
+  el valor UF UNA vez por request (no por coachee, evita N fetches en el mismo loop) y
+  convierte a CLP ahí mismo — el resto del cálculo de negocio nunca supo que existió la UF.
+- **UI**: `TarifaInput.vue` (selector monto+moneda con glosa de conversión en vivo, ej. "≈
+  $143.185 al valor UF de hoy") reemplaza los inputs de tarifa en los mantenedores de Empresas
+  y Coachees. `MonedaToggle.vue` (CLP/UF + glosa "UF 12 sept 2026: $40.910") es puramente de
+  visualización — como los totales siempre viven en CLP, cambiar a "Ver en UF" solo divide al
+  mostrar, sin recalcular nada en el backend. Agregado a Finanzas (empresa) y Resumen de
+  Negocio (coach).
+
+### Verificación
+
+Backend: 546/546 (specs nuevos para `IndicadoresService` — caché, fetch CMF con Valor en
+formato chileno "40.910,10", fallback al mes para el Dólar de fin de semana, fallback a
+cacheado-desactualizado, `setManualHoy` — y para la conversión UF→CLP en
+`RecursosService`/`NegocioService`), 3 migraciones nuevas (`IndicadoresEconomicos`,
+`TarifaEnUf`) verificadas run/revert/run. Frontend: 533/533 — incluyó cazar un bug real de
+test-infraestructura ya documentado (`AppModal` teletransporta a `body`; sin desmontar entre
+tests, un modal dejado abierto por un test de validación fallida contaminaba los `.find()` del
+siguiente test) en `CoacheesView.spec.ts`, arreglado con el mismo patrón `afterEach(unmount)`
+que ya existía en `RecursosView.spec.ts`. Cross-check con `tsc` plano (el blindspot conocido
+de `vue-tsc` en `.spec.ts`) encontró 5 fixtures de `Empresa` en specs no relacionados que les
+faltaba el nuevo campo obligatorio `tarifaHoraMoneda` — corregidos. Verificado en Chrome real
+(CDP) contra la CMF real (key del usuario, valor UF del día $40.910,10 obtenido en vivo):
+creación de una empresa con tarifa "3.5 UF" mostrando la glosa de conversión correcta en el
+formulario y persistida/mostrada como "3,50 UF" en la tabla; toggle CLP↔UF en Resumen de
+Negocio convirtiendo "$80.000" ↔ "1,96 UF" correctamente — datos de prueba eliminados al
+cierre, contraseña temporal de `coach@test.com` invalidada.
+
 ## 2026-09-05/06 — Perfil del coachee + herramientas personales de estudio
 
 El coachee prácticamente no tenía perfil propio (solo teléfono/email en un modal escondido del

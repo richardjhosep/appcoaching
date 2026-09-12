@@ -28,6 +28,7 @@ const empresa: Empresa = {
   id: 'empresa-1',
   nombre: 'QA Empresa Verify',
   tarifaHora: 30000,
+  tarifaHoraMoneda: 'clp',
   isActive: true,
   pagada: true,
   horasContratadas: 40,

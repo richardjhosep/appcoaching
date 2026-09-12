@@ -15,6 +15,7 @@ import { CiclosModule } from '../ciclos/ciclos.module';
 import { SeguimientoModule } from '../seguimiento/seguimiento.module';
 import { EmailModule } from '../email/email.module';
 import { EmpresasModule } from '../empresas/empresas.module';
+import { IndicadoresModule } from '../indicadores/indicadores.module';
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { EmpresasModule } from '../empresas/empresas.module';
     SeguimientoModule,
     EmailModule,
     EmpresasModule,
+    IndicadoresModule,
   ],
   providers: [NegocioService],
   controllers: [NegocioController],

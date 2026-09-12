@@ -17,6 +17,9 @@ vi.mock('../../api/satisfaccion', async () => {
   const actual = await vi.importActual<typeof import('../../api/satisfaccion')>('../../api/satisfaccion')
   return { ...actual, getKpisDeEmpresa: vi.fn(), getEncuestasDeEmpresa: vi.fn() }
 })
+vi.mock('../../api/indicadores', () => ({
+  getUfHoy: vi.fn().mockResolvedValue({ valorUf: 39000, fecha: '2026-09-12', fuente: 'cmf', desactualizado: false }),
+}))
 
 import { listEmpresas, createEmpresa, updateEmpresa } from '../../api/empresas'
 import { notifySuccess, confirmDialog } from '../../lib/notify'
@@ -26,8 +29,8 @@ import type { KpisEmpresa, Encuesta } from '../../api/satisfaccion'
 const hoyIso = new Date().toISOString()
 
 const empresas: Empresa[] = [
-  { id: 'e1', nombre: 'Empresa Activa', tarifaHora: 25000, isActive: true, pagada: true, horasContratadas: 10, fechaInicio: null, fechaFin: null, createdAt: hoyIso },
-  { id: 'e2', nombre: 'Empresa Inactiva', tarifaHora: 20000, isActive: false, pagada: false, horasContratadas: null, fechaInicio: null, fechaFin: null, createdAt: hoyIso },
+  { id: 'e1', nombre: 'Empresa Activa', tarifaHora: 25000, tarifaHoraMoneda: 'clp', isActive: true, pagada: true, horasContratadas: 10, fechaInicio: null, fechaFin: null, createdAt: hoyIso },
+  { id: 'e2', nombre: 'Empresa Inactiva', tarifaHora: 20000, tarifaHoraMoneda: 'clp', isActive: false, pagada: false, horasContratadas: null, fechaInicio: null, fechaFin: null, createdAt: hoyIso },
 ]
 
 describe('EmpresasView', () => {
@@ -47,8 +50,8 @@ describe('EmpresasView', () => {
 
   it('shows the contract end date, or a dash when it is not registered', async () => {
     vi.mocked(listEmpresas).mockResolvedValue([
-      { id: 'e1', nombre: 'Con Fecha', tarifaHora: 10000, isActive: true, pagada: true, horasContratadas: null, fechaInicio: null, fechaFin: '2026-12-31', createdAt: hoyIso },
-      { id: 'e2', nombre: 'Sin Fecha', tarifaHora: 10000, isActive: true, pagada: true, horasContratadas: null, fechaInicio: null, fechaFin: null, createdAt: hoyIso },
+      { id: 'e1', nombre: 'Con Fecha', tarifaHora: 10000, tarifaHoraMoneda: 'clp', isActive: true, pagada: true, horasContratadas: null, fechaInicio: null, fechaFin: '2026-12-31', createdAt: hoyIso },
+      { id: 'e2', nombre: 'Sin Fecha', tarifaHora: 10000, tarifaHoraMoneda: 'clp', isActive: true, pagada: true, horasContratadas: null, fechaInicio: null, fechaFin: null, createdAt: hoyIso },
     ])
 
     const wrapper = mount(EmpresasView)
@@ -63,7 +66,7 @@ describe('EmpresasView', () => {
 
   it('shows empresas created before the current month by default — regresión del filtro de fecha que las ocultaba', async () => {
     vi.mocked(listEmpresas).mockResolvedValue([
-      { id: 'e3', nombre: 'Empresa Antigua', tarifaHora: 15000, isActive: true, pagada: true, horasContratadas: null, fechaInicio: null, fechaFin: null, createdAt: '2020-01-01T00:00:00.000Z' },
+      { id: 'e3', nombre: 'Empresa Antigua', tarifaHora: 15000, tarifaHoraMoneda: 'clp', isActive: true, pagada: true, horasContratadas: null, fechaInicio: null, fechaFin: null, createdAt: '2020-01-01T00:00:00.000Z' },
     ])
 
     const wrapper = mount(EmpresasView)
@@ -113,7 +116,7 @@ describe('EmpresasView', () => {
     await modal.find('form').trigger('submit')
     await flushPromises()
 
-    expect(createEmpresa).toHaveBeenCalledWith('Empresa Nueva', 30000, undefined, undefined)
+    expect(createEmpresa).toHaveBeenCalledWith('Empresa Nueva', 30000, 'clp', undefined, undefined)
     expect(notifySuccess).toHaveBeenCalled()
   })
 

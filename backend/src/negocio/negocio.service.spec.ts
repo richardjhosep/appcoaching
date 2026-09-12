@@ -15,6 +15,7 @@ import { CiclosService } from '../ciclos/ciclos.service';
 import { SeguimientoService } from '../seguimiento/seguimiento.service';
 import { EmailService } from '../email/email.service';
 import { EmpresasService } from '../empresas/empresas.service';
+import { IndicadoresService } from '../indicadores/indicadores.service';
 import { ConfigService } from '@nestjs/config';
 import { NotFoundException } from '@nestjs/common';
 
@@ -49,6 +50,7 @@ describe('NegocioService', () => {
   };
   let config: { get: jest.Mock };
   let empresasService: { ultimaGestionPorEmpresa: jest.Mock };
+  let indicadores: { getOrFetchHoy: jest.Mock };
 
   const hace1h = new Date(Date.now() - 60 * 60 * 1000);
   const en1h = new Date(Date.now() + 60 * 60 * 1000);
@@ -88,6 +90,16 @@ describe('NegocioService', () => {
     empresasService = {
       ultimaGestionPorEmpresa: jest.fn().mockResolvedValue(new Map()),
     };
+    // Ningún fixture de este spec usa tarifas en UF — el valor exacto es irrelevante,
+    // tarifaEfectiva() solo lo multiplica cuando moneda === Moneda.UF.
+    indicadores = {
+      getOrFetchHoy: jest.fn().mockResolvedValue({
+        valorUf: 39000,
+        fecha: '2026-01-01',
+        fuente: 'cmf',
+        desactualizado: false,
+      }),
+    };
 
     service = new NegocioService(
       sesionesRepo as unknown as Repository<Sesion>,
@@ -104,6 +116,7 @@ describe('NegocioService', () => {
       email as unknown as EmailService,
       config as unknown as ConfigService,
       empresasService as unknown as EmpresasService,
+      indicadores as unknown as IndicadoresService,
     );
   });
 

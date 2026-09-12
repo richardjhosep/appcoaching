@@ -19,8 +19,11 @@ import {
   type ResumenAcumuladoEmpresa,
   type RetornoInversionEmpresa,
 } from '../../api/negocio'
+import { getUfHoy } from '../../api/indicadores'
 import { resultadoLabel, resultadoColor } from '../../lib/resultadoCiclo'
 import { distribucionResultadosSegments } from '../../lib/distribucionResultados'
+import { formatMonto, type Moneda } from '../../lib/moneda'
+import MonedaToggle from '../../components/MonedaToggle.vue'
 
 const loading = ref(true)
 const empresa = ref<Empresa | null>(null)
@@ -28,6 +31,17 @@ const resumen = ref<ResumenFinanzasEmpresa | null>(null)
 const proyeccion = ref<ProyeccionMesEmpresa[]>([])
 const acumulado = ref<ResumenAcumuladoEmpresa | null>(null)
 const retorno = ref<RetornoInversionEmpresa | null>(null)
+
+// Todos los montos de esta vista viven en CLP (el backend ya convirtió cualquier
+// tarifa en UF antes de sumar nada) — este selector es puramente de visualización.
+const moneda = ref<Moneda>('clp')
+const valorUf = ref<number | null>(null)
+const fechaUf = ref<string | null>(null)
+const ufDesactualizada = ref(false)
+const errorUf = ref<string | null>(null)
+function monto(clp: number): string {
+  return formatMonto(clp, moneda.value, valorUf.value ?? 0)
+}
 
 const segmentosResultado = computed(() => {
   if (!retorno.value) return []
@@ -39,7 +53,6 @@ const segmentosResultado = computed(() => {
   }))
 })
 
-const formatoCLP = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 })
 const fechaEmision = new Date().toLocaleDateString('es-CL', { day: 'numeric', month: 'long', year: 'numeric' })
 
 const etiquetaSemestre = computed(() => {
@@ -75,6 +88,16 @@ onMounted(async () => {
   acumulado.value = a
   retorno.value = ret
   loading.value = false
+
+  await getUfHoy()
+    .then((v) => {
+      valorUf.value = v.valorUf
+      fechaUf.value = v.fecha
+      ufDesactualizada.value = v.desactualizado
+    })
+    .catch(() => {
+      errorUf.value = 'No se pudo obtener el valor UF — el selector de moneda queda solo en CLP.'
+    })
 })
 
 function imprimir() {
@@ -104,6 +127,14 @@ function imprimir() {
         Descargar / Imprimir
       </button>
     </div>
+    <MonedaToggle
+      v-if="!errorUf"
+      v-model="moneda"
+      :valor-uf="valorUf"
+      :fecha="fechaUf"
+      :desactualizado="ufDesactualizada"
+      class="mb-4 print:hidden"
+    />
     <SkeletonBlock v-if="loading" />
     <div
       v-else-if="resumen"
@@ -119,7 +150,7 @@ function imprimir() {
               Gasto del período
             </p>
             <p class="font-[family-name:var(--font-mono)] text-2xl">
-              {{ formatoCLP.format(resumen.gastoDelPeriodo) }}
+              {{ monto(resumen.gastoDelPeriodo) }}
             </p>
           </div>
           <div>
@@ -149,7 +180,7 @@ function imprimir() {
               class="font-[family-name:var(--font-mono)] text-2xl"
               :class="resumen.gastoPendiente > 0 ? 'text-[var(--color-bronze)]' : 'text-[var(--color-sage)]'"
             >
-              {{ formatoCLP.format(resumen.gastoPendiente) }}
+              {{ monto(resumen.gastoPendiente) }}
             </p>
           </div>
         </div>
@@ -186,7 +217,7 @@ function imprimir() {
                   Gasto del período
                 </th>
                 <th class="py-1">
-                  Proyectado
+                  Agendado
                 </th>
               </tr>
             </thead>
@@ -203,15 +234,19 @@ function imprimir() {
                   {{ c.horasRealizadas }}
                 </td>
                 <td class="py-2">
-                  {{ formatoCLP.format(c.gastoBrutoDelPeriodo) }}
+                  {{ monto(c.gastoBrutoDelPeriodo) }}
                 </td>
                 <td class="py-2">
-                  {{ formatoCLP.format(c.gastoBrutoProyectado) }}
+                  {{ monto(c.gastoBrutoProyectado) }}
                 </td>
               </tr>
             </tbody>
           </table>
         </div>
+        <p class="mt-3 text-xs text-[var(--color-ink)]/50">
+          "Agendado" son sesiones ya programadas que todavía no ocurren — no una proyección
+          estimada, es lo que hoy está en la agenda de cada coachee.
+        </p>
       </SectionCard>
 
       <SectionCard
@@ -236,10 +271,10 @@ function imprimir() {
               {{ etiquetaSemestre }}
             </p>
             <p class="font-[family-name:var(--font-mono)] text-2xl">
-              {{ formatoCLP.format(acumulado.gastoEjecutadoSemestre + acumulado.gastoAgendadoSemestre) }}
+              {{ monto(acumulado.gastoEjecutadoSemestre + acumulado.gastoAgendadoSemestre) }}
             </p>
             <p class="text-xs text-[var(--color-ink)]/50">
-              Ejecutado {{ formatoCLP.format(acumulado.gastoEjecutadoSemestre) }} · Agendado {{ formatoCLP.format(acumulado.gastoAgendadoSemestre) }}
+              Ejecutado {{ monto(acumulado.gastoEjecutadoSemestre) }} · Agendado {{ monto(acumulado.gastoAgendadoSemestre) }}
             </p>
           </div>
           <div v-else-if="vista === 'anual'">
@@ -247,10 +282,10 @@ function imprimir() {
               Año {{ acumulado.anio }}
             </p>
             <p class="font-[family-name:var(--font-mono)] text-2xl">
-              {{ formatoCLP.format(acumulado.gastoEjecutadoAnio + acumulado.gastoAgendadoAnio) }}
+              {{ monto(acumulado.gastoEjecutadoAnio + acumulado.gastoAgendadoAnio) }}
             </p>
             <p class="text-xs text-[var(--color-ink)]/50">
-              Ejecutado {{ formatoCLP.format(acumulado.gastoEjecutadoAnio) }} · Agendado {{ formatoCLP.format(acumulado.gastoAgendadoAnio) }}
+              Ejecutado {{ monto(acumulado.gastoEjecutadoAnio) }} · Agendado {{ monto(acumulado.gastoAgendadoAnio) }}
             </p>
           </div>
           <p class="mt-3 text-xs text-[var(--color-ink)]/50">
@@ -279,7 +314,7 @@ function imprimir() {
                 Invertido en procesos cerrados
               </p>
               <p class="font-[family-name:var(--font-mono)] text-2xl">
-                {{ formatoCLP.format(retorno.costoTotalProcesosCerrados) }}
+                {{ monto(retorno.costoTotalProcesosCerrados) }}
               </p>
             </div>
             <div>
@@ -287,7 +322,7 @@ function imprimir() {
                 Costo promedio por proceso
               </p>
               <p class="font-[family-name:var(--font-mono)] text-2xl">
-                {{ formatoCLP.format(retorno.costoPromedioPorProceso ?? 0) }}
+                {{ monto(retorno.costoPromedioPorProceso ?? 0) }}
               </p>
             </div>
           </div>
@@ -316,7 +351,7 @@ function imprimir() {
                 <span class="text-sm font-medium">{{ p.coacheeNombre }}</span>
                 <span class="flex items-center gap-2 text-xs text-[var(--color-ink)]/50">
                   <span>{{ new Date(p.fechaCierre).toLocaleDateString('es-CL') }}</span>
-                  <span class="font-[family-name:var(--font-mono)] text-sm text-[var(--color-ink)]">{{ formatoCLP.format(p.costo) }}</span>
+                  <span class="font-[family-name:var(--font-mono)] text-sm text-[var(--color-ink)]">{{ monto(p.costo) }}</span>
                   <span
                     class="rounded-full px-2 py-0.5"
                     :style="{

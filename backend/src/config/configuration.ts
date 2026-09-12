@@ -36,4 +36,9 @@ export default () => ({
     pass: process.env.SMTP_PASS,
     from: process.env.SMTP_FROM ?? process.env.SMTP_USER,
   },
+  cmf: {
+    // Sin esta key, IndicadoresService cae directo al valor cacheado más reciente (o al
+    // que el coach tipee a mano) — ver comentario en IndicadoresService.getOrFetchHoy().
+    apiKey: process.env.CMF_API_KEY,
+  },
 });

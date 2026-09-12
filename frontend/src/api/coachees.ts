@@ -1,4 +1,5 @@
 import { apiRequest, apiUpload, apiDownload } from './client'
+import type { Moneda } from '../lib/moneda'
 
 export interface CoacheeListItem {
   id: string
@@ -7,6 +8,7 @@ export interface CoacheeListItem {
   empresa?: { id: string; nombre: string } | null
   user?: { id: string; email: string } | null
   tarifaPropia?: number | null
+  tarifaPropiaMoneda?: Moneda
   jefeDirecto?: string | null
   objetivoProceso?: string | null
   areaGerencia?: string | null
@@ -23,6 +25,7 @@ export interface CreateCoacheeInput {
   jefeDirecto?: string
   objetivoProceso?: string
   tarifaPropia?: number
+  tarifaPropiaMoneda?: Moneda
   areaGerencia?: string
 }
 
@@ -32,6 +35,7 @@ export interface UpdateCoacheeInput {
   jefeDirecto?: string
   objetivoProceso?: string
   tarifaPropia?: number
+  tarifaPropiaMoneda?: Moneda
   areaGerencia?: string
 }
 
@@ -52,6 +56,7 @@ export interface Coachee {
   jefeDirecto?: string | null
   objetivoProceso?: string | null
   tarifaPropia?: number | null
+  tarifaPropiaMoneda?: Moneda
   areaGerencia?: string | null
   activo?: boolean
   fotoPath: string | null

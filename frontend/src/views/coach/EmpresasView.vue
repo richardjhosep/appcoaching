@@ -12,6 +12,8 @@ import { getKpisDeEmpresa, getEncuestasDeEmpresa, type KpisEmpresa, type Encuest
 import { ApiError } from '../../api/client'
 import { notifyError, notifySuccess, confirmDialog } from '../../lib/notify'
 import { dentroDeRango } from '../../lib/dateRange'
+import { formatCLP, formatUF, type Moneda } from '../../lib/moneda'
+import TarifaInput from '../../components/TarifaInput.vue'
 
 const PAGE_SIZE = 12
 
@@ -59,7 +61,9 @@ function limpiarFiltros() {
   page.value = 1
 }
 
-const formatoCLP = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 })
+function formatoTarifa(e: Empresa): string {
+  return e.tarifaHoraMoneda === 'uf' ? formatUF(e.tarifaHora) : formatCLP(e.tarifaHora)
+}
 
 function formatoFechaFin(fechaFin: string | null): string {
   if (!fechaFin) return '—'
@@ -93,6 +97,7 @@ const guardando = ref(false)
 const form = reactive({
   nombre: '',
   tarifaHora: null as number | null,
+  tarifaHoraMoneda: 'clp' as Moneda,
   horasContratadas: null as number | null,
   pagada: false,
   fechaInicio: '',
@@ -105,6 +110,7 @@ function abrirCrear() {
   editando.value = null
   form.nombre = ''
   form.tarifaHora = null
+  form.tarifaHoraMoneda = 'clp'
   form.horasContratadas = null
   form.pagada = false
   form.fechaInicio = ''
@@ -119,6 +125,7 @@ function abrirEditar(empresa: Empresa) {
   editando.value = empresa
   form.nombre = empresa.nombre
   form.tarifaHora = empresa.tarifaHora
+  form.tarifaHoraMoneda = empresa.tarifaHoraMoneda
   form.horasContratadas = empresa.horasContratadas
   form.pagada = empresa.pagada
   form.fechaInicio = empresa.fechaInicio ?? ''
@@ -133,8 +140,10 @@ function validar(): boolean {
   errors.nombre = !form.nombre.trim() || form.nombre.trim().length < 2
     ? 'El nombre debe tener al menos 2 caracteres.'
     : undefined
-  errors.tarifaHora = form.tarifaHora === null || form.tarifaHora <= 0 || !Number.isInteger(form.tarifaHora)
-    ? 'La tarifa por hora es obligatoria y debe ser un entero mayor a 0.'
+  // En UF el monto es fraccionario (ej. 3.5) — el entero solo se exige en CLP.
+  errors.tarifaHora = form.tarifaHora === null || form.tarifaHora <= 0
+    || (form.tarifaHoraMoneda === 'clp' && !Number.isInteger(form.tarifaHora))
+    ? 'La tarifa por hora es obligatoria y debe ser mayor a 0.'
     : undefined
   return !errors.nombre && !errors.tarifaHora
 }
@@ -148,6 +157,7 @@ async function guardar() {
       await updateEmpresa(editando.value.id, {
         nombre: form.nombre,
         tarifaHora: form.tarifaHora!,
+        tarifaHoraMoneda: form.tarifaHoraMoneda,
         horasContratadas: form.horasContratadas,
         pagada: form.pagada,
         fechaInicio: form.fechaInicio || null,
@@ -157,7 +167,13 @@ async function guardar() {
       await load()
       await notifySuccess('Empresa actualizada', `Los datos de ${form.nombre} se guardaron correctamente.`)
     } else {
-      await createEmpresa(form.nombre, form.tarifaHora!, form.fechaInicio || undefined, form.fechaFin || undefined)
+      await createEmpresa(
+        form.nombre,
+        form.tarifaHora!,
+        form.tarifaHoraMoneda,
+        form.fechaInicio || undefined,
+        form.fechaFin || undefined,
+      )
       modalOpen.value = false
       await load()
       await notifySuccess('Empresa creada', `${form.nombre} ya está disponible para asignar coachees.`)
@@ -334,7 +350,7 @@ async function eliminar(empresa: Empresa) {
                 {{ e.nombre }}
               </td>
               <td class="px-4 py-3 font-[family-name:var(--font-mono)] text-xs">
-                {{ formatoCLP.format(e.tarifaHora) }}
+                {{ formatoTarifa(e) }}
               </td>
               <td class="px-4 py-3">
                 {{ e.horasContratadas ?? '—' }}
@@ -411,20 +427,12 @@ async function eliminar(empresa: Empresa) {
           >{{ errors.nombre || serverErrors.nombre }}</span>
         </label>
 
-        <label class="block text-sm">
-          Tarifa por hora (CLP)
-          <input
-            v-model.number="form.tarifaHora"
-            type="number"
-            min="1"
-            class="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
-            :class="errors.tarifaHora || serverErrors.tarifaHora ? 'border-[var(--color-danger)]' : 'border-[var(--color-line)]'"
-          >
-          <span
-            v-if="errors.tarifaHora || serverErrors.tarifaHora"
-            class="mt-1 block text-xs text-[var(--color-danger)]"
-          >{{ errors.tarifaHora || serverErrors.tarifaHora }}</span>
-        </label>
+        <TarifaInput
+          v-model="form.tarifaHora"
+          v-model:moneda="form.tarifaHoraMoneda"
+          label="Tarifa por hora"
+          :error="errors.tarifaHora || serverErrors.tarifaHora"
+        />
 
         <div class="grid grid-cols-2 gap-3">
           <label class="block text-sm">

@@ -4,9 +4,12 @@ import { useRouter } from 'vue-router'
 import * as XLSX from 'xlsx'
 import { getResumenNegocio, getAlertas, getAvancePorArea, type ResumenNegocio, type Alertas, type AvancePorArea } from '../../../api/negocio'
 import { updateEmpresa } from '../../../api/empresas'
+import { getUfHoy } from '../../../api/indicadores'
 import { ApiError } from '../../../api/client'
 import NavIcon from '../../../components/NavIcon.vue'
 import SkeletonBlock from '../../../components/SkeletonBlock.vue'
+import MonedaToggle from '../../../components/MonedaToggle.vue'
+import { formatMonto, type Moneda } from '../../../lib/moneda'
 
 const router = useRouter()
 
@@ -16,7 +19,16 @@ const alertas = ref<Alertas | null>(null)
 const avancePorArea = ref<AvancePorArea[]>([])
 const error = ref<string | null>(null)
 
-const formatoCLP = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 })
+// Todo lo que se muestra acá vive en CLP (el backend ya convirtió cualquier tarifa en
+// UF antes de sumar nada) — este selector es puramente de visualización.
+const moneda = ref<Moneda>('clp')
+const valorUf = ref<number | null>(null)
+const fechaUf = ref<string | null>(null)
+const ufDesactualizada = ref(false)
+const errorUf = ref<string | null>(null)
+function monto(clp: number): string {
+  return formatMonto(clp, moneda.value, valorUf.value ?? 0)
+}
 
 const maxAvance = computed(() => Math.max(100, ...avancePorArea.value.map((a) => a.avancePromedio)))
 
@@ -29,7 +41,18 @@ async function load() {
   loading.value = false
 }
 
-onMounted(load)
+onMounted(async () => {
+  await load()
+  await getUfHoy()
+    .then((v) => {
+      valorUf.value = v.valorUf
+      fechaUf.value = v.fecha
+      ufDesactualizada.value = v.desactualizado
+    })
+    .catch(() => {
+      errorUf.value = 'No se pudo obtener el valor UF — el selector de moneda queda solo en CLP.'
+    })
+})
 
 async function togglePagada(empresaId: string, pagada: boolean) {
   try {
@@ -106,6 +129,15 @@ function exportarExcel() {
     </button>
   </div>
 
+  <MonedaToggle
+    v-if="!errorUf"
+    v-model="moneda"
+    :valor-uf="valorUf"
+    :fecha="fechaUf"
+    :desactualizado="ufDesactualizada"
+    class="mb-4 print:hidden"
+  />
+
   <SkeletonBlock v-if="loading" />
   <div
     v-else-if="resumen"
@@ -132,7 +164,7 @@ function exportarExcel() {
           Ingreso del período
         </p>
         <p class="font-[family-name:var(--font-mono)] text-2xl text-[var(--color-sage)]">
-          {{ formatoCLP.format(resumen.ingresoDelPeriodoTotal) }}
+          {{ monto(resumen.ingresoDelPeriodoTotal) }}
         </p>
       </div>
       <div class="rounded-2xl border border-[var(--color-line)] bg-white p-4">
@@ -140,7 +172,7 @@ function exportarExcel() {
           Ingreso proyectado
         </p>
         <p class="font-[family-name:var(--font-mono)] text-2xl">
-          {{ formatoCLP.format(resumen.ingresoProyectadoTotal) }}
+          {{ monto(resumen.ingresoProyectadoTotal) }}
         </p>
       </div>
       <div class="rounded-2xl border border-[var(--color-line)] bg-white p-4">
@@ -359,15 +391,20 @@ function exportarExcel() {
                 {{ e.horasConsumidas }}
               </td>
               <td class="py-2">
-                {{ formatoCLP.format(e.ingresoDelPeriodo) }}
+                {{ monto(e.ingresoDelPeriodo) }}
               </td>
               <td class="py-2">
-                {{ formatoCLP.format(e.ingresoProyectado) }}
+                {{ monto(e.ingresoProyectado) }}
               </td>
             </tr>
           </tbody>
         </table>
       </div>
+      <p class="mt-3 text-xs text-[var(--color-ink)]/50">
+        "Proyectado" solo cuenta empresas marcadas como "Pagada" — es el ingreso que puedes dar
+        por confirmado, no todo lo que hay agendado. La empresa ve, en su propia Finanzas, el
+        gasto agendado sin ese filtro, así que ese número puede ser mayor al tuyo.
+      </p>
     </div>
 
     <div class="rounded-2xl border border-[var(--color-line)] bg-white p-4">
@@ -375,7 +412,7 @@ function exportarExcel() {
         Ingresos por coachee
       </h2>
       <p class="mb-3 text-xs text-[var(--color-ink)]/50">
-        Incluye tanto a los de empresa como a los independientes — estos últimos no aparecen en la tabla de arriba, que es por empresa.
+        Incluye tanto a los de empresa como a los independientes — estos últimos no aparecen en la tabla de arriba, que es por empresa. El "Proyectado" tiene el mismo filtro de empresas pagadas.
       </p>
       <p
         v-if="resumen.porCoachee.length === 0"
@@ -429,10 +466,10 @@ function exportarExcel() {
                 {{ c.horasRealizadas }}
               </td>
               <td class="py-2">
-                {{ formatoCLP.format(c.ingresoDelPeriodo) }}
+                {{ monto(c.ingresoDelPeriodo) }}
               </td>
               <td class="py-2">
-                {{ formatoCLP.format(c.ingresoProyectado) }}
+                {{ monto(c.ingresoProyectado) }}
               </td>
             </tr>
           </tbody>

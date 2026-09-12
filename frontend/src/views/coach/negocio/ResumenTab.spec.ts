@@ -14,6 +14,7 @@ vi.mock('../../../api/negocio', async () => {
   }
 })
 vi.mock('../../../api/empresas', () => ({ updateEmpresa: vi.fn() }))
+vi.mock('../../../api/indicadores', () => ({ getUfHoy: vi.fn() }))
 
 const jsonToSheet = vi.fn().mockReturnValue({})
 const bookAppendSheet = vi.fn()
@@ -28,6 +29,7 @@ vi.mock('xlsx', () => ({
 }))
 
 import { getResumenNegocio, getAlertas, getAvancePorArea } from '../../../api/negocio'
+import { getUfHoy } from '../../../api/indicadores'
 
 const resumen: ResumenNegocio = {
   porEmpresa: [
@@ -68,6 +70,7 @@ describe('ResumenTab', () => {
     vi.mocked(getResumenNegocio).mockResolvedValue(resumen)
     vi.mocked(getAlertas).mockResolvedValue(alertas)
     vi.mocked(getAvancePorArea).mockResolvedValue(avancePorArea)
+    vi.mocked(getUfHoy).mockResolvedValue({ valorUf: 40000, fecha: '2026-09-12', fuente: 'cmf', desactualizado: false })
   })
 
   it('shows the KPI cards with formatted currency and satisfaction', async () => {
@@ -77,6 +80,18 @@ describe('ResumenTab', () => {
     expect(wrapper.text()).toContain('4') // horas realizadas
     expect(wrapper.text()).toContain('$120.000')
     expect(wrapper.text()).toContain('4.5 ★')
+  })
+
+  it('converts KPI amounts to UF when toggled, keeping the underlying totals in CLP', async () => {
+    const wrapper = mount(ResumenTab)
+    await flushPromises()
+
+    const ufBtn = wrapper.findAll('button').find((b) => b.text() === 'UF')
+    await ufBtn!.trigger('click')
+
+    // 120.000 CLP / 40.000 CLP por UF = 3,00 UF
+    expect(wrapper.text()).toContain('3,00 UF')
+    expect(wrapper.text()).not.toContain('$120.000')
   })
 
   it('shows the seguimiento alerts grouped by type', async () => {

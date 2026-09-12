@@ -1,9 +1,11 @@
 import { apiRequest } from './client'
+import type { Moneda } from '../lib/moneda'
 
 export interface Empresa {
   id: string
   nombre: string
   tarifaHora: number
+  tarifaHoraMoneda: Moneda
   isActive: boolean
   pagada: boolean
   horasContratadas: number | null
@@ -23,12 +25,13 @@ export function getMyEmpresa(): Promise<Empresa> {
 export function createEmpresa(
   nombre: string,
   tarifaHora: number,
+  tarifaHoraMoneda?: Moneda,
   fechaInicio?: string,
   fechaFin?: string,
 ): Promise<Empresa> {
   return apiRequest<Empresa>('/empresas', {
     method: 'POST',
-    body: { nombre, tarifaHora, fechaInicio, fechaFin },
+    body: { nombre, tarifaHora, tarifaHoraMoneda, fechaInicio, fechaFin },
   })
 }
 
@@ -37,7 +40,14 @@ export function updateEmpresa(
   input: Partial<
     Pick<
       Empresa,
-      'nombre' | 'tarifaHora' | 'pagada' | 'horasContratadas' | 'isActive' | 'fechaInicio' | 'fechaFin'
+      | 'nombre'
+      | 'tarifaHora'
+      | 'tarifaHoraMoneda'
+      | 'pagada'
+      | 'horasContratadas'
+      | 'isActive'
+      | 'fechaInicio'
+      | 'fechaFin'
     >
   >,
 ): Promise<Empresa> {
