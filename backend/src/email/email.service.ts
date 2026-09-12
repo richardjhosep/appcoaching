@@ -449,6 +449,48 @@ export class EmailService {
     });
   }
 
+  async sendPasswordReset(options: {
+    to: string;
+    nombre?: string | null;
+    resetUrl: string;
+  }): Promise<void> {
+    const nombre = options.nombre ? escapeHtml(options.nombre) : null;
+    const saludo = nombre ? `Hola, ${nombre}.` : 'Hola.';
+    const intro =
+      'Recibimos una solicitud para restablecer tu contraseña de CoachNexus. Si fuiste tú, elige una nueva contraseña con el siguiente botón.';
+    const subject = 'Restablece tu contraseña — CoachNexus';
+
+    const body = `
+      <h1 style="margin:0 0 16px;font-family:'Poppins',Arial,sans-serif;font-size:22px;color:#121212;">Restablece tu contraseña</h1>
+      <p style="margin:0 0 16px;font-size:15px;line-height:1.6;">${saludo} ${intro}</p>
+      ${renderButton(options.resetUrl, 'Elegir nueva contraseña')}
+      ${renderFallbackLink(options.resetUrl)}
+      <p style="margin:16px 0 0;font-size:13px;line-height:1.6;color:#6b6b6b;">
+        Este enlace es válido por 60 minutos y solo se puede usar una vez. Si no pediste este
+        cambio, ignora este correo — tu contraseña actual sigue funcionando.
+      </p>
+    `;
+
+    const text = [
+      'Restablece tu contraseña',
+      '',
+      `${saludo} ${intro}`,
+      '',
+      `Elegir nueva contraseña: ${options.resetUrl}`,
+      '',
+      'Este enlace es válido por 60 minutos y solo se puede usar una vez. Si no pediste este cambio, ignora este correo — tu contraseña actual sigue funcionando.',
+      '',
+      'Este es un mensaje automático enviado desde una casilla no-reply — por favor no respondas a este correo.',
+    ].join('\n');
+
+    await this.send({
+      to: options.to,
+      subject,
+      html: renderEmailLayout(body),
+      text,
+    });
+  }
+
   private async send(options: {
     to: string;
     subject: string;

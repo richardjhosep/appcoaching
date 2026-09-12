@@ -80,6 +80,14 @@ async function handleSubmit() {
             autocomplete="current-password"
             input-class="w-full rounded-lg border border-[var(--color-line)] bg-[var(--color-ivory)]/60 px-3 py-2.5 pr-10 text-sm text-[var(--color-ink)] transition-shadow focus:border-[var(--color-sage)] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[var(--color-sage)]/30"
           />
+          <div class="mt-2 text-right">
+            <RouterLink
+              to="/olvide-password"
+              class="text-xs font-medium text-[var(--color-sage)] hover:underline"
+            >
+              ¿Olvidaste tu contraseña?
+            </RouterLink>
+          </div>
         </div>
 
         <p

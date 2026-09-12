@@ -221,6 +221,34 @@ describe('UsersService', () => {
     });
   });
 
+  describe('setNewPassword', () => {
+    it('sets the new password without checking a current one', async () => {
+      repo.findOne.mockResolvedValue({
+        id: 'user-1',
+        passwordHash: 'whatever-old-hash',
+        mustChangePassword: true,
+        tempPasswordExpiresAt: new Date(),
+      });
+
+      await service.setNewPassword('user-1', 'new-password');
+
+      const saved = repo.save.mock.calls[0][0];
+      expect(saved.mustChangePassword).toBe(false);
+      expect(saved.tempPasswordExpiresAt).toBeNull();
+      expect(await bcrypt.compare('new-password', saved.passwordHash)).toBe(
+        true,
+      );
+    });
+
+    it('rejects when the user does not exist', async () => {
+      repo.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.setNewPassword('missing', 'new-password'),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
+
   describe('seedCoachIfMissing', () => {
     function mockInsertQueryBuilder(identifiers: unknown[]) {
       const qb: Record<string, jest.Mock> = {};

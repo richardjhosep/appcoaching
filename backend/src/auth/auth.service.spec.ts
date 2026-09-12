@@ -8,21 +8,28 @@ import { UsersService } from '../users/users.service';
 import { RedisService } from '../redis/redis.service';
 import { AuditService } from '../audit/audit.service';
 import { CoacheesService } from '../coachees/coachees.service';
+import { EmailService } from '../email/email.service';
 
 describe('AuthService', () => {
   let service: AuthService;
   let jwt: { sign: jest.Mock; verify: jest.Mock };
-  let users: { findByEmail: jest.Mock; findById: jest.Mock };
+  let users: {
+    findByEmail: jest.Mock;
+    findById: jest.Mock;
+    setNewPassword: jest.Mock;
+  };
   let redis: { setWithTtl: jest.Mock; get: jest.Mock; delete: jest.Mock };
   let audit: { record: jest.Mock };
   let config: { get: jest.Mock };
   let coachees: { findByUserId: jest.Mock };
+  let email: { sendPasswordReset: jest.Mock };
 
   const CONFIG_VALUES: Record<string, string> = {
     'jwt.accessSecret': 'access-secret',
     'jwt.accessTtl': '15m',
     'jwt.refreshSecret': 'refresh-secret',
     'jwt.refreshTtl': '7d',
+    frontendUrl: 'https://app.example.com',
   };
 
   beforeEach(() => {
@@ -30,11 +37,16 @@ describe('AuthService', () => {
       sign: jest.fn().mockReturnValue('signed-token'),
       verify: jest.fn(),
     };
-    users = { findByEmail: jest.fn(), findById: jest.fn() };
+    users = {
+      findByEmail: jest.fn(),
+      findById: jest.fn(),
+      setNewPassword: jest.fn(),
+    };
     redis = { setWithTtl: jest.fn(), get: jest.fn(), delete: jest.fn() };
     audit = { record: jest.fn() };
     config = { get: jest.fn((key: string) => CONFIG_VALUES[key]) };
     coachees = { findByUserId: jest.fn() };
+    email = { sendPasswordReset: jest.fn() };
 
     service = new AuthService(
       jwt as unknown as JwtService,
@@ -43,6 +55,7 @@ describe('AuthService', () => {
       redis as unknown as RedisService,
       audit as unknown as AuditService,
       coachees as unknown as CoacheesService,
+      email as unknown as EmailService,
     );
   });
 
@@ -254,6 +267,103 @@ describe('AuthService', () => {
       });
 
       expect(profile.mustChangePassword).toBe(true);
+    });
+  });
+
+  describe('requestPasswordReset', () => {
+    it('emails a reset link and records the request when the account exists and is active', async () => {
+      users.findByEmail.mockResolvedValue({
+        id: 'user-1',
+        email: 'coach@example.com',
+        role: Role.COACH,
+        isActive: true,
+      });
+      redis.get.mockResolvedValue(null);
+
+      const result = await service.requestPasswordReset('coach@example.com');
+
+      expect(result).toEqual({ success: true });
+      expect(redis.setWithTtl).toHaveBeenCalledTimes(2);
+      expect(email.sendPasswordReset).toHaveBeenCalledWith(
+        expect.objectContaining({ to: 'coach@example.com' }),
+      );
+      const { resetUrl } = email.sendPasswordReset.mock.calls[0][0] as {
+        resetUrl: string;
+      };
+      expect(resetUrl).toMatch(
+        /^https:\/\/app\.example\.com\/restablecer-contrasena\/[0-9a-f]{64}$/,
+      );
+      expect(audit.record).toHaveBeenCalledWith('PASSWORD_RESET_REQUESTED', {
+        userId: 'user-1',
+      });
+    });
+
+    it('invalidates a previously issued token before creating a new one', async () => {
+      users.findByEmail.mockResolvedValue({
+        id: 'user-1',
+        email: 'coach@example.com',
+        role: Role.COACH,
+        isActive: true,
+      });
+      redis.get.mockResolvedValue('old-token');
+
+      await service.requestPasswordReset('coach@example.com');
+
+      expect(redis.delete).toHaveBeenCalledWith('pwreset:token:old-token');
+    });
+
+    it('responds with success without sending an email when no account matches — avoids leaking which emails are registered', async () => {
+      users.findByEmail.mockResolvedValue(null);
+
+      const result = await service.requestPasswordReset('nobody@example.com');
+
+      expect(result).toEqual({ success: true });
+      expect(email.sendPasswordReset).not.toHaveBeenCalled();
+      expect(audit.record).not.toHaveBeenCalled();
+    });
+
+    it('responds with success without sending an email when the account is inactive', async () => {
+      users.findByEmail.mockResolvedValue({
+        id: 'user-1',
+        email: 'coach@example.com',
+        role: Role.COACH,
+        isActive: false,
+      });
+
+      await service.requestPasswordReset('coach@example.com');
+
+      expect(email.sendPasswordReset).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('resetPasswordWithToken', () => {
+    it('sets the new password and consumes the token on a valid request', async () => {
+      redis.get.mockResolvedValue('user-1');
+
+      const result = await service.resetPasswordWithToken(
+        'a-valid-token',
+        'NuevaClave#2026Segura',
+      );
+
+      expect(result).toEqual({ success: true });
+      expect(users.setNewPassword).toHaveBeenCalledWith(
+        'user-1',
+        'NuevaClave#2026Segura',
+      );
+      expect(redis.delete).toHaveBeenCalledWith('pwreset:token:a-valid-token');
+      expect(redis.delete).toHaveBeenCalledWith('pwreset:user:user-1');
+      expect(audit.record).toHaveBeenCalledWith('PASSWORD_RESET_VIA_TOKEN', {
+        userId: 'user-1',
+      });
+    });
+
+    it('rejects an unknown or already-used token', async () => {
+      redis.get.mockResolvedValue(null);
+
+      await expect(
+        service.resetPasswordWithToken('bad-token', 'NuevaClave#2026Segura'),
+      ).rejects.toThrow(UnauthorizedException);
+      expect(users.setNewPassword).not.toHaveBeenCalled();
     });
   });
 });

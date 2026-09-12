@@ -2,11 +2,12 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
-import { randomUUID } from 'crypto';
+import { randomBytes, randomUUID } from 'crypto';
 import { UsersService } from '../users/users.service';
 import { AuditService } from '../audit/audit.service';
 import { RedisService } from '../redis/redis.service';
 import { CoacheesService } from '../coachees/coachees.service';
+import { EmailService } from '../email/email.service';
 import { durationToSeconds } from '../common/duration.util';
 import { User } from '../users/entities/user.entity';
 import { Role } from './enums/role.enum';
@@ -15,6 +16,8 @@ import {
   AuthenticatedUser,
   RefreshTokenPayload,
 } from './auth.types';
+
+const PASSWORD_RESET_TTL_SECONDS = 60 * 60;
 
 export interface TokenPair {
   accessToken: string;
@@ -30,6 +33,7 @@ export class AuthService {
     private readonly redis: RedisService,
     private readonly audit: AuditService,
     private readonly coachees: CoacheesService,
+    private readonly email: EmailService,
   ) {}
 
   /**
@@ -159,5 +163,77 @@ export class AuthService {
       // Token already invalid/expired: nothing to revoke.
     }
     await this.audit.record('LOGOUT', { userId });
+  }
+
+  private passwordResetTokenKey(token: string): string {
+    return `pwreset:token:${token}`;
+  }
+
+  private passwordResetUserKey(userId: string): string {
+    return `pwreset:user:${userId}`;
+  }
+
+  /**
+   * Siempre responde con éxito exista o no la cuenta — de lo contrario el
+   * formulario de "olvidé mi contraseña" se podría usar para averiguar qué
+   * correos están registrados. Solo un correo activo recibe el enlace.
+   */
+  async requestPasswordReset(email: string): Promise<{ success: true }> {
+    const user = await this.users.findByEmail(email);
+    if (user && user.isActive) {
+      // Un pedido nuevo invalida cualquier enlace anterior todavía vigente —
+      // solo un enlace activo por persona a la vez.
+      const previousToken = await this.redis.get(
+        this.passwordResetUserKey(user.id),
+      );
+      if (previousToken) {
+        await this.redis.delete(this.passwordResetTokenKey(previousToken));
+      }
+
+      const token = randomBytes(32).toString('hex');
+      await Promise.all([
+        this.redis.setWithTtl(
+          this.passwordResetTokenKey(token),
+          user.id,
+          PASSWORD_RESET_TTL_SECONDS,
+        ),
+        this.redis.setWithTtl(
+          this.passwordResetUserKey(user.id),
+          token,
+          PASSWORD_RESET_TTL_SECONDS,
+        ),
+      ]);
+
+      let nombre: string | null = null;
+      if (user.role === Role.COACHEE) {
+        const coachee = await this.coachees.findByUserId(user.id);
+        nombre = coachee?.nombre ?? null;
+      }
+
+      const resetUrl = `${this.config.get<string>('frontendUrl')}/restablecer-contrasena/${token}`;
+      void this.email.sendPasswordReset({ to: user.email, nombre, resetUrl });
+      await this.audit.record('PASSWORD_RESET_REQUESTED', {
+        userId: user.id,
+      });
+    }
+    return { success: true };
+  }
+
+  async resetPasswordWithToken(
+    token: string,
+    newPassword: string,
+  ): Promise<{ success: true }> {
+    const userId = await this.redis.get(this.passwordResetTokenKey(token));
+    if (!userId) {
+      throw new UnauthorizedException('El enlace no es válido o ya expiró.');
+    }
+
+    await this.users.setNewPassword(userId, newPassword);
+    await Promise.all([
+      this.redis.delete(this.passwordResetTokenKey(token)),
+      this.redis.delete(this.passwordResetUserKey(userId)),
+    ]);
+    await this.audit.record('PASSWORD_RESET_VIA_TOKEN', { userId });
+    return { success: true };
   }
 }

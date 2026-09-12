@@ -25,6 +25,19 @@ const routes: RouteRecordRaw[] = [
     props: true,
   },
   {
+    path: '/olvide-password',
+    name: 'olvide-password',
+    component: () => import('../views/public/OlvidePasswordView.vue'),
+    meta: { public: true },
+  },
+  {
+    path: '/restablecer-contrasena/:token',
+    name: 'restablecer-contrasena',
+    component: () => import('../views/public/RestablecerPasswordView.vue'),
+    meta: { public: true },
+    props: true,
+  },
+  {
     path: '/',
     name: 'home',
     component: () => import('../views/HomeRedirectView.vue'),

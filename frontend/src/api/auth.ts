@@ -31,3 +31,11 @@ export function me(): Promise<CurrentUser> {
 export function logoutRequest(refreshToken: string): Promise<{ success: boolean }> {
   return apiRequest<{ success: boolean }>('/auth/logout', { method: 'POST', body: { refreshToken } })
 }
+
+export function forgotPassword(email: string): Promise<{ success: boolean }> {
+  return publicRequest<{ success: boolean }>('/auth/forgot-password', { method: 'POST', body: { email } })
+}
+
+export function resetPassword(token: string, newPassword: string): Promise<{ success: boolean }> {
+  return publicRequest<{ success: boolean }>('/auth/reset-password', { method: 'POST', body: { token, newPassword } })
+}

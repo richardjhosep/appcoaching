@@ -167,6 +167,16 @@ export class UsersService {
     };
   }
 
+  private async applyNewPassword(
+    user: User,
+    newPassword: string,
+  ): Promise<void> {
+    user.passwordHash = await this.hash(newPassword);
+    user.mustChangePassword = false;
+    user.tempPasswordExpiresAt = null;
+    await this.users.save(user);
+  }
+
   async changePassword(
     userId: string,
     currentPassword: string,
@@ -180,10 +190,21 @@ export class UsersService {
     if (!valid) {
       throw new UnauthorizedException('La contraseña actual es incorrecta.');
     }
-    user.passwordHash = await this.hash(newPassword);
-    user.mustChangePassword = false;
-    user.tempPasswordExpiresAt = null;
-    await this.users.save(user);
+    await this.applyNewPassword(user, newPassword);
+  }
+
+  /**
+   * Fija una contraseña nueva sin conocer la actual — usado por el reseteo
+   * vía enlace de correo (AuthService.resetPasswordWithToken), donde ya se
+   * validó la identidad a través de un token de un solo uso, no de la
+   * contraseña vigente.
+   */
+  async setNewPassword(userId: string, newPassword: string): Promise<void> {
+    const user = await this.findById(userId);
+    if (!user) {
+      throw new NotFoundException('Usuario no encontrado.');
+    }
+    await this.applyNewPassword(user, newPassword);
   }
 
   async resetPassword(userId: string): Promise<string> {
