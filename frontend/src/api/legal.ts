@@ -1,6 +1,6 @@
 import { apiRequest, apiUpload, apiDownload } from './client'
 
-export type TipoDocumentoLegal = 'contrato' | 'nda'
+export type TipoDocumentoLegal = 'contrato' | 'nda' | 'carta_invitacion'
 export type EstadoDocumentoLegal = 'firmado' | 'pendiente'
 
 export interface DocumentoLegal {
@@ -15,6 +15,7 @@ export interface EmpresaLegal {
   nombre: string
   contrato: DocumentoLegal
   nda: DocumentoLegal
+  cartaInvitacion: DocumentoLegal
   coacheesConConsentimiento: number
   coacheesTotal: number
   createdAt: string
@@ -25,6 +26,7 @@ export interface IndependienteLegal {
   nombre: string
   contrato: DocumentoLegal
   nda: DocumentoLegal
+  cartaInvitacion: DocumentoLegal
   consentimientoInformado: boolean
   createdAt: string
 }
@@ -122,6 +124,7 @@ export function eliminarAdicional(id: string): Promise<void> {
 export interface MisDocumentosLegales {
   contrato: DocumentoLegal
   nda: DocumentoLegal
+  cartaInvitacion: DocumentoLegal
   alcance: 'empresa' | 'individual'
 }
 

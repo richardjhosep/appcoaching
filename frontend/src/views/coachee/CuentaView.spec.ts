@@ -46,6 +46,7 @@ const coacheeIndependiente: Coachee = { ...coacheeEmpresa, id: 'c2', empresaId: 
 const documentosVacios: MisDocumentosLegales = {
   contrato: { estado: 'pendiente', fecha: null, vigencia: null, tieneArchivo: false },
   nda: { estado: 'pendiente', fecha: null, vigencia: null, tieneArchivo: false },
+  cartaInvitacion: { estado: 'pendiente', fecha: null, vigencia: null, tieneArchivo: false },
   alcance: 'empresa',
 }
 

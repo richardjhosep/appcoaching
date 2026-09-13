@@ -14,8 +14,12 @@ describe('SesionesService', () => {
     findOne: jest.Mock<Promise<PartialSesion | null>, unknown[]>;
     find: jest.Mock<Promise<PartialSesion[]>, unknown[]>;
     create: jest.Mock<PartialSesion, [PartialSesion]>;
-    save: jest.Mock<Promise<PartialSesion>, [PartialSesion]>;
+    save: jest.Mock<
+      Promise<PartialSesion | PartialSesion[]>,
+      [PartialSesion | PartialSesion[]]
+    >;
     delete: jest.Mock<Promise<{ affected: number }>, unknown[]>;
+    createQueryBuilder: jest.Mock;
   };
   let ciclosRepo: {
     findOne: jest.Mock<Promise<PartialCiclo | null>, unknown[]>;
@@ -34,10 +38,13 @@ describe('SesionesService', () => {
         .fn<Promise<PartialSesion[]>, unknown[]>()
         .mockResolvedValue([]),
       create: jest.fn((data: PartialSesion) => data),
-      save: jest.fn((data: PartialSesion) =>
-        Promise.resolve({ id: 'generated-id', ...data }),
+      save: jest.fn((data: PartialSesion | PartialSesion[]) =>
+        Array.isArray(data)
+          ? Promise.resolve(data.map((d) => ({ id: 'generated-id', ...d })))
+          : Promise.resolve({ id: 'generated-id', ...data }),
       ),
       delete: jest.fn<Promise<{ affected: number }>, unknown[]>(),
+      createQueryBuilder: jest.fn(),
     };
     ciclosRepo = {
       findOne: jest
@@ -239,7 +246,11 @@ describe('SesionesService', () => {
     });
 
     it('excludes the session being updated from its own conflict check', async () => {
-      repo.findOne.mockResolvedValue({ id: 's1', coacheeId: 'coachee-1' });
+      repo.findOne.mockResolvedValue({
+        id: 's1',
+        coacheeId: 'coachee-1',
+        fechaHora: new Date('2026-08-01T10:00:00.000Z'),
+      });
       repo.find.mockResolvedValue([
         { id: 's1', fechaHora: new Date('2026-08-01T15:00:00.000Z') },
       ]);
@@ -320,18 +331,177 @@ describe('SesionesService', () => {
   });
 
   describe('remove', () => {
-    it('throws NotFoundException when nothing was deleted', async () => {
-      repo.delete.mockResolvedValue({ affected: 0 });
+    it('throws NotFoundException when the session does not exist', async () => {
+      repo.findOne.mockResolvedValue(null);
 
       await expect(service.remove('missing')).rejects.toThrow(
         NotFoundException,
       );
+      expect(repo.delete).not.toHaveBeenCalled();
     });
 
-    it('resolves when the session was deleted', async () => {
+    it('deletes only this session when aplicarASerie is not set', async () => {
+      repo.findOne.mockResolvedValue({ id: 's1', recurrenciaId: 'rec-1' });
       repo.delete.mockResolvedValue({ affected: 1 });
 
-      await expect(service.remove('s1')).resolves.toBeUndefined();
+      const resultado = await service.remove('s1');
+
+      expect(repo.delete).toHaveBeenCalledWith('s1');
+      expect(resultado).toEqual({ eliminadas: 1 });
+    });
+
+    it('deletes this session even when aplicarASerie is set but it belongs to no serie', async () => {
+      repo.findOne.mockResolvedValue({ id: 's1', recurrenciaId: null });
+      repo.delete.mockResolvedValue({ affected: 1 });
+
+      const resultado = await service.remove('s1', true);
+
+      expect(repo.delete).toHaveBeenCalledWith('s1');
+      expect(resultado).toEqual({ eliminadas: 1 });
+    });
+
+    it('deletes this session and its future serie-mates when aplicarASerie is set', async () => {
+      repo.findOne.mockResolvedValue({ id: 's1', recurrenciaId: 'rec-1' });
+      const qb: Record<string, jest.Mock> = {};
+      qb.delete = jest.fn(() => qb);
+      qb.where = jest.fn(() => qb);
+      qb.andWhere = jest.fn(() => qb);
+      qb.execute = jest.fn().mockResolvedValue({ affected: 3 });
+      repo.createQueryBuilder.mockReturnValue(qb);
+
+      const resultado = await service.remove('s1', true);
+
+      expect(qb.where).toHaveBeenCalledWith('recurrencia_id = :recurrenciaId', {
+        recurrenciaId: 'rec-1',
+      });
+      expect(qb.andWhere).toHaveBeenCalledWith(
+        '(fecha_hora > :ahora OR id = :id)',
+        expect.objectContaining({ id: 's1' }),
+      );
+      expect(repo.delete).not.toHaveBeenCalled();
+      expect(resultado).toEqual({ eliminadas: 3 });
+    });
+  });
+
+  describe('crearSerie', () => {
+    it('rejects when the coachee does not exist', async () => {
+      coachees.exists.mockResolvedValue(false);
+
+      await expect(
+        service.crearSerie({
+          coacheeId: 'missing',
+          fechaHora: '2026-08-03T15:00:00.000Z',
+          cantidadSesiones: 4,
+        }),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('creates one session per week, all sharing a new recurrenciaId', async () => {
+      coachees.exists.mockResolvedValue(true);
+
+      const creadas = await service.crearSerie({
+        coacheeId: 'coachee-1',
+        fechaHora: '2026-08-03T15:00:00.000Z',
+        cantidadSesiones: 3,
+      });
+
+      expect(creadas).toHaveLength(3);
+      expect(creadas[0].fechaHora.toISOString()).toBe(
+        '2026-08-03T15:00:00.000Z',
+      );
+      expect(creadas[1].fechaHora.toISOString()).toBe(
+        '2026-08-10T15:00:00.000Z',
+      );
+      expect(creadas[2].fechaHora.toISOString()).toBe(
+        '2026-08-17T15:00:00.000Z',
+      );
+      const idsRecurrencia = new Set(creadas.map((s) => s.recurrenciaId));
+      expect(idsRecurrencia.size).toBe(1);
+      expect([...idsRecurrencia][0]).toBeTruthy();
+    });
+
+    it('rejects the whole serie (creates nothing) if any occurrence conflicts', async () => {
+      coachees.exists.mockResolvedValue(true);
+      // La 2ª ocurrencia consultada (de 3) choca con una sesión ya agendada — el orden de
+      // llamadas a `find` sigue el mismo orden en que crearSerie() genera las fechas.
+      let llamada = 0;
+      repo.find.mockImplementation(() => {
+        llamada += 1;
+        return Promise.resolve(
+          llamada === 2
+            ? [
+                {
+                  id: 'existente',
+                  fechaHora: new Date('2026-08-10T15:00:00.000Z'),
+                },
+              ]
+            : [],
+        );
+      });
+
+      await expect(
+        service.crearSerie({
+          coacheeId: 'coachee-1',
+          fechaHora: '2026-08-03T15:00:00.000Z',
+          cantidadSesiones: 3,
+        }),
+      ).rejects.toThrow(ConflictException);
+      expect(repo.save).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('update — aplicarASerie', () => {
+    it('shifts future serie-mates by the same delta when aplicarASerie is set', async () => {
+      repo.findOne.mockResolvedValue({
+        id: 's1',
+        recurrenciaId: 'rec-1',
+        fechaHora: new Date('2026-08-03T15:00:00.000Z'),
+      });
+      const futura = {
+        id: 's2',
+        recurrenciaId: 'rec-1',
+        fechaHora: new Date('2026-08-10T15:00:00.000Z'),
+      };
+      repo.find.mockResolvedValue([futura]);
+
+      await service.update('s1', {
+        fechaHora: '2026-08-03T16:00:00.000Z', // +1h
+        aplicarASerie: true,
+      });
+
+      expect(repo.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: 's2',
+          fechaHora: new Date('2026-08-10T16:00:00.000Z'),
+        }),
+      );
+    });
+
+    it('does not touch other sessions when aplicarASerie is not set', async () => {
+      repo.findOne.mockResolvedValue({
+        id: 's1',
+        recurrenciaId: 'rec-1',
+        fechaHora: new Date('2026-08-03T15:00:00.000Z'),
+      });
+
+      await service.update('s1', { fechaHora: '2026-08-03T16:00:00.000Z' });
+
+      expect(repo.save).toHaveBeenCalledTimes(1);
+    });
+
+    it('does nothing extra when the session has no recurrenciaId', async () => {
+      repo.findOne.mockResolvedValue({
+        id: 's1',
+        recurrenciaId: null,
+        fechaHora: new Date('2026-08-03T15:00:00.000Z'),
+      });
+
+      await service.update('s1', {
+        fechaHora: '2026-08-03T16:00:00.000Z',
+        aplicarASerie: true,
+      });
+
+      expect(repo.save).toHaveBeenCalledTimes(1);
     });
   });
 });

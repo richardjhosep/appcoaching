@@ -14,6 +14,7 @@ import { PostSesionesService } from './post-sesiones.service';
 import { SolicitudesReagendamientoService } from './solicitudes-reagendamiento.service';
 import { CoacheesService } from '../coachees/coachees.service';
 import { CreateSesionDto } from './dto/create-sesion.dto';
+import { CreateSerieSesionesDto } from './dto/create-serie-sesiones.dto';
 import { UpdateSesionDto } from './dto/update-sesion.dto';
 import { UpdatePostSesionDto } from './dto/update-post-sesion.dto';
 import { CreateSolicitudDto } from './dto/create-solicitud.dto';
@@ -38,6 +39,12 @@ export class SesionesController {
   @Post()
   create(@Body() dto: CreateSesionDto) {
     return this.sesiones.create(dto);
+  }
+
+  @Roles(Role.COACH)
+  @Post('serie')
+  crearSerie(@Body() dto: CreateSerieSesionesDto) {
+    return this.sesiones.crearSerie(dto);
   }
 
   @Roles(Role.COACH)
@@ -151,7 +158,10 @@ export class SesionesController {
 
   @Roles(Role.COACH)
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.sesiones.remove(id);
+  remove(
+    @Param('id') id: string,
+    @Query('aplicarASerie') aplicarASerie?: string,
+  ) {
+    return this.sesiones.remove(id, aplicarASerie === 'true');
   }
 }

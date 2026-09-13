@@ -98,6 +98,7 @@ describe('coacheesQueNecesitanAlgo', () => {
       nombre: 'Rodrigo Peña',
       contrato: { estado: 'pendiente', fecha: null, vigencia: null, tieneArchivo: false },
       nda: { estado: 'pendiente', fecha: null, vigencia: null, tieneArchivo: false },
+      cartaInvitacion: { estado: 'pendiente', fecha: null, vigencia: null, tieneArchivo: false },
       consentimientoInformado: false,
       createdAt: '2026-01-01T00:00:00.000Z',
     }
@@ -106,6 +107,7 @@ describe('coacheesQueNecesitanAlgo', () => {
       nombre: 'Ana Reagenda',
       contrato: { estado: 'firmado', fecha: '2026-01-01', vigencia: '2099-01-01', tieneArchivo: true },
       nda: { estado: 'firmado', fecha: '2026-01-01', vigencia: '2099-01-01', tieneArchivo: true },
+      cartaInvitacion: { estado: 'pendiente', fecha: null, vigencia: null, tieneArchivo: false },
       consentimientoInformado: true,
       createdAt: '2026-01-01T00:00:00.000Z',
     }

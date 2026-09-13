@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   Post,
+  Put,
   UseGuards,
 } from '@nestjs/common';
 import { EmpresasService } from './empresas.service';
@@ -13,6 +14,7 @@ import { AuditService } from '../audit/audit.service';
 import { CreateEmpresaDto } from './dto/create-empresa.dto';
 import { UpdateEmpresaDto } from './dto/update-empresa.dto';
 import { CreateGestionDto } from './dto/create-gestion.dto';
+import { SetCompetenciasDto } from './dto/set-competencias.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -45,6 +47,13 @@ export class EmpresasController {
   @Get('me')
   findOwn(@CurrentUser() actor: AuthenticatedUser) {
     return this.empresas.findById(actor.empresaId ?? '');
+  }
+
+  // Declarada antes de ':id/competencias' por el mismo motivo que 'me' arriba.
+  @Roles(Role.EMPRESA)
+  @Get('me/competencias')
+  misCompetencias(@CurrentUser() actor: AuthenticatedUser) {
+    return this.empresas.getCompetencias(actor.empresaId ?? '');
   }
 
   @Roles(Role.COACH)
@@ -85,5 +94,17 @@ export class EmpresasController {
   @Get(':id/gestion')
   listGestion(@Param('id') id: string) {
     return this.empresas.listGestionDeEmpresa(id);
+  }
+
+  @Roles(Role.COACH)
+  @Get(':id/competencias')
+  getCompetencias(@Param('id') id: string) {
+    return this.empresas.getCompetencias(id);
+  }
+
+  @Roles(Role.COACH)
+  @Put(':id/competencias')
+  setCompetencias(@Param('id') id: string, @Body() dto: SetCompetenciasDto) {
+    return this.empresas.setCompetencias(id, dto.competenciaIds);
   }
 }

@@ -223,7 +223,7 @@ async function enviarSolicitudConsentimiento(coacheeId: string, nombre: string) 
           <span class="text-xs text-[var(--color-ink)]/40">Empresa</span>
         </div>
 
-        <div class="mb-3 grid gap-3 sm:grid-cols-2">
+        <div class="mb-3 grid gap-3 sm:grid-cols-3">
           <DocumentoLegalSlot
             :target="{ empresaId: item.empresaId }"
             tipo="contrato"
@@ -237,6 +237,14 @@ async function enviarSolicitudConsentimiento(coacheeId: string, nombre: string) 
             tipo="nda"
             label="NDA"
             :doc="item.nda"
+            :nombre-para-archivo="item.nombre"
+            @actualizado="cargarResumen"
+          />
+          <DocumentoLegalSlot
+            :target="{ empresaId: item.empresaId }"
+            tipo="carta_invitacion"
+            label="Carta de invitación"
+            :doc="item.cartaInvitacion"
             :nombre-para-archivo="item.nombre"
             @actualizado="cargarResumen"
           />
@@ -301,7 +309,7 @@ async function enviarSolicitudConsentimiento(coacheeId: string, nombre: string) 
           <span class="text-xs text-[var(--color-ink)]/40">Independiente</span>
         </div>
 
-        <div class="mb-3 grid gap-3 sm:grid-cols-2">
+        <div class="mb-3 grid gap-3 sm:grid-cols-3">
           <DocumentoLegalSlot
             :target="{ coacheeId: item.coacheeId }"
             tipo="contrato"
@@ -315,6 +323,14 @@ async function enviarSolicitudConsentimiento(coacheeId: string, nombre: string) 
             tipo="nda"
             label="NDA"
             :doc="item.nda"
+            :nombre-para-archivo="item.nombre"
+            @actualizado="cargarResumen"
+          />
+          <DocumentoLegalSlot
+            :target="{ coacheeId: item.coacheeId }"
+            tipo="carta_invitacion"
+            label="Carta de invitación"
+            :doc="item.cartaInvitacion"
             :nombre-para-archivo="item.nombre"
             @actualizado="cargarResumen"
           />

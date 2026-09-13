@@ -3,9 +3,11 @@ import { Repository } from 'typeorm';
 import { EmpresasService } from './empresas.service';
 import { Empresa } from './entities/empresa.entity';
 import { GestionRenovacion } from './entities/gestion-renovacion.entity';
+import { EmpresaCompetencia } from './entities/empresa-competencia.entity';
 
 type PartialEmpresa = Partial<Empresa>;
 type PartialGestion = Partial<GestionRenovacion>;
+type PartialEmpresaCompetencia = Partial<EmpresaCompetencia>;
 
 describe('EmpresasService', () => {
   let service: EmpresasService;
@@ -22,6 +24,15 @@ describe('EmpresasService', () => {
     find: jest.Mock<Promise<PartialGestion[]>, unknown[]>;
     create: jest.Mock<PartialGestion, [PartialGestion]>;
     save: jest.Mock<Promise<PartialGestion>, [PartialGestion]>;
+  };
+  let empresaCompetenciasRepo: {
+    find: jest.Mock<Promise<PartialEmpresaCompetencia[]>, unknown[]>;
+    create: jest.Mock<PartialEmpresaCompetencia, [PartialEmpresaCompetencia]>;
+    save: jest.Mock<
+      Promise<PartialEmpresaCompetencia[]>,
+      [PartialEmpresaCompetencia[]]
+    >;
+    delete: jest.Mock;
   };
 
   beforeEach(() => {
@@ -45,9 +56,20 @@ describe('EmpresasService', () => {
         Promise.resolve({ id: 'gestion-generated-id', ...data }),
       ),
     };
+    empresaCompetenciasRepo = {
+      find: jest
+        .fn<Promise<PartialEmpresaCompetencia[]>, unknown[]>()
+        .mockResolvedValue([]),
+      create: jest.fn((data: PartialEmpresaCompetencia) => data),
+      save: jest.fn((data: PartialEmpresaCompetencia[]) =>
+        Promise.resolve(data),
+      ),
+      delete: jest.fn().mockResolvedValue({ affected: 0 }),
+    };
     service = new EmpresasService(
       repo as unknown as Repository<Empresa>,
       gestionesRepo as unknown as Repository<GestionRenovacion>,
+      empresaCompetenciasRepo as unknown as Repository<EmpresaCompetencia>,
     );
   });
 
@@ -162,6 +184,62 @@ describe('EmpresasService', () => {
       expect(gestionesRepo.find).toHaveBeenCalledWith({
         where: { empresaId: 'e1' },
         order: { createdAt: 'DESC' },
+      });
+    });
+  });
+
+  describe('getCompetencias / setCompetencias', () => {
+    it('reemplaza el set completo (borra todo y guarda el nuevo)', async () => {
+      repo.findOne.mockResolvedValue({ id: 'e1', nombre: 'Andes Minerals' });
+      empresaCompetenciasRepo.find.mockResolvedValue([
+        { id: 'ec1', empresaId: 'e1', competenciaId: 'comp-1' },
+        { id: 'ec2', empresaId: 'e1', competenciaId: 'comp-2' },
+      ]);
+
+      const resultado = await service.setCompetencias('e1', [
+        'comp-1',
+        'comp-2',
+      ]);
+
+      expect(empresaCompetenciasRepo.delete).toHaveBeenCalledWith({
+        empresaId: 'e1',
+      });
+      expect(empresaCompetenciasRepo.save).toHaveBeenCalledWith([
+        { empresaId: 'e1', competenciaId: 'comp-1' },
+        { empresaId: 'e1', competenciaId: 'comp-2' },
+      ]);
+      expect(resultado).toHaveLength(2);
+    });
+
+    it('deja el set vacío sin volver a guardar nada', async () => {
+      repo.findOne.mockResolvedValue({ id: 'e1', nombre: 'Andes Minerals' });
+
+      const resultado = await service.setCompetencias('e1', []);
+
+      expect(empresaCompetenciasRepo.delete).toHaveBeenCalledWith({
+        empresaId: 'e1',
+      });
+      expect(empresaCompetenciasRepo.save).not.toHaveBeenCalled();
+      expect(resultado).toEqual([]);
+    });
+
+    it('rechaza si la empresa no existe', async () => {
+      repo.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.setCompetencias('missing', ['comp-1']),
+      ).rejects.toThrow(NotFoundException);
+      expect(empresaCompetenciasRepo.delete).not.toHaveBeenCalled();
+    });
+
+    it('getCompetencias trae la relación de competencia', async () => {
+      repo.findOne.mockResolvedValue({ id: 'e1', nombre: 'Andes Minerals' });
+
+      await service.getCompetencias('e1');
+
+      expect(empresaCompetenciasRepo.find).toHaveBeenCalledWith({
+        where: { empresaId: 'e1' },
+        relations: { competencia: true },
       });
     });
   });

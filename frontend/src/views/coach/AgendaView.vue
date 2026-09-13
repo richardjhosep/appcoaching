@@ -7,7 +7,7 @@ import EmptyState from '../../components/EmptyState.vue'
 import SkeletonBlock from '../../components/SkeletonBlock.vue'
 import ReagendarSesionModal from '../../components/ReagendarSesionModal.vue'
 import AppModal from '../../components/AppModal.vue'
-import { agendarSesion, getTodasLasSesiones, type Sesion } from '../../api/sesiones'
+import { agendarSesion, agendarSerieSesiones, getTodasLasSesiones, type Sesion } from '../../api/sesiones'
 import {
   crearBloqueDisponibilidad,
   eliminarBloqueDisponibilidad,
@@ -134,7 +134,13 @@ function onReagendada(actualizada: Sesion) {
 // elegir a quién es la sesión — se puede abrir vacío ("+ Nueva sesión") o prellenado con
 // la fecha/hora elegida con un clic o arrastre sobre la grilla.
 const modalNuevaSesionOpen = ref(false)
-const nuevaSesionForm = ref({ coacheeId: '', fechaHora: '', link: '' })
+const nuevaSesionForm = ref({
+  coacheeId: '',
+  fechaHora: '',
+  link: '',
+  repetirSemanal: false,
+  cantidadSesiones: 4,
+})
 const agendandoNueva = ref(false)
 const errorNuevaSesion = ref<string | null>(null)
 
@@ -143,19 +149,31 @@ function abrirNuevaSesion(fechaHoraPrefill?: string) {
     coacheeId: '',
     fechaHora: fechaHoraPrefill ? aDatetimeLocal(new Date(fechaHoraPrefill)) : '',
     link: '',
+    repetirSemanal: false,
+    cantidadSesiones: 4,
   }
   errorNuevaSesion.value = null
   modalNuevaSesionOpen.value = true
 }
 
 async function crearNuevaSesion() {
-  const { coacheeId, fechaHora, link } = nuevaSesionForm.value
+  const { coacheeId, fechaHora, link, repetirSemanal, cantidadSesiones } = nuevaSesionForm.value
   if (!coacheeId || !fechaHora) return
   errorNuevaSesion.value = null
   agendandoNueva.value = true
   try {
-    const sesion = await agendarSesion(coacheeId, new Date(fechaHora).toISOString(), link || undefined)
-    sesiones.value = [...sesiones.value, sesion]
+    if (repetirSemanal) {
+      const creadas = await agendarSerieSesiones(
+        coacheeId,
+        new Date(fechaHora).toISOString(),
+        cantidadSesiones,
+        link || undefined,
+      )
+      sesiones.value = [...sesiones.value, ...creadas]
+    } else {
+      const sesion = await agendarSesion(coacheeId, new Date(fechaHora).toISOString(), link || undefined)
+      sesiones.value = [...sesiones.value, sesion]
+    }
     modalNuevaSesionOpen.value = false
   } catch (err) {
     errorNuevaSesion.value = err instanceof ApiError ? err.message : 'No se pudo agendar la sesión.'
@@ -389,6 +407,29 @@ async function crearNuevaSesion() {
             placeholder="https://…"
             class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
           >
+        </label>
+        <label class="flex items-center gap-2 text-sm">
+          <input
+            v-model="nuevaSesionForm.repetirSemanal"
+            type="checkbox"
+          >
+          Repetir semanalmente (sesión fija)
+        </label>
+        <label
+          v-if="nuevaSesionForm.repetirSemanal"
+          class="block text-sm"
+        >
+          Número de sesiones
+          <input
+            v-model.number="nuevaSesionForm.cantidadSesiones"
+            type="number"
+            min="2"
+            max="52"
+            class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+          >
+          <span class="mt-1 block text-xs text-[var(--color-ink)]/50">
+            Se crea una sesión por semana, mismo día y hora, desde la fecha elegida arriba.
+          </span>
         </label>
         <div class="flex justify-end gap-2 pt-2">
           <button

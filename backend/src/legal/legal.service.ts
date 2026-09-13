@@ -33,6 +33,7 @@ export interface EmpresaLegal {
   nombre: string;
   contrato: DocumentoLegalResumen;
   nda: DocumentoLegalResumen;
+  cartaInvitacion: DocumentoLegalResumen;
   coacheesConConsentimiento: number;
   coacheesTotal: number;
   createdAt: Date;
@@ -43,6 +44,7 @@ export interface IndependienteLegal {
   nombre: string;
   contrato: DocumentoLegalResumen;
   nda: DocumentoLegalResumen;
+  cartaInvitacion: DocumentoLegalResumen;
   consentimientoInformado: boolean;
   createdAt: Date;
 }
@@ -166,17 +168,20 @@ export class LegalService {
   async misDocumentos(coacheeUserId: string): Promise<{
     contrato: DocumentoLegalResumen;
     nda: DocumentoLegalResumen;
+    cartaInvitacion: DocumentoLegalResumen;
     alcance: 'empresa' | 'individual';
   }> {
     const { target, alcance } =
       await this.resolverTargetDeCoachee(coacheeUserId);
-    const [contrato, nda] = await Promise.all([
+    const [contrato, nda, cartaInvitacion] = await Promise.all([
       this.obtenerArchivo(target, TipoDocumentoLegal.CONTRATO),
       this.obtenerArchivo(target, TipoDocumentoLegal.NDA),
+      this.obtenerArchivo(target, TipoDocumentoLegal.CARTA_INVITACION),
     ]);
     return {
       contrato: aResumen(contrato ?? undefined),
       nda: aResumen(nda ?? undefined),
+      cartaInvitacion: aResumen(cartaInvitacion ?? undefined),
       alcance,
     };
   }
@@ -202,6 +207,9 @@ export class LegalService {
         (d) => d.tipo === TipoDocumentoLegal.CONTRATO,
       );
       const nda = propios.find((d) => d.tipo === TipoDocumentoLegal.NDA);
+      const cartaInvitacion = propios.find(
+        (d) => d.tipo === TipoDocumentoLegal.CARTA_INVITACION,
+      );
       const coacheesEmpresa = coachees.filter(
         (c) => c.empresaId === empresa.id,
       );
@@ -211,6 +219,7 @@ export class LegalService {
         nombre: empresa.nombre,
         contrato: aResumen(contrato),
         nda: aResumen(nda),
+        cartaInvitacion: aResumen(cartaInvitacion),
         coacheesConConsentimiento: coacheesEmpresa.filter(
           (c) => c.consentimientoInformado,
         ).length,
@@ -227,12 +236,16 @@ export class LegalService {
           (d) => d.tipo === TipoDocumentoLegal.CONTRATO,
         );
         const nda = propios.find((d) => d.tipo === TipoDocumentoLegal.NDA);
+        const cartaInvitacion = propios.find(
+          (d) => d.tipo === TipoDocumentoLegal.CARTA_INVITACION,
+        );
 
         return {
           coacheeId: coachee.id,
           nombre: coachee.nombre,
           contrato: aResumen(contrato),
           nda: aResumen(nda),
+          cartaInvitacion: aResumen(cartaInvitacion),
           consentimientoInformado: coachee.consentimientoInformado,
           createdAt: coachee.createdAt,
         };

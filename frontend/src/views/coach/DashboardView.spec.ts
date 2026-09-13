@@ -287,6 +287,7 @@ describe('DashboardView', () => {
           nombre: 'Andes Minerals',
           contrato: { estado: 'pendiente', fecha: null, vigencia: null, tieneArchivo: false },
           nda: { estado: 'firmado', fecha: '2026-01-01', vigencia: '2099-01-01', tieneArchivo: true },
+      cartaInvitacion: { estado: 'pendiente', fecha: null, vigencia: null, tieneArchivo: false },
           coacheesConConsentimiento: 1,
           coacheesTotal: 1,
           createdAt: '2026-01-01T00:00:00.000Z',

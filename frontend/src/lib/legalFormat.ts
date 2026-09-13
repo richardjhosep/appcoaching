@@ -38,6 +38,11 @@ export interface AlertasLegales {
  * Cuenta lo que necesita atención del coach en Legal — usado tanto por la pestaña Contratos
  * (para su franja de alertas) como por el Dashboard (para que esas mismas alertas sean visibles
  * sin tener que entrar a Legal), así nunca muestran números distintos entre pantallas.
+ *
+ * Deliberadamente NO incluye "carta de invitación": a diferencia de Contrato/NDA (vigentes
+ * durante toda la relación), la carta es un trámite de ANTES de empezar el proceso — para
+ * cualquier relación ya en curso (el 100% de las existentes al agregar este documento) contarla
+ * como "pendiente" sería ruido, no una alerta real de algo que falte hacer hoy.
  */
 export function alertasLegales(resumen: ResumenLegal): AlertasLegales {
   const relaciones = [...resumen.empresas, ...resumen.independientes]

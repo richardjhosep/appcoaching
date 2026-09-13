@@ -80,3 +80,30 @@ export function crearGestion(
 export function getGestionDeEmpresa(empresaId: string): Promise<GestionRenovacion[]> {
   return apiRequest<GestionRenovacion[]>(`/empresas/${empresaId}/gestion`)
 }
+
+export interface EmpresaCompetencia {
+  id: string
+  empresaId: string
+  competenciaId: string
+  competencia?: { id: string; nombre: string }
+  createdAt: string
+}
+
+export function getCompetenciasDeEmpresa(empresaId: string): Promise<EmpresaCompetencia[]> {
+  return apiRequest<EmpresaCompetencia[]>(`/empresas/${empresaId}/competencias`)
+}
+
+export function setCompetenciasDeEmpresa(
+  empresaId: string,
+  competenciaIds: string[],
+): Promise<EmpresaCompetencia[]> {
+  return apiRequest<EmpresaCompetencia[]>(`/empresas/${empresaId}/competencias`, {
+    method: 'PUT',
+    body: { competenciaIds },
+  })
+}
+
+/** Las competencias que la propia empresa (rol Role.EMPRESA) definió como prioritarias. */
+export function getMisCompetenciasContratadas(): Promise<EmpresaCompetencia[]> {
+  return apiRequest<EmpresaCompetencia[]>('/empresas/me/competencias')
+}

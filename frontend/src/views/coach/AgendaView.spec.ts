@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { mount, flushPromises, DOMWrapper } from '@vue/test-utils'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { mount, flushPromises, DOMWrapper, type VueWrapper } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import AgendaView from './AgendaView.vue'
 import type { Sesion } from '../../api/sesiones'
@@ -7,7 +7,13 @@ import type { CoacheeListItem } from '../../api/coachees'
 
 vi.mock('../../api/sesiones', async () => {
   const actual = await vi.importActual<typeof import('../../api/sesiones')>('../../api/sesiones')
-  return { ...actual, getTodasLasSesiones: vi.fn(), reagendarSesion: vi.fn(), agendarSesion: vi.fn() }
+  return {
+    ...actual,
+    getTodasLasSesiones: vi.fn(),
+    reagendarSesion: vi.fn(),
+    agendarSesion: vi.fn(),
+    agendarSerieSesiones: vi.fn(),
+  }
 })
 vi.mock('../../api/disponibilidad', async () => {
   const actual = await vi.importActual<typeof import('../../api/disponibilidad')>('../../api/disponibilidad')
@@ -22,7 +28,7 @@ vi.mock('../../api/coachees', async () => {
   return { ...actual, listCoachees: vi.fn() }
 })
 
-import { getTodasLasSesiones, reagendarSesion, agendarSesion } from '../../api/sesiones'
+import { getTodasLasSesiones, reagendarSesion, agendarSesion, agendarSerieSesiones } from '../../api/sesiones'
 import { listBloquesDisponibilidad } from '../../api/disponibilidad'
 import { getSolicitudesSesionPendientes } from '../../api/solicitudes-sesion'
 import { listCoachees } from '../../api/coachees'
@@ -37,6 +43,15 @@ const coacheeActivo: CoacheeListItem = {
 }
 
 describe('AgendaView', () => {
+  let wrapper: VueWrapper
+
+  afterEach(() => {
+    // AppModal renderiza vía Teleport a <body> — sin desmontar, un modal dejado abierto
+    // por un test (ej. el que abre "Nueva sesión" y nunca lo envía) queda en el DOM y
+    // contamina los `.find()` del siguiente test.
+    wrapper?.unmount()
+  })
+
   beforeEach(() => {
     setActivePinia(createPinia())
     vi.mocked(listBloquesDisponibilidad).mockResolvedValue([])
@@ -64,7 +79,7 @@ describe('AgendaView', () => {
     const actualizada = { ...sesionHoy, fechaHora: new Date(hoy.getTime() + 3_600_000).toISOString() }
     vi.mocked(reagendarSesion).mockResolvedValue(actualizada)
 
-    const wrapper = mount(AgendaView)
+    wrapper = mount(AgendaView)
     await flushPromises()
 
     // Antes de esta funcionalidad, hacer clic en una sesión de la agenda general no hacía
@@ -81,7 +96,7 @@ describe('AgendaView', () => {
     await modal.find('form').trigger('submit')
     await flushPromises()
 
-    expect(reagendarSesion).toHaveBeenCalledWith('sesion-1', expect.any(String), undefined)
+    expect(reagendarSesion).toHaveBeenCalledWith('sesion-1', expect.any(String), undefined, undefined)
     expect(document.body.textContent).not.toContain('Reagendar sesión')
   })
 
@@ -98,7 +113,7 @@ describe('AgendaView', () => {
     }
     vi.mocked(agendarSesion).mockResolvedValue(nueva)
 
-    const wrapper = mount(AgendaView)
+    wrapper = mount(AgendaView)
     await flushPromises()
 
     const nuevaBtn = wrapper.findAll('button').find((b) => b.text() === '+ Nueva sesión')
@@ -125,7 +140,7 @@ describe('AgendaView', () => {
   })
 
   it('abre el modal de nueva sesión pre-llenado al hacer clic sobre un slot vacío del calendario', async () => {
-    const wrapper = mount(AgendaView)
+    wrapper = mount(AgendaView)
     await flushPromises()
 
     // Clic simple (mousedown+mouseup en el mismo punto) sobre la grilla, sin sesión debajo.
@@ -140,5 +155,45 @@ describe('AgendaView', () => {
     const input = modal.find('input[type="datetime-local"]').element as HTMLInputElement
     expect(input.value).not.toBe('')
     expect(input.value.endsWith('T09:00')).toBe(true)
+  })
+
+  it('agenda una serie semanal cuando se marca "Repetir semanalmente"', async () => {
+    const serie: Sesion[] = [1, 2, 3].map((n) => ({
+      id: `sesion-${n}`,
+      coacheeId: 'coachee-1',
+      fechaHora: `2026-09-${20 + (n - 1) * 7}T15:00:00.000Z`,
+      linkVideollamada: null,
+      recurrenciaId: 'rec-1',
+      resumenCompartido: null,
+      confirmada: false,
+      postSesion: null,
+      coachee: { id: 'coachee-1', nombre: 'Tomás Reyes' },
+    }))
+    vi.mocked(agendarSerieSesiones).mockResolvedValue(serie)
+
+    wrapper = mount(AgendaView)
+    await flushPromises()
+
+    const nuevaBtn = wrapper.findAll('button').find((b) => b.text() === '+ Nueva sesión')
+    await nuevaBtn!.trigger('click')
+    await flushPromises()
+
+    const modal = new DOMWrapper(document.body)
+    await modal.find('select').setValue('coachee-1')
+    await modal.find('input[type="datetime-local"]').setValue('2026-09-20T12:00')
+    await modal.find('input[type="checkbox"]').setValue(true)
+    await modal.find('input[type="number"]').setValue(3)
+    await modal.find('form').trigger('submit')
+    await flushPromises()
+
+    // (Este spec no usa `clearMocks`, así que no se afirma "agendarSesion NO se llamó" —
+    // otro test del archivo sí lo llama y ese historial persiste entre tests.)
+    expect(agendarSerieSesiones).toHaveBeenCalledWith(
+      'coachee-1',
+      new Date('2026-09-20T12:00').toISOString(),
+      3,
+      undefined,
+    )
+    expect(document.body.textContent).not.toContain('Agendar sesión')
   })
 })

@@ -23,6 +23,7 @@ import { CerrarCicloDto } from './dto/cerrar-ciclo.dto';
 import { UpdateResumenDto } from './dto/update-resumen.dto';
 import { UpdateInformeFinalDto } from './dto/update-informe-final.dto';
 import { UpdateImpactoNegocioDto } from './dto/update-impacto-negocio.dto';
+import { UpdateTotalSesionesDto } from './dto/update-total-sesiones.dto';
 import { UPLOADS_DIR } from '../recursos/uploads-dir.util';
 import { soloPermitir, MIMETYPES_PDF } from '../common/file-type-filter.util';
 import { CoacheesService } from '../coachees/coachees.service';
@@ -78,6 +79,15 @@ export class CiclosController {
   ) {
     await this.coachees.findOneForActor(coacheeId, actor);
     return this.ciclos.findCurrentForCoachee(coacheeId);
+  }
+
+  @Roles(Role.COACH)
+  @Patch(':id/total-sesiones')
+  actualizarTotalSesiones(
+    @Param('id') id: string,
+    @Body() dto: UpdateTotalSesionesDto,
+  ) {
+    return this.ciclos.actualizarTotalSesiones(id, dto.totalSesiones);
   }
 
   @Roles(Role.COACH)

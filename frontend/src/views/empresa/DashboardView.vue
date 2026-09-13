@@ -7,7 +7,7 @@ import EmptyState from '../../components/EmptyState.vue'
 import NavIcon from '../../components/NavIcon.vue'
 import { getMisKpis, getMiTendencia, type KpisEmpresa, type PuntoTendencia } from '../../api/satisfaccion'
 import TendenciaChart from '../../components/TendenciaChart.vue'
-import { getMyEmpresa, type Empresa } from '../../api/empresas'
+import { getMyEmpresa, getMisCompetenciasContratadas, type Empresa, type EmpresaCompetencia } from '../../api/empresas'
 import {
   getMiResumenFinanciero,
   getMiResumenAcumulado,
@@ -35,6 +35,7 @@ const finanzasMes = ref<ResumenFinanzasEmpresa | null>(null)
 const finanzasAcumuladas = ref<ResumenAcumuladoEmpresa | null>(null)
 const filas = ref<{ coachee: CoacheeListItem; resumen: ResumenCoacheeEmpresa; ciclos: Ciclo[] }[]>([])
 const competenciaSeleccionada = ref<string | null>(null)
+const competenciasContratadas = ref<EmpresaCompetencia[]>([])
 
 const formatoCLP = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 })
 const formatoFecha = (fecha: string) =>
@@ -102,19 +103,21 @@ async function resumenDe(coachee: CoacheeListItem): Promise<{ resumen: ResumenCo
 
 onMounted(async () => {
   loading.value = true
-  const [k, e, coachees, fm, fa, t] = await Promise.all([
+  const [k, e, coachees, fm, fa, t, cc] = await Promise.all([
     getMisKpis(),
     getMyEmpresa(),
     listCoachees(),
     getMiResumenFinanciero(),
     getMiResumenAcumulado(),
     getMiTendencia(),
+    getMisCompetenciasContratadas(),
   ])
   kpis.value = k
   empresa.value = e
   finanzasMes.value = fm
   finanzasAcumuladas.value = fa
   tendencia.value = t
+  competenciasContratadas.value = cc
   filas.value = await Promise.all(
     coachees.map(async (coachee) => ({ coachee, ...(await resumenDe(coachee)) })),
   )
@@ -347,6 +350,27 @@ function verCiclo(coacheeId: string) {
         title="Competencias trabajadas"
         icon="formacion"
       >
+        <div
+          v-if="competenciasContratadas.length"
+          class="mb-3 border-b border-[var(--color-line)] pb-3"
+        >
+          <p class="mb-2 text-xs text-[var(--color-ink)]/60">
+            Contratadas/prioritarias para tu equipo
+          </p>
+          <div class="flex flex-wrap gap-1.5">
+            <span
+              v-for="c in competenciasContratadas"
+              :key="c.id"
+              class="rounded-full px-2.5 py-1 text-xs"
+              :class="competencias.some((t) => t.competencia === c.competencia?.nombre)
+                ? 'bg-[var(--color-sage)]/15 text-[var(--color-sage)]'
+                : 'bg-[var(--color-bronze)]/15 text-[var(--color-bronze)]'"
+            >
+              {{ c.competencia?.nombre }}
+            </span>
+          </div>
+        </div>
+
         <EmptyState
           v-if="competencias.length === 0"
           icon="formacion"

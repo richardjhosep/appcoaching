@@ -38,4 +38,11 @@ export class UpdateSesionDto {
   @IsOptional()
   @IsBoolean()
   asistio?: boolean;
+
+  // Solo tiene efecto junto con `fechaHora` y cuando la sesión pertenece a una serie
+  // (recurrenciaId) — aplica el mismo desplazamiento horario a las demás sesiones
+  // futuras de esa serie. Ver SesionesService.update().
+  @IsOptional()
+  @IsBoolean()
+  aplicarASerie?: boolean;
 }

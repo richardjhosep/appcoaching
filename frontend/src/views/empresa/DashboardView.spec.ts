@@ -14,7 +14,7 @@ vi.mock('../../api/satisfaccion', async () => {
 })
 vi.mock('../../api/empresas', async () => {
   const actual = await vi.importActual<typeof import('../../api/empresas')>('../../api/empresas')
-  return { ...actual, getMyEmpresa: vi.fn() }
+  return { ...actual, getMyEmpresa: vi.fn(), getMisCompetenciasContratadas: vi.fn() }
 })
 vi.mock('../../api/coachees', async () => {
   const actual = await vi.importActual<typeof import('../../api/coachees')>('../../api/coachees')
@@ -43,7 +43,7 @@ vi.mock('../../api/negocio', async () => {
 
 import { getMisKpis, getMiTendencia } from '../../api/satisfaccion'
 import type { PuntoTendencia } from '../../api/satisfaccion'
-import { getMyEmpresa } from '../../api/empresas'
+import { getMyEmpresa, getMisCompetenciasContratadas } from '../../api/empresas'
 import { listCoachees } from '../../api/coachees'
 import { getPlanByCoachee } from '../../api/planesDesarrollo'
 import { getCiclosDeCoachee } from '../../api/ciclos'
@@ -163,6 +163,7 @@ describe('DashboardView (empresa)', () => {
     vi.mocked(getMiResumenFinanciero).mockResolvedValue(finanzasMes)
     vi.mocked(getMiResumenAcumulado).mockResolvedValue(finanzasAcumuladas)
     vi.mocked(getMiTendencia).mockResolvedValue(tendencia)
+    vi.mocked(getMisCompetenciasContratadas).mockResolvedValue([])
   })
 
   it('shows the KPI cards and the contract info', async () => {
@@ -280,6 +281,31 @@ describe('DashboardView (empresa)', () => {
 
     expect(wrapper.text()).toContain('QA Paleta Verify')
     expect(wrapper.text()).toContain('Redujo el tiempo de entrega del área en 20%.')
+  })
+
+  it('compares competencias contratadas against competencias trabajadas, flagging the ones not yet worked', async () => {
+    vi.mocked(listCoachees).mockResolvedValue([coachee])
+    vi.mocked(getPlanByCoachee).mockResolvedValue({
+      competenciaId: 'comp-1',
+      competencia: { id: 'comp-1', nombre: 'Liderazgo' },
+    } as never)
+    vi.mocked(getMisCompetenciasContratadas).mockResolvedValue([
+      { id: 'ec1', empresaId: 'empresa-1', competenciaId: 'comp-1', competencia: { id: 'comp-1', nombre: 'Liderazgo' }, createdAt: '2026-01-01T00:00:00.000Z' },
+      { id: 'ec2', empresaId: 'empresa-1', competenciaId: 'comp-2', competencia: { id: 'comp-2', nombre: 'Comunicación' }, createdAt: '2026-01-01T00:00:00.000Z' },
+    ])
+
+    const wrapper = await mountView()
+
+    expect(wrapper.text()).toContain('Contratadas/prioritarias para tu equipo')
+    expect(wrapper.text()).toContain('Liderazgo')
+    expect(wrapper.text()).toContain('Comunicación')
+    // "Liderazgo" está siendo trabajado (viene del plan real) -> chip verde; "Comunicación"
+    // está contratada pero nadie la trabaja todavía -> chip bronce, para detectar la brecha.
+    const chips = wrapper.findAll('span').filter((s) => s.text() === 'Liderazgo' || s.text() === 'Comunicación')
+    const liderazgoChip = chips.find((c) => c.text() === 'Liderazgo')!
+    const comunicacionChip = chips.find((c) => c.text() === 'Comunicación')!
+    expect(liderazgoChip.classes().join(' ')).toContain('sage')
+    expect(comunicacionChip.classes().join(' ')).toContain('bronze')
   })
 
   it('still renders the other coachees when one of them fails to load its ciclos/avance/próxima sesión', async () => {

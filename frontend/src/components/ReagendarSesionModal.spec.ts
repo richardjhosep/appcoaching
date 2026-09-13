@@ -53,6 +53,38 @@ describe('ReagendarSesionModal', () => {
       's1',
       new Date('2026-09-16T12:00').toISOString(),
       'https://meet.example.com/x',
+      undefined,
+    )
+    expect(wrapper.emitted('reagendada')).toEqual([[actualizada]])
+  })
+
+  it('no muestra la opción "esta y las futuras" para una sesión suelta', () => {
+    mount(ReagendarSesionModal, { props: { sesion } })
+
+    const modal = new DOMWrapper(document.body)
+    expect(modal.text()).not.toContain('esta y las futuras sesiones de la serie')
+  })
+
+  it('muestra la opción "esta y las futuras" para una sesión de una serie, y la aplica al guardar', async () => {
+    const sesionDeSerie: Sesion = { ...sesion, recurrenciaId: 'rec-1' }
+    const actualizada = { ...sesionDeSerie, fechaHora: '2026-09-16T15:00:00.000Z' }
+    vi.mocked(reagendarSesion).mockResolvedValue(actualizada)
+
+    const wrapper = mount(ReagendarSesionModal, { props: { sesion: sesionDeSerie } })
+    const modal = new DOMWrapper(document.body)
+
+    expect(modal.text()).toContain('esta y las futuras sesiones de la serie')
+
+    await modal.find('input[type="datetime-local"]').setValue('2026-09-16T12:00')
+    await modal.find('input[type="checkbox"]').setValue(true)
+    await modal.find('form').trigger('submit')
+    await flushPromises()
+
+    expect(reagendarSesion).toHaveBeenCalledWith(
+      's1',
+      new Date('2026-09-16T12:00').toISOString(),
+      'https://meet.example.com/x',
+      true,
     )
     expect(wrapper.emitted('reagendada')).toEqual([[actualizada]])
   })

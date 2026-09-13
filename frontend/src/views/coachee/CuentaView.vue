@@ -35,6 +35,12 @@ async function load() {
 }
 onMounted(load)
 
+const LABEL_DOCUMENTO: Record<TipoDocumentoLegal, string> = {
+  contrato: 'Contrato',
+  nda: 'NDA',
+  carta_invitacion: 'Carta de invitación',
+}
+
 async function descargar(tipo: TipoDocumentoLegal, label: string) {
   try {
     await descargarMiAcuerdo(tipo, `${label}.pdf`)
@@ -91,14 +97,18 @@ const formatoCLP = new Intl.NumberFormat('es-CL', { style: 'currency', currency:
             ? 'Este es el contrato entre tu empresa y tu coach.'
             : 'Tu contrato personal con tu coach.' }}
         </p>
-        <div class="grid gap-3 sm:grid-cols-2">
+        <div class="grid gap-3 sm:grid-cols-3">
           <div
-            v-for="(doc, tipo) in { contrato: documentos.contrato, nda: documentos.nda }"
+            v-for="(doc, tipo) in {
+              contrato: documentos.contrato,
+              nda: documentos.nda,
+              carta_invitacion: documentos.cartaInvitacion,
+            }"
             :key="tipo"
             class="rounded-xl border border-[var(--color-line)] p-3 text-sm"
           >
             <div class="mb-2 flex items-center justify-between">
-              <span class="font-medium">{{ tipo === 'contrato' ? 'Contrato' : 'NDA' }}</span>
+              <span class="font-medium">{{ LABEL_DOCUMENTO[tipo] }}</span>
               <span
                 class="rounded-full px-2 py-0.5 text-xs"
                 :class="[ESTADO_VISUAL_COLOR[estadoVisual(doc)].bg, ESTADO_VISUAL_COLOR[estadoVisual(doc)].texto]"
@@ -122,7 +132,7 @@ const formatoCLP = new Intl.NumberFormat('es-CL', { style: 'currency', currency:
               v-if="doc.tieneArchivo"
               type="button"
               class="mt-2 text-xs text-[var(--color-saltup)] hover:underline"
-              @click="descargar(tipo, tipo === 'contrato' ? 'Contrato' : 'NDA')"
+              @click="descargar(tipo, LABEL_DOCUMENTO[tipo])"
             >
               ⬇ Descargar
             </button>

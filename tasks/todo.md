@@ -2423,3 +2423,73 @@ correcto, sección de inversión oculta/visible según corresponda, cambio de pe
 empresa ve "Mis documentos" con el contrato de su empresa y sin "Mi inversión"; coachee
 independiente (cuenta de prueba desechable) ve su propio contrato/NDA y $0/$0 honesto sin
 actividad — cuenta de prueba desactivada al cierre (tenía historial y no podía borrarse).
+
+## 2026-09-12 (noche) — Número de sesiones editable (#10), carta de invitación (#7),
+competencias de empresa (#3), recurrencia de sesiones
+
+- **#10 — `totalSesiones` del ciclo, editable con validaciones**: era inmutable desde
+  `abrir()`. `CiclosService.actualizarTotalSesiones()` (nuevo) rechaza el cambio si el ciclo ya
+  está cerrado (alteraría retroactivamente el `informeFinal`, que cita el total contratado) y si
+  el nuevo total es menor que las sesiones ya realizadas (`fechaHora <= now()`) — dejaría
+  `sesionesRestantes` en un estado que nunca podía ocurrir antes. Nueva ruta
+  `PATCH /ciclos/:id/total-sesiones` (`UpdateTotalSesionesDto`, `@IsInt() @Min(1)`). En
+  `CicloTab.vue`, el número de sesiones contratadas pasa de texto fijo a un input editable
+  inline con guardado explícito.
+- **#7 — Carta de invitación como tercer tipo de documento legal**: se agregó
+  `TipoDocumentoLegal.CARTA_INVITACION` reutilizando exactamente el mismo flujo de
+  subida/estado que Contrato y NDA (sin metadata de firma nueva) — cero lógica nueva en
+  `LegalService`, solo el tercer valor recorriendo los mismos `Promise.all`/`find` que ya
+  trataban Contrato+NDA. `ContratosTab.vue` (coach) y `CuentaView.vue` (coachee) ganan la
+  tercera tarjeta.
+- **#3 — Competencias de una empresa**: tabla N:N nueva, `EmpresaCompetencia`
+  (`empresa_id`+`competencia_id` únicos, `onDelete: CASCADE` en ambos lados) — la primera
+  relación muchos-a-muchos del modelo (todo lo demás es FK simple a una sola competencia).
+  Representa la intención ("qué competencias prioriza esta empresa para su equipo"), distinta
+  de "competencias trabajadas" (que se deriva de los planes de desarrollo reales, ya existente).
+  `EmpresasService.setCompetencias()` reemplaza el set completo (`delete` + insertar el nuevo
+  arreglo) en vez de diffear incrementalmente — más simple y suficientemente rápido para el
+  volumen real (un puñado de competencias por empresa). Rutas `GET/PUT
+  /empresas/:id/competencias` (`Role.COACH`). Checklist de competencias en `EmpresasView.vue`
+  (coach) y sección de solo-lectura en el dashboard de empresa.
+- **Recurrencia de sesiones — "repetir semanalmente"**: columna `recurrencia_id` (uuid
+  nullable) en `Sesion`, generada una vez con `randomUUID()` por serie e igual para todas sus
+  filas. `SesionesService.crearSerie()` genera N fechas semanales desde la primera, valida que
+  ninguna choque con una sesión ya agendada (todo o nada — si alguna choca, no crea ninguna) y
+  las inserta en un solo `save()`. `update()` ahora acepta `aplicarASerie: boolean`: si la
+  sesión editada pertenece a una serie y cambia de fecha, calcula el delta (nueva − anterior) y
+  lo aplica a todas las sesiones futuras de la misma serie (saltándose las que choquen con otra
+  cita al desplazarse). `remove()` acepta el mismo flag para borrar "esta y las futuras"
+  (`fecha_hora > now() OR id = :id`) en vez de solo la sesión indicada. Nueva ruta
+  `POST /sesiones/serie`; `DELETE /sesiones/:id?aplicarASerie=` extendido.
+  En el frontend: checkbox "Repetir semanalmente" + número de sesiones en el modal de "Nueva
+  sesión" (`AgendaView.vue`), y checkbox "Aplicar el mismo cambio de horario a esta y las
+  futuras sesiones de la serie" en `ReagendarSesionModal.vue` — visible solo cuando la sesión
+  tiene `recurrenciaId`. No se construyó UI para cancelar una sesión con "esta y las futuras"
+  (`cancelarSesion()` quedó lista en `api/sesiones.ts` pero sin consumidor): no existía ninguna
+  UI de cancelación antes de esta sesión de trabajo, y agregarla no fue parte de lo pedido.
+
+### Verificación
+
+Backend: `sesiones.service.spec.ts` reescrito (mock de `save` maneja arreglos, `remove()`
+rehecho con `createQueryBuilder`, casos nuevos para `crearSerie` y `update` con
+`aplicarASerie`) → 31/31, 71/71 en todo `src/sesiones`. Migración
+`1788840000000-RecurrenciaSesiones` verificada run/revert/run contra `verify-postgres`.
+Frontend: 3 archivos de spec con el bug recurrente de contaminación de `AppModal`/`Teleport`
+entre tests (modal no desmontado) encontrados y corregidos con el patrón estándar
+(`let wrapper` + `afterEach(unmount)`); 2 aserciones `toHaveBeenCalledWith(...)` rotas por el
+nuevo 4º argumento de `reagendarSesion()` corregidas (`ReagendarSesionModal.spec.ts`,
+`AgendaView.spec.ts`) más una tercera encontrada en la misma pasada
+(`SesionesTab.spec.ts`, coachee-detail) — las tres solo necesitaban el `undefined` explícito.
+Test nuevo cubriendo que el checkbox de serie no aparece para una sesión suelta y sí para una
+de serie, aplicando `true` correctamente. Suite completa → 540/540. `vue-tsc --noEmit` y
+`tsc -p tsconfig.app.json --noEmit` (cross-check del blindspot conocido) limpios; `npm run
+lint` sin errores en frontend y backend (el único error de lint del backend, en
+`auth.service.spec.ts`, es de trabajo previo no relacionado con este lote y se deja fuera de
+alcance).
+
+Verificado end-to-end en Chrome real (headless vía CDP) contra el stack local: creé una serie
+semanal de 3 sesiones para una coachee de prueba desde "+ Nueva sesión" → 3 filas nuevas en
+`sesiones` compartiendo `recurrencia_id`; reagendé la primera con "aplicar a la serie" marcado
+→ el delta (+7 días +2h) se propagó exactamente a las otras 2 sesiones futuras de la serie,
+confirmado por consulta directa a la base. Datos de prueba (las 3 sesiones y su
+`recurrencia_id`) eliminados al cerrar; contraseña temporal de `coach@test.com` invalidada.

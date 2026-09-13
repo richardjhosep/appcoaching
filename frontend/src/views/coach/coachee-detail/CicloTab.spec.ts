@@ -12,6 +12,7 @@ vi.mock('../../../api/ciclos', async () => {
     getCicloActualDeCoachee: vi.fn(),
     getCiclosDeCoachee: vi.fn(),
     actualizarImpactoNegocio: vi.fn(),
+    actualizarTotalSesiones: vi.fn(),
   }
 })
 vi.mock('../../../api/retroalimentacion', async () => {
@@ -22,7 +23,7 @@ vi.mock('../../../api/retroalimentacion', async () => {
   }
 })
 
-import { getCicloActualDeCoachee, getCiclosDeCoachee, actualizarImpactoNegocio } from '../../../api/ciclos'
+import { getCicloActualDeCoachee, getCiclosDeCoachee, actualizarImpactoNegocio, actualizarTotalSesiones } from '../../../api/ciclos'
 import { getRetroalimentacionesDeCoachee } from '../../../api/retroalimentacion'
 
 const cicloAbierto: Ciclo = {
@@ -88,5 +89,44 @@ describe('CicloTab (coach)', () => {
     await flushPromises()
 
     expect(actualizarImpactoNegocio).toHaveBeenCalledWith('c1', 'Redujo el tiempo de entrega en 20%.')
+  })
+
+  it('lets the coach edit totalSesiones, only showing Guardar once the value actually changed', async () => {
+    vi.mocked(getCicloActualDeCoachee).mockResolvedValue(cicloAbierto)
+    vi.mocked(actualizarTotalSesiones).mockResolvedValue({ ...cicloAbierto, totalSesiones: 12, sesionesRestantes: 9 })
+
+    const wrapper = mount(CicloTab, { props: { coacheeId: 'coachee-1' } })
+    await flushPromises()
+
+    expect(wrapper.findAll('button').find((b) => b.text() === 'Guardar')).toBeUndefined()
+
+    const input = wrapper.find('input[type="number"]')
+    await input.setValue(12)
+
+    const guardarBtn = wrapper.findAll('button').find((b) => b.text() === 'Guardar')
+    await guardarBtn!.trigger('click')
+    await flushPromises()
+
+    expect(actualizarTotalSesiones).toHaveBeenCalledWith('c1', 12)
+    // El botón "Guardar" desaparece de nuevo una vez que el valor del ciclo real
+    // (ya actualizado a 12) vuelve a calzar con lo que muestra el input.
+    expect(wrapper.findAll('button').find((b) => b.text() === 'Guardar')).toBeUndefined()
+  })
+
+  it('shows the server error and reverts the input when the new total is rejected', async () => {
+    vi.mocked(getCicloActualDeCoachee).mockResolvedValue(cicloAbierto)
+    vi.mocked(actualizarTotalSesiones).mockRejectedValue(new Error('rejected'))
+
+    const wrapper = mount(CicloTab, { props: { coacheeId: 'coachee-1' } })
+    await flushPromises()
+
+    const input = wrapper.find('input[type="number"]')
+    await input.setValue(1)
+    const guardarBtn = wrapper.findAll('button').find((b) => b.text() === 'Guardar')
+    await guardarBtn!.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('No se pudo actualizar el número de sesiones.')
+    expect((input.element as HTMLInputElement).value).toBe('10')
   })
 })

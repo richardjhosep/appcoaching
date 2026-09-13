@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   NotFoundException,
@@ -113,6 +114,57 @@ describe('CiclosService', () => {
       expect(ciclo.totalSesiones).toBe(10);
       expect(ciclo.sesionesRestantes).toBe(10);
       expect(ciclo.alertaPorVencer).toBe(false);
+    });
+  });
+
+  describe('actualizarTotalSesiones', () => {
+    it('updates totalSesiones on an open cycle', async () => {
+      ciclosRepo.findOne.mockResolvedValue({
+        id: 'ciclo-1',
+        totalSesiones: 10,
+        fechaCierre: null,
+      });
+      sesionesRepo.count.mockResolvedValue(3);
+
+      const ciclo = await service.actualizarTotalSesiones('ciclo-1', 12);
+
+      expect(ciclo.totalSesiones).toBe(12);
+      expect(ciclo.sesionesRestantes).toBe(9);
+    });
+
+    it('rejects a total below sesiones already realizadas', async () => {
+      ciclosRepo.findOne.mockResolvedValue({
+        id: 'ciclo-1',
+        totalSesiones: 10,
+        fechaCierre: null,
+      });
+      sesionesRepo.count.mockResolvedValue(8);
+
+      await expect(
+        service.actualizarTotalSesiones('ciclo-1', 5),
+      ).rejects.toThrow(BadRequestException);
+      expect(ciclosRepo.save).not.toHaveBeenCalled();
+    });
+
+    it('rejects editing a closed cycle', async () => {
+      ciclosRepo.findOne.mockResolvedValue({
+        id: 'ciclo-1',
+        totalSesiones: 10,
+        fechaCierre: new Date('2026-01-01'),
+      });
+
+      await expect(
+        service.actualizarTotalSesiones('ciclo-1', 12),
+      ).rejects.toThrow(ConflictException);
+      expect(ciclosRepo.save).not.toHaveBeenCalled();
+    });
+
+    it('rejects a nonexistent ciclo', async () => {
+      ciclosRepo.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.actualizarTotalSesiones('missing', 12),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 

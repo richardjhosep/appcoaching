@@ -1,12 +1,23 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { mount, flushPromises, DOMWrapper } from '@vue/test-utils'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { mount, flushPromises, DOMWrapper, type VueWrapper } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import EmpresasView from './EmpresasView.vue'
 import type { Empresa } from '../../api/empresas'
 
 vi.mock('../../api/empresas', async () => {
   const actual = await vi.importActual<typeof import('../../api/empresas')>('../../api/empresas')
-  return { ...actual, listEmpresas: vi.fn(), createEmpresa: vi.fn(), updateEmpresa: vi.fn() }
+  return {
+    ...actual,
+    listEmpresas: vi.fn(),
+    createEmpresa: vi.fn(),
+    updateEmpresa: vi.fn(),
+    getCompetenciasDeEmpresa: vi.fn(),
+    setCompetenciasDeEmpresa: vi.fn(),
+  }
+})
+vi.mock('../../api/competencias', async () => {
+  const actual = await vi.importActual<typeof import('../../api/competencias')>('../../api/competencias')
+  return { ...actual, listCompetencias: vi.fn() }
 })
 vi.mock('../../lib/notify', () => ({
   notifySuccess: vi.fn(),
@@ -21,10 +32,17 @@ vi.mock('../../api/indicadores', () => ({
   getUfHoy: vi.fn().mockResolvedValue({ valorUf: 39000, fecha: '2026-09-12', fuente: 'cmf', desactualizado: false }),
 }))
 
-import { listEmpresas, createEmpresa, updateEmpresa } from '../../api/empresas'
+import {
+  listEmpresas,
+  createEmpresa,
+  updateEmpresa,
+  getCompetenciasDeEmpresa,
+  setCompetenciasDeEmpresa,
+} from '../../api/empresas'
 import { notifySuccess, confirmDialog } from '../../lib/notify'
 import { getKpisDeEmpresa, getEncuestasDeEmpresa } from '../../api/satisfaccion'
 import type { KpisEmpresa, Encuesta } from '../../api/satisfaccion'
+import { listCompetencias } from '../../api/competencias'
 
 const hoyIso = new Date().toISOString()
 
@@ -34,13 +52,25 @@ const empresas: Empresa[] = [
 ]
 
 describe('EmpresasView', () => {
+  let wrapper: VueWrapper
+
+  afterEach(() => {
+    // AppModal renderiza vía Teleport a <body> — sin desmontar, un modal dejado abierto
+    // por un test (ej. el de validación fallida, que nunca cierra el modal) queda en el
+    // DOM y contamina los `.find()` del siguiente test.
+    wrapper?.unmount()
+  })
+
   beforeEach(() => {
     setActivePinia(createPinia())
     vi.mocked(listEmpresas).mockResolvedValue(empresas)
+    vi.mocked(listCompetencias).mockResolvedValue([])
+    vi.mocked(getCompetenciasDeEmpresa).mockResolvedValue([])
+    vi.mocked(setCompetenciasDeEmpresa).mockResolvedValue([])
   })
 
   it('shows the list of empresas with their estado', async () => {
-    const wrapper = mount(EmpresasView)
+    wrapper = mount(EmpresasView)
     await flushPromises()
 
     expect(wrapper.text()).toContain('Empresa Activa')
@@ -54,7 +84,7 @@ describe('EmpresasView', () => {
       { id: 'e2', nombre: 'Sin Fecha', tarifaHora: 10000, tarifaHoraMoneda: 'clp', isActive: true, pagada: true, horasContratadas: null, fechaInicio: null, fechaFin: null, createdAt: hoyIso },
     ])
 
-    const wrapper = mount(EmpresasView)
+    wrapper = mount(EmpresasView)
     await flushPromises()
 
     const filaConFecha = wrapper.findAll('tr').find((tr) => tr.text().includes('Con Fecha'))!
@@ -69,7 +99,7 @@ describe('EmpresasView', () => {
       { id: 'e3', nombre: 'Empresa Antigua', tarifaHora: 15000, tarifaHoraMoneda: 'clp', isActive: true, pagada: true, horasContratadas: null, fechaInicio: null, fechaFin: null, createdAt: '2020-01-01T00:00:00.000Z' },
     ])
 
-    const wrapper = mount(EmpresasView)
+    wrapper = mount(EmpresasView)
     await flushPromises()
 
     expect(wrapper.text()).toContain('Empresa Antigua')
@@ -77,7 +107,7 @@ describe('EmpresasView', () => {
   })
 
   it('filters by search text', async () => {
-    const wrapper = mount(EmpresasView)
+    wrapper = mount(EmpresasView)
     await flushPromises()
 
     await wrapper.find('input[type="search"]').setValue('Inactiva')
@@ -88,7 +118,7 @@ describe('EmpresasView', () => {
   })
 
   it('shows validation errors instead of submitting an invalid empresa', async () => {
-    const wrapper = mount(EmpresasView)
+    wrapper = mount(EmpresasView)
     await flushPromises()
 
     const nuevaBtn = wrapper.findAll('button').find((b) => b.text() === '+ Nueva Empresa')
@@ -104,7 +134,7 @@ describe('EmpresasView', () => {
 
   it('creates an empresa when the form is valid', async () => {
     vi.mocked(createEmpresa).mockResolvedValue(empresas[0])
-    const wrapper = mount(EmpresasView)
+    wrapper = mount(EmpresasView)
     await flushPromises()
 
     const nuevaBtn = wrapper.findAll('button').find((b) => b.text() === '+ Nueva Empresa')
@@ -120,9 +150,39 @@ describe('EmpresasView', () => {
     expect(notifySuccess).toHaveBeenCalled()
   })
 
+  it('loads the empresa\'s current competencias when editing, and saves the new set chosen', async () => {
+    vi.mocked(getCompetenciasDeEmpresa).mockResolvedValue([
+      { id: 'ec1', empresaId: 'e1', competenciaId: 'comp-1', createdAt: hoyIso },
+    ])
+    vi.mocked(listCompetencias).mockResolvedValue([
+      { id: 'comp-1', nombre: 'Liderazgo', definicion: 'def', niveles: [] },
+      { id: 'comp-2', nombre: 'Comunicación', definicion: 'def', niveles: [] },
+    ])
+    vi.mocked(updateEmpresa).mockResolvedValue(empresas[0])
+    wrapper = mount(EmpresasView)
+    await flushPromises()
+
+    const editarBtn = wrapper.find('button[title="Editar"]')
+    await editarBtn.trigger('click')
+    await flushPromises()
+
+    const modal = new DOMWrapper(document.body)
+    const checkboxes = modal.findAll('input[type="checkbox"]')
+    // checkboxes[0] es "Pagada" — las de competencias vienen después, en el mismo orden
+    // que competenciasDisponibles: Liderazgo (ya marcada), Comunicación.
+    expect((checkboxes[1].element as HTMLInputElement).checked).toBe(true)
+    expect((checkboxes[2].element as HTMLInputElement).checked).toBe(false)
+
+    await checkboxes[2].setValue(true)
+    await modal.find('form').trigger('submit')
+    await flushPromises()
+
+    expect(setCompetenciasDeEmpresa).toHaveBeenCalledWith('e1', ['comp-1', 'comp-2'])
+  })
+
   it('toggles estado after confirmation', async () => {
     vi.mocked(updateEmpresa).mockResolvedValue({ ...empresas[0], isActive: false })
-    const wrapper = mount(EmpresasView)
+    wrapper = mount(EmpresasView)
     await flushPromises()
 
     await wrapper.find('button[type="button"]').trigger('click')
@@ -154,7 +214,7 @@ describe('EmpresasView', () => {
     vi.mocked(getKpisDeEmpresa).mockResolvedValue(kpis)
     vi.mocked(getEncuestasDeEmpresa).mockResolvedValue(encuestas)
 
-    const wrapper = mount(EmpresasView)
+    wrapper = mount(EmpresasView)
     await flushPromises()
 
     const verBtn = wrapper.find('button[title="Ver satisfacción"]')

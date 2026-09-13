@@ -13,6 +13,11 @@ const link = ref(props.sesion.linkVideollamada ?? '')
 const guardando = ref(false)
 const error = ref<string | null>(null)
 
+// Solo tiene sentido preguntar si esta sesión viene de "repetir semanalmente" — una
+// sesión suelta no tiene "las futuras" a las que aplicar el mismo cambio.
+const esDeSerie = !!props.sesion.recurrenciaId
+const aplicarASerie = ref(false)
+
 async function guardar() {
   if (!nuevaFecha.value) return
   error.value = null
@@ -22,6 +27,7 @@ async function guardar() {
       props.sesion.id,
       new Date(nuevaFecha.value).toISOString(),
       link.value || undefined,
+      esDeSerie ? aplicarASerie.value : undefined,
     )
     emit('reagendada', actualizada)
   } catch (err) {
@@ -71,6 +77,16 @@ async function guardar() {
           placeholder="https://…"
           class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
         >
+      </label>
+      <label
+        v-if="esDeSerie"
+        class="flex items-center gap-2 text-sm"
+      >
+        <input
+          v-model="aplicarASerie"
+          type="checkbox"
+        >
+        Aplicar el mismo cambio de horario a esta y las futuras sesiones de la serie
       </label>
       <div class="flex justify-end gap-2 pt-2">
         <button

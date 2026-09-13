@@ -7,6 +7,7 @@ import {
   actualizarImpactoNegocio,
   actualizarInformeFinal,
   actualizarResumen,
+  actualizarTotalSesiones,
   cerrarCiclo,
   generarBorradorInforme,
   getCicloActualDeCoachee,
@@ -47,6 +48,9 @@ const impactoEdit = ref('')
 const archivoPdf = ref<File | null>(null)
 const resultadoSeleccionado = ref<ResultadoCiclo | ''>('')
 
+const totalSesionesEdit = ref(0)
+const guardandoTotalSesiones = ref(false)
+
 async function load() {
   loading.value = true
   const [actual, todos, retros] = await Promise.all([
@@ -60,7 +64,23 @@ async function load() {
   resumenEdit.value = actual?.resumenReunionInicial ?? ''
   informeEdit.value = actual?.informeFinal ?? ''
   impactoEdit.value = actual?.impactoNegocio ?? ''
+  totalSesionesEdit.value = actual?.totalSesiones ?? 0
   loading.value = false
+}
+
+async function guardarTotalSesiones() {
+  if (!cicloActual.value || totalSesionesEdit.value === cicloActual.value.totalSesiones) return
+  guardandoTotalSesiones.value = true
+  error.value = null
+  try {
+    cicloActual.value = await actualizarTotalSesiones(cicloActual.value.id, totalSesionesEdit.value)
+    emit('ciclo-changed', cicloActual.value)
+  } catch (err) {
+    error.value = err instanceof ApiError ? err.message : 'No se pudo actualizar el número de sesiones.'
+    totalSesionesEdit.value = cicloActual.value.totalSesiones
+  } finally {
+    guardandoTotalSesiones.value = false
+  }
 }
 
 onMounted(load)
@@ -236,10 +256,24 @@ async function cerrar() {
       class="mb-6 space-y-4"
     >
       <div class="rounded-2xl border border-[var(--color-line)] bg-white p-4">
-        <div class="mb-3 flex items-center justify-between">
-          <p class="text-sm">
-            Sesiones: <strong>{{ cicloActual.sesionesRealizadas }}</strong> de {{ cicloActual.totalSesiones }}
-          </p>
+        <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <div class="flex flex-wrap items-center gap-2 text-sm">
+            <span>Sesiones: <strong>{{ cicloActual.sesionesRealizadas }}</strong> de</span>
+            <input
+              v-model.number="totalSesionesEdit"
+              type="number"
+              :min="cicloActual.sesionesRealizadas || 1"
+              class="w-16 rounded border border-[var(--color-line)] px-2 py-1 text-sm"
+            >
+            <button
+              v-if="totalSesionesEdit !== cicloActual.totalSesiones"
+              class="text-xs text-[var(--color-sage)] hover:underline disabled:opacity-60"
+              :disabled="guardandoTotalSesiones"
+              @click="guardarTotalSesiones"
+            >
+              {{ guardandoTotalSesiones ? 'Guardando…' : 'Guardar' }}
+            </button>
+          </div>
           <span
             v-if="cicloActual.alertaPorVencer"
             class="rounded-full bg-[var(--color-bronze)]/20 px-2 py-0.5 text-xs text-[var(--color-bronze)]"

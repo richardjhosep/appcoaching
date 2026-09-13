@@ -18,6 +18,9 @@ export interface Sesion {
   coacheeId: string
   fechaHora: string
   linkVideollamada: string | null
+  // Agrupa las sesiones generadas por "repetir semanalmente" — null para una sesión
+  // suelta. Determina si al reagendar/cancelar se puede elegir "esta y las futuras".
+  recurrenciaId?: string | null
   resumenCompartido: string | null
   notasPrivadas?: string | null
   temaTratado?: string | null
@@ -72,6 +75,21 @@ export function agendarSesion(
   })
 }
 
+// Sesión fija semanal — una sesión por semana desde `fechaHora`, todas comparten un
+// `recurrenciaId` nuevo (ver Sesion.recurrenciaId). Todo o nada: si alguna choca con una
+// sesión ya agendada, el backend no crea ninguna.
+export function agendarSerieSesiones(
+  coacheeId: string,
+  fechaHora: string,
+  cantidadSesiones: number,
+  linkVideollamada?: string,
+): Promise<Sesion[]> {
+  return apiRequest<Sesion[]>('/sesiones/serie', {
+    method: 'POST',
+    body: { coacheeId, fechaHora, cantidadSesiones, linkVideollamada: linkVideollamada || undefined },
+  })
+}
+
 export function actualizarAsistencia(sesionId: string, asistio: boolean): Promise<Sesion> {
   return apiRequest<Sesion>(`/sesiones/${sesionId}`, {
     method: 'PATCH',
@@ -86,10 +104,18 @@ export function reagendarSesion(
   sesionId: string,
   fechaHora: string,
   linkVideollamada?: string,
+  aplicarASerie?: boolean,
 ): Promise<Sesion> {
   return apiRequest<Sesion>(`/sesiones/${sesionId}`, {
     method: 'PATCH',
-    body: { fechaHora, linkVideollamada: linkVideollamada || undefined },
+    body: { fechaHora, linkVideollamada: linkVideollamada || undefined, aplicarASerie },
+  })
+}
+
+/** "Esta" (aplicarASerie=false) o "esta y las futuras" de la misma serie. */
+export function cancelarSesion(sesionId: string, aplicarASerie = false): Promise<{ eliminadas: number }> {
+  return apiRequest<{ eliminadas: number }>(`/sesiones/${sesionId}?aplicarASerie=${aplicarASerie}`, {
+    method: 'DELETE',
   })
 }
 

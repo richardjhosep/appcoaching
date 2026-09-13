@@ -7,6 +7,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Empresa } from './entities/empresa.entity';
 import { GestionRenovacion } from './entities/gestion-renovacion.entity';
+import { EmpresaCompetencia } from './entities/empresa-competencia.entity';
 import { CreateEmpresaDto } from './dto/create-empresa.dto';
 import { UpdateEmpresaDto } from './dto/update-empresa.dto';
 import { CreateGestionDto } from './dto/create-gestion.dto';
@@ -18,6 +19,8 @@ export class EmpresasService {
     @InjectRepository(Empresa) private readonly empresas: Repository<Empresa>,
     @InjectRepository(GestionRenovacion)
     private readonly gestiones: Repository<GestionRenovacion>,
+    @InjectRepository(EmpresaCompetencia)
+    private readonly empresaCompetencias: Repository<EmpresaCompetencia>,
   ) {}
 
   async create(dto: CreateEmpresaDto): Promise<Empresa> {
@@ -103,5 +106,31 @@ export class EmpresasService {
       if (!mapa.has(gestion.empresaId)) mapa.set(gestion.empresaId, gestion);
     }
     return mapa;
+  }
+
+  async getCompetencias(empresaId: string): Promise<EmpresaCompetencia[]> {
+    await this.findById(empresaId);
+    return this.empresaCompetencias.find({
+      where: { empresaId },
+      relations: { competencia: true },
+    });
+  }
+
+  /**
+   * Reemplaza el set completo — más simple y robusto para una UI de checklist que un diff
+   * incremental, y el volumen (un puñado de competencias por empresa) no justifica optimizar.
+   */
+  async setCompetencias(
+    empresaId: string,
+    competenciaIds: string[],
+  ): Promise<EmpresaCompetencia[]> {
+    await this.findById(empresaId);
+    await this.empresaCompetencias.delete({ empresaId });
+    if (competenciaIds.length === 0) return [];
+    const filas = competenciaIds.map((competenciaId) =>
+      this.empresaCompetencias.create({ empresaId, competenciaId }),
+    );
+    await this.empresaCompetencias.save(filas);
+    return this.getCompetencias(empresaId);
   }
 }

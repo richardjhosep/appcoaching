@@ -39,6 +39,13 @@ export function cerrarCiclo(id: string, resultado: ResultadoCiclo): Promise<Cicl
   })
 }
 
+export function actualizarTotalSesiones(id: string, totalSesiones: number): Promise<Ciclo> {
+  return apiRequest<Ciclo>(`/ciclos/${id}/total-sesiones`, {
+    method: 'PATCH',
+    body: { totalSesiones },
+  })
+}
+
 export function actualizarResumen(id: string, resumenReunionInicial: string): Promise<Ciclo> {
   return apiRequest<Ciclo>(`/ciclos/${id}/resumen-reunion-inicial`, {
     method: 'PATCH',

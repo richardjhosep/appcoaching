@@ -7,7 +7,16 @@ import StatusToggle from '../../components/StatusToggle.vue'
 import IconButton from '../../components/IconButton.vue'
 import SkeletonBlock from '../../components/SkeletonBlock.vue'
 import EmptyState from '../../components/EmptyState.vue'
-import { createEmpresa, deleteEmpresa, listEmpresas, updateEmpresa, type Empresa } from '../../api/empresas'
+import {
+  createEmpresa,
+  deleteEmpresa,
+  listEmpresas,
+  updateEmpresa,
+  getCompetenciasDeEmpresa,
+  setCompetenciasDeEmpresa,
+  type Empresa,
+} from '../../api/empresas'
+import { listCompetencias, type Competencia } from '../../api/competencias'
 import { getKpisDeEmpresa, getEncuestasDeEmpresa, type KpisEmpresa, type Encuesta } from '../../api/satisfaccion'
 import { ApiError } from '../../api/client'
 import { notifyError, notifySuccess, confirmDialog } from '../../lib/notify'
@@ -27,11 +36,14 @@ const fechaDesde = ref('')
 const fechaHasta = ref('')
 const page = ref(1)
 
+const competenciasDisponibles = ref<Competencia[]>([])
+
 async function load() {
   loading.value = true
-  const data = await listEmpresas()
+  const [data, comps] = await Promise.all([listEmpresas(), listCompetencias()])
   data.sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? ''))
   empresas.value = data
+  competenciasDisponibles.value = comps
   loading.value = false
 }
 
@@ -106,6 +118,15 @@ const form = reactive({
 const errors = reactive<{ nombre?: string; tarifaHora?: string }>({})
 const serverErrors = ref<Record<string, string>>({})
 
+// Competencias prioritarias/contratadas — solo tiene sentido una vez que la empresa ya
+// existe (mismo criterio que horasContratadas/pagada, ocultos al crear).
+const competenciasSeleccionadas = ref<string[]>([])
+function toggleCompetencia(competenciaId: string) {
+  competenciasSeleccionadas.value = competenciasSeleccionadas.value.includes(competenciaId)
+    ? competenciasSeleccionadas.value.filter((id) => id !== competenciaId)
+    : [...competenciasSeleccionadas.value, competenciaId]
+}
+
 function abrirCrear() {
   editando.value = null
   form.nombre = ''
@@ -121,7 +142,7 @@ function abrirCrear() {
   modalOpen.value = true
 }
 
-function abrirEditar(empresa: Empresa) {
+async function abrirEditar(empresa: Empresa) {
   editando.value = empresa
   form.nombre = empresa.nombre
   form.tarifaHora = empresa.tarifaHora
@@ -133,7 +154,10 @@ function abrirEditar(empresa: Empresa) {
   errors.nombre = undefined
   errors.tarifaHora = undefined
   serverErrors.value = {}
+  competenciasSeleccionadas.value = []
   modalOpen.value = true
+  const actuales = await getCompetenciasDeEmpresa(empresa.id)
+  competenciasSeleccionadas.value = actuales.map((c) => c.competenciaId)
 }
 
 function validar(): boolean {
@@ -154,15 +178,18 @@ async function guardar() {
   serverErrors.value = {}
   try {
     if (editando.value) {
-      await updateEmpresa(editando.value.id, {
-        nombre: form.nombre,
-        tarifaHora: form.tarifaHora!,
-        tarifaHoraMoneda: form.tarifaHoraMoneda,
-        horasContratadas: form.horasContratadas,
-        pagada: form.pagada,
-        fechaInicio: form.fechaInicio || null,
-        fechaFin: form.fechaFin || null,
-      })
+      await Promise.all([
+        updateEmpresa(editando.value.id, {
+          nombre: form.nombre,
+          tarifaHora: form.tarifaHora!,
+          tarifaHoraMoneda: form.tarifaHoraMoneda,
+          horasContratadas: form.horasContratadas,
+          pagada: form.pagada,
+          fechaInicio: form.fechaInicio || null,
+          fechaFin: form.fechaFin || null,
+        }),
+        setCompetenciasDeEmpresa(editando.value.id, competenciasSeleccionadas.value),
+      ])
       modalOpen.value = false
       await load()
       await notifySuccess('Empresa actualizada', `Los datos de ${form.nombre} se guardaron correctamente.`)
@@ -476,6 +503,31 @@ async function eliminar(empresa: Empresa) {
           >
           Pagada
         </label>
+
+        <div
+          v-if="editando"
+          class="text-sm"
+        >
+          Competencias prioritarias/contratadas
+          <p class="mb-2 mt-1 text-xs text-[var(--color-ink)]/50">
+            Independiente de "Competencias trabajadas" del dashboard (que se deriva de los
+            planes de desarrollo reales) — esto es lo que la empresa definió de antemano.
+          </p>
+          <div class="grid max-h-40 gap-1 overflow-y-auto rounded-lg border border-[var(--color-line)] p-2 sm:grid-cols-2">
+            <label
+              v-for="c in competenciasDisponibles"
+              :key="c.id"
+              class="flex items-center gap-2 text-xs"
+            >
+              <input
+                type="checkbox"
+                :checked="competenciasSeleccionadas.includes(c.id)"
+                @change="toggleCompetencia(c.id)"
+              >
+              {{ c.nombre }}
+            </label>
+          </div>
+        </div>
 
         <div class="flex justify-end gap-2 pt-2">
           <button

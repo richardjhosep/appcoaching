@@ -239,6 +239,36 @@ describe('LegalService', () => {
       expect(empresas[0].contrato.tieneArchivo).toBe(false);
     });
 
+    it('includes cartaInvitacion alongside contrato/nda, for empresas and independientes', async () => {
+      empresasRepo.find.mockResolvedValue([{ id: 'e1', nombre: 'Empresa A' }]);
+      coacheesRepo.find.mockResolvedValue([
+        {
+          id: 'c1',
+          nombre: 'Independiente Uno',
+          empresaId: null,
+          consentimientoInformado: false,
+        },
+      ]);
+      documentosRepo.find.mockResolvedValue([
+        {
+          empresaId: 'e1',
+          tipo: TipoDocumentoLegal.CARTA_INVITACION,
+          estado: EstadoDocumentoLegal.FIRMADO,
+          archivoPath: 'carta.pdf',
+        },
+      ]);
+
+      const { empresas, independientes } = await service.resumen();
+
+      expect(empresas[0].cartaInvitacion.estado).toBe(
+        EstadoDocumentoLegal.FIRMADO,
+      );
+      expect(empresas[0].cartaInvitacion.tieneArchivo).toBe(true);
+      expect(independientes[0].cartaInvitacion.estado).toBe(
+        EstadoDocumentoLegal.PENDIENTE,
+      );
+    });
+
     it('passes through createdAt for empresas and independientes, used to prioritize by age', async () => {
       const empresaCreatedAt = new Date('2025-01-01');
       const coacheeCreatedAt = new Date('2024-06-01');
@@ -447,6 +477,12 @@ describe('LegalService', () => {
       expect(documentosRepo.findOne).toHaveBeenCalledWith({
         where: { coacheeId: 'c2', tipo: TipoDocumentoLegal.NDA },
       });
+      expect(documentosRepo.findOne).toHaveBeenCalledWith({
+        where: { coacheeId: 'c2', tipo: TipoDocumentoLegal.CARTA_INVITACION },
+      });
+      expect(resultado.cartaInvitacion.estado).toBe(
+        EstadoDocumentoLegal.PENDIENTE,
+      );
     });
 
     it('lanza NotFoundException si el actor no tiene perfil de coachee', async () => {

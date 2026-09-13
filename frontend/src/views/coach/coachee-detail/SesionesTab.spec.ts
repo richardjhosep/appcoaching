@@ -150,7 +150,7 @@ describe('SesionesTab — reagendar directamente desde el calendario', () => {
     await modal.find('form').trigger('submit')
     await flushPromises()
 
-    expect(reagendarSesion).toHaveBeenCalledWith('sesion-hoy', expect.any(String), undefined)
+    expect(reagendarSesion).toHaveBeenCalledWith('sesion-hoy', expect.any(String), undefined, undefined)
     // El modal se cierra y el calendario refleja la nueva fecha de la sesión actualizada.
     expect(document.body.textContent).not.toContain('Reagendar sesión')
   })

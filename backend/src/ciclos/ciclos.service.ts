@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   Injectable,
@@ -126,6 +127,36 @@ export class CiclosService {
       ...(await this.attachEstado(ciclo)),
       sesionesFuturasCanceladas: affected ?? 0,
     };
+  }
+
+  /**
+   * #10 del backlog: `totalSesiones` era inmutable desde `abrir()`. Reglas al hacerlo
+   * editable: no se puede bajar por debajo de las sesiones ya realizadas (dejaría
+   * `sesionesRestantes` en un estado que nunca podía ocurrir antes), y no se puede tocar
+   * un ciclo ya cerrado (alteraría retroactivamente el texto ya impreso en
+   * `informeFinal`, que cita el total contratado).
+   */
+  async actualizarTotalSesiones(
+    id: string,
+    totalSesiones: number,
+  ): Promise<CicloConEstado> {
+    const ciclo = await this.findOne(id);
+    if (ciclo.fechaCierre) {
+      throw new ConflictException(
+        'El ciclo ya está cerrado — el número de sesiones contratadas no se puede modificar.',
+      );
+    }
+    const sesionesRealizadas = await this.sesiones.count({
+      where: { cicloId: id, fechaHora: LessThanOrEqual(new Date()) },
+    });
+    if (totalSesiones < sesionesRealizadas) {
+      throw new BadRequestException(
+        `No se puede bajar a ${totalSesiones}: ya se realizaron ${sesionesRealizadas} sesiones.`,
+      );
+    }
+    ciclo.totalSesiones = totalSesiones;
+    await this.ciclos.save(ciclo);
+    return this.attachEstado(ciclo);
   }
 
   async updateResumen(id: string, resumen: string): Promise<CicloConEstado> {

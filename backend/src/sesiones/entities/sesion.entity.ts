@@ -25,6 +25,14 @@ export class Sesion {
   @Column({ name: 'ciclo_id', type: 'uuid', nullable: true })
   cicloId: string | null;
 
+  // Agrupa las sesiones generadas por una misma regla semanal (ver
+  // SesionesService.crearSerie) — null para una sesión suelta, creada una a una como
+  // siempre. No es una FK a ninguna tabla de "reglas de recurrencia": no existe tal
+  // tabla, el patrón (día/hora) nunca se vuelve a consultar una vez generadas las
+  // sesiones, solo sirve para agrupar "esta y las futuras" al reagendar/cancelar.
+  @Column({ name: 'recurrencia_id', type: 'uuid', nullable: true })
+  recurrenciaId: string | null;
+
   @ManyToOne(() => CicloCoaching, { onDelete: 'SET NULL', nullable: true })
   @JoinColumn({ name: 'ciclo_id' })
   ciclo?: CicloCoaching;
