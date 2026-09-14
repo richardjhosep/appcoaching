@@ -105,4 +105,9 @@ button:not(:disabled),
   .skeleton-shimmer {
     animation: none;
   }
+  .fade-slide-enter-active,
+  .fade-slide-leave-active,
+  .flip-card-inner {
+    transition: none !important;
+  }
 }

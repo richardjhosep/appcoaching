@@ -1,5 +1,6 @@
 import { apiRequest, apiUpload, apiDownload } from './client'
 import type { Moneda } from '../lib/moneda'
+import type { EmpresaCompetencia } from './empresas'
 
 export interface CoacheeListItem {
   id: string
@@ -89,6 +90,11 @@ export function deleteCoachee(id: string): Promise<{ success: boolean }> {
 
 export function getMyCoachee(): Promise<Coachee> {
   return apiRequest<Coachee>('/coachees/me')
+}
+
+/** Competencias que prioriza la empresa del coachee — `[]` si es independiente. */
+export function getMisCompetenciasEmpresa(): Promise<EmpresaCompetencia[]> {
+  return apiRequest<EmpresaCompetencia[]>('/coachees/me/competencias-empresa')
 }
 
 export function getCoachee(id: string): Promise<Coachee> {

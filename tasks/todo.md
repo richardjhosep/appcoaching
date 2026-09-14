@@ -2493,3 +2493,45 @@ semanal de 3 sesiones para una coachee de prueba desde "+ Nueva sesión" → 3 f
 → el delta (+7 días +2h) se propagó exactamente a las otras 2 sesiones futuras de la serie,
 confirmado por consulta directa a la base. Datos de prueba (las 3 sesiones y su
 `recurrencia_id`) eliminados al cerrar; contraseña temporal de `coach@test.com` invalidada.
+
+## 2026-09-13/14 — Competencias de empresa visibles para el coachee (cierre del #3)
+
+Se cruzó `AJUSTES A PLATAFORMA COACHING COACHNEXUS.docx` (13 pedidos del cliente, 10-09-2026)
+contra el código real, comando por comando: 12 de 13 ya estaban resueltos en commits previos
+(algunos con otra numeración a la que se hacía referencia en el chat, sin relación con el
+propio documento). El único gap real: la relación empresa↔competencias (`EmpresaCompetencia`)
+se veía en el coach y en el dashboard de empresa, pero nunca llegaba al coachee.
+
+- Nueva ruta `GET /coachees/me/competencias-empresa` (`Role.COACHEE`) en
+  `CoacheesController`/`CoacheesService.getMisCompetenciasEmpresa()` — resuelve la empresa vía
+  `findByUserId(actor.id)`, **no** vía `actor.empresaId` del JWT: se confirmó con un login real
+  que ese campo es siempre `null` para un coachee (vive en `User`, seteado solo para el rol
+  Empresa; el `empresaId` del coachee es una columna aparte en `Coachee`). `[]` para un
+  independiente. Reutiliza `EmpresasService.getCompetencias()` sin lógica nueva.
+- `PlanDesarrolloView.vue` → `DefinicionTab.vue`: chips "Tu empresa prioriza: ..." sobre el
+  selector de competencia, resaltando en sage la que el coachee ya eligió — mismo lenguaje
+  visual que el dashboard de empresa (`bg-[var(--color-sage)]/15` / `bronze`).
+
+### Verificación
+
+Backend: 3 specs nuevos (empresa con competencias / independiente → `[]` / perfil inexistente
+→ `[]`) → 566/566. Frontend: 2 specs nuevos (chips ocultos sin datos / chips con la correcta
+resaltada) → 542/542. `vue-tsc`+`tsc` cruzado y `lint` limpios, `build` limpio en ambos lados.
+
+Verificado extremo a extremo con API real contra el stack local (Docker `verify-postgres`/
+`verify-redis` reactivados tras estar apagados, backend+frontend levantados con la receta
+estándar): empresa QA con 2 competencias → coachee de esa empresa las recibió exactas; coachee
+independiente → `[]`. Confirmado en el JWT real que `empresaId` es `null` para todo coachee
+(motivo del diseño de la ruta). Datos de prueba (empresa + 2 coachees QA) eliminados al cerrar;
+password de `coach@test.com` quedó en `Password123` (reseteada para poder probar, cuenta
+`@test.com` de uso compartido).
+
+De paso: se completó `prefers-reduced-motion` en `frontend/src/styles.css` — antes solo
+apagaba el shimmer de `SkeletonBlock`, ahora también las transiciones `fade-slide` y el flip
+3D de flashcards (`.flip-card-inner`). Se evaluó y **se dejó fuera** una propuesta de tokens
+CSS adicionales (`--color-ink-muted`, `--color-surface-white`, `-subtle` de sage/bronze/danger,
+sombras `--shadow-warm-*`): los primeros dos duplican patrones ya establecidos y muy usados
+(texto secundario con `text-[var(--color-ink)]/NN`, 540+ usos; `bg-white`, 140 usos) sin
+aportar nada en una app sin modo oscuro; los `-subtle`/`shadow-warm` son una mejora real pero
+quedarían como tokens muertos sin una migración de los ~50 archivos que hoy usan opacidades
+inconsistentes (`/5` a `/25`) — se deja como limpieza aparte si el usuario la pide.

@@ -96,4 +96,44 @@ describe('DefinicionTab', () => {
     expect(wrapper.text()).toContain('Enviar plan para aprobación')
     expect(wrapper.find('select').attributes('disabled')).toBeUndefined()
   })
+
+  it('hides the "tu empresa prioriza" hint for an independent coachee (sin competenciasPrioritarias)', () => {
+    const wrapper = mount(DefinicionTab, {
+      props: { plan: basePlan, competencias: [], locked: true },
+    })
+
+    expect(wrapper.text()).not.toContain('Tu empresa prioriza')
+  })
+
+  it('shows the empresa\'s priority competencias as chips, highlighting the one already selected', () => {
+    const wrapper = mount(DefinicionTab, {
+      props: {
+        plan: { ...basePlan, competenciaId: 'comp-2' },
+        competencias: [],
+        competenciasPrioritarias: [
+          {
+            id: 'ec-1',
+            empresaId: 'e1',
+            competenciaId: 'comp-1',
+            competencia: { id: 'comp-1', nombre: 'Liderazgo' },
+            createdAt: '2026-07-16T00:00:00.000Z',
+          },
+          {
+            id: 'ec-2',
+            empresaId: 'e1',
+            competenciaId: 'comp-2',
+            competencia: { id: 'comp-2', nombre: 'Comunicación' },
+            createdAt: '2026-07-16T00:00:00.000Z',
+          },
+        ],
+        locked: true,
+      },
+    })
+
+    expect(wrapper.text()).toContain('Tu empresa prioriza')
+    const chips = wrapper.findAll('label.sm\\:col-span-2 span.rounded-full')
+    expect(chips.map((c) => c.text())).toEqual(['Liderazgo', 'Comunicación'])
+    expect(chips[0].classes()).toContain('text-[var(--color-bronze)]') // no seleccionada
+    expect(chips[1].classes()).toContain('text-[var(--color-sage)]') // ya elegida en el plan
+  })
 })

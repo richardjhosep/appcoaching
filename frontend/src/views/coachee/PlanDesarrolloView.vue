@@ -9,9 +9,12 @@ import SkeletonBlock from '../../components/SkeletonBlock.vue'
 import { getOwnPlan, type PlanDesarrollo } from '../../api/planesDesarrollo'
 import { listCompetencias, type Competencia } from '../../api/competencias'
 import { getMiCicloActual, type Ciclo } from '../../api/ciclos'
+import { getMisCompetenciasEmpresa } from '../../api/coachees'
+import type { EmpresaCompetencia } from '../../api/empresas'
 
 const plan = ref<PlanDesarrollo | null>(null)
 const competencias = ref<Competencia[]>([])
+const competenciasPrioritarias = ref<EmpresaCompetencia[]>([])
 const cicloActual = ref<Ciclo | null>(null)
 const loading = ref(true)
 const tab = ref<'definicion' | 'habito' | 'formacion'>('definicion')
@@ -28,10 +31,16 @@ const tabs = [
 
 async function load() {
   loading.value = true
-  const [p, c, ciclo] = await Promise.all([getOwnPlan(), listCompetencias(), getMiCicloActual()])
+  const [p, c, ciclo, cp] = await Promise.all([
+    getOwnPlan(),
+    listCompetencias(),
+    getMiCicloActual(),
+    getMisCompetenciasEmpresa(),
+  ])
   plan.value = p
   competencias.value = c
   cicloActual.value = ciclo
+  competenciasPrioritarias.value = cp
   loading.value = false
 }
 
@@ -88,6 +97,7 @@ function handleUpdated(updated: PlanDesarrollo) {
         v-if="tab === 'definicion'"
         :plan="plan"
         :competencias="competencias"
+        :competencias-prioritarias="competenciasPrioritarias"
         :locked="isLocked"
         @updated="handleUpdated"
       />

@@ -111,6 +111,13 @@ export class CoacheesService {
     return this.coachees.findOne({ where: { userId }, relations: RELATIONS });
   }
 
+  /** Las competencias que prioriza la empresa del coachee — `[]` si es independiente. */
+  async getMisCompetenciasEmpresa(userId: string) {
+    const coachee = await this.findByUserId(userId);
+    if (!coachee?.empresaId) return [];
+    return this.empresas.getCompetencias(coachee.empresaId);
+  }
+
   exists(id: string): Promise<boolean> {
     return this.coachees.exists({ where: { id } });
   }

@@ -33,7 +33,10 @@ describe('CoacheesService', () => {
     create: jest.Mock<PartialSolicitud, [PartialSolicitud]>;
     save: jest.Mock<Promise<PartialSolicitud>, [PartialSolicitud]>;
   };
-  let empresas: { exists: jest.Mock<Promise<boolean>, [string]> };
+  let empresas: {
+    exists: jest.Mock<Promise<boolean>, [string]>;
+    getCompetencias: jest.Mock;
+  };
   let users: {
     createUser: jest.Mock;
     setActivo: jest.Mock;
@@ -69,7 +72,10 @@ describe('CoacheesService', () => {
         Promise.resolve({ id: 'solicitud-generated-id', ...data }),
       ),
     };
-    empresas = { exists: jest.fn<Promise<boolean>, [string]>() };
+    empresas = {
+      exists: jest.fn<Promise<boolean>, [string]>(),
+      getCompetencias: jest.fn(),
+    };
     users = {
       createUser: jest.fn().mockResolvedValue({
         user: { id: 'user-1' },
@@ -164,6 +170,47 @@ describe('CoacheesService', () => {
 
       expect(result).toEqual([]);
       expect(repo.find).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('getMisCompetenciasEmpresa', () => {
+    it("returns the competencias of the coachee's empresa", async () => {
+      repo.findOne.mockResolvedValue({
+        id: 'coachee-1',
+        empresaId: 'empresa-1',
+      });
+      empresas.getCompetencias.mockResolvedValue([
+        { id: 'ec-1', empresaId: 'empresa-1', competenciaId: 'comp-1' },
+      ]);
+
+      const result = await service.getMisCompetenciasEmpresa('user-1');
+
+      expect(repo.findOne).toHaveBeenCalledWith({
+        where: { userId: 'user-1' },
+        relations: { empresa: true, user: true },
+      });
+      expect(empresas.getCompetencias).toHaveBeenCalledWith('empresa-1');
+      expect(result).toEqual([
+        { id: 'ec-1', empresaId: 'empresa-1', competenciaId: 'comp-1' },
+      ]);
+    });
+
+    it('returns [] for an independent coachee, without calling empresas', async () => {
+      repo.findOne.mockResolvedValue({ id: 'coachee-1', empresaId: null });
+
+      const result = await service.getMisCompetenciasEmpresa('user-1');
+
+      expect(result).toEqual([]);
+      expect(empresas.getCompetencias).not.toHaveBeenCalled();
+    });
+
+    it('returns [] when the coachee profile does not exist', async () => {
+      repo.findOne.mockResolvedValue(null);
+
+      const result = await service.getMisCompetenciasEmpresa('user-1');
+
+      expect(result).toEqual([]);
+      expect(empresas.getCompetencias).not.toHaveBeenCalled();
     });
   });
 

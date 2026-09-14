@@ -71,6 +71,12 @@ export class CoacheesController {
   }
 
   @Roles(Role.COACHEE)
+  @Get('me/competencias-empresa')
+  misCompetenciasEmpresa(@CurrentUser() actor: AuthenticatedUser) {
+    return this.coachees.getMisCompetenciasEmpresa(actor.id);
+  }
+
+  @Roles(Role.COACHEE)
   @Patch('me/perfil')
   actualizarMiPerfil(
     @Body() dto: UpdateMiPerfilDto,

@@ -10,6 +10,7 @@ import {
   type PlanDesarrollo,
 } from '../../api/planesDesarrollo'
 import type { Competencia } from '../../api/competencias'
+import type { EmpresaCompetencia } from '../../api/empresas'
 import {
   addAutoevaluacion,
   getMisAutoevaluaciones,
@@ -19,11 +20,15 @@ import { ApiError } from '../../api/client'
 import { notifyError, notifySuccess } from '../../lib/notify'
 import SectionCard from '../SectionCard.vue'
 
-const props = defineProps<{
-  plan: PlanDesarrollo
-  competencias: Competencia[]
-  locked: boolean
-}>()
+const props = withDefaults(
+  defineProps<{
+    plan: PlanDesarrollo
+    competencias: Competencia[]
+    competenciasPrioritarias?: EmpresaCompetencia[]
+    locked: boolean
+  }>(),
+  { competenciasPrioritarias: () => [] },
+)
 const emit = defineEmits<{ updated: [PlanDesarrollo] }>()
 
 const form = reactive({
@@ -194,6 +199,20 @@ async function enviar() {
       <div class="grid gap-3 sm:grid-cols-2">
         <label class="text-sm sm:col-span-2">
           Competencia a desarrollar
+          <div
+            v-if="competenciasPrioritarias.length"
+            class="mb-1.5 mt-1 flex flex-wrap items-center gap-1.5"
+          >
+            <span class="text-xs text-[var(--color-ink)]/50">Tu empresa prioriza:</span>
+            <span
+              v-for="c in competenciasPrioritarias"
+              :key="c.id"
+              class="rounded-full px-2.5 py-0.5 text-xs"
+              :class="c.competenciaId === form.competenciaId
+                ? 'bg-[var(--color-sage)]/15 text-[var(--color-sage)]'
+                : 'bg-[var(--color-bronze)]/15 text-[var(--color-bronze)]'"
+            >{{ c.competencia?.nombre }}</span>
+          </div>
           <select
             v-model="form.competenciaId"
             :disabled="locked"
