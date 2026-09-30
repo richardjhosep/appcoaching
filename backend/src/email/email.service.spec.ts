@@ -58,6 +58,40 @@ describe('EmailService', () => {
     expect(call.text).toContain('Ana');
   });
 
+  it('links to the coachee guide only when guideUrl is set', async () => {
+    const service = new EmailService(
+      makeConfig({
+        'smtp.host': 'smtp.gmail.com',
+        'smtp.port': 587,
+        'smtp.user': 'coach@gmail.com',
+        'smtp.pass': 'app-password',
+        'smtp.from': 'coach@gmail.com',
+      }),
+    );
+
+    await service.sendTemporaryPassword({
+      to: 'coachee@example.com',
+      nombre: 'Sofía',
+      temporaryPassword: 'temp-123',
+      loginUrl: 'http://localhost/login',
+      guideUrl: 'http://localhost/guia-coachee',
+    });
+
+    const [[call]] = sendMail.mock.calls as [[{ html: string; text: string }]];
+    expect(call.html).toContain('http://localhost/guia-coachee');
+    expect(call.html).toContain('guía rápida');
+    expect(call.text).toContain('http://localhost/guia-coachee');
+
+    sendMail.mockClear();
+    await service.sendTemporaryPassword({
+      to: 'coach@example.com',
+      temporaryPassword: 'temp-456',
+      loginUrl: 'http://localhost/login',
+    });
+    const [[callSinGuia]] = sendMail.mock.calls as [[{ html: string }]];
+    expect(callSinGuia.html).not.toContain('guía rápida');
+  });
+
   it('uses the same welcome copy for a password reset as for a new account', async () => {
     const service = new EmailService(
       makeConfig({

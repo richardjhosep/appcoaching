@@ -48,7 +48,7 @@ const loading = ref(true)
 const resumen = ref<ResumenNegocio | null>(null)
 const alertas = ref<Alertas | null>(null)
 const planesSinEnviar = ref<PlanDesarrollo[]>([])
-const planesPendientesAprobacion = ref<PlanDesarrollo[]>([])
+const planesConCambiosSolicitados = ref<PlanDesarrollo[]>([])
 const solicitudesPendientes = ref<SolicitudProceso[]>([])
 const resumenLegal = ref<ResumenLegal>({ empresas: [], independientes: [] })
 const coacheesLista = ref<CoacheeListItem[]>([])
@@ -76,7 +76,7 @@ async function load() {
     r,
     a,
     sinEnviar,
-    pendientesAprobacion,
+    conCambiosSolicitados,
     solicitudes,
     coachees,
     legal,
@@ -91,7 +91,7 @@ async function load() {
     getResumenNegocio(),
     getAlertas(),
     listPlanes('sin_enviar'),
-    listPlanes('pendiente_aprobacion'),
+    listPlanes('cambios_solicitados'),
     getSolicitudes('pendiente'),
     listCoachees(),
     getResumenLegal(),
@@ -106,7 +106,7 @@ async function load() {
   resumen.value = r
   alertas.value = a
   planesSinEnviar.value = sinEnviar
-  planesPendientesAprobacion.value = pendientesAprobacion
+  planesConCambiosSolicitados.value = conCambiosSolicitados
   solicitudesPendientes.value = solicitudes
   resumenLegal.value = legal
   coacheesLista.value = coachees
@@ -346,7 +346,7 @@ const coacheesAtencion = computed<CoacheeAtencion[]>(() =>
   alertas.value
     ? coacheesQueNecesitanAlgo({
       planesSinEnviar: planesSinEnviar.value,
-      planesPendientesAprobacion: planesPendientesAprobacion.value,
+      planesConCambiosSolicitados: planesConCambiosSolicitados.value,
       alertas: alertas.value,
       independientesLegal: resumenLegal.value.independientes,
     })
@@ -375,17 +375,20 @@ interface ItemAtencion {
   accion?: () => void
 }
 
-const textoSeveridad: Record<Severidad, string> = {
-  danger: 'text-[var(--color-danger)]',
-  bronze: 'text-[var(--color-bronze)]',
-  sage: 'text-[var(--color-sage)]',
+// Chip sutil (fondo tenue + borde del mismo color) para las banderas de atención — pedido
+// explícito del usuario 2026-09-15, que reemplaza la decisión anterior documentada abajo
+// ("un renglón por bandera, no una nube de chips") tras revisar juntos una referencia
+// visual. Mismo patrón bg/10 + texto + border/20 que ya usa el resto de la app (ver
+// SesionesTab.vue, IndicadoresBadge, etc.) — no es un token nuevo.
+const chipSeveridad: Record<Severidad, string> = {
+  danger: 'bg-[var(--color-danger)]/10 text-[var(--color-danger)] border border-[var(--color-danger)]/20',
+  bronze: 'bg-[var(--color-bronze)]/10 text-[var(--color-bronze)] border border-[var(--color-bronze)]/20',
+  sage: 'bg-[var(--color-sage)]/10 text-[var(--color-sage)] border border-[var(--color-sage)]/20',
 }
 
-// Un renglón por bandera, no una nube de chips de colores distintos — el color queda
-// reservado al texto (severidad), y la acción siempre es un botón neutro, para que la
-// tarjeta se pueda escanear de un vistazo. Orden: lo urgente para el coachee primero
-// (riesgo de que la relación se enfríe), luego lo que sólo necesita un empujón, y al final
-// lo que ya está en tu cancha (revisar un plan que el coachee sí envió).
+// Orden de las banderas: lo urgente para el coachee primero (riesgo de que la relación se
+// enfríe), luego lo que sólo necesita un empujón, y al final lo que ya está en tu cancha
+// (esperar a que el coachee responda a un comentario que ya dejaste en su plan).
 function itemsDe(c: CoacheeAtencion): ItemAtencion[] {
   const items: ItemAtencion[] = []
   if (c.sinProximaSesion) {
@@ -403,8 +406,8 @@ function itemsDe(c: CoacheeAtencion): ItemAtencion[] {
   if (c.cicloPorVencer) {
     items.push({ id: 'ciclo', label: `Ciclo por vencer (${c.cicloPorVencer.sesionesRestantes} sesiones)`, severidad: 'bronze' })
   }
-  if (c.planPendienteAprobacion) {
-    items.push({ id: 'plan-revisar', label: 'Plan por revisar', severidad: 'sage', accionLabel: 'Revisar →', accion: () => verPlan(c.coacheeId) })
+  if (c.planCambiosSolicitados) {
+    items.push({ id: 'plan-revisar', label: 'Esperando respuesta a tus cambios', severidad: 'sage', accionLabel: 'Ver plan →', accion: () => verPlan(c.coacheeId) })
   }
   return items
 }
@@ -550,13 +553,20 @@ const filasAtencion = computed<FilaAtencion[]>(() =>
     </div>
     <div
       v-else-if="resumen && alertas"
-      class="space-y-5"
+      class="flex flex-col gap-5 lg:flex-row lg:items-start"
     >
-      <!-- Atención inmediata: "¿qué necesito hacer hoy?" — responde esto antes que cualquier
-           métrica general (va primero en la página, no las KPIs). -->
-      <div class="rounded-2xl border border-[var(--color-line)] bg-white p-4">
-        <h2 class="mb-3 text-sm font-medium">
-          Atención inmediata
+      <!-- Columna derecha (Atención inmediata + Proyección): va primero en el DOM para que en
+           mobile (flex-col, sin "lg:") aparezca primero — es la prioridad #1 del día, no las
+           KPIs — y en desktop se manda a la derecha con lg:order-2. Flexbox con `order` en vez
+           de un grid con posiciones (col-start/row-start) explícitas: con filas dispersas (la
+           derecha tiene 2 secciones, la izquierda 4) algunos navegadores calculaban mal la
+           altura de esas filas y dejaban huecos enormes / perdían el padding de la página. -->
+      <aside class="space-y-5 lg:order-2 lg:w-[34%] lg:shrink-0">
+        <!-- Atención inmediata: "¿qué necesito hacer hoy?" — responde esto antes que
+             cualquier métrica general. -->
+        <div class="rounded-2xl border border-[var(--color-line)] bg-white p-4">
+          <h2 class="mb-3 text-sm font-medium">
+            Atención inmediata
         </h2>
         <p
           v-if="nadaUrgente"
@@ -569,14 +579,14 @@ const filasAtencion = computed<FilaAtencion[]>(() =>
           class="space-y-4"
         >
           <div v-if="atencion.sesionesSinConfirmar.length > 0">
-            <p class="mb-1.5 text-xs font-medium uppercase tracking-wide text-[var(--color-ink)]/50">
+            <p class="mb-1 text-xs font-medium uppercase tracking-wide text-[var(--color-ink)]/50">
               Sesiones sin confirmar (hoy/mañana)
             </p>
-            <ul class="space-y-1.5 text-sm">
+            <ul class="divide-y divide-[var(--color-line)] text-sm">
               <li
                 v-for="s in atencion.sesionesSinConfirmar"
                 :key="s.sesionId"
-                class="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[var(--color-line)]/60 px-3 py-2"
+                class="flex flex-wrap items-center justify-between gap-2 py-2 first:pt-0 last:pb-0"
               >
                 <span>
                   {{ s.nombre }}
@@ -594,14 +604,14 @@ const filasAtencion = computed<FilaAtencion[]>(() =>
           </div>
 
           <div v-if="atencion.contratosUrgentes.length > 0">
-            <p class="mb-1.5 text-xs font-medium uppercase tracking-wide text-[var(--color-ink)]/50">
+            <p class="mb-1 text-xs font-medium uppercase tracking-wide text-[var(--color-ink)]/50">
               Contratos por vencer sin gestión
             </p>
-            <ul class="space-y-1.5 text-sm">
+            <ul class="divide-y divide-[var(--color-line)] text-sm">
               <li
                 v-for="e in atencion.contratosUrgentes"
                 :key="e.empresaId"
-                class="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[var(--color-line)]/60 px-3 py-2"
+                class="flex flex-wrap items-center justify-between gap-2 py-2 first:pt-0 last:pb-0"
               >
                 <span>
                   {{ e.nombre }}
@@ -619,14 +629,14 @@ const filasAtencion = computed<FilaAtencion[]>(() =>
           </div>
 
           <div v-if="atencion.pagosPendientes.length > 0">
-            <p class="mb-1.5 text-xs font-medium uppercase tracking-wide text-[var(--color-ink)]/50">
+            <p class="mb-1 text-xs font-medium uppercase tracking-wide text-[var(--color-ink)]/50">
               Pagos pendientes
             </p>
-            <ul class="space-y-1.5 text-sm">
+            <ul class="divide-y divide-[var(--color-line)] text-sm">
               <li
                 v-for="e in atencion.pagosPendientes"
                 :key="e.empresaId"
-                class="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[var(--color-line)]/60 px-3 py-2"
+                class="flex flex-wrap items-center justify-between gap-2 py-2 first:pt-0 last:pb-0"
               >
                 <span>
                   {{ e.nombre }}
@@ -645,6 +655,62 @@ const filasAtencion = computed<FilaAtencion[]>(() =>
         </div>
       </div>
 
+      <!-- Proyección económica -->
+      <div class="rounded-2xl border border-[var(--color-line)] bg-white p-4">
+        <div class="mb-3 flex items-center justify-between">
+          <h2 class="text-sm font-medium">
+            Proyección económica
+          </h2>
+          <RouterLink
+            to="/coach/negocio"
+            class="text-xs text-[var(--color-sage)] hover:underline"
+          >
+            Ver detalle completo →
+          </RouterLink>
+        </div>
+        <div
+          v-if="comercialMes"
+          class="mb-4 grid grid-cols-3 gap-3"
+        >
+          <div>
+            <p class="text-xs text-[var(--color-ink)]/60">
+              Ingreso del mes
+            </p>
+            <p class="font-[family-name:var(--font-mono)] text-lg text-[var(--color-sage)]">
+              {{ formatoCLP.format(comercialMes.ingresoDelPeriodo) }}
+            </p>
+            <p
+              v-if="comparativo && comparativo.variacionIngresoPct !== null"
+              class="text-xs font-medium"
+              :class="comparativo.variacionIngresoPct >= 0 ? 'text-[var(--color-sage)]' : 'text-[var(--color-bronze)]'"
+            >
+              {{ comparativo.variacionIngresoPct >= 0 ? '↑' : '↓' }} {{ Math.abs(comparativo.variacionIngresoPct) }}% vs. mes anterior
+            </p>
+          </div>
+          <div>
+            <p class="text-xs text-[var(--color-ink)]/60">
+              Proyectado
+            </p>
+            <p class="font-[family-name:var(--font-mono)] text-lg text-[var(--color-bronze)]">
+              {{ formatoCLP.format(comercialMes.ingresoProyectado) }}
+            </p>
+          </div>
+          <div>
+            <p class="text-xs text-[var(--color-ink)]/60">
+              Horas realizadas
+            </p>
+            <p class="font-[family-name:var(--font-mono)] text-lg">
+              {{ comercialMes.horasRealizadas }}
+            </p>
+          </div>
+        </div>
+        <ProyeccionIngresosChart :meses="proyeccionMensual" />
+      </div>
+      </aside>
+
+      <!-- Columna izquierda: KPIs, esta semana, cartera de empresas y coachees/empresas que
+           necesitan seguimiento. -->
+      <main class="min-w-0 space-y-5 lg:order-1 lg:flex-1">
       <!-- KPIs: responden directo "¿qué tengo esta semana, qué se me vence, cuánto voy a
            facturar, qué me falta completar?" -->
       <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -826,58 +892,6 @@ const filasAtencion = computed<FilaAtencion[]>(() =>
         </template>
       </div>
 
-      <!-- Proyección económica -->
-      <div class="rounded-2xl border border-[var(--color-line)] bg-white p-4">
-        <div class="mb-3 flex items-center justify-between">
-          <h2 class="text-sm font-medium">
-            Proyección económica
-          </h2>
-          <RouterLink
-            to="/coach/negocio"
-            class="text-xs text-[var(--color-sage)] hover:underline"
-          >
-            Ver detalle completo →
-          </RouterLink>
-        </div>
-        <div
-          v-if="comercialMes"
-          class="mb-4 grid grid-cols-3 gap-3"
-        >
-          <div>
-            <p class="text-xs text-[var(--color-ink)]/60">
-              Ingreso del mes
-            </p>
-            <p class="font-[family-name:var(--font-mono)] text-lg text-[var(--color-sage)]">
-              {{ formatoCLP.format(comercialMes.ingresoDelPeriodo) }}
-            </p>
-            <p
-              v-if="comparativo && comparativo.variacionIngresoPct !== null"
-              class="text-xs font-medium"
-              :class="comparativo.variacionIngresoPct >= 0 ? 'text-[var(--color-sage)]' : 'text-[var(--color-bronze)]'"
-            >
-              {{ comparativo.variacionIngresoPct >= 0 ? '↑' : '↓' }} {{ Math.abs(comparativo.variacionIngresoPct) }}% vs. mes anterior
-            </p>
-          </div>
-          <div>
-            <p class="text-xs text-[var(--color-ink)]/60">
-              Proyectado
-            </p>
-            <p class="font-[family-name:var(--font-mono)] text-lg text-[var(--color-bronze)]">
-              {{ formatoCLP.format(comercialMes.ingresoProyectado) }}
-            </p>
-          </div>
-          <div>
-            <p class="text-xs text-[var(--color-ink)]/60">
-              Horas realizadas
-            </p>
-            <p class="font-[family-name:var(--font-mono)] text-lg">
-              {{ comercialMes.horasRealizadas }}
-            </p>
-          </div>
-        </div>
-        <ProyeccionIngresosChart :meses="proyeccionMensual" />
-      </div>
-
       <!-- Coachees que necesitan atención (operativo día a día — nivel distinto al resto) -->
       <div class="rounded-2xl border border-[var(--color-line)] bg-white p-4">
         <div class="mb-3 flex gap-1 border-b border-[var(--color-line)]">
@@ -959,18 +973,18 @@ const filasAtencion = computed<FilaAtencion[]>(() =>
 
               <div
                 v-if="fila.primario"
-                class="flex items-center justify-between gap-2 rounded-lg bg-[var(--color-parchment)]/50 px-2.5 py-1.5"
+                class="flex items-center justify-between gap-2"
               >
                 <span
-                  class="text-xs font-medium"
-                  :class="textoSeveridad[fila.primario.severidad]"
+                  class="rounded px-2 py-0.5 text-xs font-medium"
+                  :class="chipSeveridad[fila.primario.severidad]"
                 >
                   {{ fila.primario.label }}
                 </span>
                 <button
                   v-if="fila.primario.accion"
                   type="button"
-                  class="inline-flex shrink-0 items-center gap-1 rounded-full border border-[var(--color-line)] bg-white px-2 py-0.5 text-xs text-[var(--color-ink)]/70 hover:bg-[var(--color-parchment)] hover:text-[var(--color-ink)]"
+                  class="group inline-flex shrink-0 items-center gap-1 rounded-full border border-[var(--color-line)] bg-white px-2 py-0.5 text-xs text-[var(--color-ink)]/70 hover:bg-[var(--color-parchment)] hover:text-[var(--color-ink)]"
                   @click="fila.primario.accion"
                 >
                   <NavIcon
@@ -978,19 +992,30 @@ const filasAtencion = computed<FilaAtencion[]>(() =>
                     name="correo"
                     :size="11"
                   /> {{ fila.primario.accionLabel }}
+                  <svg
+                    width="11"
+                    height="11"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    class="transition-transform group-hover:translate-x-0.5"
+                  ><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></svg>
                 </button>
               </div>
 
               <div
                 v-if="fila.secundarios.length > 0"
-                class="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 px-0.5"
+                class="mt-1.5 flex flex-wrap gap-1 px-0.5"
               >
                 <button
                   v-for="item in fila.secundarios"
                   :key="item.id"
                   type="button"
-                  class="text-[11px] font-medium disabled:cursor-default"
-                  :class="[textoSeveridad[item.severidad], item.accion ? 'hover:underline' : '']"
+                  class="rounded px-1.5 py-0.5 text-[11px] font-medium disabled:cursor-default disabled:opacity-70"
+                  :class="[chipSeveridad[item.severidad], item.accion ? 'hover:brightness-95' : '']"
                   :disabled="!item.accion"
                   @click="item.accion"
                 >
@@ -1087,6 +1112,7 @@ const filasAtencion = computed<FilaAtencion[]>(() =>
           </ul>
         </div>
       </div>
+      </main>
     </div>
 
     <GestionModal

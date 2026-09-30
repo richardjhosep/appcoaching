@@ -25,7 +25,6 @@ const props = withDefaults(
     plan: PlanDesarrollo
     competencias: Competencia[]
     competenciasPrioritarias?: EmpresaCompetencia[]
-    locked: boolean
   }>(),
   { competenciasPrioritarias: () => [] },
 )
@@ -96,13 +95,6 @@ async function guardarAutoevaluacion() {
   }
 }
 
-const aprobado = computed(() => props.plan.estado === 'aprobado')
-const mensajeBloqueo = computed(() =>
-  aprobado.value
-    ? 'El plan ya fue aprobado por tu coach: la competencia, el nivel objetivo, el objetivo general y los objetivos específicos quedan bloqueados.'
-    : 'El plan está pendiente de aprobación: la competencia, el nivel objetivo, el objetivo general y los objetivos específicos quedan bloqueados hasta que el coach responda.',
-)
-
 async function refetch() {
   emit('updated', await getOwnPlan())
 }
@@ -166,8 +158,10 @@ async function enviar() {
   try {
     const updated = await enviarPlan()
     emit('updated', updated)
+    await notifySuccess('Plan enviado', 'Tu coach ya puede verlo.')
   } catch (err) {
     error.value = err instanceof ApiError ? err.message : 'No se pudo enviar el plan.'
+    await notifyError('No se pudo enviar el plan', error.value)
   } finally {
     enviando.value = false
   }
@@ -176,15 +170,6 @@ async function enviar() {
 
 <template>
   <div class="space-y-4">
-    <p
-      v-if="locked"
-      class="rounded-lg border p-3 text-xs"
-      :class="aprobado
-        ? 'border-[var(--color-sage)]/40 bg-[var(--color-sage)]/10 text-[var(--color-sage)]'
-        : 'border-[var(--color-bronze)]/40 bg-[var(--color-bronze)]/10 text-[var(--color-bronze)]'"
-    >
-      {{ mensajeBloqueo }}
-    </p>
     <p
       v-if="error"
       class="text-sm text-[var(--color-danger)]"
@@ -215,7 +200,6 @@ async function enviar() {
           </div>
           <select
             v-model="form.competenciaId"
-            :disabled="locked"
             class="mt-1 w-full rounded-lg border px-3 py-2 text-sm disabled:bg-[var(--color-parchment)]/50"
             :class="serverErrors.competenciaId ? 'border-[var(--color-danger)]' : 'border-[var(--color-line)]'"
           >
@@ -260,7 +244,6 @@ async function enviar() {
             v-model.number="form.nivelObjetivo"
             type="number"
             min="1"
-            :disabled="locked"
             class="mt-1 w-full rounded-lg border px-3 py-2 text-sm disabled:bg-[var(--color-parchment)]/50"
             :class="serverErrors.nivelObjetivo ? 'border-[var(--color-danger)]' : 'border-[var(--color-line)]'"
           >
@@ -298,7 +281,6 @@ async function enviar() {
           <textarea
             v-model="form.objetivoGeneral"
             rows="3"
-            :disabled="locked"
             class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm disabled:bg-[var(--color-parchment)]/50"
           />
         </label>
@@ -326,12 +308,10 @@ async function enviar() {
           <span class="font-[family-name:var(--font-mono)] text-[var(--color-ink)]/50">{{ o.orden }}.</span>
           <input
             :value="o.descripcion"
-            :disabled="locked"
             class="flex-1 rounded-lg border border-[var(--color-line)] px-2 py-1 text-sm disabled:bg-[var(--color-parchment)]/50"
             @change="editarObjetivo(o.id, ($event.target as HTMLInputElement).value)"
           >
           <button
-            v-if="!locked"
             class="text-xs text-[var(--color-bronze)] hover:underline"
             @click="borrarObjetivo(o.id)"
           >
@@ -340,7 +320,6 @@ async function enviar() {
         </li>
       </ul>
       <div
-        v-if="!locked"
         class="flex gap-2"
       >
         <input
@@ -437,12 +416,11 @@ async function enviar() {
     </SectionCard>
 
     <button
-      v-if="!locked"
       class="rounded-lg bg-[var(--color-sage)] px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
       :disabled="enviando"
       @click="enviar"
     >
-      {{ enviando ? 'Enviando…' : 'Enviar plan para aprobación' }}
+      {{ enviando ? 'Enviando…' : 'Enviar plan a mi coach' }}
     </button>
   </div>
 </template>

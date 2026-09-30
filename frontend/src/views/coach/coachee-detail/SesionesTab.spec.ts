@@ -171,7 +171,7 @@ describe('SesionesTab — reagendar directamente desde el calendario', () => {
     await flushPromises()
 
     const grilla = wrapper.find('[data-testid="columna-dia-0"]')
-    await grilla.trigger('mousedown', { clientY: 96 }) // 07:00 + 2h = 09:00
+    await grilla.trigger('mousedown', { clientY: 120 }) // 07:00 + 2h = 09:00
     window.dispatchEvent(new MouseEvent('mouseup'))
     await flushPromises()
 

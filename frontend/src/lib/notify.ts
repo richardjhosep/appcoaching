@@ -57,3 +57,31 @@ export async function confirmDialog(options: {
   })
   return result.isConfirmed
 }
+
+// Variante de tres opciones para acciones sobre una sesión que viene de "repetir
+// semanalmente" (mover o eliminar): además de cancelar, hay que elegir si el cambio
+// aplica solo a esa sesión o a ella y todas las futuras de la serie.
+export async function confirmSerieDialog(options: {
+  title: string
+  text?: string
+  soloEstaText: string
+  todaSerieText: string
+  danger?: boolean
+}): Promise<'solo-esta' | 'toda-serie' | null> {
+  const result = await base.fire({
+    icon: 'warning',
+    title: options.title,
+    text: options.text,
+    showDenyButton: true,
+    showCancelButton: true,
+    confirmButtonText: options.todaSerieText,
+    denyButtonText: options.soloEstaText,
+    cancelButtonText: 'Cancelar',
+    confirmButtonColor: options.danger ? '#dc2626' : '#121212',
+    denyButtonColor: options.danger ? '#dc2626' : '#a2651a',
+    reverseButtons: true,
+  })
+  if (result.isConfirmed) return 'toda-serie'
+  if (result.isDenied) return 'solo-esta'
+  return null
+}

@@ -95,8 +95,8 @@ function mockEmptySources() {
   vi.mocked(listFlashcardsDisponibles).mockResolvedValue([])
   vi.mocked(listMapasDisponibles).mockResolvedValue([])
   vi.mocked(listCompetencias).mockResolvedValue([
-    { id: 'comp-1', nombre: 'Comunicación', definicion: 'def', niveles: [] },
-    { id: 'comp-2', nombre: 'Liderazgo', definicion: 'def', niveles: [] },
+    { id: 'comp-1', nombre: 'Comunicación', definicion: 'def', niveles: [], empresaId: null },
+    { id: 'comp-2', nombre: 'Liderazgo', definicion: 'def', niveles: [], empresaId: null },
   ])
   vi.mocked(listarRecursosPersonales).mockResolvedValue([])
 }

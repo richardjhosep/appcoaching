@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import AppModal from '../../../components/AppModal.vue'
+import AyudaHerramienta from '../../../components/AyudaHerramienta.vue'
 import EmptyState from '../../../components/EmptyState.vue'
 import StatusToggle from '../../../components/StatusToggle.vue'
 import SkeletonBlock from '../../../components/SkeletonBlock.vue'
@@ -131,6 +132,11 @@ async function eliminar(flashcard: Flashcard) {
         Nueva flashcard
       </button>
     </div>
+
+    <AyudaHerramienta titulo="¿Cómo funcionan las Flashcards?">
+      <p>Cada flashcard tiene un anverso (pregunta o concepto) y un reverso (la respuesta) — el coachee la repasa, no la "responde" ni se marca aprobada/reprobada.</p>
+      <p><strong>Cómo evaluar:</strong> acá no hay puntaje ni ranking — usan repetición espaciada, así que lo único que se registra es cuándo el coachee repasó cada una y cuándo le toca de nuevo.</p>
+    </AyudaHerramienta>
 
     <EmptyState
       v-if="flashcards.length === 0"

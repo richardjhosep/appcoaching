@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { createRouter, createWebHistory } from 'vue-router'
-import EstudioView from './EstudioView.vue'
+import HerramientasView from './HerramientasView.vue'
 import QuizTab from './estudio/QuizTab.vue'
 import FlashcardsTab from './estudio/FlashcardsTab.vue'
 import MapasTab from './estudio/MapasTab.vue'
@@ -38,7 +38,7 @@ import { listTestsEstilo } from '../../api/testEstilo'
 
 const router = createRouter({
   history: createWebHistory(),
-  routes: [{ path: '/coach/estudio', component: EstudioView }],
+  routes: [{ path: '/coach/herramientas', component: HerramientasView }],
 })
 
 const stubs = {
@@ -49,7 +49,7 @@ const stubs = {
   TestEstiloTab: true,
 }
 
-describe('EstudioView', () => {
+describe('HerramientasView', () => {
   beforeEach(async () => {
     setActivePinia(createPinia())
     vi.mocked(listQuizzes).mockResolvedValue([{ id: 'q1' }, { id: 'q2' }] as never)
@@ -57,12 +57,12 @@ describe('EstudioView', () => {
     vi.mocked(listMapas).mockResolvedValue([] as never)
     vi.mocked(listEjercicios).mockResolvedValue([{ id: 'e1' }, { id: 'e2' }, { id: 'e3' }] as never)
     vi.mocked(listTestsEstilo).mockResolvedValue([] as never)
-    await router.push('/coach/estudio')
+    await router.push('/coach/herramientas')
     await router.isReady()
   })
 
   it('defaults to the "Quiz" tab', async () => {
-    const wrapper = mount(EstudioView, { global: { plugins: [router], stubs } })
+    const wrapper = mount(HerramientasView, { global: { plugins: [router], stubs } })
     await flushPromises()
 
     expect(wrapper.findComponent(QuizTab).exists()).toBe(true)
@@ -70,7 +70,7 @@ describe('EstudioView', () => {
   })
 
   it('switches to "Mapas mentales" on click, without a full reload', async () => {
-    const wrapper = mount(EstudioView, { global: { plugins: [router], stubs } })
+    const wrapper = mount(HerramientasView, { global: { plugins: [router], stubs } })
     await flushPromises()
 
     const mapasBtn = wrapper.findAll('button').find((b) => b.text().includes('Mapas mentales'))
@@ -83,7 +83,7 @@ describe('EstudioView', () => {
   })
 
   it('switches to "Ejercicios" on click', async () => {
-    const wrapper = mount(EstudioView, { global: { plugins: [router], stubs } })
+    const wrapper = mount(HerramientasView, { global: { plugins: [router], stubs } })
     await flushPromises()
 
     const ejerciciosBtn = wrapper.findAll('button').find((b) => b.text().includes('Ejercicios'))
@@ -95,7 +95,7 @@ describe('EstudioView', () => {
   })
 
   it('switches to "Test de Estilo" on click', async () => {
-    const wrapper = mount(EstudioView, { global: { plugins: [router], stubs } })
+    const wrapper = mount(HerramientasView, { global: { plugins: [router], stubs } })
     await flushPromises()
 
     const testBtn = wrapper.findAll('button').find((b) => b.text().includes('Test de Estilo'))
@@ -107,7 +107,7 @@ describe('EstudioView', () => {
   })
 
   it('shows a live item count on each card', async () => {
-    const wrapper = mount(EstudioView, { global: { plugins: [router], stubs } })
+    const wrapper = mount(HerramientasView, { global: { plugins: [router], stubs } })
     await flushPromises()
 
     expect(wrapper.text()).toContain('Quiz (2)')

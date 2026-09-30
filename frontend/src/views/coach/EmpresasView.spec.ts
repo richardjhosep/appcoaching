@@ -155,8 +155,8 @@ describe('EmpresasView', () => {
       { id: 'ec1', empresaId: 'e1', competenciaId: 'comp-1', createdAt: hoyIso },
     ])
     vi.mocked(listCompetencias).mockResolvedValue([
-      { id: 'comp-1', nombre: 'Liderazgo', definicion: 'def', niveles: [] },
-      { id: 'comp-2', nombre: 'Comunicación', definicion: 'def', niveles: [] },
+      { id: 'comp-1', nombre: 'Liderazgo', definicion: 'def', niveles: [], empresaId: null },
+      { id: 'comp-2', nombre: 'Comunicación', definicion: 'def', niveles: [], empresaId: null },
     ])
     vi.mocked(updateEmpresa).mockResolvedValue(empresas[0])
     wrapper = mount(EmpresasView)

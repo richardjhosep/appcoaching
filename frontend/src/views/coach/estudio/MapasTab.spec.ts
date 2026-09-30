@@ -33,7 +33,7 @@ vi.mock('../../../lib/notify', () => ({
   confirmDialog: vi.fn(),
 }))
 
-const competencia: Competencia = { id: 'comp-1', nombre: 'Liderazgo', definicion: 'def', niveles: [] }
+const competencia: Competencia = { id: 'comp-1', nombre: 'Liderazgo', definicion: 'def', niveles: [], empresaId: null }
 
 const mapa: Mapa = {
   id: 'mapa-1',

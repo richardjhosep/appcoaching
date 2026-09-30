@@ -1,22 +1,36 @@
 <script setup lang="ts">
-// Reemplaza el texto plano "Cargando…" en toda la app por un placeholder que
-// insinúa la forma del contenido que va a aparecer, en vez de una pantalla en
-// blanco con una palabra. `rows` controla cuántas barras se dibujan; la última
-// siempre queda más corta para que no se vea como una grilla perfecta.
-withDefaults(defineProps<{ rows?: number }>(), { rows: 3 })
+// Indicador de carga compartido por toda la app (51 usos) — antes era un
+// shimmer que insinuaba la forma del contenido; ahora es un spinner explícito.
+// Cambiar acá alcanza a todas las vistas que hacen `<SkeletonBlock v-if="loading" />`,
+// sin tocar cada llamado uno por uno.
 </script>
 
 <template>
   <div
-    class="flex flex-col gap-3"
+    class="flex flex-col items-center justify-center gap-2 py-8"
     role="status"
     aria-label="Cargando"
   >
-    <div
-      v-for="i in rows"
-      :key="i"
-      class="skeleton-shimmer h-4 rounded-lg"
-      :style="{ width: i === rows ? '55%' : '100%' }"
-    />
+    <svg
+      class="h-6 w-6 animate-spin text-[var(--color-sage)]"
+      viewBox="0 0 24 24"
+      fill="none"
+    >
+      <circle
+        cx="12"
+        cy="12"
+        r="10"
+        stroke="currentColor"
+        stroke-width="3"
+        class="opacity-20"
+      />
+      <path
+        d="M12 2a10 10 0 0 1 10 10"
+        stroke="currentColor"
+        stroke-width="3"
+        stroke-linecap="round"
+      />
+    </svg>
+    <span class="text-xs text-[var(--color-ink)]/50">Cargando…</span>
   </div>
 </template>

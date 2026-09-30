@@ -22,7 +22,7 @@ import {
 import { listCoachees, type CoacheeListItem } from '../../api/coachees'
 import { ApiError } from '../../api/client'
 import { notifyError, notifySuccess } from '../../lib/notify'
-import { aDatetimeLocal } from '../../lib/dateRange'
+import { aDatetimeLocal, inicioDeSemana } from '../../lib/dateRange'
 
 const DIAS_LABEL = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
 
@@ -41,6 +41,29 @@ const bloquesPorDia = computed(() => {
   for (const b of bloques.value) grupos[b.diaSemana]!.push(b)
   return grupos
 })
+
+// Lunes primero para que el orden visual coincida con la grilla de arriba (WeekCalendar
+// también empieza en lunes) — bloquesPorDia sigue indexado 0=domingo..6=sábado porque así
+// codifica diaSemana el backend, esto solo cambia el orden en que se recorre al pintar.
+const ORDEN_DIAS_LUNES_PRIMERO = [1, 2, 3, 4, 5, 6, 0]
+
+// --- KPIs de la cabecera ------------------------------------------------------
+// Se derivan de `sesiones` (ya cargado para la grilla) en vez de pedir datos nuevos al
+// backend — "agendadas"/"clientes" cuentan sesiones futuras; "esta semana" acota además a
+// la semana calendario (lunes-domingo) que contiene hoy.
+const sesionesFuturas = computed(() => sesiones.value.filter((s) => new Date(s.fechaHora).getTime() > Date.now()))
+
+const sesionesEstaSemana = computed(() => {
+  const desde = inicioDeSemana()
+  const hasta = new Date(desde)
+  hasta.setDate(hasta.getDate() + 7)
+  return sesionesFuturas.value.filter((s) => {
+    const t = new Date(s.fechaHora).getTime()
+    return t >= desde.getTime() && t < hasta.getTime()
+  })
+})
+
+const clientesConSesionAgendada = computed(() => new Set(sesionesFuturas.value.map((s) => s.coacheeId)).size)
 
 async function load() {
   loading.value = true
@@ -129,6 +152,13 @@ function onReagendada(actualizada: Sesion) {
   sesionAReagendar.value = null
 }
 
+// Cuando se elimina "toda la serie" se borra más de una fila (todas las futuras de esa
+// recurrencia, no solo la que se arrastró/clickeó), así que se recarga desde el backend
+// en vez de intentar adivinar cuáles quitar del arreglo local.
+async function onSesionEliminada() {
+  sesiones.value = await getTodasLasSesiones()
+}
+
 // --- Nueva sesión desde la agenda general -----------------------------------
 // A diferencia del detalle de un coachee (donde el coachee es implícito), acá hay que
 // elegir a quién es la sesión — se puede abrir vacío ("+ Nueva sesión") o prellenado con
@@ -189,6 +219,36 @@ async function crearNuevaSesion() {
       Mi agenda
     </h1>
 
+    <div
+      v-if="!loading"
+      class="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3"
+    >
+      <div class="rounded-2xl border border-[var(--color-line)] bg-white p-4">
+        <p class="text-xs text-[var(--color-ink)]/60">
+          Sesiones agendadas
+        </p>
+        <p class="font-[family-name:var(--font-mono)] text-2xl">
+          {{ sesionesFuturas.length }}
+        </p>
+      </div>
+      <div class="rounded-2xl border border-[var(--color-line)] bg-white p-4">
+        <p class="text-xs text-[var(--color-ink)]/60">
+          Esta semana
+        </p>
+        <p class="font-[family-name:var(--font-mono)] text-2xl">
+          {{ sesionesEstaSemana.length }}
+        </p>
+      </div>
+      <div class="rounded-2xl border border-[var(--color-line)] bg-white p-4">
+        <p class="text-xs text-[var(--color-ink)]/60">
+          Clientes con sesión agendada
+        </p>
+        <p class="font-[family-name:var(--font-mono)] text-2xl">
+          {{ clientesConSesionAgendada }}
+        </p>
+      </div>
+    </div>
+
     <SkeletonBlock v-if="loading" />
     <div
       v-else
@@ -247,6 +307,8 @@ async function crearNuevaSesion() {
         puede-agendar
         puede-editar
         @reagendar="abrirReagendar"
+        @reagendada="onReagendada"
+        @eliminada="onSesionEliminada"
         @nueva-sesion="abrirNuevaSesion()"
         @crear-en="abrirNuevaSesion"
       />
@@ -267,33 +329,40 @@ async function crearNuevaSesion() {
         />
         <div
           v-else
-          class="mb-4 grid gap-3 sm:grid-cols-2"
+          class="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3"
         >
           <div
-            v-for="(dia, i) in DIAS_LABEL"
+            v-for="i in ORDEN_DIAS_LUNES_PRIMERO"
             :key="i"
+            class="rounded-2xl border border-[var(--color-line)] bg-white p-4"
           >
-            <p
+            <h4 class="mb-3 border-b border-[var(--color-line)] pb-2 font-[family-name:var(--font-heading)] text-sm font-semibold">
+              {{ DIAS_LABEL[i] }}
+            </h4>
+            <div
               v-if="bloquesPorDia[i]!.length > 0"
-              class="mb-1 text-xs font-medium text-[var(--color-ink)]/60"
+              class="space-y-2"
             >
-              {{ dia }}
-            </p>
-            <ul class="space-y-1">
-              <li
+              <div
                 v-for="b in bloquesPorDia[i]"
                 :key="b.id"
-                class="flex items-center justify-between rounded-lg border border-[var(--color-line)] px-3 py-1.5 text-sm"
+                class="flex items-center justify-between gap-2 rounded-lg border border-[var(--color-line)] bg-[var(--color-parchment)]/30 px-3 py-2 text-sm"
               >
-                {{ b.horaInicio }}–{{ b.horaFin }}
+                <span class="font-[family-name:var(--font-mono)]">{{ b.horaInicio }}–{{ b.horaFin }}</span>
                 <button
                   class="text-xs text-[var(--color-danger)] hover:underline"
                   @click="quitarBloque(b.id)"
                 >
                   Quitar
                 </button>
-              </li>
-            </ul>
+              </div>
+            </div>
+            <p
+              v-else
+              class="rounded-lg border border-dashed border-[var(--color-line)] px-3 py-4 text-center text-xs text-[var(--color-ink)]/40"
+            >
+              Sin disponibilidad
+            </p>
           </div>
         </div>
 

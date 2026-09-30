@@ -1,7 +1,6 @@
 import {
   BadRequestException,
   ConflictException,
-  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -22,12 +21,6 @@ import { CompetenciasService } from '../competencias/competencias.service';
 import { EmailService } from '../email/email.service';
 import { assignDefined } from '../common/assign-defined.util';
 import type { AuthenticatedUser } from '../auth/auth.types';
-
-const GATED_FIELDS = [
-  'competenciaId',
-  'nivelObjetivo',
-  'objetivoGeneral',
-] as const;
 
 @Injectable()
 export class PlanesDesarrolloService {
@@ -130,37 +123,62 @@ export class PlanesDesarrolloService {
     actorUserId: string,
     dto: UpdatePlanDto,
   ): Promise<PlanDesarrollo> {
+    if (dto.competenciaId !== undefined) {
+      // No solo "existe": tiene que ser del catálogo global o de la propia empresa del
+      // coachee — si no, un coachee curioso podría fijar en su plan una competencia
+      // interna de OTRA empresa adivinando/probando su UUID.
+      const coachee = await this.coachees.findByUserId(actorUserId);
+      if (!coachee) {
+        throw new NotFoundException('Perfil de coachee no encontrado.');
+      }
+      if (
+        !(await this.competencias.existsVisibleFor(
+          dto.competenciaId,
+          coachee.empresaId,
+        ))
+      ) {
+        throw new NotFoundException('Competencia no encontrada.');
+      }
+    }
+
     const coacheeId = await this.resolveCoacheeId(actorUserId);
     const plan = await this.findOrCreateForCoachee(coacheeId);
-
-    const touchesGatedField = GATED_FIELDS.some(
-      (field) => dto[field] !== undefined,
-    );
-    if (plan.estado === EstadoPlan.PENDIENTE_APROBACION && touchesGatedField) {
-      throw new ForbiddenException(
-        'El plan está pendiente de aprobación: la competencia, el nivel objetivo y el objetivo general no se pueden editar hasta que el coach responda.',
-      );
-    }
-
-    if (
-      dto.competenciaId !== undefined &&
-      !(await this.competencias.exists(dto.competenciaId))
-    ) {
-      throw new NotFoundException('Competencia no encontrada.');
-    }
-
     assignDefined(plan, dto);
     await this.planes.save(plan);
     return this.withObjetivos(plan);
   }
 
+  // El coach elige qué competencia le corresponde desarrollar a un coachee puntual — a
+  // diferencia de EmpresaCompetencia (que prioriza lo mismo para TODA la empresa), esto es
+  // por coachee. No queda bloqueada: el coachee la puede seguir cambiando después, igual
+  // que cualquier otro campo del plan (ver comentario sobre libre edición más abajo).
+  async asignarCompetencia(
+    coacheeId: string,
+    competenciaId: string,
+    actor: AuthenticatedUser,
+  ): Promise<PlanDesarrollo> {
+    const coachee = await this.coachees.findOneForActor(coacheeId, actor);
+    if (
+      !(await this.competencias.existsVisibleFor(
+        competenciaId,
+        coachee.empresaId,
+      ))
+    ) {
+      throw new NotFoundException('Competencia no encontrada.');
+    }
+    const plan = await this.findOrCreateForCoachee(coacheeId);
+    plan.competenciaId = competenciaId;
+    await this.planes.save(plan);
+    return this.withObjetivos(plan);
+  }
+
+  // No requiere aprobación del coach: enviar marca el plan como completo y queda
+  // aprobado de inmediato (el coach puede seguir dejando comentarios en cualquier
+  // momento vía solicitarCambios, pero ya no bloquea el avance del coachee).
   async enviar(actorUserId: string): Promise<PlanDesarrollo> {
     const coacheeId = await this.resolveCoacheeId(actorUserId);
     const plan = await this.findOrCreateForCoachee(coacheeId);
 
-    if (plan.estado === EstadoPlan.PENDIENTE_APROBACION) {
-      throw new ConflictException('El plan ya está pendiente de aprobación.');
-    }
     if (!plan.competenciaId || !plan.nivelObjetivo || !plan.objetivoGeneral) {
       throw new BadRequestException(
         'Para enviar el plan debes definir competencia, nivel objetivo y objetivo general.',
@@ -175,31 +193,23 @@ export class PlanesDesarrolloService {
       );
     }
 
-    plan.estado = EstadoPlan.PENDIENTE_APROBACION;
+    plan.estado = EstadoPlan.APROBADO;
     plan.comentarioCoach = null;
     plan.enviadoEn = new Date();
     await this.planes.save(plan);
     return this.withObjetivos(plan);
   }
 
-  async aprobar(coacheeId: string): Promise<PlanDesarrollo> {
-    const plan = await this.getByCoacheeId(coacheeId);
-    if (plan.estado !== EstadoPlan.PENDIENTE_APROBACION) {
-      throw new ConflictException('El plan no está pendiente de aprobación.');
-    }
-    plan.estado = EstadoPlan.APROBADO;
-    plan.comentarioCoach = null;
-    await this.planes.save(plan);
-    return this.withObjetivos(plan);
-  }
-
+  // El coach puede pedir cambios en cualquier momento después del envío — no hay una
+  // ventana de "pendiente" que lo condicione. El coachee sigue con edición libre
+  // mientras tanto; esto es sólo una señal visible de que el coach dejó feedback.
   async solicitarCambios(
     coacheeId: string,
     comentario: string,
   ): Promise<PlanDesarrollo> {
     const plan = await this.getByCoacheeId(coacheeId);
-    if (plan.estado !== EstadoPlan.PENDIENTE_APROBACION) {
-      throw new ConflictException('El plan no está pendiente de aprobación.');
+    if (plan.estado === EstadoPlan.SIN_ENVIAR) {
+      throw new ConflictException('El coachee todavía no ha enviado su plan.');
     }
     plan.estado = EstadoPlan.CAMBIOS_SOLICITADOS;
     plan.comentarioCoach = comentario;
@@ -207,22 +217,12 @@ export class PlanesDesarrolloService {
     return this.withObjetivos(plan);
   }
 
-  private async ownPlanNotLocked(actorUserId: string): Promise<PlanDesarrollo> {
-    const coacheeId = await this.resolveCoacheeId(actorUserId);
-    const plan = await this.findOrCreateForCoachee(coacheeId);
-    if (plan.estado === EstadoPlan.PENDIENTE_APROBACION) {
-      throw new ForbiddenException(
-        'El plan está pendiente de aprobación: los objetivos específicos no se pueden editar hasta que el coach responda.',
-      );
-    }
-    return plan;
-  }
-
   async addObjetivo(
     actorUserId: string,
     dto: CreateObjetivoDto,
   ): Promise<ObjetivoEspecifico> {
-    const plan = await this.ownPlanNotLocked(actorUserId);
+    const coacheeId = await this.resolveCoacheeId(actorUserId);
+    const plan = await this.findOrCreateForCoachee(coacheeId);
     const orden =
       dto.orden ??
       (await this.objetivos.count({ where: { planId: plan.id } })) + 1;
@@ -240,7 +240,8 @@ export class PlanesDesarrolloService {
     objetivoId: string,
     dto: UpdateObjetivoDto,
   ): Promise<ObjetivoEspecifico> {
-    const plan = await this.ownPlanNotLocked(actorUserId);
+    const coacheeId = await this.resolveCoacheeId(actorUserId);
+    const plan = await this.findOrCreateForCoachee(coacheeId);
     const objetivo = await this.objetivos.findOne({
       where: { id: objetivoId, planId: plan.id },
     });
@@ -252,7 +253,8 @@ export class PlanesDesarrolloService {
   }
 
   async removeObjetivo(actorUserId: string, objetivoId: string): Promise<void> {
-    const plan = await this.ownPlanNotLocked(actorUserId);
+    const coacheeId = await this.resolveCoacheeId(actorUserId);
+    const plan = await this.findOrCreateForCoachee(coacheeId);
     const result = await this.objetivos.delete({
       id: objetivoId,
       planId: plan.id,
@@ -262,8 +264,9 @@ export class PlanesDesarrolloService {
     }
   }
 
-  // El plan de ejecución es de libre edición (igual que hábito/formación): no se
-  // bloquea mientras el plan está pendiente de aprobación.
+  // El plan de ejecución es de libre edición (igual que hábito/formación e, incluso
+  // ahora, que la definición y los objetivos específicos): nada en el plan se bloquea
+  // por su estado.
 
   private async assertObjetivoBelongsToPlan(
     objetivoId: string,

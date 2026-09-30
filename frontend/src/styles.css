@@ -3,7 +3,8 @@
 @import "@fontsource/poppins/latin-600.css";
 @import "@fontsource/inter/latin-400.css";
 @import "@fontsource/inter/latin-500.css";
-@import "@fontsource/ibm-plex-mono/latin-400.css";
+@import "@fontsource/jetbrains-mono/latin-400.css";
+@import "@fontsource/jetbrains-mono/latin-600.css";
 
 @theme {
   --color-ink: #121212;
@@ -24,7 +25,7 @@
 
   --font-heading: "Poppins", sans-serif;
   --font-body: "Inter", sans-serif;
-  --font-mono: "IBM Plex Mono", monospace;
+  --font-mono: "JetBrains Mono", monospace;
 }
 
 body {
@@ -80,29 +81,10 @@ button:not(:disabled),
   transform: rotateY(180deg);
 }
 
-/* Shimmer de carga (SkeletonBlock, reemplaza el texto plano "Cargando…" en toda la
-   app) — clase compartida en vez de definir el keyframe por componente, mismo
-   criterio que fade-slide/flip-card. */
-@keyframes skeleton-sweep {
-  0% {
-    background-position: 150% 0;
-  }
-  100% {
-    background-position: -50% 0;
-  }
-}
-.skeleton-shimmer {
-  background-image: linear-gradient(
-    90deg,
-    var(--color-line) 25%,
-    var(--color-parchment) 50%,
-    var(--color-line) 75%
-  );
-  background-size: 200% 100%;
-  animation: skeleton-sweep 1.4s ease-in-out infinite;
-}
 @media (prefers-reduced-motion: reduce) {
-  .skeleton-shimmer {
+  /* Cubre el spinner de SkeletonBlock (clase utilitaria animate-spin de
+     Tailwind) — mismo criterio que fade-slide/flip-card más abajo. */
+  .animate-spin {
     animation: none;
   }
   .fade-slide-enter-active,

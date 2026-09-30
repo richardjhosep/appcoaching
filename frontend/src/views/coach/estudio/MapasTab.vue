@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import AppModal from '../../../components/AppModal.vue'
+import AyudaHerramienta from '../../../components/AyudaHerramienta.vue'
 import EmptyState from '../../../components/EmptyState.vue'
 import SectionCard from '../../../components/SectionCard.vue'
 import StatusToggle from '../../../components/StatusToggle.vue'
@@ -229,6 +230,11 @@ async function eliminarNodo() {
         Nuevo mapa
       </button>
     </div>
+
+    <AyudaHerramienta titulo="¿Cómo funcionan los Mapas mentales?">
+      <p>Armas un árbol de nodos conectados sobre una competencia — el coachee lo explora (toca un nodo para ver su detalle, despliega ramas), no lo edita. Si buscas que el coachee arme el suyo propio, esa es la herramienta "Mis mapas" del lado coachee, no esta.</p>
+      <p><strong>Cómo evaluar:</strong> es una herramienta de reflexión, no de evaluación — no hay puntaje ni "ganador" acá.</p>
+    </AyudaHerramienta>
 
     <EmptyState
       v-if="mapas.length === 0"

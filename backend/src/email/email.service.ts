@@ -80,6 +80,7 @@ export class EmailService {
     nombre?: string | null;
     temporaryPassword: string;
     loginUrl: string;
+    guideUrl?: string;
   }): Promise<void> {
     const nombre = options.nombre ? escapeHtml(options.nombre) : null;
     const saludo = nombre
@@ -109,6 +110,11 @@ export class EmailService {
       </p>
       ${renderButton(options.loginUrl, 'Ingresar a CoachNexus')}
       ${renderFallbackLink(options.loginUrl)}
+      ${
+        options.guideUrl
+          ? `<p style="margin:16px 0 0;font-size:13px;line-height:1.6;color:#6b6b6b;">Además, preparamos una <a href="${options.guideUrl}" style="color:#a2651a;">guía rápida con capturas de la plataforma</a> para que sepas qué esperar en cada sección.</p>`
+          : ''
+      }
     `;
 
     const text = [
@@ -122,6 +128,9 @@ export class EmailService {
       'Esta contraseña es válida por 48 horas y deberás cambiarla la primera vez que inicies sesión.',
       '',
       `Ingresa aquí: ${options.loginUrl}`,
+      ...(options.guideUrl
+        ? ['', `Guía rápida con capturas de la plataforma: ${options.guideUrl}`]
+        : []),
       '',
       'Este es un mensaje automático enviado desde una casilla no-reply — por favor no respondas a este correo.',
     ].join('\n');

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import AppModal from '../../../components/AppModal.vue'
+import AyudaHerramienta from '../../../components/AyudaHerramienta.vue'
 import SectionCard from '../../../components/SectionCard.vue'
 import EmptyState from '../../../components/EmptyState.vue'
 import StatusToggle from '../../../components/StatusToggle.vue'
@@ -181,6 +182,11 @@ async function guardarFeedback(version: VersionEjercicio) {
         Nuevo ejercicio
       </button>
     </div>
+
+    <AyudaHerramienta titulo="¿Cómo funcionan los Ejercicios?">
+      <p>Le das al coachee una consigna abierta (formato "Sabe / Siente / Haga") y él responde con su propio texto — puede entregar más de una versión.</p>
+      <p><strong>Cómo evaluar:</strong> no hay corrección automática ni ranking. Vos revisas cada versión que entrega y le dejas un comentario — queda marcada "Enviada" hasta que le respondes, y "Con feedback" una vez que lo hiciste.</p>
+    </AyudaHerramienta>
 
     <EmptyState
       v-if="ejercicios.length === 0"

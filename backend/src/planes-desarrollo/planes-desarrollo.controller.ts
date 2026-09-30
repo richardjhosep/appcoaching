@@ -18,6 +18,7 @@ import { UpdateObjetivoDto } from './dto/update-objetivo.dto';
 import { CreateActividadDto } from './dto/create-actividad.dto';
 import { UpdateActividadDto } from './dto/update-actividad.dto';
 import { SolicitarCambiosDto } from './dto/solicitar-cambios.dto';
+import { AsignarCompetenciaDto } from './dto/asignar-competencia.dto';
 import { EstadoPlan } from './enums/estado-plan.enum';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -138,16 +139,22 @@ export class PlanesDesarrolloController {
   }
 
   @Roles(Role.COACH)
-  @Post(':coacheeId/aprobar')
-  async aprobar(
+  @Patch(':coacheeId/competencia')
+  async asignarCompetencia(
     @Param('coacheeId') coacheeId: string,
+    @Body() dto: AsignarCompetenciaDto,
     @CurrentUser() actor: AuthenticatedUser,
   ) {
-    const plan = await this.planes.aprobar(coacheeId);
-    await this.audit.record('PLAN_APROBADO', {
+    const plan = await this.planes.asignarCompetencia(
+      coacheeId,
+      dto.competenciaId,
+      actor,
+    );
+    await this.audit.record('COMPETENCIA_ASIGNADA', {
       userId: actor.id,
       targetType: 'Coachee',
       targetId: coacheeId,
+      metadata: { competenciaId: dto.competenciaId },
     });
     return plan;
   }

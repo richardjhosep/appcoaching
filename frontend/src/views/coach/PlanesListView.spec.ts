@@ -38,7 +38,7 @@ const plan: PlanDesarrollo = {
   plazo: '3 meses',
   descripcionEstadoActual: null,
   objetivoGeneral: 'Delegar con mayor confianza en el equipo.',
-  estado: 'pendiente_aprobacion',
+  estado: 'cambios_solicitados',
   enviadoEn: diasAtras(3),
   comentarioCoach: null,
   habitoCuando: null,
@@ -79,7 +79,7 @@ describe('PlanesListView', () => {
     const text = wrapper.text()
     expect(text).toContain('Felipe Cortes')
     expect(text).toContain('felipe@example.com · +56 9 1234 5678 · Orbiflex')
-    expect(text).toContain('Pendiente de aprobación')
+    expect(text).toContain('Cambios solicitados')
     expect(text).toContain('Delegar con mayor confianza en el equipo.')
     expect(text).toContain('Liderazgo situacional')
     expect(text).toContain('Nivel 2 → 4')
@@ -112,11 +112,11 @@ describe('PlanesListView', () => {
     expect(wrapper.text()).not.toContain('actividades')
   })
 
-  it('shows a day counter since the plan was sent, for pendiente_aprobacion', async () => {
+  it('shows a waiting hint for a plan with cambios_solicitados', async () => {
     const wrapper = mount(PlanesListView)
     await flushPromises()
 
-    expect(wrapper.text()).toContain('Esperando hace 3 días')
+    expect(wrapper.text()).toContain('Esperando respuesta del coachee')
   })
 
   it('shows a red day-since-created counter and a reminder button when sin_enviar', async () => {
@@ -158,7 +158,7 @@ describe('PlanesListView', () => {
     expect(wrapper.findAll('button').find((b) => b.text() === 'Enviar recordatorio')).toBeFalsy()
   })
 
-  it('always lists pendiente_aprobacion plans, even when a different estado is selected', async () => {
+  it('always lists cambios_solicitados plans, even when a different estado is selected', async () => {
     const aprobado: PlanDesarrollo = {
       ...plan,
       id: 'plan-2',
@@ -171,8 +171,8 @@ describe('PlanesListView', () => {
     const wrapper = mount(PlanesListView)
     await flushPromises()
 
-    // Filter down to 'aprobado' and confirm the pendiente plan (Felipe) is still shown
-    // alongside the now-matching aprobado one (Ana) — pendientes are always pinned first.
+    // Filter down to 'aprobado' and confirm the cambios_solicitados plan (Felipe) is still
+    // shown alongside the now-matching aprobado one (Ana) — cambios_solicitados always pins first.
     await wrapper.find('select').setValue('aprobado')
     await flushPromises()
 
@@ -181,10 +181,11 @@ describe('PlanesListView', () => {
     expect(text).toContain('Ana Reagenda')
   })
 
-  it('defaults to "Todos los estados" so a coachee with no pendiente_aprobacion plans is not hidden', async () => {
-    // Regression: the view used to default its filter to 'pendiente_aprobacion', so if nobody
-    // happened to have a plan in exactly that state, the page rendered completely empty even
-    // though there were real sin_enviar/aprobado plans that need the coach's attention.
+  it('defaults to "Todos los estados" so a coachee with no cambios_solicitados plans is not hidden', async () => {
+    // Regression: the view used to default its filter to 'pendiente_aprobacion' (hoy
+    // 'cambios_solicitados'), so if nobody happened to have a plan in exactly that state, the
+    // page rendered completely empty even though there were real sin_enviar/aprobado plans
+    // that need the coach's attention.
     vi.mocked(listPlanes).mockResolvedValue([{ ...plan, estado: 'sin_enviar', enviadoEn: null }])
 
     const wrapper = mount(PlanesListView)

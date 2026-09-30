@@ -14,7 +14,7 @@ export class Competencia {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ unique: true })
+  @Column()
   nombre: string;
 
   @Column({ type: 'text' })
@@ -22,4 +22,12 @@ export class Competencia {
 
   @Column({ type: 'jsonb' })
   niveles: NivelCompetencia[];
+
+  // NULL = catálogo global (sembrado por CompetenciasService, ver onApplicationBootstrap).
+  // No nulo = competencia propia de esa empresa, creada/editada por su rol EMPRESA — nunca
+  // tocada por el sync del catálogo global. El nombre ya no es único a secas (ver migración
+  // CompetenciasPorEmpresa): único dentro del catálogo global, y por separado único dentro
+  // de cada empresa.
+  @Column({ name: 'empresa_id', type: 'uuid', nullable: true })
+  empresaId: string | null;
 }

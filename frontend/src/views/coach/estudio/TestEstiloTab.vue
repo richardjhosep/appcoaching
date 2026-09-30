@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import AppModal from '../../../components/AppModal.vue'
+import AyudaHerramienta from '../../../components/AyudaHerramienta.vue'
 import SectionCard from '../../../components/SectionCard.vue'
 import EmptyState from '../../../components/EmptyState.vue'
 import StatusToggle from '../../../components/StatusToggle.vue'
@@ -208,6 +209,11 @@ async function borrarPregunta(preguntaId: string) {
         Nuevo test
       </button>
     </div>
+
+    <AyudaHerramienta titulo="¿Cómo funciona el Test de Estilo?">
+      <p>Cada pregunta es una elección forzada entre dos afirmaciones (A o B), y cada opción está etiquetada con una categoría tuya (ej. "Analítico" vs. "Intuitivo") — no hay opción correcta.</p>
+      <p><strong>Cómo evaluar:</strong> no mide aciertos, mide tendencia — la "categoría dominante" del coachee es la que eligió más veces. No hay puntaje ni "ganador" acá.</p>
+    </AyudaHerramienta>
 
     <EmptyState
       v-if="tests.length === 0"

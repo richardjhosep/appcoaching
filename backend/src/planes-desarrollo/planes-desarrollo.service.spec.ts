@@ -1,7 +1,6 @@
 import {
   BadRequestException,
   ConflictException,
-  ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
 import { Repository } from 'typeorm';
@@ -44,10 +43,16 @@ describe('PlanesDesarrolloService', () => {
     delete: jest.Mock<Promise<{ affected: number }>, unknown[]>;
   };
   let coachees: {
-    findByUserId: jest.Mock<Promise<{ id: string } | null>, [string]>;
+    findByUserId: jest.Mock<
+      Promise<{ id: string; empresaId: string | null } | null>,
+      [string]
+    >;
     findOneForActor: jest.Mock<Promise<Record<string, unknown>>, unknown[]>;
   };
-  let competencias: { exists: jest.Mock<Promise<boolean>, [string]> };
+  let competencias: {
+    exists: jest.Mock<Promise<boolean>, [string]>;
+    existsVisibleFor: jest.Mock<Promise<boolean>, [string, string | null]>;
+  };
   let email: { sendRecordatorioPlan: jest.Mock<Promise<void>, unknown[]> };
   let config: { get: jest.Mock };
 
@@ -84,14 +89,24 @@ describe('PlanesDesarrolloService', () => {
       delete: jest.fn<Promise<{ affected: number }>, unknown[]>(),
     };
     coachees = {
-      findByUserId: jest.fn<Promise<{ id: string } | null>, [string]>(),
+      findByUserId: jest.fn<
+        Promise<{ id: string; empresaId: string | null } | null>,
+        [string]
+      >(),
       findOneForActor: jest.fn<Promise<Record<string, unknown>>, unknown[]>(),
     };
-    competencias = { exists: jest.fn<Promise<boolean>, [string]>() };
+    competencias = {
+      exists: jest.fn<Promise<boolean>, [string]>(),
+      existsVisibleFor: jest.fn<Promise<boolean>, [string, string | null]>(),
+    };
     email = { sendRecordatorioPlan: jest.fn<Promise<void>, unknown[]>() };
     config = { get: jest.fn(() => 'http://localhost:5183') };
 
-    coachees.findByUserId.mockResolvedValue({ id: COACHEE_ID });
+    coachees.findByUserId.mockResolvedValue({
+      id: COACHEE_ID,
+      empresaId: null,
+    });
+    competencias.existsVisibleFor.mockResolvedValue(true);
     objetivos.find.mockResolvedValue([]);
     actividades.find.mockResolvedValue([]);
     objetivos.exists.mockResolvedValue(true);
@@ -154,28 +169,20 @@ describe('PlanesDesarrolloService', () => {
   });
 
   describe('updateOwn', () => {
-    it('rejects editing gated fields while pending approval', async () => {
+    // Sin aprobación obligatoria del coach, el plan nunca se bloquea por su estado —
+    // competencia/nivelObjetivo/objetivoGeneral quedan editables incluso ya aprobado.
+    it('allows editing every field regardless of the plan estado', async () => {
       planes.findOne.mockResolvedValue({
         id: 'plan-1',
         coacheeId: COACHEE_ID,
-        estado: EstadoPlan.PENDIENTE_APROBACION,
+        estado: EstadoPlan.APROBADO,
       });
 
-      await expect(
-        service.updateOwn(ACTOR_USER_ID, { objetivoGeneral: 'nuevo objetivo' }),
-      ).rejects.toThrow(ForbiddenException);
-    });
-
-    it('allows editing free fields even while pending approval', async () => {
-      planes.findOne.mockResolvedValue({
-        id: 'plan-1',
-        coacheeId: COACHEE_ID,
-        estado: EstadoPlan.PENDIENTE_APROBACION,
+      const plan = await service.updateOwn(ACTOR_USER_ID, {
+        objetivoGeneral: 'nuevo objetivo',
       });
 
-      const plan = await service.updateOwn(ACTOR_USER_ID, { plazo: '2 meses' });
-
-      expect(plan.plazo).toBe('2 meses');
+      expect(plan.objetivoGeneral).toBe('nuevo objetivo');
     });
 
     it('rejects an unknown competenciaId', async () => {
@@ -184,11 +191,69 @@ describe('PlanesDesarrolloService', () => {
         coacheeId: COACHEE_ID,
         estado: EstadoPlan.SIN_ENVIAR,
       });
-      competencias.exists.mockResolvedValue(false);
+      competencias.existsVisibleFor.mockResolvedValue(false);
 
       await expect(
         service.updateOwn(ACTOR_USER_ID, { competenciaId: 'missing' }),
       ).rejects.toThrow(NotFoundException);
+    });
+
+    // Blindaje agregado junto con las competencias propias de empresa: sin esto, un
+    // coachee podría fijar en su plan la competencia interna de OTRA empresa adivinando
+    // su UUID (existsVisibleFor ya filtra esto — acá solo se verifica que updateOwn le
+    // pase el empresaId correcto del coachee, no null ni el de otro).
+    it('checks the competencia against the coachee’s own empresa, not just "exists"', async () => {
+      coachees.findByUserId.mockResolvedValue({
+        id: COACHEE_ID,
+        empresaId: 'empresa-a',
+      });
+      planes.findOne.mockResolvedValue({
+        id: 'plan-1',
+        coacheeId: COACHEE_ID,
+        estado: EstadoPlan.SIN_ENVIAR,
+      });
+
+      await service.updateOwn(ACTOR_USER_ID, { competenciaId: 'comp-1' });
+
+      expect(competencias.existsVisibleFor).toHaveBeenCalledWith(
+        'comp-1',
+        'empresa-a',
+      );
+    });
+  });
+
+  describe('asignarCompetencia', () => {
+    it('rejects a competencia that is not visible for this coachee’s empresa', async () => {
+      coachees.findOneForActor.mockResolvedValue({
+        id: COACHEE_ID,
+        empresaId: 'empresa-a',
+      });
+      competencias.existsVisibleFor.mockResolvedValue(false);
+
+      await expect(
+        service.asignarCompetencia(COACHEE_ID, 'comp-de-otra-empresa', {
+          id: 'coach-1',
+        } as never),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('sets the competenciaId directly on the plan, without locking it', async () => {
+      coachees.findOneForActor.mockResolvedValue({
+        id: COACHEE_ID,
+        empresaId: 'empresa-a',
+      });
+      planes.findOne.mockResolvedValue({
+        id: 'plan-1',
+        coacheeId: COACHEE_ID,
+        estado: EstadoPlan.APROBADO,
+      });
+
+      const plan = await service.asignarCompetencia(COACHEE_ID, 'comp-1', {
+        id: 'coach-1',
+      } as never);
+
+      expect(plan.competenciaId).toBe('comp-1');
+      expect(plan.estado).toBe(EstadoPlan.APROBADO); // no re-bloquea ni cambia el estado
     });
   });
 
@@ -221,19 +286,8 @@ describe('PlanesDesarrolloService', () => {
       );
     });
 
-    it('rejects when the plan is already pending approval', async () => {
-      planes.findOne.mockResolvedValue({
-        id: 'plan-1',
-        coacheeId: COACHEE_ID,
-        estado: EstadoPlan.PENDIENTE_APROBACION,
-      });
-
-      await expect(service.enviar(ACTOR_USER_ID)).rejects.toThrow(
-        ConflictException,
-      );
-    });
-
-    it('transitions to pendiente_aprobacion when everything is complete', async () => {
+    // No hay aprobación obligatoria del coach: enviar aprueba de inmediato.
+    it('transitions straight to aprobado when everything is complete', async () => {
       planes.findOne.mockResolvedValue({
         id: 'plan-1',
         coacheeId: COACHEE_ID,
@@ -247,9 +301,25 @@ describe('PlanesDesarrolloService', () => {
 
       const plan = await service.enviar(ACTOR_USER_ID);
 
-      expect(plan.estado).toBe(EstadoPlan.PENDIENTE_APROBACION);
+      expect(plan.estado).toBe(EstadoPlan.APROBADO);
       expect(plan.comentarioCoach).toBeNull();
       expect(plan.enviadoEn).toBeInstanceOf(Date);
+    });
+
+    it('can be called again on an already-aprobado plan (re-enviar tras editar)', async () => {
+      planes.findOne.mockResolvedValue({
+        id: 'plan-1',
+        coacheeId: COACHEE_ID,
+        estado: EstadoPlan.APROBADO,
+        competenciaId: 'c1',
+        nivelObjetivo: 4,
+        objetivoGeneral: 'Ser más estratégico',
+      });
+      objetivos.count.mockResolvedValue(2);
+
+      const plan = await service.enviar(ACTOR_USER_ID);
+
+      expect(plan.estado).toBe(EstadoPlan.APROBADO);
     });
   });
 
@@ -288,38 +358,12 @@ describe('PlanesDesarrolloService', () => {
     });
   });
 
-  describe('aprobar', () => {
-    it('rejects when the plan is not pending approval', async () => {
+  describe('solicitarCambios', () => {
+    it('rejects when the coachee has not sent the plan yet', async () => {
       planes.findOne.mockResolvedValue({
         id: 'plan-1',
         coacheeId: COACHEE_ID,
         estado: EstadoPlan.SIN_ENVIAR,
-      });
-
-      await expect(service.aprobar(COACHEE_ID)).rejects.toThrow(
-        ConflictException,
-      );
-    });
-
-    it('approves a pending plan', async () => {
-      planes.findOne.mockResolvedValue({
-        id: 'plan-1',
-        coacheeId: COACHEE_ID,
-        estado: EstadoPlan.PENDIENTE_APROBACION,
-      });
-
-      const plan = await service.aprobar(COACHEE_ID);
-
-      expect(plan.estado).toBe(EstadoPlan.APROBADO);
-    });
-  });
-
-  describe('solicitarCambios', () => {
-    it('rejects when the plan is not pending approval', async () => {
-      planes.findOne.mockResolvedValue({
-        id: 'plan-1',
-        coacheeId: COACHEE_ID,
-        estado: EstadoPlan.APROBADO,
       });
 
       await expect(
@@ -327,11 +371,11 @@ describe('PlanesDesarrolloService', () => {
       ).rejects.toThrow(ConflictException);
     });
 
-    it('moves the plan to cambios_solicitados with the comment stored', async () => {
+    it('moves an aprobado plan to cambios_solicitados with the comment stored', async () => {
       planes.findOne.mockResolvedValue({
         id: 'plan-1',
         coacheeId: COACHEE_ID,
-        estado: EstadoPlan.PENDIENTE_APROBACION,
+        estado: EstadoPlan.APROBADO,
       });
 
       const plan = await service.solicitarCambios(
@@ -342,21 +386,41 @@ describe('PlanesDesarrolloService', () => {
       expect(plan.estado).toBe(EstadoPlan.CAMBIOS_SOLICITADOS);
       expect(plan.comentarioCoach).toBe('Sé más específico en el objetivo');
     });
-  });
 
-  describe('objetivos específicos', () => {
-    it('rejects adding an objetivo while pending approval', async () => {
+    // El coach puede insistir con otro comentario aunque el plan ya esté en
+    // cambios_solicitados — no hay una única "ventana" para pedir cambios.
+    it('can be called again on a plan already in cambios_solicitados', async () => {
       planes.findOne.mockResolvedValue({
         id: 'plan-1',
         coacheeId: COACHEE_ID,
-        estado: EstadoPlan.PENDIENTE_APROBACION,
+        estado: EstadoPlan.CAMBIOS_SOLICITADOS,
+        comentarioCoach: 'primer comentario',
       });
+
+      const plan = await service.solicitarCambios(
+        COACHEE_ID,
+        'segundo comentario',
+      );
+
+      expect(plan.estado).toBe(EstadoPlan.CAMBIOS_SOLICITADOS);
+      expect(plan.comentarioCoach).toBe('segundo comentario');
+    });
+  });
+
+  describe('objetivos específicos', () => {
+    it('allows adding an objetivo even on an already-aprobado plan', async () => {
+      planes.findOne.mockResolvedValue({
+        id: 'plan-1',
+        coacheeId: COACHEE_ID,
+        estado: EstadoPlan.APROBADO,
+      });
+      objetivos.count.mockResolvedValue(0);
 
       await expect(
         service.addObjetivo(ACTOR_USER_ID, {
           descripcion: 'Practicar escucha activa',
         }),
-      ).rejects.toThrow(ForbiddenException);
+      ).resolves.toBeDefined();
     });
 
     it('adds an objetivo with an auto-computed orden', async () => {
@@ -389,11 +453,11 @@ describe('PlanesDesarrolloService', () => {
   });
 
   describe('hábito y formación (siempre de libre edición)', () => {
-    it('saves habito/formación fields even while the plan is pending approval', async () => {
+    it('saves habito/formación fields even on an already-aprobado plan', async () => {
       planes.findOne.mockResolvedValue({
         id: 'plan-1',
         coacheeId: COACHEE_ID,
-        estado: EstadoPlan.PENDIENTE_APROBACION,
+        estado: EstadoPlan.APROBADO,
       });
 
       const plan = await service.updateOwn(ACTOR_USER_ID, {
@@ -432,11 +496,11 @@ describe('PlanesDesarrolloService', () => {
       ).rejects.toThrow(NotFoundException);
     });
 
-    it('allows adding an actividad even while the plan is pending approval', async () => {
+    it('allows adding an actividad even on an already-aprobado plan', async () => {
       planes.findOne.mockResolvedValue({
         id: 'plan-1',
         coacheeId: COACHEE_ID,
-        estado: EstadoPlan.PENDIENTE_APROBACION,
+        estado: EstadoPlan.APROBADO,
       });
 
       await expect(

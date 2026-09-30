@@ -77,6 +77,7 @@ async function agendar() {
       nuevoLink.value || undefined,
     )
     sesiones.value = [...sesiones.value, sesion]
+    sembrarRegistro([sesion])
     modalAgendarOpen.value = false
   } catch (err) {
     errorAgendar.value = err instanceof ApiError ? err.message : 'No se pudo agendar la sesión.'
@@ -137,6 +138,24 @@ async function cambiarAsistencia(sesion: Sesion, valor: string) {
   }
 }
 
+// registroEdit se siembra completo en load(), pero sesiones.value se sigue mutando
+// después (agendar, recarga tras eliminar) — sin esto, una sesión nueva que caiga en el
+// pasado no tiene entrada en registroEdit y el template revienta al hacer
+// `registroEdit[s.id]!.resumenCompartido` sobre undefined (la sección entera dejaba de
+// renderizar). Aditivo a propósito: nunca pisa una edición local ya en curso.
+function sembrarRegistro(lista: Sesion[]) {
+  for (const sesion of lista) {
+    if (registroEdit.value[sesion.id]) continue
+    registroEdit.value[sesion.id] = {
+      resumenCompartido: sesion.resumenCompartido ?? '',
+      notasPrivadas: sesion.notasPrivadas ?? '',
+      temaTratado: sesion.temaTratado ?? '',
+      ejerciciosAplicados: sesion.ejerciciosAplicados ?? '',
+      acuerdos: sesion.acuerdos ?? '',
+    }
+  }
+}
+
 async function guardarRegistro(sesion: Sesion) {
   const registro = registroEdit.value[sesion.id]
   if (!registro) return
@@ -173,18 +192,10 @@ async function load() {
   puntos.value = p
   logros.value = l
   sesiones.value = s
-  registroEdit.value = Object.fromEntries(
-    s.map((sesion) => [
-      sesion.id,
-      {
-        resumenCompartido: sesion.resumenCompartido ?? '',
-        notasPrivadas: sesion.notasPrivadas ?? '',
-        temaTratado: sesion.temaTratado ?? '',
-        ejerciciosAplicados: sesion.ejerciciosAplicados ?? '',
-        acuerdos: sesion.acuerdos ?? '',
-      } satisfies RegistroSesionInput,
-    ]),
-  )
+  // Reset completo (no aditivo) acá: al cambiar de coachee (watch más abajo) no debe
+  // arrastrarse ninguna edición sin guardar del coachee anterior.
+  registroEdit.value = {}
+  sembrarRegistro(s)
   solicitudesReagendamiento.value = r.filter((sol) => sol.coacheeId === props.coacheeId)
   loading.value = false
 }
@@ -217,271 +228,286 @@ function abrirReagendar(sesionId: string) {
 function onReagendada(actualizada: Sesion) {
   const idx = sesiones.value.findIndex((s) => s.id === actualizada.id)
   if (idx !== -1) sesiones.value[idx] = actualizada
+  sembrarRegistro([actualizada])
   sesionAReagendar.value = null
+}
+
+// Igual que en AgendaView: "toda la serie" puede borrar más de una sesión a la vez, así
+// que se recarga desde el backend en vez de adivinar cuáles quitar del arreglo local.
+async function onSesionEliminada() {
+  sesiones.value = await getSesionesDeCoachee(props.coacheeId)
+  sembrarRegistro(sesiones.value)
 }
 </script>
 
 <template>
   <SkeletonBlock v-if="loading" />
   <div v-else>
-    <div
-      v-if="solicitudesReagendamiento.length"
-      class="mb-4 rounded-2xl border border-[var(--color-bronze)]/40 bg-white p-4"
-    >
-      <h2 class="mb-3 text-sm font-medium">
-        Solicitudes de reagendamiento ({{ solicitudesReagendamiento.length }})
-      </h2>
-      <ul class="space-y-2 text-sm">
-        <li
-          v-for="s in solicitudesReagendamiento"
-          :key="s.id"
-          class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--color-line)] p-3"
-        >
-          <div>
-            <p class="font-medium">
-              Sesión del {{ s.sesion ? new Date(s.sesion.fechaHora).toLocaleString('es-CL') : '—' }}
-            </p>
-            <p
-              v-if="s.motivo"
-              class="text-[var(--color-ink)]/60"
-            >
-              {{ s.motivo }}
-            </p>
-          </div>
-          <button
-            class="shrink-0 rounded-lg bg-[var(--color-ink)] px-3 py-2 text-xs text-[var(--color-parchment)]"
-            @click="abrirResponder(s)"
+    <div class="items-start mt-6 lg:grid lg:grid-cols-12 lg:gap-6">
+      <!-- Columna principal: operativa y progreso -->
+      <div class="space-y-6 lg:col-span-8">
+        <div class="rounded-2xl border border-[var(--color-line)] bg-white p-6 shadow-sm">
+          <h2 class="mb-1 text-sm font-medium">
+            Avance general
+          </h2>
+          <p
+            v-if="avance === null"
+            class="text-sm text-[var(--color-ink)]/60"
           >
-            Responder
-          </button>
-        </li>
-      </ul>
-    </div>
-
-    <div class="mb-4 rounded-2xl border border-[var(--color-line)] bg-white p-4">
-      <h2 class="mb-1 text-sm font-medium">
-        Avance general
-      </h2>
-      <p
-        v-if="avance === null"
-        class="text-sm text-[var(--color-ink)]/60"
-      >
-        El coachee aún no se ha autoevaluado en ningún post-sesión.
-      </p>
-      <template v-else>
-        <p
-          class="mb-2 font-[family-name:var(--font-mono)] text-3xl"
-          :class="coloresAvance.texto"
-        >
-          {{ avance }}%
-        </p>
-        <div
-          class="h-2.5 w-full overflow-hidden rounded-full"
-          :style="{ backgroundColor: coloresAvance.suave }"
-          role="progressbar"
-          :aria-valuenow="avance ?? 0"
-          aria-valuemin="0"
-          aria-valuemax="100"
-        >
-          <div
-            class="h-full rounded-full transition-all"
-            :style="{ width: `${avance}%`, backgroundColor: coloresAvance.fuerte }"
-          />
-        </div>
-      </template>
-    </div>
-
-    <div class="mb-4 rounded-2xl border border-[var(--color-line)] bg-white p-4">
-      <h2 class="mb-3 text-sm font-medium">
-        Línea de tiempo (cercanía al objetivo por sesión)
-      </h2>
-      <ProgresoLineaTiempo :puntos="puntos" />
-    </div>
-
-    <div
-      v-if="ultimaPostSesionPublicada"
-      class="mb-4 rounded-2xl border border-[var(--color-line)] bg-white p-4 text-sm"
-    >
-      <h2 class="mb-2 text-sm font-medium">
-        Recomendación y temas de la última sesión
-      </h2>
-      <p v-if="ultimaPostSesionPublicada.recomendacion">
-        <strong>Recomendación del coachee:</strong> {{ ultimaPostSesionPublicada.recomendacion }}
-      </p>
-      <p v-if="ultimaPostSesionPublicada.temasProximaSesion">
-        <strong>Temas propuestos:</strong> {{ ultimaPostSesionPublicada.temasProximaSesion }}
-      </p>
-    </div>
-
-    <WeekCalendar
-      class="mb-4"
-      :sesiones="sesiones"
-      puede-agendar
-      puede-editar
-      @select="onSelectSesion"
-      @nueva-sesion="abrirModalAgendar()"
-      @crear-en="abrirModalAgendar"
-      @reagendar="abrirReagendar"
-    />
-
-    <div class="mb-4 rounded-2xl border border-[var(--color-line)] bg-white p-4">
-      <h2 class="mb-3 text-sm font-medium">
-        Sesiones pasadas — registro de la sesión
-      </h2>
-      <p class="mb-3 text-xs text-[var(--color-ink)]/50">
-        Todo lo de abajo es visible para el coachee, salvo las notas privadas.
-      </p>
-      <p
-        v-if="error"
-        class="mb-3 text-sm text-[var(--color-danger)]"
-      >
-        {{ error }}
-      </p>
-      <p
-        v-if="sesionesPasadas.length === 0"
-        class="text-sm text-[var(--color-ink)]/60"
-      >
-        Todavía no hay sesiones pasadas.
-      </p>
-      <ul
-        v-else
-        class="space-y-3 text-sm"
-      >
-        <li
-          v-for="s in sesionesPasadas"
-          :key="s.id"
-          :ref="(el) => setSesionRef(s.id, el)"
-          class="rounded-xl border border-[var(--color-line)]/60 p-3 transition-shadow"
-          :class="highlightedId === s.id ? 'ring-2 ring-[var(--color-sage)]' : ''"
-        >
-          <div class="mb-2 flex items-center justify-between gap-3">
-            <span class="font-[family-name:var(--font-mono)] text-[var(--color-ink)]/60">
-              {{ new Date(s.fechaHora).toLocaleDateString('es-CL') }}
-            </span>
-            <select
-              :value="s.asistio === null || s.asistio === undefined ? '' : String(s.asistio)"
-              :disabled="guardandoAsistencia === s.id"
-              class="rounded border border-[var(--color-line)] px-2 py-1 text-xs"
-              @change="cambiarAsistencia(s, ($event.target as HTMLSelectElement).value)"
-            >
-              <option value="">
-                Sin registrar
-              </option>
-              <option value="true">
-                Asistió
-              </option>
-              <option value="false">
-                No asistió
-              </option>
-            </select>
-          </div>
-          <p class="mb-2">
-            <a
-              v-if="s.linkVideollamada"
-              :href="s.linkVideollamada"
-              target="_blank"
-              rel="noopener"
-              class="inline-flex items-center gap-1.5 rounded-full bg-[var(--color-saltup)]/10 px-3 py-1 text-xs text-[var(--color-saltup)] hover:bg-[var(--color-saltup)]/20"
-            >
-              <svg
-                width="11"
-                height="11"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-              ><path d="M8 5v14l11-7z" /></svg>
-              Ver grabación de la sesión
-            </a>
-            <span
-              v-else
-              class="text-xs text-[var(--color-ink)]/50"
-            >Esta sesión no fue grabada.</span>
+            El coachee aún no se ha autoevaluado en ningún post-sesión.
           </p>
-          <div class="mb-2 grid gap-2 sm:grid-cols-2">
-            <label class="block text-xs">
-              Resumen compartido
-              <textarea
-                v-model="registroEdit[s.id]!.resumenCompartido"
-                rows="2"
-                placeholder="Lo que el coachee puede ver de esta sesión…"
-                class="mt-1 block w-full rounded border border-[var(--color-line)] px-2 py-1 text-xs"
+          <template v-else>
+            <p
+              class="mb-2 font-[family-name:var(--font-mono)] text-3xl font-semibold tracking-tight"
+              :class="coloresAvance.texto"
+            >
+              {{ avance }}%
+            </p>
+            <div
+              class="h-2.5 w-full overflow-hidden rounded-full"
+              :style="{ backgroundColor: coloresAvance.suave }"
+              role="progressbar"
+              :aria-valuenow="avance ?? 0"
+              aria-valuemin="0"
+              aria-valuemax="100"
+            >
+              <div
+                class="h-full rounded-full transition-all"
+                :style="{ width: `${avance}%`, backgroundColor: coloresAvance.fuerte }"
               />
-            </label>
-            <label class="block text-xs">
-              Tema tratado
-              <textarea
-                v-model="registroEdit[s.id]!.temaTratado"
-                rows="2"
-                placeholder="Tema principal de la sesión…"
-                class="mt-1 block w-full rounded border border-[var(--color-line)] px-2 py-1 text-xs"
-              />
-            </label>
-            <label class="block text-xs">
-              Ejercicios/assessments aplicados
-              <textarea
-                v-model="registroEdit[s.id]!.ejerciciosAplicados"
-                rows="2"
-                placeholder="Ejercicios o assessments usados en la sesión…"
-                class="mt-1 block w-full rounded border border-[var(--color-line)] px-2 py-1 text-xs"
-              />
-            </label>
-            <label class="block text-xs">
-              Acuerdos
-              <textarea
-                v-model="registroEdit[s.id]!.acuerdos"
-                rows="2"
-                placeholder="Acuerdos alcanzados en la sesión…"
-                class="mt-1 block w-full rounded border border-[var(--color-line)] px-2 py-1 text-xs"
-              />
-            </label>
-            <label class="block text-xs sm:col-span-2">
-              Notas privadas <span class="text-[var(--color-ink)]/40">(nunca visibles para el coachee ni la empresa)</span>
-              <textarea
-                v-model="registroEdit[s.id]!.notasPrivadas"
-                rows="2"
-                placeholder="Notas privadas de esta sesión…"
-                class="mt-1 block w-full rounded border border-[var(--color-line)] px-2 py-1 text-xs"
-              />
-            </label>
-          </div>
-          <button
-            class="rounded-lg border border-[var(--color-line)] px-3 py-1.5 text-xs hover:bg-[var(--color-parchment)]/50 disabled:opacity-60"
-            :disabled="guardandoNotas === s.id"
-            @click="guardarRegistro(s)"
-          >
-            Guardar registro
-          </button>
-        </li>
-      </ul>
-    </div>
+            </div>
+          </template>
 
-    <div class="rounded-2xl border border-[var(--color-line)] bg-white p-4">
-      <h2 class="mb-3 text-sm font-medium">
-        Logros
-      </h2>
-      <ul
-        v-if="logros.length"
-        class="space-y-1 text-sm"
-      >
-        <li
-          v-for="logro in logros"
-          :key="logro.id"
+          <div class="mt-5 border-t border-[var(--color-line)] pt-5">
+            <h2 class="mb-3 text-sm font-medium">
+              Línea de tiempo (cercanía al objetivo por sesión)
+            </h2>
+            <ProgresoLineaTiempo :puntos="puntos" />
+          </div>
+        </div>
+
+        <div
+          v-if="ultimaPostSesionPublicada"
+          class="rounded-2xl border border-[var(--color-line)] bg-white p-4 text-sm shadow-sm"
         >
-          <span class="font-[family-name:var(--font-mono)] text-[var(--color-ink)]/50">{{ logro.fecha }}</span>
-          — {{ logro.descripcion }}
-          <span
-            v-if="logro.situacion"
-            class="block text-xs text-[var(--color-ink)]/50"
+          <h2 class="mb-2 text-sm font-medium">
+            Recomendación y temas de la última sesión
+          </h2>
+          <p v-if="ultimaPostSesionPublicada.recomendacion">
+            <strong>Recomendación del coachee:</strong> {{ ultimaPostSesionPublicada.recomendacion }}
+          </p>
+          <p v-if="ultimaPostSesionPublicada.temasProximaSesion">
+            <strong>Temas propuestos:</strong> {{ ultimaPostSesionPublicada.temasProximaSesion }}
+          </p>
+        </div>
+
+        <WeekCalendar
+          :sesiones="sesiones"
+          puede-agendar
+          puede-editar
+          @select="onSelectSesion"
+          @nueva-sesion="abrirModalAgendar()"
+          @crear-en="abrirModalAgendar"
+          @reagendar="abrirReagendar"
+          @reagendada="onReagendada"
+          @eliminada="onSesionEliminada"
+        />
+
+        <div class="space-y-3 rounded-2xl border border-[var(--color-line)] bg-white p-6 shadow-sm">
+          <h2 class="text-sm font-medium">
+            Sesiones pasadas — registro de la sesión
+          </h2>
+          <p class="text-xs text-[var(--color-ink)]/50">
+            Todo lo de abajo es visible para el coachee, salvo las notas privadas.
+          </p>
+          <p
+            v-if="error"
+            class="text-sm text-[var(--color-danger)]"
           >
-            Situación: {{ logro.situacion }}
-          </span>
-        </li>
-      </ul>
-      <p
-        v-else
-        class="text-sm text-[var(--color-ink)]/60"
-      >
-        Sin logros registrados todavía.
-      </p>
+            {{ error }}
+          </p>
+          <p
+            v-if="sesionesPasadas.length === 0"
+            class="text-sm text-[var(--color-ink)]/60"
+          >
+            Todavía no hay sesiones pasadas.
+          </p>
+          <ul
+            v-else
+            class="divide-y divide-[var(--color-line)] text-sm"
+          >
+            <li
+              v-for="s in sesionesPasadas"
+              :key="s.id"
+              :ref="(el) => setSesionRef(s.id, el)"
+              class="-mx-1 px-1 py-4 transition-shadow first:pt-0 last:pb-0"
+              :class="highlightedId === s.id ? 'rounded-xl ring-2 ring-[var(--color-sage)]' : ''"
+            >
+              <div class="mb-2 flex items-center justify-between gap-3">
+                <span class="font-[family-name:var(--font-mono)] text-[var(--color-ink)]/60">
+                  {{ new Date(s.fechaHora).toLocaleDateString('es-CL') }}
+                </span>
+                <select
+                  :value="s.asistio === null || s.asistio === undefined ? '' : String(s.asistio)"
+                  :disabled="guardandoAsistencia === s.id"
+                  class="rounded border border-[var(--color-line)] px-2 py-1 text-xs focus:border-[var(--color-sage)] focus:outline-none focus:ring-2 focus:ring-[var(--color-sage)]/30"
+                  @change="cambiarAsistencia(s, ($event.target as HTMLSelectElement).value)"
+                >
+                  <option value="">
+                    Sin registrar
+                  </option>
+                  <option value="true">
+                    Asistió
+                  </option>
+                  <option value="false">
+                    No asistió
+                  </option>
+                </select>
+              </div>
+              <p class="mb-2">
+                <a
+                  v-if="s.linkVideollamada"
+                  :href="s.linkVideollamada"
+                  target="_blank"
+                  rel="noopener"
+                  class="inline-flex items-center gap-1.5 rounded-full bg-[var(--color-saltup)]/10 px-3 py-1 text-xs text-[var(--color-saltup)] hover:bg-[var(--color-saltup)]/20"
+                >
+                  <svg
+                    width="11"
+                    height="11"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                  ><path d="M8 5v14l11-7z" /></svg>
+                  Ver grabación de la sesión
+                </a>
+                <span
+                  v-else
+                  class="inline-flex items-center rounded-full border border-[var(--color-danger)]/10 bg-[var(--color-danger)]/5 px-2.5 py-1 text-xs font-medium text-[var(--color-danger)]"
+                >Esta sesión no fue grabada.</span>
+              </p>
+              <div class="mb-2 grid gap-2 sm:grid-cols-2">
+                <label class="block text-xs">
+                  Resumen compartido
+                  <textarea
+                    v-model="registroEdit[s.id]!.resumenCompartido"
+                    rows="2"
+                    placeholder="Lo que el coachee puede ver de esta sesión…"
+                    class="mt-1 block w-full rounded-xl border border-[var(--color-line)] p-3 text-xs focus:border-[var(--color-saltup)] focus:outline-none focus:ring-2 focus:ring-[var(--color-saltup)]/30"
+                  />
+                </label>
+                <label class="block text-xs">
+                  Tema tratado
+                  <textarea
+                    v-model="registroEdit[s.id]!.temaTratado"
+                    rows="2"
+                    placeholder="Tema principal de la sesión…"
+                    class="mt-1 block w-full rounded-xl border border-[var(--color-line)] p-3 text-xs focus:border-[var(--color-saltup)] focus:outline-none focus:ring-2 focus:ring-[var(--color-saltup)]/30"
+                  />
+                </label>
+                <label class="block text-xs">
+                  Ejercicios/assessments aplicados
+                  <textarea
+                    v-model="registroEdit[s.id]!.ejerciciosAplicados"
+                    rows="2"
+                    placeholder="Ejercicios o assessments usados en la sesión…"
+                    class="mt-1 block w-full rounded-xl border border-[var(--color-line)] p-3 text-xs focus:border-[var(--color-saltup)] focus:outline-none focus:ring-2 focus:ring-[var(--color-saltup)]/30"
+                  />
+                </label>
+                <label class="block text-xs">
+                  Acuerdos
+                  <textarea
+                    v-model="registroEdit[s.id]!.acuerdos"
+                    rows="2"
+                    placeholder="Acuerdos alcanzados en la sesión…"
+                    class="mt-1 block w-full rounded-xl border border-[var(--color-line)] p-3 text-xs focus:border-[var(--color-saltup)] focus:outline-none focus:ring-2 focus:ring-[var(--color-saltup)]/30"
+                  />
+                </label>
+                <label class="block text-xs sm:col-span-2">
+                  Notas privadas <span class="text-[var(--color-ink)]/40">(nunca visibles para el coachee ni la empresa)</span>
+                  <textarea
+                    v-model="registroEdit[s.id]!.notasPrivadas"
+                    rows="2"
+                    placeholder="Notas privadas de esta sesión…"
+                    class="mt-1 block w-full rounded-xl border border-[var(--color-line)] p-3 text-xs focus:border-[var(--color-saltup)] focus:outline-none focus:ring-2 focus:ring-[var(--color-saltup)]/30"
+                  />
+                </label>
+              </div>
+              <button
+                class="rounded-lg border border-[var(--color-line)] px-3 py-1.5 text-xs hover:bg-[var(--color-parchment)]/50 disabled:opacity-60"
+                :disabled="guardandoNotas === s.id"
+                @click="guardarRegistro(s)"
+              >
+                Guardar registro
+              </button>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Columna lateral: alertas y contexto -->
+      <div class="mt-6 space-y-6 lg:col-span-4 lg:mt-0">
+        <div
+          v-if="solicitudesReagendamiento.length"
+          class="rounded-2xl border border-[var(--color-bronze)]/20 bg-[var(--color-bronze)]/5 p-5"
+        >
+          <h2 class="mb-3 text-sm font-medium">
+            Solicitudes de reagendamiento ({{ solicitudesReagendamiento.length }})
+          </h2>
+          <ul class="space-y-2 text-sm">
+            <li
+              v-for="s in solicitudesReagendamiento"
+              :key="s.id"
+              class="rounded-xl border border-[var(--color-line)] bg-white p-3"
+            >
+              <p class="font-medium">
+                Sesión del {{ s.sesion ? new Date(s.sesion.fechaHora).toLocaleString('es-CL') : '—' }}
+              </p>
+              <p
+                v-if="s.motivo"
+                class="text-[var(--color-ink)]/60"
+              >
+                {{ s.motivo }}
+              </p>
+              <button
+                class="mt-2 w-full rounded-lg bg-[var(--color-ink)] px-3 py-2 text-xs text-[var(--color-parchment)]"
+                @click="abrirResponder(s)"
+              >
+                Responder
+              </button>
+            </li>
+          </ul>
+        </div>
+
+        <div class="rounded-2xl border border-[var(--color-line)] bg-white p-5 shadow-sm">
+          <h2 class="mb-3 text-sm font-medium">
+            Logros
+          </h2>
+          <ul
+            v-if="logros.length"
+            class="space-y-1 text-sm"
+          >
+            <li
+              v-for="logro in logros"
+              :key="logro.id"
+            >
+              <span class="font-[family-name:var(--font-mono)] text-[var(--color-ink)]/50">{{ logro.fecha }}</span>
+              — {{ logro.descripcion }}
+              <span
+                v-if="logro.situacion"
+                class="block text-xs text-[var(--color-ink)]/50"
+              >
+                Situación: {{ logro.situacion }}
+              </span>
+            </li>
+          </ul>
+          <p
+            v-else
+            class="text-sm text-[var(--color-ink)]/60"
+          >
+            Sin logros registrados todavía.
+          </p>
+        </div>
+      </div>
     </div>
 
     <AppModal

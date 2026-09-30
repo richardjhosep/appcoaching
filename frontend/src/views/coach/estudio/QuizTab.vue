@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import AppModal from '../../../components/AppModal.vue'
+import AyudaHerramienta from '../../../components/AyudaHerramienta.vue'
 import SectionCard from '../../../components/SectionCard.vue'
 import EmptyState from '../../../components/EmptyState.vue'
 import StatusToggle from '../../../components/StatusToggle.vue'
@@ -214,6 +215,12 @@ async function borrarPregunta(preguntaId: string) {
         Nuevo quiz
       </button>
     </div>
+
+    <AyudaHerramienta titulo="¿Cómo funciona un Quiz?">
+      <p>Creas preguntas de opción múltiple para una competencia — el coachee lo ve solo si esa competencia es la que tiene activa hoy en su plan de desarrollo.</p>
+      <p>Puede responder más de una vez; cada intento queda guardado.</p>
+      <p><strong>Cómo saber quién va ganando:</strong> entra al quiz y mira la sección "Ranking" — ordena a los coachees por su mejor puntaje, y el primero de la lista (con el trofeo) es quien va adelante.</p>
+    </AyudaHerramienta>
 
     <EmptyState
       v-if="quizzes.length === 0"

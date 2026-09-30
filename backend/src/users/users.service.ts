@@ -36,13 +36,15 @@ export class UsersService {
     to: string,
     temporaryPassword: string,
     nombre?: string | null,
+    includeGuideLink?: boolean,
   ): void {
-    const loginUrl = `${this.config.get<string>('frontendUrl')}/login`;
+    const frontendUrl = this.config.get<string>('frontendUrl');
     void this.email.sendTemporaryPassword({
       to,
       nombre,
       temporaryPassword,
-      loginUrl,
+      loginUrl: `${frontendUrl}/login`,
+      guideUrl: includeGuideLink ? `${frontendUrl}/guia-coachee` : undefined,
     });
   }
 
@@ -158,7 +160,12 @@ export class UsersService {
     );
 
     if (isTemporary) {
-      this.notifyTemporaryPassword(email, temporaryPassword, options.nombre);
+      this.notifyTemporaryPassword(
+        email,
+        temporaryPassword,
+        options.nombre,
+        role === Role.COACHEE,
+      );
     }
 
     return {

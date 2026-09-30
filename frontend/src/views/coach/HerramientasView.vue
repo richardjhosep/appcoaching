@@ -73,7 +73,7 @@ onMounted(async () => {
 <template>
   <AppShell>
     <h1 class="mb-1 font-[family-name:var(--font-heading)] text-xl font-semibold">
-      Estudiar
+      Herramientas
     </h1>
     <p class="mb-4 text-sm text-[var(--color-ink)]/60">
       El contenido de práctica que le compartes a tus coachees — cada tarjeta es un tipo distinto.

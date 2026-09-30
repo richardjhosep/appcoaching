@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted } from 'vue'
 import AppShell from '../../components/AppShell.vue'
 import CicloStepper from '../../components/CicloStepper.vue'
 import DefinicionTab from '../../components/plan-desarrollo/DefinicionTab.vue'
@@ -18,10 +18,6 @@ const competenciasPrioritarias = ref<EmpresaCompetencia[]>([])
 const cicloActual = ref<Ciclo | null>(null)
 const loading = ref(true)
 const tab = ref<'definicion' | 'habito' | 'formacion'>('definicion')
-
-const isLocked = computed(() =>
-  plan.value?.estado === 'pendiente_aprobacion' || plan.value?.estado === 'aprobado',
-)
 
 const tabs = [
   { id: 'definicion', label: 'Definición' },
@@ -98,7 +94,6 @@ function handleUpdated(updated: PlanDesarrollo) {
         :plan="plan"
         :competencias="competencias"
         :competencias-prioritarias="competenciasPrioritarias"
-        :locked="isLocked"
         @updated="handleUpdated"
       />
       <HabitoEjecucionTab

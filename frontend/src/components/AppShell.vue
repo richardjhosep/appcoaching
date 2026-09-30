@@ -120,10 +120,12 @@ const coachNavGroups: NavGroup[] = [
       { to: '/coach/planes', label: 'Planes', icon: 'planes' },
       { to: '/coach/recursos', label: 'Recursos', icon: 'recursos' },
       // Quiz/Flashcards/Mapas/Ejercicios/Test de Estilo eran 5 ítems propios acá — muy
-      // parecidos entre sí (misma pantalla lista→detalle), ahora conviven en /coach/estudio
-      // como pestañas (ver EstudioView.vue), mismo label que ya usa el grupo "Estudiar" del
-      // coachee para este mismo tipo de contenido.
-      { to: '/coach/estudio', label: 'Estudiar', icon: 'biblioteca' },
+      // parecidos entre sí (misma pantalla lista→detalle), ahora conviven en /coach/herramientas
+      // como pestañas (ver HerramientasView.vue). Se llamó "Estudiar" hasta que el coach
+      // reportó que confundía — ese verbo describe lo que hace el COACHEE, no algo que el
+      // coach hace; "Herramientas" queda como hermano de "Recursos" (mismo par que ya usa
+      // el coachee: Biblioteca / Playground).
+      { to: '/coach/herramientas', label: 'Herramientas', icon: 'biblioteca' },
     ],
   },
   {
@@ -146,6 +148,7 @@ const empresaNavGroups: NavGroup[] = [
       { to: '/empresa/finanzas', label: 'Finanzas', icon: 'negocio' },
       { to: '/empresa/informe', label: 'Informe', icon: 'certificado' },
       { to: '/empresa/satisfaccion', label: 'Satisfacción', icon: 'satisfaccion' },
+      { to: '/empresa/competencias', label: 'Competencias', icon: 'objetivo' },
       { to: '/empresa/coach', label: 'Mi Coach', icon: 'contacto' },
     ],
   },

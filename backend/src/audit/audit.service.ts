@@ -17,6 +17,7 @@ import { Role } from '../auth/enums/role.enum';
 export const ACCIONES_COACHING = [
   'PLAN_APROBADO',
   'PLAN_CAMBIOS_SOLICITADOS',
+  'COMPETENCIA_ASIGNADA',
   'CICLO_CERRADO',
   'COACHEE_ELIMINADO',
   'EMPRESA_ELIMINADA',

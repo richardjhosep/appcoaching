@@ -19,43 +19,61 @@ const PAGE_SIZE = 5
 const router = useRouter()
 const planes = ref<PlanDesarrollo[]>([])
 const loading = ref(true)
-// "Todos los estados" por defecto: si se parte filtrado a pendiente_aprobacion y no hay
+// "Todos los estados" por defecto: si se parte filtrado a cambios_solicitados y no hay
 // ninguno en ese estado (el caso normal, no es lo más común), la vista se ve vacía aunque
-// existan planes sin enviar/aprobados que sí necesitan atención del coach. Los pendientes de
-// aprobación igual quedan siempre fijados primero (ver planesVisibles), así que no se pierde
-// la prioridad — sólo se deja de esconder todo lo demás por defecto.
+// existan planes sin enviar/aprobados que sí necesitan atención del coach. Los planes con
+// cambios solicitados igual quedan siempre fijados primero (ver planesVisibles), así que no
+// se pierde la prioridad — sólo se deja de esconder todo lo demás por defecto.
 const filtro = ref<EstadoPlan | ''>('')
 const page = ref(1)
 const enviandoRecordatorio = reactive<Record<string, boolean>>({})
 
 const estadoConfig: Record<
   EstadoPlan,
-  { label: string; texto: string; bg: string; icono: 'borrador' | 'reloj' | 'check' | 'alerta' }
+  { label: string; badge: string; icono: 'borrador' | 'reloj' | 'check' | 'alerta' }
 > = {
   sin_enviar: {
     label: 'Sin enviar',
-    texto: 'text-[var(--color-ink)]/60',
-    bg: 'bg-[var(--color-parchment)]',
+    badge: 'bg-[var(--color-bronze)]/10 text-[var(--color-bronze)] border border-[var(--color-bronze)]/20',
     icono: 'borrador',
   },
   pendiente_aprobacion: {
     label: 'Pendiente de aprobación',
-    texto: 'text-[var(--color-bronze)]',
-    bg: 'bg-[color-mix(in_srgb,var(--color-bronze)_15%,white)]',
+    badge: 'bg-[var(--color-saltup)]/10 text-[var(--color-saltup)] border border-[var(--color-saltup)]/20',
     icono: 'reloj',
   },
   aprobado: {
     label: 'Aprobado',
-    texto: 'text-[var(--color-sage)]',
-    bg: 'bg-[color-mix(in_srgb,var(--color-sage)_15%,white)]',
+    badge: 'bg-[var(--color-sage)]/10 text-[var(--color-sage)] border border-[var(--color-sage)]/20',
     icono: 'check',
   },
   cambios_solicitados: {
     label: 'Cambios solicitados',
-    texto: 'text-[var(--color-danger)]',
-    bg: 'bg-[color-mix(in_srgb,var(--color-danger)_15%,white)]',
+    badge: 'bg-[var(--color-danger)]/10 text-[var(--color-danger)] border border-[var(--color-danger)]/20',
     icono: 'alerta',
   },
+}
+
+// Píldoras de filtro rápido con conteo: el <select> de abajo sigue existiendo (oculto
+// visualmente) para no romper los tests que interactúan con él, pero la UI real que ve
+// el coach son estas píldoras — ambas leen y escriben el mismo `filtro`.
+const filtrosPildora: Array<{ value: EstadoPlan | ''; label: string }> = [
+  { value: '', label: 'Todos' },
+  { value: 'cambios_solicitados', label: 'Cambios solicitados' },
+  { value: 'aprobado', label: 'Aprobados' },
+  { value: 'sin_enviar', label: 'Sin enviar' },
+]
+
+function contarEstado(estado: EstadoPlan | ''): number {
+  return estado === '' ? planes.value.length : planes.value.filter((p) => p.estado === estado).length
+}
+
+function iniciales(nombre?: string | null): string {
+  if (!nombre) return '?'
+  const partes = nombre.trim().split(/\s+/)
+  const primera = partes[0]?.[0] ?? ''
+  const ultima = partes.length > 1 ? partes[partes.length - 1][0] : ''
+  return (primera + ultima).toUpperCase()
 }
 
 // Se trae la lista completa una sola vez: el filtro y la regla de "pendientes siempre
@@ -68,16 +86,17 @@ async function load() {
 
 onMounted(load)
 
-// Los planes pendientes de aprobación se muestran siempre, sin importar el filtro elegido —
-// son los que más urge que el coach revise. Van primero, ordenados por más tiempo esperando.
+// Los planes con cambios solicitados se muestran siempre, sin importar el filtro elegido —
+// son los que más urge que el coach revise (el coachee no ha respondido a su comentario).
+// Van primero, ordenados por más tiempo esperando.
 const planesVisibles = computed(() => {
-  const pendientes = planes.value.filter((p) => p.estado === 'pendiente_aprobacion')
+  const pendientes = planes.value.filter((p) => p.estado === 'cambios_solicitados')
   const pendienteIds = new Set(pendientes.map((p) => p.id))
   const filtrados = filtro.value ? planes.value.filter((p) => p.estado === filtro.value) : planes.value
 
   const pendientesOrdenados = [...pendientes].sort((a, b) => {
-    const ta = a.enviadoEn ? new Date(a.enviadoEn).getTime() : 0
-    const tb = b.enviadoEn ? new Date(b.enviadoEn).getTime() : 0
+    const ta = new Date(a.updatedAt).getTime()
+    const tb = new Date(b.updatedAt).getTime()
     return ta - tb
   })
   const resto = filtrados.filter((p) => !pendienteIds.has(p.id))
@@ -135,12 +154,11 @@ function textoSinEnviar(p: PlanDesarrollo): string | null {
   return `${dias} día${dias === 1 ? '' : 's'} sin enviar el plan`
 }
 
-// Cuenta desde el envío más reciente, no desde updatedAt (que se mueve aunque el plan siga
-// pendiente, porque hábito/formación quedan siempre editables).
-function textoPendiente(p: PlanDesarrollo): string | null {
-  if (p.estado !== 'pendiente_aprobacion' || !p.enviadoEn) return null
-  const dias = diasDesde(p.enviadoEn)
-  return dias === 0 ? 'Enviado hoy' : `Esperando hace ${dias} día${dias === 1 ? '' : 's'}`
+// Sin contador de días: no hay un timestamp de "cuándo se pidieron los cambios" (el plan
+// no se bloquea, así que updatedAt se mueve con cualquier edición de hábito/formación y
+// no serviría como proxy confiable).
+function textoCambiosSolicitados(p: PlanDesarrollo): string | null {
+  return p.estado === 'cambios_solicitados' ? 'Esperando respuesta del coachee' : null
 }
 
 async function recordar(coacheeId: string) {
@@ -162,15 +180,14 @@ async function recordar(coacheeId: string) {
       Planes de desarrollo
     </h1>
 
+    <!-- Select nativo: accesible para lectores de pantalla y teclado, pero visualmente
+         reemplazado por las píldoras de abajo (mismo v-model, misma fuente de verdad). -->
     <select
       v-model="filtro"
-      class="mb-4 rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+      class="sr-only"
     >
       <option value="">
         Todos los estados
-      </option>
-      <option value="pendiente_aprobacion">
-        Pendientes de aprobación
       </option>
       <option value="cambios_solicitados">
         Cambios solicitados
@@ -183,6 +200,21 @@ async function recordar(coacheeId: string) {
       </option>
     </select>
 
+    <div class="mb-4 flex flex-wrap gap-2">
+      <button
+        v-for="f in filtrosPildora"
+        :key="f.value"
+        type="button"
+        class="rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors"
+        :class="filtro === f.value
+          ? 'border-[var(--color-ink)] bg-[var(--color-ink)] text-white'
+          : 'border-[var(--color-line)] bg-white text-[var(--color-ink)]/70 hover:bg-[var(--color-ivory)]'"
+        @click="filtro = f.value"
+      >
+        {{ f.label }} ({{ contarEstado(f.value) }})
+      </button>
+    </div>
+
     <SkeletonBlock v-if="loading" />
     <p
       v-else-if="planesVisibles.length === 0"
@@ -191,29 +223,36 @@ async function recordar(coacheeId: string) {
       {{ planes.length === 0 ? 'Aún no hay planes de desarrollo creados.' : 'No hay planes con este filtro.' }}
     </p>
     <template v-else>
-      <div class="mb-4 space-y-3">
+      <div class="mb-4 divide-y divide-[var(--color-line)] rounded-2xl border border-[var(--color-line)] bg-white shadow-sm">
         <div
           v-for="p in planesPagina"
           :key="p.id"
           role="button"
           tabindex="0"
-          class="cursor-pointer rounded-2xl border border-[var(--color-line)] bg-white p-4 text-left transition-all hover:-translate-y-0.5 hover:border-[var(--color-sage)] hover:shadow-md"
+          class="flex cursor-pointer flex-col gap-3 p-5 transition-colors hover:bg-[var(--color-ivory)]/50"
           @click="verDetalle(p.coacheeId)"
           @keyup.enter="verDetalle(p.coacheeId)"
         >
-          <div class="mb-2 flex flex-wrap items-start justify-between gap-2">
-            <div>
-              <p class="font-medium">
+          <div class="flex flex-wrap items-start gap-3">
+            <div
+              class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[var(--color-line)] bg-[var(--color-parchment)] font-[family-name:var(--font-mono)] text-xs font-semibold text-[var(--color-ink)]"
+            >
+              {{ iniciales(p.coachee?.nombre) }}
+            </div>
+
+            <div class="min-w-0 flex-1">
+              <p class="font-[family-name:var(--font-heading)] font-semibold text-[var(--color-ink)]">
                 {{ p.coachee?.nombre ?? p.coacheeId }}
               </p>
-              <p class="text-xs text-[var(--color-ink)]/50">
+              <p class="truncate font-[family-name:var(--font-mono)] text-xs text-[var(--color-ink)]/50">
                 {{ contactoLinea(p) }}
               </p>
             </div>
+
             <div class="flex shrink-0 flex-col items-end gap-1">
               <span
-                class="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium"
-                :class="[estadoConfig[p.estado].texto, estadoConfig[p.estado].bg]"
+                class="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold"
+                :class="estadoConfig[p.estado].badge"
               >
                 <svg
                   width="13"
@@ -249,19 +288,22 @@ async function recordar(coacheeId: string) {
                 {{ estadoConfig[p.estado].label }}
               </span>
               <span
-                v-if="textoPendiente(p)"
-                class="text-[11px] text-[var(--color-bronze)]"
+                v-if="textoCambiosSolicitados(p)"
+                class="text-[11px] text-[var(--color-danger)]"
               >
-                {{ textoPendiente(p) }}
+                {{ textoCambiosSolicitados(p) }}
+              </span>
+              <span class="text-[11px] text-[var(--color-ink)]/40">
+                Actualizado el {{ new Date(p.updatedAt).toLocaleDateString('es-CL') }}
               </span>
             </div>
           </div>
 
           <div
             v-if="textoSinEnviar(p)"
-            class="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl bg-[color-mix(in_srgb,var(--color-danger)_10%,white)] px-3 py-2"
+            class="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[var(--color-danger)]/20 bg-[var(--color-danger)]/10 p-2.5 text-xs font-medium text-[var(--color-danger)]"
           >
-            <span class="flex items-center gap-1.5 text-xs font-medium text-[var(--color-danger)]">
+            <span class="flex items-center gap-1.5">
               <svg
                 width="14"
                 height="14"
@@ -298,21 +340,21 @@ async function recordar(coacheeId: string) {
 
           <p
             v-if="p.objetivoGeneral"
-            class="mb-3 line-clamp-2 text-sm text-[var(--color-ink)]/70"
+            class="line-clamp-2 text-sm text-[var(--color-ink)]/70"
           >
             {{ p.objetivoGeneral }}
           </p>
           <p
             v-else
-            class="mb-3 text-sm text-[var(--color-ink)]/40 italic"
+            class="text-sm italic text-[var(--color-ink)]/40"
           >
             Sin objetivo general definido todavía.
           </p>
 
-          <div class="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-[var(--color-ink)]/60">
+          <div class="flex flex-wrap items-center gap-2 text-xs">
             <span
               v-if="p.competencia"
-              class="flex items-center gap-1"
+              class="flex items-center gap-1 rounded-full border border-[var(--color-saltup)]/20 bg-[var(--color-ivory)] px-2.5 py-1 font-medium text-[var(--color-saltup)]"
             >
               <svg
                 width="13"
@@ -343,7 +385,7 @@ async function recordar(coacheeId: string) {
               </span>
             </span>
 
-            <span class="flex items-center gap-1">
+            <span class="flex items-center gap-1 rounded-full border border-[var(--color-line)] bg-[var(--color-parchment)] px-2.5 py-1 text-[var(--color-ink)]/70">
               <svg
                 width="13"
                 height="13"
@@ -360,7 +402,7 @@ async function recordar(coacheeId: string) {
 
             <span
               v-if="actividadesTotal(p) > 0"
-              class="flex items-center gap-1.5"
+              class="flex items-center gap-1.5 rounded-full border border-[var(--color-line)] bg-[var(--color-parchment)] px-2.5 py-1 text-[var(--color-ink)]/70"
             >
               {{ actividadesCompletadas(p) }}/{{ actividadesTotal(p) }} actividades
               <span
@@ -379,7 +421,7 @@ async function recordar(coacheeId: string) {
 
             <span
               v-if="p.plazo"
-              class="flex items-center gap-1"
+              class="flex items-center gap-1 rounded-full border border-[var(--color-line)] bg-[var(--color-parchment)] px-2.5 py-1 text-[var(--color-ink)]/70"
             >
               <svg
                 width="13"
@@ -399,10 +441,6 @@ async function recordar(coacheeId: string) {
                 rx="2"
               /><path d="M3 10h18" /><path d="M8 3v4" /><path d="M16 3v4" /></svg>
               Plazo: {{ p.plazo }}
-            </span>
-
-            <span class="ml-auto shrink-0 text-[var(--color-ink)]/40">
-              Actualizado el {{ new Date(p.updatedAt).toLocaleDateString('es-CL') }}
             </span>
           </div>
         </div>

@@ -38,7 +38,7 @@ const basePlan: PlanDesarrollo = {
   plazo: null,
   descripcionEstadoActual: null,
   objetivoGeneral: null,
-  estado: 'pendiente_aprobacion',
+  estado: 'aprobado',
   enviadoEn: null,
   comentarioCoach: null,
   habitoCuando: null,
@@ -65,41 +65,35 @@ describe('DefinicionTab', () => {
     vi.mocked(getMisAutoevaluaciones).mockResolvedValue([])
   })
 
-  it('locks competencia/nivelObjetivo/objetivoGeneral but keeps nivelActual/plazo/descripcion free while pending approval', () => {
+  // El plan ya no se bloquea por estado (sin aprobación obligatoria del coach): todo
+  // campo queda siempre editable y el botón de envío siempre visible, sea cual sea
+  // el estado del plan (sin_enviar, aprobado o cambios_solicitados).
+  it('keeps every field editable regardless of the plan state', () => {
     const wrapper = mount(DefinicionTab, {
-      props: { plan: basePlan, competencias: [], locked: true },
+      props: { plan: basePlan, competencias: [] },
     })
 
     const numberInputs = wrapper.findAll('input[type="number"]')
     const textareas = wrapper.findAll('textarea')
 
-    expect(wrapper.find('select').attributes('disabled')).toBeDefined()
-    expect(numberInputs[0].attributes('disabled')).toBeUndefined() // nivelActual: libre
-    expect(numberInputs[1].attributes('disabled')).toBeDefined() // nivelObjetivo: bloqueado
-    expect(textareas[0].attributes('disabled')).toBeUndefined() // descripcionEstadoActual: libre
-    expect(textareas[1].attributes('disabled')).toBeDefined() // objetivoGeneral: bloqueado
-  })
-
-  it('hides the submit button while the plan is locked', () => {
-    const wrapper = mount(DefinicionTab, {
-      props: { plan: basePlan, competencias: [], locked: true },
-    })
-
-    expect(wrapper.text()).not.toContain('Enviar plan para aprobación')
-  })
-
-  it('shows the submit button and enables every field when not locked', () => {
-    const wrapper = mount(DefinicionTab, {
-      props: { plan: { ...basePlan, estado: 'sin_enviar' }, competencias: [], locked: false },
-    })
-
-    expect(wrapper.text()).toContain('Enviar plan para aprobación')
     expect(wrapper.find('select').attributes('disabled')).toBeUndefined()
+    expect(numberInputs[0].attributes('disabled')).toBeUndefined() // nivelActual
+    expect(numberInputs[1].attributes('disabled')).toBeUndefined() // nivelObjetivo
+    expect(textareas[0].attributes('disabled')).toBeUndefined() // descripcionEstadoActual
+    expect(textareas[1].attributes('disabled')).toBeUndefined() // objetivoGeneral
+  })
+
+  it('always shows the submit button, even on an already-sent plan', () => {
+    const wrapper = mount(DefinicionTab, {
+      props: { plan: basePlan, competencias: [] },
+    })
+
+    expect(wrapper.text()).toContain('Enviar plan a mi coach')
   })
 
   it('hides the "tu empresa prioriza" hint for an independent coachee (sin competenciasPrioritarias)', () => {
     const wrapper = mount(DefinicionTab, {
-      props: { plan: basePlan, competencias: [], locked: true },
+      props: { plan: basePlan, competencias: [] },
     })
 
     expect(wrapper.text()).not.toContain('Tu empresa prioriza')
@@ -126,7 +120,6 @@ describe('DefinicionTab', () => {
             createdAt: '2026-07-16T00:00:00.000Z',
           },
         ],
-        locked: true,
       },
     })
 

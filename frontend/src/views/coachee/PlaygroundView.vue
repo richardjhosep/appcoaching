@@ -23,7 +23,7 @@ const router = useRouter()
 
 type TabKey = 'quiz' | 'flashcards' | 'mapas' | 'mis-mapas' | 'ejercicios' | 'test-estilo' | 'pizarra'
 
-// Mismo patrón que EstudioView.vue (coach): antes eran 5 ítems de menú aparte, ahora cards
+// Mismo patrón que HerramientasView.vue (coach): antes eran 5 ítems de menú aparte, ahora cards
 // grandes que hacen de selector de pestaña — mismo mecanismo `?tab=`. "Mapas mentales" es lo
 // que asigna el coach (solo lectura); "Mis mapas" y "Mi pizarra" son propios del coachee,
 // editables y 100% privados — deliberadamente pestañas distintas para no mezclar conceptos.

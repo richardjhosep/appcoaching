@@ -38,6 +38,7 @@ const competencia: Competencia = {
   nombre: 'Comunicación',
   definicion: 'def',
   niveles: [],
+  empresaId: null,
 }
 
 const flashcard: Flashcard = {

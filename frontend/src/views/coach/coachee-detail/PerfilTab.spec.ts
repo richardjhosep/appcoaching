@@ -101,11 +101,16 @@ describe('PerfilTab', () => {
     const wrapper = mount(PerfilTab, { props: { coacheeId: 'c1' } })
     await flushPromises()
 
-    vi.mocked(getCoachee).mockResolvedValue({ ...coachee, id: 'c2', nombre: 'Ana Reagenda' })
+    vi.mocked(getCoachee).mockResolvedValue({
+      ...coachee,
+      id: 'c2',
+      nombre: 'Ana Reagenda',
+      objetivoProceso: 'Comunicación efectiva',
+    })
     await wrapper.setProps({ coacheeId: 'c2' })
     await flushPromises()
 
     expect(getCoachee).toHaveBeenCalledWith('c2')
-    expect(wrapper.text()).toContain('Contacto de Ana')
+    expect(wrapper.text()).toContain('Comunicación efectiva')
   })
 })

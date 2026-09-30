@@ -96,7 +96,7 @@ const planEstadoClase: Record<EstadoPlan, string> = {
 
     <SkeletonBlock v-if="loading" />
     <template v-else-if="coachee">
-      <div class="mb-4 rounded-2xl border border-[var(--color-line)] bg-white p-4">
+      <div class="mb-6 rounded-2xl border border-[var(--color-line)] bg-white p-6 shadow-sm">
         <div class="flex flex-wrap items-start justify-between gap-4">
           <div class="flex items-start gap-3">
             <div
@@ -149,13 +149,18 @@ const planEstadoClase: Record<EstadoPlan, string> = {
             </span>
           </div>
         </div>
-      </div>
 
-      <CicloStepper
-        class="mb-4"
-        :ciclo="cicloActual"
-        :plan="plan"
-      />
+        <!-- El stepper es un componente compartido (también lo usa el coachee en su propio
+             plan) que trae su propia tarjeta blanca con borde — se despoja de ese estilo acá
+             vía selector de hijo directo para que se vea como una sola tarjeta con el bloque
+             de identidad de arriba, sin tocar CicloStepper.vue (evita duplicar borde/sombra). -->
+        <div class="mt-4 border-t border-[var(--color-line)] pt-4 [&>div]:rounded-none [&>div]:border-0 [&>div]:bg-transparent [&>div]:p-0 [&>div]:shadow-none">
+          <CicloStepper
+            :ciclo="cicloActual"
+            :plan="plan"
+          />
+        </div>
+      </div>
 
       <TabBar
         class="mb-4"

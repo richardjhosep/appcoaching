@@ -162,13 +162,19 @@ export function enviarRecordatorio(coacheeId: string): Promise<void> {
   return apiRequest<void>(`/planes-desarrollo/${coacheeId}/recordatorio`, { method: 'POST' })
 }
 
-export function aprobarPlan(coacheeId: string): Promise<PlanDesarrollo> {
-  return apiRequest<PlanDesarrollo>(`/planes-desarrollo/${coacheeId}/aprobar`, { method: 'POST' })
-}
-
 export function solicitarCambios(coacheeId: string, comentario: string): Promise<PlanDesarrollo> {
   return apiRequest<PlanDesarrollo>(`/planes-desarrollo/${coacheeId}/solicitar-cambios`, {
     method: 'POST',
     body: { comentario },
+  })
+}
+
+// El coach fija directamente la competencia del plan de un coachee puntual — a diferencia
+// de EmpresaCompetencia (que prioriza lo mismo para toda la empresa), esto es por coachee.
+// No queda bloqueada: el coachee la puede seguir cambiando después.
+export function asignarCompetencia(coacheeId: string, competenciaId: string): Promise<PlanDesarrollo> {
+  return apiRequest<PlanDesarrollo>(`/planes-desarrollo/${coacheeId}/competencia`, {
+    method: 'PATCH',
+    body: { competenciaId },
   })
 }

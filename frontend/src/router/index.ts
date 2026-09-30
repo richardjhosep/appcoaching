@@ -25,6 +25,12 @@ const routes: RouteRecordRaw[] = [
     props: true,
   },
   {
+    path: '/guia-coachee',
+    name: 'guia-coachee',
+    component: () => import('../views/public/GuiaCoacheeView.vue'),
+    meta: { standalone: true },
+  },
+  {
     path: '/olvide-password',
     name: 'olvide-password',
     component: () => import('../views/public/OlvidePasswordView.vue'),
@@ -140,19 +146,22 @@ const routes: RouteRecordRaw[] = [
     meta: { roles: ['coach'] },
   },
   {
-    path: '/coach/estudio',
-    name: 'coach-estudio',
-    component: () => import('../views/coach/EstudioView.vue'),
+    path: '/coach/herramientas',
+    name: 'coach-herramientas',
+    component: () => import('../views/coach/HerramientasView.vue'),
     meta: { roles: ['coach'] },
   },
-  // Quiz/Flashcards/Mapas/Ejercicios/Test de Estilo eran 5 rutas propias, consolidadas en
-  // /coach/estudio con pestañas — mismo patrón de redirect que /coach/auditoria y
-  // /coach/comercial más abajo, para no romper links/bookmarks viejos.
-  { path: '/coach/quiz', redirect: '/coach/estudio?tab=quiz' },
-  { path: '/coach/flashcards', redirect: '/coach/estudio?tab=flashcards' },
-  { path: '/coach/mapas', redirect: '/coach/estudio?tab=mapas' },
-  { path: '/coach/ejercicios', redirect: '/coach/estudio?tab=ejercicios' },
-  { path: '/coach/test-estilo', redirect: '/coach/estudio?tab=test-estilo' },
+  // "Estudiar" confundía al coach — describe la acción del coachee, no algo que el coach
+  // hace — se renombró a "Herramientas". Quiz/Flashcards/Mapas/Ejercicios/Test de Estilo
+  // eran 5 rutas propias antes de eso, consolidadas acá con pestañas — mismo patrón de
+  // redirect que /coach/auditoria y /coach/comercial más abajo, para no romper
+  // links/bookmarks viejos (incluido el propio /coach/estudio).
+  { path: '/coach/estudio', redirect: '/coach/herramientas' },
+  { path: '/coach/quiz', redirect: '/coach/herramientas?tab=quiz' },
+  { path: '/coach/flashcards', redirect: '/coach/herramientas?tab=flashcards' },
+  { path: '/coach/mapas', redirect: '/coach/herramientas?tab=mapas' },
+  { path: '/coach/ejercicios', redirect: '/coach/herramientas?tab=ejercicios' },
+  { path: '/coach/test-estilo', redirect: '/coach/herramientas?tab=test-estilo' },
   {
     path: '/coach/agenda',
     name: 'coach-agenda',
@@ -244,6 +253,12 @@ const routes: RouteRecordRaw[] = [
     path: '/empresa/coach',
     name: 'empresa-coach',
     component: () => import('../views/empresa/PerfilCoachView.vue'),
+    meta: { roles: ['empresa'] },
+  },
+  {
+    path: '/empresa/competencias',
+    name: 'empresa-competencias',
+    component: () => import('../views/empresa/CompetenciasView.vue'),
     meta: { roles: ['empresa'] },
   },
   {

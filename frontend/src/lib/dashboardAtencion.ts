@@ -7,7 +7,7 @@ export interface CoacheeAtencion {
   coacheeId: string
   nombre: string
   planSinEnviar: boolean
-  planPendienteAprobacion: boolean
+  planCambiosSolicitados: boolean
   cicloPorVencer: { sesionesRestantes: number } | null
   sinProximaSesion: boolean
   sinLogros: boolean
@@ -21,7 +21,7 @@ export interface CoacheeAtencion {
  */
 export function coacheesQueNecesitanAlgo(fuentes: {
   planesSinEnviar: PlanDesarrollo[]
-  planesPendientesAprobacion: PlanDesarrollo[]
+  planesConCambiosSolicitados: PlanDesarrollo[]
   alertas: Alertas
   independientesLegal: IndependienteLegal[]
 }): CoacheeAtencion[] {
@@ -34,7 +34,7 @@ export function coacheesQueNecesitanAlgo(fuentes: {
       coacheeId,
       nombre,
       planSinEnviar: false,
-      planPendienteAprobacion: false,
+      planCambiosSolicitados: false,
       cicloPorVencer: null,
       sinProximaSesion: false,
       sinLogros: false,
@@ -47,8 +47,8 @@ export function coacheesQueNecesitanAlgo(fuentes: {
   for (const p of fuentes.planesSinEnviar) {
     fila(p.coacheeId, p.coachee?.nombre ?? p.coacheeId).planSinEnviar = true
   }
-  for (const p of fuentes.planesPendientesAprobacion) {
-    fila(p.coacheeId, p.coachee?.nombre ?? p.coacheeId).planPendienteAprobacion = true
+  for (const p of fuentes.planesConCambiosSolicitados) {
+    fila(p.coacheeId, p.coachee?.nombre ?? p.coacheeId).planCambiosSolicitados = true
   }
   for (const c of fuentes.alertas.ciclosPorVencer) {
     fila(c.coacheeId, c.nombre).cicloPorVencer = { sesionesRestantes: c.sesionesRestantes }

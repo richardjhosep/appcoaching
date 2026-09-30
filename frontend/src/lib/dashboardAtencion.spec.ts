@@ -35,7 +35,7 @@ describe('coacheesQueNecesitanAlgo', () => {
   it('returns an empty list when there is nothing pending anywhere', () => {
     const filas = coacheesQueNecesitanAlgo({
       planesSinEnviar: [],
-      planesPendientesAprobacion: [],
+      planesConCambiosSolicitados: [],
       alertas: alertasVacias,
       independientesLegal: [],
     })
@@ -46,7 +46,7 @@ describe('coacheesQueNecesitanAlgo', () => {
   it('merges a coachee appearing in multiple sources into a single row with every flag set', () => {
     const filas = coacheesQueNecesitanAlgo({
       planesSinEnviar: [plan({ coacheeId: 'c1' })],
-      planesPendientesAprobacion: [],
+      planesConCambiosSolicitados: [],
       alertas: {
         ciclosPorVencer: [],
         coacheesSinLogros: [{ coacheeId: 'c1', nombre: 'Rodrigo Peña' }],
@@ -68,7 +68,7 @@ describe('coacheesQueNecesitanAlgo', () => {
   it('keeps distinct coachees as separate rows', () => {
     const filas = coacheesQueNecesitanAlgo({
       planesSinEnviar: [plan({ coacheeId: 'c1' })],
-      planesPendientesAprobacion: [plan({ coacheeId: 'c2', coachee: { id: 'c2', nombre: 'Ana Reagenda', telefono: null, createdAt: '2026-01-01T00:00:00.000Z' } })],
+      planesConCambiosSolicitados: [plan({ coacheeId: 'c2', coachee: { id: 'c2', nombre: 'Ana Reagenda', telefono: null, createdAt: '2026-01-01T00:00:00.000Z' } })],
       alertas: alertasVacias,
       independientesLegal: [],
     })
@@ -80,7 +80,7 @@ describe('coacheesQueNecesitanAlgo', () => {
   it('sets cicloPorVencer with its sesionesRestantes', () => {
     const filas = coacheesQueNecesitanAlgo({
       planesSinEnviar: [],
-      planesPendientesAprobacion: [],
+      planesConCambiosSolicitados: [],
       alertas: {
         ciclosPorVencer: [{ coacheeId: 'c1', nombre: 'Rodrigo Peña', sesionesRestantes: 1 }],
         coacheesSinLogros: [],
@@ -114,7 +114,7 @@ describe('coacheesQueNecesitanAlgo', () => {
 
     const filas = coacheesQueNecesitanAlgo({
       planesSinEnviar: [],
-      planesPendientesAprobacion: [],
+      planesConCambiosSolicitados: [],
       alertas: alertasVacias,
       independientesLegal: [conPendiente, alDia],
     })

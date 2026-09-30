@@ -160,7 +160,21 @@ describe('UsersService', () => {
       expect(user.tempPasswordExpiresAt).toBeInstanceOf(Date);
       expect(user.tempPasswordExpiresAt!.getTime()).toBeGreaterThan(Date.now());
       expect(email.sendTemporaryPassword).toHaveBeenCalledWith(
-        expect.objectContaining({ to: 'new@example.com', temporaryPassword }),
+        expect.objectContaining({
+          to: 'new@example.com',
+          temporaryPassword,
+          guideUrl: expect.stringContaining('/guia-coachee') as string,
+        }),
+      );
+    });
+
+    it('does not link the coachee guide for a new coach account', async () => {
+      repo.findOne.mockResolvedValue(null);
+
+      await service.createUser('new-coach@example.com', Role.COACH);
+
+      expect(email.sendTemporaryPassword).toHaveBeenCalledWith(
+        expect.objectContaining({ guideUrl: undefined }),
       );
     });
 
