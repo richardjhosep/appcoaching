@@ -71,6 +71,17 @@ export const MIMETYPES_RECURSO = [
   'audio/webm',
 ] as const;
 
+// Documentos del proceso de un coachee (CV, evaluaciones de desempeño, descriptor de cargo):
+// lo que una empresa o un coachee realmente tiene a mano — PDF, Word, Excel o una foto/escaneo.
+export const MIMETYPES_DOCUMENTO_COACHEE = [
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  ...MIMETYPES_IMAGEN,
+] as const;
+
 const PDF_MAGIC_BYTES = Buffer.from('%PDF-');
 
 /**

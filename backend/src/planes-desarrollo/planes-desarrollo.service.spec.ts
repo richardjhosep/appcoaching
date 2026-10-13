@@ -306,6 +306,40 @@ describe('PlanesDesarrolloService', () => {
       expect(plan.enviadoEn).toBeInstanceOf(Date);
     });
 
+    it('does not require nivel objetivo when the plan does not work with niveles', async () => {
+      planes.findOne.mockResolvedValue({
+        id: 'plan-1',
+        coacheeId: COACHEE_ID,
+        estado: EstadoPlan.SIN_ENVIAR,
+        competenciaId: 'c1',
+        nivelObjetivo: null,
+        trabajarNiveles: false,
+        objetivoGeneral: 'Ser más estratégico',
+      });
+      objetivos.count.mockResolvedValue(1);
+
+      const plan = await service.enviar(ACTOR_USER_ID);
+
+      expect(plan.estado).toBe(EstadoPlan.APROBADO);
+    });
+
+    it('requires nivel objetivo when the coach chose to work with niveles', async () => {
+      planes.findOne.mockResolvedValue({
+        id: 'plan-1',
+        coacheeId: COACHEE_ID,
+        estado: EstadoPlan.SIN_ENVIAR,
+        competenciaId: 'c1',
+        nivelObjetivo: null,
+        trabajarNiveles: true,
+        objetivoGeneral: 'Ser más estratégico',
+      });
+      objetivos.count.mockResolvedValue(1);
+
+      await expect(service.enviar(ACTOR_USER_ID)).rejects.toThrow(
+        'nivel objetivo',
+      );
+    });
+
     it('can be called again on an already-aprobado plan (re-enviar tras editar)', async () => {
       planes.findOne.mockResolvedValue({
         id: 'plan-1',

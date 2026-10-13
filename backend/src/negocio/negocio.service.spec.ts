@@ -49,7 +49,10 @@ describe('NegocioService', () => {
     sendRecordatorioLogro: jest.Mock;
   };
   let config: { get: jest.Mock };
-  let empresasService: { ultimaGestionPorEmpresa: jest.Mock };
+  let empresasService: {
+    ultimaGestionPorEmpresa: jest.Mock;
+    horasEfectivas: jest.Mock;
+  };
   let indicadores: { getOrFetchHoy: jest.Mock };
 
   const hace1h = new Date(Date.now() - 60 * 60 * 1000);
@@ -89,6 +92,14 @@ describe('NegocioService', () => {
     config = { get: jest.fn().mockReturnValue('http://localhost:5183') };
     empresasService = {
       ultimaGestionPorEmpresa: jest.fn().mockResolvedValue(new Map()),
+      // Por defecto, las horas que rigen son el valor manual de cada empresa (como si todas
+      // fueran "horas fijas") — los tests que importan el cálculo lo sobreescriben.
+      horasEfectivas: jest.fn(
+        (empresas: { id: string; horasContratadas: number | null }[]) =>
+          Promise.resolve(
+            new Map(empresas.map((e) => [e.id, e.horasContratadas ?? null])),
+          ),
+      ),
     };
     // Ningún fixture de este spec usa tarifas en UF — el valor exacto es irrelevante,
     // tarifaEfectiva() solo lo multiplica cuando moneda === Moneda.UF.
@@ -945,18 +956,87 @@ describe('NegocioService', () => {
 
   describe('resumenNegocio', () => {
     it('combines cobros, coacheesActivos (cartera activa, no sólo con ciclo abierto) and satisfaccionPromedio', async () => {
-      coacheesRepo.count.mockResolvedValue(3);
+      coacheesRepo.find.mockImplementation((opts: { where?: unknown }) =>
+        Promise.resolve(
+          opts?.where
+            ? [
+                { id: 'c1', nombre: 'A', empresaId: null },
+                { id: 'c2', nombre: 'B', empresaId: null },
+                { id: 'c3', nombre: 'C', empresaId: null },
+              ]
+            : [],
+        ),
+      );
       postSesionesRepo.createQueryBuilder.mockReturnValue(
         makeAvgQueryBuilder('4.333'),
       );
 
       const resumen = await service.resumenNegocio();
 
-      expect(coacheesRepo.count).toHaveBeenCalledWith({
-        where: { activo: true },
-      });
+      expect(coacheesRepo.find).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { activo: true } }),
+      );
       expect(resumen.coacheesActivos).toBe(3);
       expect(resumen.satisfaccionPromedio).toBe(4.3);
+    });
+
+    it('lists every active coachee in carteraCoachees, even without sessions this month or with an empresa not marked as pagada', async () => {
+      const ferronor = { id: 'e1', nombre: 'Ferronor', pagada: false };
+      const nuevo = {
+        id: 'c-nuevo',
+        nombre: 'Julio Barrera',
+        empresaId: 'e1',
+        empresa: ferronor,
+        activo: true,
+      };
+      const conSesion = {
+        id: 'c-ses',
+        nombre: 'Cindy Acevedo',
+        empresaId: 'e1',
+        empresa: ferronor,
+        tarifaPropia: null,
+        activo: true,
+      };
+      coacheesRepo.find.mockImplementation((opts: { where?: unknown }) =>
+        Promise.resolve(opts?.where ? [conSesion, nuevo] : [conSesion, nuevo]),
+      );
+      empresasRepo.find.mockResolvedValue([
+        { ...ferronor, tarifaHora: 50000, tarifaHoraMoneda: 'clp' },
+      ]);
+      (conSesion as Record<string, unknown>).empresa = {
+        ...ferronor,
+        tarifaHora: 50000,
+        tarifaHoraMoneda: 'clp',
+      };
+      sesionesRepo.find.mockResolvedValue([
+        { coacheeId: 'c-ses', fechaHora: new Date(Date.now() - 60_000) },
+      ]);
+      ciclosService.findAllAbiertosConEstado.mockResolvedValue([
+        { coacheeId: 'c-ses', totalSesiones: 6, sesionesRealizadas: 1 },
+      ]);
+
+      const resumen = await service.resumenNegocio();
+
+      // porCoachee (ingreso confirmado) sigue vacío: Ferronor no está pagada.
+      expect(resumen.porCoachee).toEqual([]);
+      expect(resumen.carteraCoachees).toEqual([
+        expect.objectContaining({
+          coacheeId: 'c-ses',
+          empresaPagada: false,
+          totalSesiones: 6,
+          sesionesRealizadas: 1,
+          horasDelPeriodo: 1,
+          montoAgendadoDelPeriodo: 50000,
+          ingresoConfirmadoDelPeriodo: 0,
+        }),
+        expect.objectContaining({
+          coacheeId: 'c-nuevo',
+          empresaNombre: 'Ferronor',
+          totalSesiones: null,
+          horasDelPeriodo: 0,
+          montoAgendadoDelPeriodo: 0,
+        }),
+      ]);
     });
 
     it('returns null satisfaccionPromedio when there is no data', async () => {

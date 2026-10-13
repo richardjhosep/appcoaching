@@ -42,8 +42,15 @@ export class Empresa {
   @Column({ default: false })
   pagada: boolean;
 
+  // Valor manual — solo manda cuando `horasFijas` es true. Si no, las horas contratadas de la
+  // empresa se calculan (ver EmpresasService.horasEfectivas): la suma de las sesiones de los
+  // ciclos de sus coachees, que cambia con cada coachee nuevo (feedback del coach, 10-10-2026).
   @Column({ name: 'horas_contratadas', type: 'integer', nullable: true })
   horasContratadas: number | null;
+
+  // Caso excepcional: la empresa contrató un número de horas cerrado que no se mueve.
+  @Column({ name: 'horas_fijas', type: 'boolean', default: false })
+  horasFijas: boolean;
 
   // Término del contrato — fecha calendario, no un instante (por eso `date`, no
   // `timestamptz`: sin hora ni zona horaria que resolver). Alimenta la "cartera de

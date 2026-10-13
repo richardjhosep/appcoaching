@@ -3,6 +3,7 @@ import SkeletonBlock from '../../../components/SkeletonBlock.vue'
 import { ref, onMounted, watch } from 'vue'
 import {
   asignarCompetencia,
+  setTrabajarNiveles,
   getPlanByCoachee,
   solicitarCambios,
   type PlanDesarrollo,
@@ -94,6 +95,22 @@ async function asignar() {
   }
 }
 
+const guardandoNiveles = ref(false)
+
+async function cambiarTrabajarNiveles(valor: boolean) {
+  if (!plan.value) return
+  guardandoNiveles.value = true
+  try {
+    const actualizado = await setTrabajarNiveles(props.coacheeId, valor)
+    plan.value = { ...plan.value, trabajarNiveles: actualizado.trabajarNiveles }
+    await notifySuccess(valor ? 'El plan medirá niveles' : 'El plan ya no mide niveles')
+  } catch (err) {
+    await notifyError('No se pudo cambiar la opción', err instanceof ApiError ? err.message : undefined)
+  } finally {
+    guardandoNiveles.value = false
+  }
+}
+
 async function enviarSolicitudCambios() {
   if (!comentario.value.trim()) return
   acting.value = true
@@ -147,8 +164,25 @@ async function enviarSolicitudCambios() {
           Plan de desarrollo
         </h2>
 
+        <label class="flex items-start gap-2 rounded-lg bg-[var(--color-parchment)]/50 p-3 text-sm">
+          <input
+            type="checkbox"
+            class="mt-0.5"
+            :checked="plan.trabajarNiveles"
+            :disabled="guardandoNiveles"
+            @change="cambiarTrabajarNiveles(($event.target as HTMLInputElement).checked)"
+          >
+          <span>
+            Trabajar con niveles de competencia
+            <span class="block text-xs text-[var(--color-ink)]/55">
+              Si lo desactivas, el coachee define solo objetivo general, competencia asociada y
+              estado actual — sin nivel actual/objetivo ni autoevaluación por nivel.
+            </span>
+          </span>
+        </label>
+
         <div class="grid grid-cols-2 gap-4 border-b border-[var(--color-line)] pb-4 sm:grid-cols-4">
-          <div>
+          <div v-if="plan.trabajarNiveles">
             <p class="font-[family-name:var(--font-mono)] text-[11px] font-semibold uppercase text-[var(--color-ink)]/60">
               Nivel actual
             </p>
@@ -156,7 +190,7 @@ async function enviarSolicitudCambios() {
               {{ plan.nivelActual ?? '—' }}
             </p>
           </div>
-          <div>
+          <div v-if="plan.trabajarNiveles">
             <p class="font-[family-name:var(--font-mono)] text-[11px] font-semibold uppercase text-[var(--color-ink)]/60">
               Nivel objetivo
             </p>

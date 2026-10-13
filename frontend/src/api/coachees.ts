@@ -13,6 +13,7 @@ export interface CoacheeListItem {
   jefeDirecto?: string | null
   objetivoProceso?: string | null
   areaGerencia?: string | null
+  cargo?: string | null
   activo?: boolean
   consentimientoInformado: boolean
   consentimientoFecha: string | null
@@ -28,6 +29,7 @@ export interface CreateCoacheeInput {
   tarifaPropia?: number
   tarifaPropiaMoneda?: Moneda
   areaGerencia?: string
+  cargo?: string
 }
 
 export interface UpdateCoacheeInput {
@@ -38,6 +40,7 @@ export interface UpdateCoacheeInput {
   tarifaPropia?: number
   tarifaPropiaMoneda?: Moneda
   areaGerencia?: string
+  cargo?: string
 }
 
 export interface CreateCoacheeResult {
@@ -59,6 +62,7 @@ export interface Coachee {
   tarifaPropia?: number | null
   tarifaPropiaMoneda?: Moneda
   areaGerencia?: string | null
+  cargo?: string | null
   activo?: boolean
   fotoPath: string | null
   fotoNombre: string | null

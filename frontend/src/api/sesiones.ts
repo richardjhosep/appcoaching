@@ -78,15 +78,27 @@ export function agendarSesion(
 // Sesión fija semanal — una sesión por semana desde `fechaHora`, todas comparten un
 // `recurrenciaId` nuevo (ver Sesion.recurrenciaId). Todo o nada: si alguna choca con una
 // sesión ya agendada, el backend no crea ninguna.
+// 'mensual' = mismo día del mes; 'personalizada' = cada `intervaloSemanas` semanas.
+export type FrecuenciaSerie = 'semanal' | 'quincenal' | 'mensual' | 'personalizada'
+
 export function agendarSerieSesiones(
   coacheeId: string,
   fechaHora: string,
   cantidadSesiones: number,
   linkVideollamada?: string,
+  frecuencia: FrecuenciaSerie = 'semanal',
+  intervaloSemanas?: number,
 ): Promise<Sesion[]> {
   return apiRequest<Sesion[]>('/sesiones/serie', {
     method: 'POST',
-    body: { coacheeId, fechaHora, cantidadSesiones, linkVideollamada: linkVideollamada || undefined },
+    body: {
+      coacheeId,
+      fechaHora,
+      cantidadSesiones,
+      linkVideollamada: linkVideollamada || undefined,
+      frecuencia,
+      intervaloSemanas: frecuencia === 'personalizada' ? intervaloSemanas : undefined,
+    },
   })
 }
 

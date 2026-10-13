@@ -3,6 +3,8 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import AppShell from '../../components/AppShell.vue'
 import Pagination from '../../components/Pagination.vue'
+import TabBar from '../../components/TabBar.vue'
+import NavIcon from '../../components/NavIcon.vue'
 import SkeletonBlock from '../../components/SkeletonBlock.vue'
 import {
   listPlanes,
@@ -28,41 +30,25 @@ const filtro = ref<EstadoPlan | ''>('')
 const page = ref(1)
 const enviandoRecordatorio = reactive<Record<string, boolean>>({})
 
-const estadoConfig: Record<
-  EstadoPlan,
-  { label: string; badge: string; icono: 'borrador' | 'reloj' | 'check' | 'alerta' }
-> = {
-  sin_enviar: {
-    label: 'Sin enviar',
-    badge: 'bg-[var(--color-bronze)]/10 text-[var(--color-bronze)] border border-[var(--color-bronze)]/20',
-    icono: 'borrador',
-  },
-  pendiente_aprobacion: {
-    label: 'Pendiente de aprobación',
-    badge: 'bg-[var(--color-saltup)]/10 text-[var(--color-saltup)] border border-[var(--color-saltup)]/20',
-    icono: 'reloj',
-  },
-  aprobado: {
-    label: 'Aprobado',
-    badge: 'bg-[var(--color-sage)]/10 text-[var(--color-sage)] border border-[var(--color-sage)]/20',
-    icono: 'check',
-  },
-  cambios_solicitados: {
-    label: 'Cambios solicitados',
-    badge: 'bg-[var(--color-danger)]/10 text-[var(--color-danger)] border border-[var(--color-danger)]/20',
-    icono: 'alerta',
-  },
+// `franja` = la barra de color a la izquierda de la tarjeta y el punto junto al estado.
+const estadoConfig: Record<EstadoPlan, { label: string; texto: string; franja: string }> = {
+  sin_enviar: { label: 'Sin enviar', texto: 'text-[var(--color-bronze)]', franja: 'bg-[var(--color-bronze)]' },
+  pendiente_aprobacion: { label: 'Pendiente de aprobación', texto: 'text-[var(--color-saltup)]', franja: 'bg-[var(--color-saltup)]' },
+  aprobado: { label: 'Aprobado', texto: 'text-[var(--color-sage)]', franja: 'bg-[var(--color-sage)]' },
+  cambios_solicitados: { label: 'Cambios solicitados', texto: 'text-[var(--color-danger)]', franja: 'bg-[var(--color-danger)]' },
 }
 
-// Píldoras de filtro rápido con conteo: el <select> de abajo sigue existiendo (oculto
-// visualmente) para no romper los tests que interactúan con él, pero la UI real que ve
-// el coach son estas píldoras — ambas leen y escriben el mismo `filtro`.
-const filtrosPildora: Array<{ value: EstadoPlan | ''; label: string }> = [
-  { value: '', label: 'Todos' },
-  { value: 'cambios_solicitados', label: 'Cambios solicitados' },
-  { value: 'aprobado', label: 'Aprobados' },
-  { value: 'sin_enviar', label: 'Sin enviar' },
-]
+// Pestañas de filtro con conteo (TabBar compartido, mismo estilo que Negocio/Legal): el
+// <select> de abajo sigue existiendo (oculto visualmente) para lectores de pantalla y los
+// tests — ambos leen y escriben el mismo `filtro`.
+const tabsFiltro = computed(() =>
+  ([
+    { key: '', label: 'Todos', icon: 'planes' },
+    { key: 'cambios_solicitados', label: 'Cambios solicitados', icon: 'pizarra' },
+    { key: 'aprobado', label: 'Aprobados', icon: 'trofeo' },
+    { key: 'sin_enviar', label: 'Sin enviar', icon: 'diario' },
+  ] as Array<{ key: EstadoPlan | ''; label: string; icon: string }>).map((t) => ({ ...t, badge: contarEstado(t.key) })),
+)
 
 function contarEstado(estado: EstadoPlan | ''): number {
   return estado === '' ? planes.value.length : planes.value.filter((p) => p.estado === estado).length
@@ -176,9 +162,12 @@ async function recordar(coacheeId: string) {
 
 <template>
   <AppShell>
-    <h1 class="mb-4 font-[family-name:var(--font-heading)] text-xl font-semibold">
+    <h1 class="font-[family-name:var(--font-heading)] text-xl font-semibold">
       Planes de desarrollo
     </h1>
+    <p class="mb-4 text-sm text-[var(--color-ink)]/60">
+      En qué va el plan de cada coachee y quién necesita un empujón.
+    </p>
 
     <!-- Select nativo: accesible para lectores de pantalla y teclado, pero visualmente
          reemplazado por las píldoras de abajo (mismo v-model, misma fuente de verdad). -->
@@ -200,161 +189,82 @@ async function recordar(coacheeId: string) {
       </option>
     </select>
 
-    <div class="mb-4 flex flex-wrap gap-2">
-      <button
-        v-for="f in filtrosPildora"
-        :key="f.value"
-        type="button"
-        class="rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors"
-        :class="filtro === f.value
-          ? 'border-[var(--color-ink)] bg-[var(--color-ink)] text-white'
-          : 'border-[var(--color-line)] bg-white text-[var(--color-ink)]/70 hover:bg-[var(--color-ivory)]'"
-        @click="filtro = f.value"
-      >
-        {{ f.label }} ({{ contarEstado(f.value) }})
-      </button>
-    </div>
+    <TabBar
+      v-model="filtro"
+      class="mb-5"
+      :tabs="tabsFiltro"
+    />
 
     <SkeletonBlock v-if="loading" />
     <p
       v-else-if="planesVisibles.length === 0"
-      class="text-sm text-[var(--color-ink)]/60"
+      class="rounded-2xl border border-dashed border-[var(--color-line)] bg-white/60 px-5 py-10 text-center text-sm text-[var(--color-ink)]/60"
     >
       {{ planes.length === 0 ? 'Aún no hay planes de desarrollo creados.' : 'No hay planes con este filtro.' }}
     </p>
     <template v-else>
-      <div class="mb-4 divide-y divide-[var(--color-line)] rounded-2xl border border-[var(--color-line)] bg-white shadow-sm">
-        <div
+      <!-- Una tarjeta por plan (antes: un solo bloque dividido + banner rojo + 4 píldoras con
+           borde). Ahora: franja de color a la izquierda según el estado, la alerta como una
+           línea de texto con su acción, el objetivo como cita, y los datos del plan como texto
+           con íconos — sin cajas dentro de la tarjeta. Pedido del usuario 2026-10-11. -->
+      <ul class="mb-4 space-y-3">
+        <li
           v-for="p in planesPagina"
           :key="p.id"
           role="button"
           tabindex="0"
-          class="flex cursor-pointer flex-col gap-3 p-5 transition-colors hover:bg-[var(--color-ivory)]/50"
+          class="group relative cursor-pointer overflow-hidden rounded-2xl border border-[var(--color-line)] bg-white p-5 pl-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
           @click="verDetalle(p.coacheeId)"
           @keyup.enter="verDetalle(p.coacheeId)"
         >
-          <div class="flex flex-wrap items-start gap-3">
+          <span
+            class="absolute inset-y-0 left-0 w-1"
+            :class="estadoConfig[p.estado].franja"
+            aria-hidden="true"
+          />
+
+          <div class="flex items-start gap-3">
             <div
-              class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[var(--color-line)] bg-[var(--color-parchment)] font-[family-name:var(--font-mono)] text-xs font-semibold text-[var(--color-ink)]"
+              class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--color-ink)] text-xs font-semibold text-[var(--color-parchment)]"
+              aria-hidden="true"
             >
               {{ iniciales(p.coachee?.nombre) }}
             </div>
 
             <div class="min-w-0 flex-1">
-              <p class="font-[family-name:var(--font-heading)] font-semibold text-[var(--color-ink)]">
-                {{ p.coachee?.nombre ?? p.coacheeId }}
-              </p>
-              <p class="truncate font-[family-name:var(--font-mono)] text-xs text-[var(--color-ink)]/50">
+              <div class="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+                <p class="font-[family-name:var(--font-heading)] font-semibold text-[var(--color-ink)]">
+                  {{ p.coachee?.nombre ?? p.coacheeId }}
+                </p>
+                <span
+                  class="inline-flex items-center gap-1.5 text-xs font-medium"
+                  :class="estadoConfig[p.estado].texto"
+                >
+                  <span
+                    class="h-1.5 w-1.5 rounded-full"
+                    :class="estadoConfig[p.estado].franja"
+                    aria-hidden="true"
+                  />
+                  {{ estadoConfig[p.estado].label }}
+                </span>
+              </div>
+              <p class="truncate text-xs text-[var(--color-ink)]/50">
                 {{ contactoLinea(p) }}
               </p>
             </div>
 
-            <div class="flex shrink-0 flex-col items-end gap-1">
-              <span
-                class="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold"
-                :class="estadoConfig[p.estado].badge"
-              >
-                <svg
-                  width="13"
-                  height="13"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                >
-                  <template v-if="estadoConfig[p.estado].icono === 'borrador'">
-                    <path d="M6 3h9l4 4v14H6z" /><path d="M15 3v4h4" />
-                  </template>
-                  <template v-else-if="estadoConfig[p.estado].icono === 'reloj'">
-                    <circle
-                      cx="12"
-                      cy="12"
-                      r="9"
-                    /><path d="M12 7v5l3 3" />
-                  </template>
-                  <template v-else-if="estadoConfig[p.estado].icono === 'check'">
-                    <circle
-                      cx="12"
-                      cy="12"
-                      r="9"
-                    /><path d="M8 12l3 3 5-6" />
-                  </template>
-                  <template v-else>
-                    <path d="M12 3l10 18H2z" /><path d="M12 9v5" /><path d="M12 17h.01" />
-                  </template>
-                </svg>
-                {{ estadoConfig[p.estado].label }}
-              </span>
-              <span
-                v-if="textoCambiosSolicitados(p)"
-                class="text-[11px] text-[var(--color-danger)]"
-              >
-                {{ textoCambiosSolicitados(p) }}
-              </span>
-              <span class="text-[11px] text-[var(--color-ink)]/40">
-                Actualizado el {{ new Date(p.updatedAt).toLocaleDateString('es-CL') }}
-              </span>
-            </div>
+            <span class="hidden shrink-0 text-[11px] text-[var(--color-ink)]/40 sm:block">
+              Actualizado el {{ new Date(p.updatedAt).toLocaleDateString('es-CL') }}
+            </span>
           </div>
 
           <div
-            v-if="textoSinEnviar(p)"
-            class="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[var(--color-danger)]/20 bg-[var(--color-danger)]/10 p-2.5 text-xs font-medium text-[var(--color-danger)]"
+            v-if="textoSinEnviar(p) || textoCambiosSolicitados(p)"
+            class="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs"
           >
-            <span class="flex items-center gap-1.5">
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                class="shrink-0"
-              ><path d="M12 3l10 18H2z" /><path d="M12 9v5" /><path d="M12 17h.01" /></svg>
-              {{ textoSinEnviar(p) }}
-            </span>
-            <button
-              type="button"
-              class="flex shrink-0 items-center gap-1.5 rounded-lg bg-[var(--color-danger)] px-2.5 py-1 text-xs font-medium text-white disabled:opacity-60"
-              :disabled="enviandoRecordatorio[p.coacheeId]"
-              @click.stop="recordar(p.coacheeId)"
-            >
-              <svg
-                width="13"
-                height="13"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                class="shrink-0"
-              ><path d="M22 2L11 13" /><path d="M22 2l-7 20-4-9-9-4 20-7z" /></svg>
-              {{ enviandoRecordatorio[p.coacheeId] ? 'Enviando…' : 'Enviar recordatorio' }}
-            </button>
-          </div>
-
-          <p
-            v-if="p.objetivoGeneral"
-            class="line-clamp-2 text-sm text-[var(--color-ink)]/70"
-          >
-            {{ p.objetivoGeneral }}
-          </p>
-          <p
-            v-else
-            class="text-sm italic text-[var(--color-ink)]/40"
-          >
-            Sin objetivo general definido todavía.
-          </p>
-
-          <div class="flex flex-wrap items-center gap-2 text-xs">
             <span
-              v-if="p.competencia"
-              class="flex items-center gap-1 rounded-full border border-[var(--color-saltup)]/20 bg-[var(--color-ivory)] px-2.5 py-1 font-medium text-[var(--color-saltup)]"
+              v-if="textoSinEnviar(p)"
+              class="inline-flex items-center gap-1.5 font-medium text-[var(--color-danger)]"
             >
               <svg
                 width="13"
@@ -362,7 +272,7 @@ async function recordar(coacheeId: string) {
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
-                stroke-width="1.8"
+                stroke-width="2"
                 stroke-linecap="round"
                 stroke-linejoin="round"
                 class="shrink-0"
@@ -370,43 +280,76 @@ async function recordar(coacheeId: string) {
                 cx="12"
                 cy="12"
                 r="9"
-              /><circle
-                cx="12"
-                cy="12"
-                r="5"
-              /><circle
-                cx="12"
-                cy="12"
-                r="1"
-              /></svg>
+              /><path d="M12 7v5l3 3" /></svg>
+              {{ textoSinEnviar(p) }}
+            </span>
+            <button
+              v-if="textoSinEnviar(p)"
+              type="button"
+              class="inline-flex items-center gap-1 rounded-full bg-[var(--color-danger)]/10 px-2.5 py-0.5 font-medium text-[var(--color-danger)] transition-colors hover:bg-[var(--color-danger)]/20 disabled:opacity-60"
+              :disabled="enviandoRecordatorio[p.coacheeId]"
+              @click.stop="recordar(p.coacheeId)"
+            >
+              <NavIcon
+                name="correo"
+                :size="12"
+              />
+              {{ enviandoRecordatorio[p.coacheeId] ? 'Enviando…' : 'Enviar recordatorio' }}
+            </button>
+            <span
+              v-if="textoCambiosSolicitados(p)"
+              class="inline-flex items-center gap-1.5 font-medium text-[var(--color-danger)]"
+            >
+              {{ textoCambiosSolicitados(p) }}
+            </span>
+          </div>
+
+          <p
+            v-if="p.objetivoGeneral"
+            class="mt-3 line-clamp-2 border-l-2 border-[var(--color-sage)]/50 pl-3 text-sm text-[var(--color-ink)]/75"
+          >
+            {{ p.objetivoGeneral }}
+          </p>
+          <p
+            v-else
+            class="mt-3 text-sm italic text-[var(--color-ink)]/40"
+          >
+            Sin objetivo general definido todavía.
+          </p>
+
+          <div class="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-[var(--color-ink)]/60">
+            <span
+              v-if="p.competencia"
+              class="inline-flex items-center gap-1.5 font-medium text-[var(--color-saltup)]"
+            >
+              <NavIcon
+                name="objetivo"
+                :size="14"
+              />
               {{ p.competencia.nombre }}
-              <span v-if="p.nivelActual != null || p.nivelObjetivo != null">
+              <span
+                v-if="p.trabajarNiveles && (p.nivelActual != null || p.nivelObjetivo != null)"
+                class="font-normal text-[var(--color-ink)]/50"
+              >
                 · Nivel {{ p.nivelActual ?? '—' }} → {{ p.nivelObjetivo ?? '—' }}
               </span>
             </span>
 
-            <span class="flex items-center gap-1 rounded-full border border-[var(--color-line)] bg-[var(--color-parchment)] px-2.5 py-1 text-[var(--color-ink)]/70">
-              <svg
-                width="13"
-                height="13"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.8"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                class="shrink-0"
-              ><path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" /></svg>
+            <span class="inline-flex items-center gap-1.5">
+              <NavIcon
+                name="lista"
+                :size="14"
+              />
               {{ objetivosCount(p) }} objetivo{{ objetivosCount(p) === 1 ? '' : 's' }}
             </span>
 
             <span
               v-if="actividadesTotal(p) > 0"
-              class="flex items-center gap-1.5 rounded-full border border-[var(--color-line)] bg-[var(--color-parchment)] px-2.5 py-1 text-[var(--color-ink)]/70"
+              class="inline-flex items-center gap-2"
             >
               {{ actividadesCompletadas(p) }}/{{ actividadesTotal(p) }} actividades
               <span
-                class="h-1.5 w-16 overflow-hidden rounded-full"
+                class="h-1.5 w-20 overflow-hidden rounded-full"
                 :style="{ backgroundColor: coloresNivel[nivelProgreso(actividadesPorcentaje(p))].suave }"
               >
                 <span
@@ -421,30 +364,21 @@ async function recordar(coacheeId: string) {
 
             <span
               v-if="p.plazo"
-              class="flex items-center gap-1 rounded-full border border-[var(--color-line)] bg-[var(--color-parchment)] px-2.5 py-1 text-[var(--color-ink)]/70"
+              class="inline-flex items-center gap-1.5"
             >
-              <svg
-                width="13"
-                height="13"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.8"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                class="shrink-0"
-              ><rect
-                x="3"
-                y="5"
-                width="18"
-                height="16"
-                rx="2"
-              /><path d="M3 10h18" /><path d="M8 3v4" /><path d="M16 3v4" /></svg>
+              <NavIcon
+                name="sesiones"
+                :size="14"
+              />
               Plazo: {{ p.plazo }}
             </span>
+
+            <span class="ml-auto hidden items-center gap-1 font-medium text-[var(--color-sage)] opacity-0 transition-opacity group-hover:opacity-100 sm:inline-flex">
+              Ver plan <span aria-hidden="true">→</span>
+            </span>
           </div>
-        </div>
-      </div>
+        </li>
+      </ul>
 
       <Pagination
         :page="page"

@@ -35,6 +35,7 @@ const plan: PlanDesarrollo = {
   competencia: { id: 'comp-1', nombre: 'Liderazgo situacional' },
   nivelActual: 2,
   nivelObjetivo: 4,
+  trabajarNiveles: true,
   plazo: '3 meses',
   descripcionEstadoActual: null,
   objetivoGeneral: 'Delegar con mayor confianza en el equipo.',

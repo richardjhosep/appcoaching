@@ -13,6 +13,8 @@ import { UpdateSesionDto } from './dto/update-sesion.dto';
 import { randomUUID } from 'crypto';
 import { CoacheesService } from '../coachees/coachees.service';
 import { SESION_DURACION_MINUTOS } from './sesiones.constants';
+import { fechasDeSerie } from './serie-fechas.util';
+import { FrecuenciaSerie } from './enums/frecuencia-serie.enum';
 
 export type SesionSinNotasPrivadas = Omit<Sesion, 'notasPrivadas'>;
 
@@ -82,8 +84,8 @@ export class SesionesService {
   }
 
   /**
-   * Sesión fija semanal — genera `cantidadSesiones` filas de `Sesion`, una por semana desde
-   * `fechaHora`, todas compartiendo un `recurrenciaId` nuevo. Todo o nada: si CUALQUIERA de
+   * Sesión fija recurrente (semanal, quincenal, mensual o cada N semanas) — genera
+   * `cantidadSesiones` filas de `Sesion` desde `fechaHora` (ver fechasDeSerie), todas compartiendo un `recurrenciaId` nuevo. Todo o nada: si CUALQUIERA de
    * las fechas generadas choca con una sesión ya agendada, no se crea ninguna — dejar la mitad
    * de una serie a medio crear sería más confuso que simplemente rechazarla y que el coach
    * ajuste el horario elegido.
@@ -92,10 +94,11 @@ export class SesionesService {
     if (!(await this.coachees.exists(dto.coacheeId))) {
       throw new NotFoundException('Coachee no encontrado.');
     }
-    const primera = new Date(dto.fechaHora);
-    const fechas: Date[] = Array.from(
-      { length: dto.cantidadSesiones },
-      (_, i) => new Date(primera.getTime() + i * 7 * 24 * 60 * 60_000),
+    const fechas = fechasDeSerie(
+      new Date(dto.fechaHora),
+      dto.cantidadSesiones,
+      dto.frecuencia ?? FrecuenciaSerie.SEMANAL,
+      dto.intervaloSemanas,
     );
     for (const fecha of fechas) {
       if (await this.hayConflictoDeHorario(fecha)) {

@@ -4,6 +4,7 @@ import AppShell from '../../components/AppShell.vue'
 import SectionCard from '../../components/SectionCard.vue'
 import SkeletonBlock from '../../components/SkeletonBlock.vue'
 import TabBar from '../../components/TabBar.vue'
+import DocumentosCoacheePanel from '../../components/DocumentosCoacheePanel.vue'
 import { getMyCoachee, type Coachee } from '../../api/coachees'
 import {
   getMisDocumentosLegales,
@@ -88,6 +89,17 @@ const formatoCLP = new Intl.NumberFormat('es-CL', { style: 'currency', currency:
       v-else-if="coachee && documentos"
       class="space-y-4"
     >
+      <SectionCard
+        title="Documentos de mi proceso"
+        icon="legal"
+      >
+        <p class="mb-3 text-xs text-[var(--color-ink)]/50">
+          CV, evaluaciones de desempeño, descriptor de cargo… Lo que subas aquí lo ven tu coach y
+          tu empresa, y lo que ellos suban lo ves tú — así nadie tiene que volver a cargarlo.
+        </p>
+        <DocumentosCoacheePanel />
+      </SectionCard>
+
       <SectionCard
         title="Mis documentos"
         icon="legal"

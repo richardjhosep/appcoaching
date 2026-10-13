@@ -1,4 +1,10 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
@@ -41,10 +47,59 @@ export class AuthService {
    * profile (the only place a "nombre" is captured today); coach/empresa
    * accounts have no name field yet, so they fall back to null.
    */
-  async getProfile(
-    authUser: AuthenticatedUser,
-  ): Promise<
-    AuthenticatedUser & { nombre: string | null; mustChangePassword: boolean }
+  esSuperadmin(email: string): boolean {
+    return (this.config.get<string[]>('superadminEmails') ?? []).includes(
+      email.toLowerCase(),
+    );
+  }
+
+  /**
+   * "Ver como": token de acceso del coachee/empresa elegido, marcado con quién lo pidió.
+   * Corto (30 min) y sin refresh token — al vencer, el frontend vuelve a la sesión propia.
+   * Solo lectura: lo hace cumplir JwtStrategy.
+   */
+  async verComo(
+    actor: AuthenticatedUser,
+    targetUserId: string,
+  ): Promise<{ accessToken: string }> {
+    if (actor.impersonadoPor || !this.esSuperadmin(actor.email)) {
+      throw new ForbiddenException('No tienes acceso a "Ver como".');
+    }
+    const target = await this.users.findById(targetUserId);
+    if (!target) {
+      throw new NotFoundException('Usuario no encontrado.');
+    }
+    if (target.role === Role.COACH) {
+      throw new BadRequestException(
+        '"Ver como" es solo para cuentas de coachee o empresa.',
+      );
+    }
+    const payload: AccessTokenPayload = {
+      sub: target.id,
+      email: target.email,
+      role: target.role,
+      empresaId: target.empresaId,
+      impersonadoPor: actor.id,
+    };
+    const accessToken = this.jwt.sign(payload, {
+      secret: this.config.get<string>('jwt.accessSecret'),
+      expiresIn: 30 * 60,
+    });
+    await this.audit.record('VER_COMO_INICIADO', {
+      userId: actor.id,
+      targetType: 'User',
+      targetId: target.id,
+      targetLabel: target.email,
+    });
+    return { accessToken };
+  }
+
+  async getProfile(authUser: AuthenticatedUser): Promise<
+    AuthenticatedUser & {
+      nombre: string | null;
+      mustChangePassword: boolean;
+      superadmin: boolean;
+    }
   > {
     let nombre: string | null = null;
     if (authUser.role === Role.COACHEE) {
@@ -55,7 +110,11 @@ export class AuthService {
     return {
       ...authUser,
       nombre,
-      mustChangePassword: user?.mustChangePassword ?? false,
+      // En una sesión "Ver como" nunca se cambia la contraseña del usuario mirado.
+      mustChangePassword: authUser.impersonadoPor
+        ? false
+        : (user?.mustChangePassword ?? false),
+      superadmin: !authUser.impersonadoPor && this.esSuperadmin(authUser.email),
     };
   }
 

@@ -16,13 +16,16 @@ import {
   setCompetenciasDeEmpresa,
   type Empresa,
 } from '../../api/empresas'
-import { listCompetencias, type Competencia } from '../../api/competencias'
+import { listCompetenciasDeEmpresaParaCoach, type Competencia } from '../../api/competencias'
 import { getKpisDeEmpresa, getEncuestasDeEmpresa, type KpisEmpresa, type Encuesta } from '../../api/satisfaccion'
 import { ApiError } from '../../api/client'
 import { notifyError, notifySuccess, confirmDialog } from '../../lib/notify'
 import { dentroDeRango } from '../../lib/dateRange'
 import { formatCLP, formatUF, type Moneda } from '../../lib/moneda'
 import TarifaInput from '../../components/TarifaInput.vue'
+import { listUsers, type UserAccount } from '../../api/users'
+import { useAuthStore } from '../../stores/auth'
+import { useRouter } from 'vue-router'
 
 const PAGE_SIZE = 12
 
@@ -36,15 +39,49 @@ const fechaDesde = ref('')
 const fechaHasta = ref('')
 const page = ref(1)
 
+// Se carga por empresa al abrir el editor: catálogo global del coach + el manual propio que
+// esa empresa cargó desde su portal (empresaId no nulo).
 const competenciasDisponibles = ref<Competencia[]>([])
+const competenciasDeLaEmpresa = computed(() => competenciasDisponibles.value.filter((c) => c.empresaId))
+const competenciasDelCatalogo = computed(() => competenciasDisponibles.value.filter((c) => !c.empresaId))
 
 async function load() {
   loading.value = true
-  const [data, comps] = await Promise.all([listEmpresas(), listCompetencias()])
+  const [data, usuarios] = await Promise.all([
+    listEmpresas(),
+    // Solo el superadmin necesita saber qué usuario tiene cada empresa (para "Ver como").
+    auth.user?.superadmin ? listUsers().catch(() => [] as UserAccount[]) : Promise.resolve([] as UserAccount[]),
+  ])
   data.sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? ''))
   empresas.value = data
-  competenciasDisponibles.value = comps
+  usuariosEmpresa.value = usuarios.filter((u) => u.role === 'empresa')
   loading.value = false
+}
+
+// --- "Ver como" (solo superadmin): entra al portal de la empresa en solo lectura usando una
+// de sus cuentas de usuario (todas ven el mismo portal); se prefiere una activa.
+const auth = useAuthStore()
+const router = useRouter()
+const usuariosEmpresa = ref<UserAccount[]>([])
+const entrandoVerComo = ref<string | null>(null)
+
+function usuarioDeEmpresa(empresaId: string): UserAccount | null {
+  const deLaEmpresa = usuariosEmpresa.value.filter((u) => u.empresaId === empresaId)
+  return deLaEmpresa.find((u) => u.isActive) ?? deLaEmpresa[0] ?? null
+}
+
+async function verComoEmpresa(empresa: Empresa) {
+  const usuario = usuarioDeEmpresa(empresa.id)
+  if (!usuario) return
+  entrandoVerComo.value = empresa.id
+  try {
+    await auth.iniciarVerComo(usuario.id, '/coach/empresas')
+    await router.push('/')
+  } catch (err) {
+    await notifyError('No se pudo entrar en modo "Ver como"', err instanceof ApiError ? err.message : 'Ocurrió un error inesperado.')
+  } finally {
+    entrandoVerComo.value = null
+  }
 }
 
 onMounted(load)
@@ -111,6 +148,7 @@ const form = reactive({
   tarifaHora: null as number | null,
   tarifaHoraMoneda: 'clp' as Moneda,
   horasContratadas: null as number | null,
+  horasFijas: false,
   pagada: false,
   fechaInicio: '',
   fechaFin: '',
@@ -121,6 +159,7 @@ const serverErrors = ref<Record<string, string>>({})
 // Competencias prioritarias/contratadas — solo tiene sentido una vez que la empresa ya
 // existe (mismo criterio que horasContratadas/pagada, ocultos al crear).
 const competenciasSeleccionadas = ref<string[]>([])
+const horasCalculadas = ref<number | null>(null)
 function toggleCompetencia(competenciaId: string) {
   competenciasSeleccionadas.value = competenciasSeleccionadas.value.includes(competenciaId)
     ? competenciasSeleccionadas.value.filter((id) => id !== competenciaId)
@@ -133,6 +172,7 @@ function abrirCrear() {
   form.tarifaHora = null
   form.tarifaHoraMoneda = 'clp'
   form.horasContratadas = null
+  form.horasFijas = false
   form.pagada = false
   form.fechaInicio = ''
   form.fechaFin = ''
@@ -147,7 +187,12 @@ async function abrirEditar(empresa: Empresa) {
   form.nombre = empresa.nombre
   form.tarifaHora = empresa.tarifaHora
   form.tarifaHoraMoneda = empresa.tarifaHoraMoneda
-  form.horasContratadas = empresa.horasContratadas
+  // Al activar "horas fijas" se parte del valor que hoy rige (si no hay uno manual guardado).
+  form.horasContratadas = empresa.horasFijas
+    ? empresa.horasContratadas
+    : (empresa.horasContratadas ?? empresa.horasContratadasEfectivas ?? null)
+  form.horasFijas = empresa.horasFijas
+  horasCalculadas.value = empresa.horasFijas ? null : (empresa.horasContratadasEfectivas ?? 0)
   form.pagada = empresa.pagada
   form.fechaInicio = empresa.fechaInicio ?? ''
   form.fechaFin = empresa.fechaFin ?? ''
@@ -155,9 +200,14 @@ async function abrirEditar(empresa: Empresa) {
   errors.tarifaHora = undefined
   serverErrors.value = {}
   competenciasSeleccionadas.value = []
+  competenciasDisponibles.value = []
   modalOpen.value = true
-  const actuales = await getCompetenciasDeEmpresa(empresa.id)
+  const [actuales, disponibles] = await Promise.all([
+    getCompetenciasDeEmpresa(empresa.id),
+    listCompetenciasDeEmpresaParaCoach(empresa.id),
+  ])
   competenciasSeleccionadas.value = actuales.map((c) => c.competenciaId)
+  competenciasDisponibles.value = disponibles
 }
 
 function validar(): boolean {
@@ -183,7 +233,9 @@ async function guardar() {
           nombre: form.nombre,
           tarifaHora: form.tarifaHora!,
           tarifaHoraMoneda: form.tarifaHoraMoneda,
-          horasContratadas: form.horasContratadas,
+          horasFijas: form.horasFijas,
+          // El valor manual solo se manda cuando rige — si no, se conserva el guardado.
+          ...(form.horasFijas ? { horasContratadas: form.horasContratadas ?? 0 } : {}),
           pagada: form.pagada,
           fechaInicio: form.fechaInicio || null,
           fechaFin: form.fechaFin || null,
@@ -380,7 +432,11 @@ async function eliminar(empresa: Empresa) {
                 {{ formatoTarifa(e) }}
               </td>
               <td class="px-4 py-3">
-                {{ e.horasContratadas ?? '—' }}
+                {{ e.horasContratadasEfectivas ?? e.horasContratadas ?? '—' }}
+                <span
+                  v-if="!e.horasFijas"
+                  class="block text-[10px] text-[var(--color-ink)]/45"
+                >según sesiones</span>
               </td>
               <td class="px-4 py-3">
                 {{ e.pagada ? 'Sí' : 'No' }}
@@ -401,7 +457,34 @@ async function eliminar(empresa: Empresa) {
                 {{ e.createdAt ? new Date(e.createdAt).toLocaleDateString('es-CL') : '—' }}
               </td>
               <td class="px-4 py-3">
-                <div class="flex gap-2">
+                <div class="flex items-center gap-2">
+                  <button
+                    v-if="auth.user?.superadmin"
+                    type="button"
+                    class="inline-flex h-8 items-center gap-1.5 rounded-lg bg-[var(--color-saltup)] px-2.5 text-xs font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+                    :disabled="!usuarioDeEmpresa(e.id) || entrandoVerComo === e.id"
+                    :title="usuarioDeEmpresa(e.id)
+                      ? `Ver el portal de ${e.nombre} tal como lo ve la empresa (solo lectura)`
+                      : 'Esta empresa todavía no tiene una cuenta de usuario (créala en Usuarios)'"
+                    @click="verComoEmpresa(e)"
+                  >
+                    <svg
+                      width="13"
+                      height="13"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      aria-hidden="true"
+                    ><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7Z" /><circle
+                      cx="12"
+                      cy="12"
+                      r="3"
+                    /></svg>
+                    Ver como
+                  </button>
                   <IconButton
                     icon="ver"
                     title="Ver satisfacción"
@@ -480,18 +563,40 @@ async function eliminar(empresa: Empresa) {
           </label>
         </div>
 
-        <label
+        <div
           v-if="editando"
-          class="block text-sm"
+          class="space-y-2 text-sm"
         >
-          Horas contratadas
+          <p>Horas contratadas</p>
+          <label class="flex items-start gap-2 text-xs">
+            <input
+              v-model="form.horasFijas"
+              type="checkbox"
+              class="mt-0.5"
+            >
+            <span>
+              Horas fijas por contrato
+              <span class="block text-[var(--color-ink)]/50">
+                Solo si la empresa contrató un número cerrado de horas. Si no, se calculan solas
+                como la suma de las sesiones de sus coachees y cambian con cada coachee nuevo.
+              </span>
+            </span>
+          </label>
           <input
+            v-if="form.horasFijas"
             v-model.number="form.horasContratadas"
             type="number"
             min="0"
-            class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+            aria-label="Horas contratadas fijas"
+            class="w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
           >
-        </label>
+          <p
+            v-else
+            class="rounded-lg bg-[var(--color-parchment)]/60 px-3 py-2 font-[family-name:var(--font-mono)]"
+          >
+            {{ horasCalculadas ?? '—' }} h <span class="font-[family-name:var(--font-body)] text-xs text-[var(--color-ink)]/50">(según sesiones de sus coachees)</span>
+          </p>
+        </div>
 
         <label
           v-if="editando"
@@ -510,22 +615,51 @@ async function eliminar(empresa: Empresa) {
         >
           Competencias prioritarias/contratadas
           <p class="mb-2 mt-1 text-xs text-[var(--color-ink)]/50">
-            Independiente de "Competencias trabajadas" del dashboard (que se deriva de los
-            planes de desarrollo reales) — esto es lo que la empresa definió de antemano.
+            Las que marques son las que los coachees de esta empresa podrán asociar a su plan,
+            junto con el manual propio de la empresa (si lo cargó).
           </p>
-          <div class="grid max-h-40 gap-1 overflow-y-auto rounded-lg border border-[var(--color-line)] p-2 sm:grid-cols-2">
-            <label
-              v-for="c in competenciasDisponibles"
-              :key="c.id"
-              class="flex items-center gap-2 text-xs"
-            >
-              <input
-                type="checkbox"
-                :checked="competenciasSeleccionadas.includes(c.id)"
-                @change="toggleCompetencia(c.id)"
+          <div class="max-h-56 space-y-2 overflow-y-auto rounded-lg border border-[var(--color-line)] p-2">
+            <div v-if="competenciasDeLaEmpresa.length > 0">
+              <p class="mb-1 text-[11px] font-semibold uppercase tracking-wide text-[var(--color-saltup)]">
+                Manual de la empresa
+              </p>
+              <div class="grid gap-1 sm:grid-cols-2">
+                <label
+                  v-for="c in competenciasDeLaEmpresa"
+                  :key="c.id"
+                  class="flex items-center gap-2 text-xs"
+                >
+                  <input
+                    type="checkbox"
+                    :checked="competenciasSeleccionadas.includes(c.id)"
+                    @change="toggleCompetencia(c.id)"
+                  >
+                  {{ c.nombre }}
+                </label>
+              </div>
+            </div>
+            <div>
+              <p
+                v-if="competenciasDeLaEmpresa.length > 0"
+                class="mb-1 text-[11px] font-semibold uppercase tracking-wide text-[var(--color-ink)]/50"
               >
-              {{ c.nombre }}
-            </label>
+                Mi catálogo
+              </p>
+              <div class="grid gap-1 sm:grid-cols-2">
+                <label
+                  v-for="c in competenciasDelCatalogo"
+                  :key="c.id"
+                  class="flex items-center gap-2 text-xs"
+                >
+                  <input
+                    type="checkbox"
+                    :checked="competenciasSeleccionadas.includes(c.id)"
+                    @change="toggleCompetencia(c.id)"
+                  >
+                  {{ c.nombre }}
+                </label>
+              </div>
+            </div>
           </div>
         </div>
 

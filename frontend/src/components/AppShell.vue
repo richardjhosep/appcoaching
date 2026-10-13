@@ -169,8 +169,18 @@ function closeOnMobileNav() {
 
 async function handleLogout() {
   userPanelOpen.value = false
+  if (auth.enVerComo) {
+    await salirVerComo()
+    return
+  }
   await auth.logout()
   await router.push({ name: 'login' })
+}
+
+// --- "Ver como" (solo superadmin) ---
+const nombreVisto = computed(() => auth.user?.nombre ?? auth.user?.email ?? '')
+async function salirVerComo() {
+  await router.push(await auth.salirVerComo())
 }
 
 // --- Cambiar contraseña ---
@@ -287,7 +297,43 @@ async function guardarPassword() {
       class="print:pl-0!"
       :class="{ 'sm:pl-64': sidebarOpen }"
     >
-      <header class="sticky top-0 z-20 flex items-center gap-3 border-b border-[var(--color-line)] bg-[var(--color-ivory)] px-4 py-3 sm:px-8 print:hidden">
+      <!-- Franja fija mientras el superadmin mira la plataforma como otro usuario: deja claro
+           que es solo lectura y da la salida a un clic. -->
+      <div
+        v-if="auth.enVerComo"
+        class="sticky top-0 z-30 flex h-8 flex-wrap items-center justify-center gap-x-3 overflow-hidden bg-[var(--color-saltup)] px-4 text-center text-xs font-medium text-white print:hidden"
+        role="status"
+      >
+        <span class="inline-flex items-center gap-1.5">
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          ><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7Z" /><circle
+            cx="12"
+            cy="12"
+            r="3"
+          /></svg>
+          Estás viendo como <strong>{{ nombreVisto }}</strong> ({{ auth.user ? rolLabels[auth.user.role] : '' }}) · solo lectura
+        </span>
+        <button
+          type="button"
+          class="rounded-full bg-white/20 px-3 py-0.5 font-semibold hover:bg-white/30"
+          @click="salirVerComo"
+        >
+          Volver a mi cuenta
+        </button>
+      </div>
+      <header
+        class="sticky z-20 flex items-center gap-3 border-b"
+        :class="[auth.enVerComo ? 'top-8' : 'top-0', 'border-[var(--color-line)] bg-[var(--color-ivory)] px-4 py-3 sm:px-8 print:hidden']"
+      >
         <button
           v-if="!sidebarOpen"
           aria-label="Abrir menú"

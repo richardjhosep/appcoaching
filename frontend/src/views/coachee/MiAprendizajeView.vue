@@ -163,6 +163,7 @@ function formatFecha(fecha: string): string {
         <GraficoProgreso
           :puntos="puntos"
           :avance="avance"
+          compacto
         />
         <button
           class="mt-3 rounded-full border border-[var(--color-line)] px-3 py-1 text-xs hover:bg-[var(--color-parchment)]/60"
@@ -336,7 +337,7 @@ function formatFecha(fecha: string): string {
               :key="i"
               class="text-sm"
             >
-              <p class="line-clamp-2 text-[var(--color-ink)]/80">
+              <p class="line-clamp-2 whitespace-pre-line text-[var(--color-ink)]/80">
                 {{ apunte.contenido }}
               </p>
               <p class="text-xs text-[var(--color-ink)]/45">

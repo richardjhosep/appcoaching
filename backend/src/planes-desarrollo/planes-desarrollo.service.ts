@@ -172,6 +172,18 @@ export class PlanesDesarrolloService {
     return this.withObjetivos(plan);
   }
 
+  async setTrabajarNiveles(
+    coacheeId: string,
+    trabajarNiveles: boolean,
+    actor: AuthenticatedUser,
+  ): Promise<PlanDesarrollo> {
+    await this.coachees.findOneForActor(coacheeId, actor);
+    const plan = await this.findOrCreateForCoachee(coacheeId);
+    plan.trabajarNiveles = trabajarNiveles;
+    await this.planes.save(plan);
+    return this.withObjetivos(plan);
+  }
+
   // No requiere aprobación del coach: enviar marca el plan como completo y queda
   // aprobado de inmediato (el coach puede seguir dejando comentarios en cualquier
   // momento vía solicitarCambios, pero ya no bloquea el avance del coachee).
@@ -179,9 +191,14 @@ export class PlanesDesarrolloService {
     const coacheeId = await this.resolveCoacheeId(actorUserId);
     const plan = await this.findOrCreateForCoachee(coacheeId);
 
-    if (!plan.competenciaId || !plan.nivelObjetivo || !plan.objetivoGeneral) {
+    if (!plan.competenciaId || !plan.objetivoGeneral) {
       throw new BadRequestException(
-        'Para enviar el plan debes definir competencia, nivel objetivo y objetivo general.',
+        'Para enviar el plan debes definir la competencia asociada y el objetivo general.',
+      );
+    }
+    if (plan.trabajarNiveles && !plan.nivelObjetivo) {
+      throw new BadRequestException(
+        'Para enviar el plan debes definir el nivel objetivo de la competencia.',
       );
     }
     const objetivosCount = await this.objetivos.count({

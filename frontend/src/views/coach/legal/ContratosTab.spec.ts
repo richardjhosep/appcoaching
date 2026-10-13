@@ -151,8 +151,9 @@ describe('ContratosTab', () => {
     await flushPromises()
 
     const text = wrapper.text()
-    expect(text).toContain('1 contrato pendiente')
-    expect(text).toContain('2 NDA pendientes')
+    // Cifra grande + etiqueta en su propia línea (resumen tipo KPI).
+    expect(text).toMatch(/1\s*contrato pendiente/)
+    expect(text).toMatch(/2\s*NDA pendientes/)
     expect(text).toContain('coachees sin consentimiento')
   })
 

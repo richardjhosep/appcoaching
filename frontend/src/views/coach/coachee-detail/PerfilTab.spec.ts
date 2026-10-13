@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
+import { createPinia, setActivePinia } from 'pinia'
 import PerfilTab from './PerfilTab.vue'
 import type { Coachee } from '../../../api/coachees'
 
@@ -12,6 +13,11 @@ vi.mock('../../../api/coachees', async () => {
     solicitarConsentimiento: vi.fn(),
     obtenerUrlFotoDeCoachee: vi.fn(),
   }
+})
+// El panel de documentos compartidos pide su propia lista al montar.
+vi.mock('../../../api/documentosCoachee', async () => {
+  const actual = await vi.importActual<typeof import('../../../api/documentosCoachee')>('../../../api/documentosCoachee')
+  return { ...actual, listarDocumentosCoachee: vi.fn().mockResolvedValue([]) }
 })
 vi.mock('../../../lib/notify', () => ({
   notifySuccess: vi.fn(),
@@ -40,6 +46,8 @@ const coachee: Coachee = {
 
 describe('PerfilTab', () => {
   beforeEach(() => {
+    // DocumentosCoacheePanel usa el store de auth.
+    setActivePinia(createPinia())
     vi.mocked(getCoachee).mockResolvedValue(coachee)
     vi.mocked(setConsentimiento).mockResolvedValue({
       id: 'c1',

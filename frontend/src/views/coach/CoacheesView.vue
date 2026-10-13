@@ -8,6 +8,7 @@ import IconButton from '../../components/IconButton.vue'
 import SkeletonBlock from '../../components/SkeletonBlock.vue'
 import { createCoachee, deleteCoachee, listCoachees, setCoacheeActivo, updateCoachee, type CoacheeListItem } from '../../api/coachees'
 import { listEmpresas, type Empresa } from '../../api/empresas'
+import { abrirCiclo, actualizarTotalSesiones, getCicloActualDeCoachee, type Ciclo } from '../../api/ciclos'
 import { ApiError } from '../../api/client'
 import { notifyError, notifySuccess, confirmDialog } from '../../lib/notify'
 import { dentroDeRango } from '../../lib/dateRange'
@@ -87,8 +88,14 @@ const form = reactive({
   tarifaPropia: null as number | null,
   tarifaPropiaMoneda: 'clp' as Moneda,
   areaGerencia: '',
+  cargo: '',
+  // Sesiones del proceso: al crear (o si el coachee todavía no tiene ciclo) abre su ciclo; si ya
+  // tiene uno abierto, edita su total. Antes solo se podía desde la pestaña Ciclo de la ficha y
+  // el coach no lo encontraba.
+  totalSesiones: null as number | null,
 })
-const errors = reactive<{ nombre?: string; email?: string; tarifaPropia?: string }>({})
+const cicloAbierto = ref<Ciclo | null>(null)
+const errors = reactive<{ nombre?: string; email?: string; tarifaPropia?: string; totalSesiones?: string }>({})
 const serverErrors = ref<Record<string, string>>({})
 
 function abrirCrear() {
@@ -101,6 +108,9 @@ function abrirCrear() {
   form.tarifaPropia = null
   form.tarifaPropiaMoneda = 'clp'
   form.areaGerencia = ''
+  form.cargo = ''
+  form.totalSesiones = null
+  cicloAbierto.value = null
   errors.nombre = undefined
   errors.email = undefined
   errors.tarifaPropia = undefined
@@ -108,7 +118,7 @@ function abrirCrear() {
   modalOpen.value = true
 }
 
-function abrirEditar(coachee: CoacheeListItem) {
+async function abrirEditar(coachee: CoacheeListItem) {
   editando.value = coachee
   form.nombre = coachee.nombre
   form.email = coachee.user?.email ?? ''
@@ -118,22 +128,45 @@ function abrirEditar(coachee: CoacheeListItem) {
   form.tarifaPropia = coachee.tarifaPropia ?? null
   form.tarifaPropiaMoneda = coachee.tarifaPropiaMoneda ?? 'clp'
   form.areaGerencia = coachee.areaGerencia ?? ''
+  form.cargo = coachee.cargo ?? ''
+  form.totalSesiones = null
+  cicloAbierto.value = null
   errors.nombre = undefined
   errors.email = undefined
   errors.tarifaPropia = undefined
+  errors.totalSesiones = undefined
   serverErrors.value = {}
   modalOpen.value = true
+  cicloAbierto.value = await getCicloActualDeCoachee(coachee.id).catch(() => null)
+  form.totalSesiones = cicloAbierto.value?.totalSesiones ?? null
+}
+
+// Segundo paso del guardado, aparte del coachee: si falla (p.ej. bajar el total por debajo
+// de las sesiones ya realizadas), el coachee ya quedó guardado y se avisa solo de esto.
+async function guardarSesionesDelProceso(coacheeId: string) {
+  const total = form.totalSesiones
+  if (!total || total < 1) return
+  try {
+    if (!cicloAbierto.value) await abrirCiclo(coacheeId, total)
+    else if (cicloAbierto.value.totalSesiones !== total) await actualizarTotalSesiones(cicloAbierto.value.id, total)
+  } catch (err) {
+    await notifyError('No se pudo guardar el número de sesiones', err instanceof ApiError ? err.message : 'Ocurrió un error inesperado.')
+  }
 }
 
 function validar(): boolean {
   errors.nombre = form.nombre.trim().length < 2 ? 'El nombre debe tener al menos 2 caracteres.' : undefined
   errors.email = !editando.value && !/.+@.+\..+/.test(form.email.trim()) ? 'Ingresa un email válido.' : undefined
   // En UF el monto es fraccionario (ej. 3.5) — el entero solo se exige en CLP.
+  // v-model.number deja '' (no null) cuando el campo se vacía — vacío = "no tocar el ciclo".
+  errors.totalSesiones = typeof form.totalSesiones === 'number' && (form.totalSesiones < 1 || !Number.isInteger(form.totalSesiones))
+    ? 'Debe ser un número entero mayor a 0.'
+    : undefined
   errors.tarifaPropia = form.tarifaPropia !== null
     && (form.tarifaPropia <= 0 || (form.tarifaPropiaMoneda === 'clp' && !Number.isInteger(form.tarifaPropia)))
     ? 'La tarifa propia debe ser mayor a 0.'
     : undefined
-  return !errors.nombre && !errors.email && !errors.tarifaPropia
+  return !errors.nombre && !errors.email && !errors.tarifaPropia && !errors.totalSesiones
 }
 
 async function guardar() {
@@ -150,7 +183,9 @@ async function guardar() {
         tarifaPropia: form.tarifaPropia ?? undefined,
         tarifaPropiaMoneda: form.tarifaPropiaMoneda,
         areaGerencia: form.areaGerencia || undefined,
+        cargo: form.cargo || undefined,
       })
+      await guardarSesionesDelProceso(editando.value.id)
       modalOpen.value = false
       await load()
       await notifySuccess('Coachee actualizado', `Los datos de ${form.nombre} se guardaron correctamente.`)
@@ -164,7 +199,9 @@ async function guardar() {
         tarifaPropia: form.tarifaPropia ?? undefined,
         tarifaPropiaMoneda: form.tarifaPropiaMoneda,
         areaGerencia: form.areaGerencia || undefined,
+        cargo: form.cargo || undefined,
       })
+      await guardarSesionesDelProceso(resultado.coachee.id)
       modalOpen.value = false
       await load()
       if (resultado.temporaryPassword) {
@@ -359,6 +396,10 @@ async function eliminar(coachee: CoacheeListItem) {
             >
               <td class="px-4 py-3 font-medium">
                 {{ c.nombre }}
+                <span
+                  v-if="c.cargo"
+                  class="block text-xs font-normal text-[var(--color-ink)]/55"
+                >{{ c.cargo }}</span>
               </td>
               <td class="px-4 py-3 text-[var(--color-ink)]/70">
                 {{ c.user?.email ?? '—' }}
@@ -472,6 +513,16 @@ async function eliminar(coachee: CoacheeListItem) {
         </label>
 
         <label class="block text-sm">
+          Cargo / posición (opcional)
+          <input
+            v-model="form.cargo"
+            type="text"
+            placeholder="Ej. Jefe de Mantención"
+            class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+          >
+        </label>
+
+        <label class="block text-sm">
           Área/gerencia (opcional)
           <input
             v-model="form.areaGerencia"
@@ -495,6 +546,27 @@ async function eliminar(coachee: CoacheeListItem) {
           label="Tarifa propia por hora (opcional)"
           :error="errors.tarifaPropia || serverErrors.tarifaPropia"
         />
+
+        <label class="block text-sm">
+          Número de sesiones del proceso
+          <input
+            v-model.number="form.totalSesiones"
+            type="number"
+            min="1"
+            step="1"
+            placeholder="Ej. 8"
+            class="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+            :class="errors.totalSesiones ? 'border-[var(--color-danger)]' : 'border-[var(--color-line)]'"
+          >
+          <span
+            v-if="errors.totalSesiones"
+            class="mt-1 block text-xs text-[var(--color-danger)]"
+          >{{ errors.totalSesiones }}</span>
+          <span
+            v-else
+            class="mt-1 block text-xs text-[var(--color-ink)]/50"
+          >{{ cicloAbierto ? 'Edita el total del ciclo abierto (también desde la pestaña Ciclo de su ficha).' : 'Abre el ciclo de coaching con este total de sesiones. Si lo dejas vacío, puedes abrirlo después desde la pestaña Ciclo.' }}</span>
+        </label>
 
         <label class="block text-sm">
           Objetivo del proceso (opcional)

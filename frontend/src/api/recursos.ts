@@ -34,8 +34,10 @@ export interface Aprendizaje {
   id: string
   recursoId: string
   coacheeId: string
+  // Uno o más aprendizajes, uno por línea.
   contenido: string
   aplicacion: string | null
+  seccion: string | null
   createdAt: string
 }
 
@@ -112,14 +114,21 @@ export function getAprendizajesDeRecurso(recursoId: string): Promise<Aprendizaje
   return apiRequest<Aprendizaje[]>(`/recursos/${recursoId}/aprendizajes`)
 }
 
-export function addAprendizaje(
-  recursoId: string,
-  contenido: string,
-  aplicacion?: string,
-): Promise<Aprendizaje> {
+export interface CreateAprendizajeInput {
+  // Uno o más aprendizajes de la misma parte estudiada — se guardan uno por línea.
+  aprendizajes: string[]
+  aplicacion: string
+  seccion?: string
+}
+
+export function addAprendizaje(recursoId: string, input: CreateAprendizajeInput): Promise<Aprendizaje> {
   return apiRequest<Aprendizaje>(`/recursos/${recursoId}/aprendizajes`, {
     method: 'POST',
-    body: { contenido, aplicacion: aplicacion || undefined },
+    body: {
+      contenido: input.aprendizajes.map((a) => a.trim()).filter(Boolean).join('\n'),
+      aplicacion: input.aplicacion,
+      seccion: input.seccion || undefined,
+    },
   })
 }
 

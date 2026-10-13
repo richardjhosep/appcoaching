@@ -273,7 +273,7 @@ async function soltarArrastreSesion(event: MouseEvent) {
   if (sesion?.recurrenciaId) {
     const eleccion = await confirmSerieDialog({
       title: 'Mover sesión de una serie',
-      text: 'Esta sesión es parte de "repetir semanalmente". ¿Aplicamos el nuevo horario solo a esta sesión o a todas las futuras de la serie?',
+      text: 'Esta sesión es parte de una serie fija. ¿Aplicamos el nuevo horario solo a esta sesión o a todas las futuras de la serie?',
       soloEstaText: 'Solo esta sesión',
       todaSerieText: 'Toda la serie',
     })
@@ -307,7 +307,7 @@ async function pedirEliminar(bloque: Bloque) {
   if (sesion?.recurrenciaId) {
     const eleccion = await confirmSerieDialog({
       title: 'Eliminar sesión de una serie',
-      text: 'Esta sesión es parte de "repetir semanalmente" y no se puede deshacer. ¿Eliminamos solo esta sesión o esta y todas las futuras de la serie?',
+      text: 'Esta sesión es parte de una serie fija y no se puede deshacer. ¿Eliminamos solo esta sesión o esta y todas las futuras de la serie?',
       soloEstaText: 'Solo esta sesión',
       todaSerieText: 'Esta y las futuras',
       danger: true,
@@ -348,6 +348,12 @@ function semanaSiguiente() {
 function irAHoy() {
   semanaBase.value = inicioDeSemana()
 }
+// Para que la vista contenedora pueda saltar a la semana de una sesión puntual (ej. el resumen
+// de "próximas sesiones" del coachee).
+function irASemanaDe(fecha: Date) {
+  semanaBase.value = inicioDeSemana(fecha)
+}
+defineExpose({ irASemanaDe })
 
 const horaLabel = (h: number) => `${String(h).padStart(2, '0')}:00`
 const diaLabel = (d: Date) => d.getDate()

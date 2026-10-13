@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { AprendizajeRecurso } from './entities/aprendizaje-recurso.entity';
 import { RecursosService } from './recursos.service';
 import { CoacheesService } from '../coachees/coachees.service';
+import { CreateAprendizajeDto } from './dto/create-aprendizaje.dto';
 
 @Injectable()
 export class AprendizajesRecursoService {
@@ -17,8 +18,7 @@ export class AprendizajesRecursoService {
   async addOwn(
     actorUserId: string,
     recursoId: string,
-    contenido: string,
-    aplicacion?: string,
+    dto: CreateAprendizajeDto,
   ): Promise<AprendizajeRecurso> {
     const coacheeId = await this.recursos.assertEnBibliotecaDeCoachee(
       actorUserId,
@@ -28,8 +28,9 @@ export class AprendizajesRecursoService {
       this.aprendizajes.create({
         recursoId,
         coacheeId,
-        contenido,
-        aplicacion: aplicacion ?? null,
+        contenido: dto.contenido.trim(),
+        aplicacion: dto.aplicacion.trim(),
+        seccion: dto.seccion?.trim() || null,
       }),
     );
   }

@@ -41,6 +41,9 @@ export interface PlanDesarrollo {
   competencia?: CompetenciaResumen | null
   nivelActual: number | null
   nivelObjetivo: number | null
+  // Lo decide el coach por plan: sin niveles, el plan es objetivo general + competencia
+  // asociada + descripción del estado actual (ni niveles ni autoevaluación por nivel).
+  trabajarNiveles: boolean
   plazo: string | null
   descripcionEstadoActual: string | null
   objetivoGeneral: string | null
@@ -137,7 +140,11 @@ export function addActividad(input: CreateActividadInput): Promise<ActividadEjec
 
 export function updateActividad(
   id: string,
-  input: Partial<CreateActividadInput>,
+  // null en una fecha = borrarla (el backend solo ignora `undefined`, ver assignDefined).
+  input: Partial<Omit<CreateActividadInput, 'fechaInicio' | 'fechaFin'>> & {
+    fechaInicio?: string | null
+    fechaFin?: string | null
+  },
 ): Promise<ActividadEjecucion> {
   return apiRequest<ActividadEjecucion>(`/planes-desarrollo/me/actividades/${id}`, {
     method: 'PATCH',
@@ -172,6 +179,13 @@ export function solicitarCambios(coacheeId: string, comentario: string): Promise
 // El coach fija directamente la competencia del plan de un coachee puntual — a diferencia
 // de EmpresaCompetencia (que prioriza lo mismo para toda la empresa), esto es por coachee.
 // No queda bloqueada: el coachee la puede seguir cambiando después.
+export function setTrabajarNiveles(coacheeId: string, trabajarNiveles: boolean): Promise<PlanDesarrollo> {
+  return apiRequest<PlanDesarrollo>(`/planes-desarrollo/${coacheeId}/niveles`, {
+    method: 'PATCH',
+    body: { trabajarNiveles },
+  })
+}
+
 export function asignarCompetencia(coacheeId: string, competenciaId: string): Promise<PlanDesarrollo> {
   return apiRequest<PlanDesarrollo>(`/planes-desarrollo/${coacheeId}/competencia`, {
     method: 'PATCH',

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-withDefaults(defineProps<{ icon: 'ver' | 'editar' | 'eliminar'; title: string; disabled?: boolean; to?: string }>(), {})
+withDefaults(defineProps<{ icon: 'ver' | 'editar' | 'eliminar' | 'llave'; title: string; disabled?: boolean; to?: string }>(), {})
 defineEmits<{ click: [] }>()
 </script>
 
@@ -33,6 +33,13 @@ defineEmits<{ click: [] }>()
           cy="12"
           r="3"
         />
+      </template>
+      <template v-else-if="icon === 'llave'">
+        <circle
+          cx="7.5"
+          cy="15.5"
+          r="4.5"
+        /><path d="m10.7 12.3 9.8-9.8" /><path d="m16 7 3 3" /><path d="m19 4 2 2" />
       </template>
       <template v-else-if="icon === 'editar'">
         <path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />

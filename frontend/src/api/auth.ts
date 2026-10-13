@@ -14,6 +14,10 @@ export interface CurrentUser {
   empresaId: string | null
   nombre: string | null
   mustChangePassword: boolean
+  // Solo para los correos de SUPERADMIN_EMAILS (backend): habilita "Ver como".
+  superadmin?: boolean
+  // Presente solo dentro de una sesión "Ver como" (solo lectura).
+  impersonadoPor?: string
 }
 
 export function login(email: string, password: string): Promise<TokenPair> {
@@ -26,6 +30,10 @@ export function refreshTokens(refreshToken: string): Promise<TokenPair> {
 
 export function me(): Promise<CurrentUser> {
   return apiRequest<CurrentUser>('/auth/me')
+}
+
+export function verComo(userId: string): Promise<{ accessToken: string }> {
+  return apiRequest<{ accessToken: string }>(`/auth/ver-como/${userId}`, { method: 'POST' })
 }
 
 export function logoutRequest(refreshToken: string): Promise<{ success: boolean }> {

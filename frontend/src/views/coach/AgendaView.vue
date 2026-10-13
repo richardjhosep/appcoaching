@@ -7,7 +7,7 @@ import EmptyState from '../../components/EmptyState.vue'
 import SkeletonBlock from '../../components/SkeletonBlock.vue'
 import ReagendarSesionModal from '../../components/ReagendarSesionModal.vue'
 import AppModal from '../../components/AppModal.vue'
-import { agendarSesion, agendarSerieSesiones, getTodasLasSesiones, type Sesion } from '../../api/sesiones'
+import { agendarSesion, agendarSerieSesiones, getTodasLasSesiones, type FrecuenciaSerie, type Sesion } from '../../api/sesiones'
 import {
   crearBloqueDisponibilidad,
   eliminarBloqueDisponibilidad,
@@ -168,7 +168,9 @@ const nuevaSesionForm = ref({
   coacheeId: '',
   fechaHora: '',
   link: '',
-  repetirSemanal: false,
+  repetir: false,
+  frecuencia: 'semanal' as FrecuenciaSerie,
+  intervaloSemanas: 3,
   cantidadSesiones: 4,
 })
 const agendandoNueva = ref(false)
@@ -179,25 +181,40 @@ function abrirNuevaSesion(fechaHoraPrefill?: string) {
     coacheeId: '',
     fechaHora: fechaHoraPrefill ? aDatetimeLocal(new Date(fechaHoraPrefill)) : '',
     link: '',
-    repetirSemanal: false,
+    repetir: false,
+    frecuencia: 'semanal',
+    intervaloSemanas: 3,
     cantidadSesiones: 4,
   }
   errorNuevaSesion.value = null
   modalNuevaSesionOpen.value = true
 }
 
+const descripcionSerie = computed(() => {
+  const { frecuencia, intervaloSemanas } = nuevaSesionForm.value
+  const cada = {
+    semanal: 'una por semana',
+    quincenal: 'una cada dos semanas',
+    mensual: 'una por mes, el mismo día del mes',
+    personalizada: `una cada ${intervaloSemanas || '?'} semana${intervaloSemanas === 1 ? '' : 's'}`,
+  }[frecuencia]
+  return `Se crean ${cada}, a la misma hora, desde la fecha elegida arriba.`
+})
+
 async function crearNuevaSesion() {
-  const { coacheeId, fechaHora, link, repetirSemanal, cantidadSesiones } = nuevaSesionForm.value
+  const { coacheeId, fechaHora, link, repetir, frecuencia, intervaloSemanas, cantidadSesiones } = nuevaSesionForm.value
   if (!coacheeId || !fechaHora) return
   errorNuevaSesion.value = null
   agendandoNueva.value = true
   try {
-    if (repetirSemanal) {
+    if (repetir) {
       const creadas = await agendarSerieSesiones(
         coacheeId,
         new Date(fechaHora).toISOString(),
         cantidadSesiones,
         link || undefined,
+        frecuencia,
+        intervaloSemanas,
       )
       sesiones.value = [...sesiones.value, ...creadas]
     } else {
@@ -479,13 +496,51 @@ async function crearNuevaSesion() {
         </label>
         <label class="flex items-center gap-2 text-sm">
           <input
-            v-model="nuevaSesionForm.repetirSemanal"
+            v-model="nuevaSesionForm.repetir"
             type="checkbox"
           >
-          Repetir semanalmente (sesión fija)
+          Repetir (sesión fija)
         </label>
+        <div
+          v-if="nuevaSesionForm.repetir"
+          class="grid gap-2 sm:grid-cols-2"
+        >
+          <label class="block text-sm">
+            Periodicidad
+            <select
+              v-model="nuevaSesionForm.frecuencia"
+              class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+            >
+              <option value="semanal">
+                Cada semana
+              </option>
+              <option value="quincenal">
+                Cada dos semanas
+              </option>
+              <option value="mensual">
+                Una vez al mes (mismo día)
+              </option>
+              <option value="personalizada">
+                Personalizada…
+              </option>
+            </select>
+          </label>
+          <label
+            v-if="nuevaSesionForm.frecuencia === 'personalizada'"
+            class="block text-sm"
+          >
+            Cada cuántas semanas
+            <input
+              v-model.number="nuevaSesionForm.intervaloSemanas"
+              type="number"
+              min="1"
+              max="12"
+              class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+            >
+          </label>
+        </div>
         <label
-          v-if="nuevaSesionForm.repetirSemanal"
+          v-if="nuevaSesionForm.repetir"
           class="block text-sm"
         >
           Número de sesiones
@@ -497,7 +552,7 @@ async function crearNuevaSesion() {
             class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
           >
           <span class="mt-1 block text-xs text-[var(--color-ink)]/50">
-            Se crea una sesión por semana, mismo día y hora, desde la fecha elegida arriba.
+            {{ descripcionSerie }}
           </span>
         </label>
         <div class="flex justify-end gap-2 pt-2">

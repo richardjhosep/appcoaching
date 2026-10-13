@@ -8,6 +8,7 @@ import { CertificacionCoach } from './entities/certificacion-coach.entity';
 import { ExperienciaCoach } from './entities/experiencia-coach.entity';
 import { User } from '../users/entities/user.entity';
 import { Role } from '../auth/enums/role.enum';
+import type { AuthenticatedUser } from '../auth/auth.types';
 import { UpdatePerfilCoachDto } from './dto/update-perfil-coach.dto';
 import { CreateCertificacionDto } from './dto/create-certificacion.dto';
 import { CreateExperienciaDto } from './dto/create-experiencia.dto';
@@ -49,11 +50,27 @@ export class PerfilCoachService {
   // Para coachee/empresa: hoy hay un solo coach en el sistema — se resuelve el usuario
   // Role.COACH y se reusa el mismo flujo "crear si no existe" de arriba.
   async obtenerDelCoach(): Promise<PerfilCoach> {
-    const coach = await this.users.findOne({ where: { role: Role.COACH } });
+    // Orden explícito: sin él, con más de un usuario COACH en la base (p.ej. una cuenta de
+    // prueba), Postgres devuelve uno cualquiera y el coachee vería un perfil distinto entre
+    // una carga y otra.
+    const coach = await this.users.findOne({
+      where: { role: Role.COACH },
+      order: { createdAt: 'ASC' },
+    });
     if (!coach) {
       throw new NotFoundException('No hay un coach configurado todavía.');
     }
     return this.obtenerOCrearPropio(coach.id);
+  }
+
+  // Un COACH siempre lee su propio perfil — antes los GET compartidos (foto, CV, archivos)
+  // usaban obtenerDelCoach() también para el coach, y si había otro usuario COACH en la base
+  // la foto recién subida a su propio perfil se buscaba en el perfil del otro (404 → seguía
+  // viendo las iniciales).
+  obtenerParaActor(actor: AuthenticatedUser): Promise<PerfilCoach> {
+    return actor.role === Role.COACH
+      ? this.obtenerOCrearPropio(actor.id)
+      : this.obtenerDelCoach();
   }
 
   async actualizar(
@@ -112,6 +129,30 @@ export class PerfilCoachService {
     );
   }
 
+  async actualizarCertificacion(
+    coachUserId: string,
+    certificacionId: string,
+    dto: CreateCertificacionDto,
+    archivo?: Express.Multer.File,
+  ): Promise<CertificacionCoach> {
+    const perfil = await this.obtenerOCrearPropio(coachUserId);
+    const certificacion = await this.certificaciones.findOne({
+      where: { id: certificacionId, perfilCoachId: perfil.id },
+    });
+    if (!certificacion) {
+      throw new NotFoundException('Certificación no encontrada.');
+    }
+    certificacion.nombre = dto.nombre;
+    certificacion.entidadEmisora = dto.entidadEmisora ?? null;
+    certificacion.fecha = dto.fecha ?? null;
+    if (archivo) {
+      await this.borrarArchivoAnterior(certificacion.archivoPath);
+      certificacion.archivoPath = archivo.filename;
+      certificacion.archivoNombre = archivo.originalname;
+    }
+    return this.certificaciones.save(certificacion);
+  }
+
   async eliminarCertificacion(
     coachUserId: string,
     certificacionId: string,
@@ -145,6 +186,32 @@ export class PerfilCoachService {
         logoNombre: logo?.originalname ?? null,
       }),
     );
+  }
+
+  async actualizarExperiencia(
+    coachUserId: string,
+    experienciaId: string,
+    dto: CreateExperienciaDto,
+    logo?: Express.Multer.File,
+  ): Promise<ExperienciaCoach> {
+    const perfil = await this.obtenerOCrearPropio(coachUserId);
+    const experiencia = await this.experiencias.findOne({
+      where: { id: experienciaId, perfilCoachId: perfil.id },
+    });
+    if (!experiencia) {
+      throw new NotFoundException('Experiencia no encontrada.');
+    }
+    experiencia.empresa = dto.empresa;
+    experiencia.cargo = dto.cargo ?? null;
+    experiencia.fechaInicio = dto.fechaInicio;
+    experiencia.fechaFin = dto.fechaFin ?? null;
+    experiencia.descripcion = dto.descripcion ?? null;
+    if (logo) {
+      await this.borrarArchivoAnterior(experiencia.logoPath);
+      experiencia.logoPath = logo.filename;
+      experiencia.logoNombre = logo.originalname;
+    }
+    return this.experiencias.save(experiencia);
   }
 
   async eliminarExperiencia(

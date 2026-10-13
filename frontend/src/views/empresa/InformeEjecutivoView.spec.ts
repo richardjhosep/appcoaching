@@ -31,7 +31,7 @@ const empresa: Empresa = {
   tarifaHoraMoneda: 'clp',
   isActive: true,
   pagada: true,
-  horasContratadas: 40,
+  horasContratadas: 40, horasFijas: false,
   fechaInicio: null,
   fechaFin: null,
 }

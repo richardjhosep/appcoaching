@@ -16,11 +16,29 @@ import { getCicloActualDeCoachee, type Ciclo } from '../../api/ciclos'
 import { getPlanByCoachee, type EstadoPlan, type PlanDesarrollo } from '../../api/planesDesarrollo'
 import { ApiError } from '../../api/client'
 import { iniciales } from '../../lib/avatar'
+import { useAuthStore } from '../../stores/auth'
+import { notifyError } from '../../lib/notify'
 
 const props = defineProps<{ coacheeId: string }>()
 
 const route = useRoute()
 const router = useRouter()
+
+// "Ver como" (solo superadmin, decidido en el backend): entra al portal del coachee en
+// solo lectura para ver todas sus opciones tal como él las ve.
+const auth = useAuthStore()
+const entrandoVerComo = ref(false)
+async function verComo(userId: string) {
+  entrandoVerComo.value = true
+  try {
+    await auth.iniciarVerComo(userId, route.fullPath)
+    await router.push('/')
+  } catch (err) {
+    await notifyError('No se pudo entrar en modo "Ver como"', err instanceof ApiError ? err.message : 'Ocurrió un error inesperado.')
+  } finally {
+    entrandoVerComo.value = false
+  }
+}
 
 const coachee = ref<Coachee | null>(null)
 const cicloActual = ref<Ciclo | null>(null)
@@ -147,6 +165,31 @@ const planEstadoClase: Record<EstadoPlan, string> = {
             >
               {{ coachee.consentimientoInformado ? 'Consentimiento firmado' : 'Consentimiento pendiente' }}
             </span>
+            <button
+              v-if="auth.user?.superadmin && coachee.user?.id"
+              type="button"
+              class="inline-flex items-center gap-1.5 rounded-full bg-[var(--color-saltup)] px-3 py-1 text-xs font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
+              :disabled="entrandoVerComo"
+              title="Abre el portal de este coachee tal como lo ve él (solo lectura)"
+              @click="verComo(coachee.user.id)"
+            >
+              <svg
+                width="13"
+                height="13"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              ><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7Z" /><circle
+                cx="12"
+                cy="12"
+                r="3"
+              /></svg>
+              {{ entrandoVerComo ? 'Entrando…' : 'Ver como coachee' }}
+            </button>
           </div>
         </div>
 

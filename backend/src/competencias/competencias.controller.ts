@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   Param,
+  ParseUUIDPipe,
   Patch,
   Post,
   UseGuards,
@@ -69,9 +70,27 @@ export class CompetenciasController {
     return { success: true };
   }
 
-  // Lo que ve el coach al elegir qué competencia asignarle a un coachee puntual: el
-  // catálogo global + las propias de la empresa de ESE coachee (o solo el global, si es
-  // independiente). findOneForActor ya resuelve el acceso (un actor EMPRESA no podría ver
+  // Competencias que el coachee puede asociar al objetivo de su plan — ver findParaPlan.
+  // Ruta literal de 2 segmentos, declarada antes de 'coachee/:coacheeId'.
+  @Roles(Role.COACHEE)
+  @Get('plan/me')
+  async paraMiPlan(@CurrentUser() actor: AuthenticatedUser) {
+    const coachee = await this.coachees.findByUserId(actor.id);
+    return this.competencias.findParaPlan(coachee?.empresaId ?? null);
+  }
+
+  // Lo que ve el coach al editar una empresa: su catálogo global + el manual propio que esa
+  // empresa cargó desde su portal (antes el editor pedía solo GET /competencias, el global, y
+  // el manual de la empresa nunca aparecía). Va después de las rutas 'empresa/me' para que
+  // 'me' no se interprete como un id.
+  @Roles(Role.COACH)
+  @Get('empresa/:empresaId')
+  paraEmpresa(@Param('empresaId', ParseUUIDPipe) empresaId: string) {
+    return this.competencias.findVisibleFor(empresaId);
+  }
+
+  // Lo que ve el coach al elegir qué competencia asignarle a un coachee puntual: la misma
+  // regla que ve el coachee en su plan (findParaPlan). findOneForActor ya resuelve el acceso (un actor EMPRESA no podría ver
   // acá el coachee de otra empresa).
   @Roles(Role.COACH)
   @Get('coachee/:coacheeId')
@@ -80,6 +99,6 @@ export class CompetenciasController {
     @CurrentUser() actor: AuthenticatedUser,
   ) {
     const coachee = await this.coachees.findOneForActor(coacheeId, actor);
-    return this.competencias.findVisibleFor(coachee.empresaId);
+    return this.competencias.findParaPlan(coachee.empresaId);
   }
 }

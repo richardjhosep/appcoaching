@@ -16,6 +16,7 @@ import {
   type Sesion,
 } from '../../api/sesiones'
 import { getSlotsLibres } from '../../api/disponibilidad'
+import { getMiCicloActual, type Ciclo } from '../../api/ciclos'
 import { crearSolicitudSesion } from '../../api/solicitudes-sesion'
 import { ApiError } from '../../api/client'
 import { notifySuccess, notifyError } from '../../lib/notify'
@@ -137,10 +138,43 @@ function yaRealizada(sesion: Sesion): boolean {
   return new Date(sesion.fechaHora).getTime() <= Date.now()
 }
 
+const cicloActual = ref<Ciclo | null>(null)
+
 async function load() {
   loading.value = true
-  sesiones.value = await getMisSesiones()
+  const [s, c] = await Promise.all([getMisSesiones(), getMiCicloActual().catch(() => null)])
+  sesiones.value = s
+  cicloActual.value = c
   loading.value = false
+}
+
+// Resumen rápido de lo que falta: las agendadas a futuro (más próxima primero) y, si hay ciclo
+// abierto, cuántas del total contratado todavía no tienen fecha.
+const proximasSesiones = computed(() =>
+  sesiones.value
+    .filter((s) => !yaRealizada(s))
+    .sort((a, b) => new Date(a.fechaHora).getTime() - new Date(b.fechaHora).getTime()),
+)
+const sesionesPorAgendar = computed(() =>
+  cicloActual.value ? Math.max(0, cicloActual.value.sesionesRestantes - proximasSesiones.value.length) : 0,
+)
+
+const calendarioRef = ref<InstanceType<typeof WeekCalendar> | null>(null)
+const calendarioContenedor = ref<HTMLElement | null>(null)
+
+// Clic en una próxima sesión: lleva el calendario a esa semana y lo muestra, y además resalta
+// su tarjeta de detalle (mismo efecto que hacer clic en el bloque dentro del calendario).
+function irASesion(sesion: Sesion) {
+  calendarioRef.value?.irASemanaDe(new Date(sesion.fechaHora))
+  calendarioContenedor.value?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  highlightedId.value = sesion.id
+  setTimeout(() => {
+    if (highlightedId.value === sesion.id) highlightedId.value = null
+  }, 2000)
+}
+
+function formatoProxima(iso: string): string {
+  return new Date(iso).toLocaleString('es-CL', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
 }
 
 onMounted(load)
@@ -198,18 +232,72 @@ function onSelectSesion(id: string) {
     <h1 class="mb-4 font-[family-name:var(--font-heading)] text-xl font-semibold">
       Mis sesiones
     </h1>
+    <section
+      v-if="!loading && (proximasSesiones.length > 0 || cicloActual)"
+      class="mb-4 rounded-2xl border border-[var(--color-line)] bg-white p-4"
+      aria-label="Próximas sesiones"
+    >
+      <div class="mb-2 flex flex-wrap items-baseline justify-between gap-2">
+        <h2 class="text-sm font-semibold">
+          Próximas sesiones
+        </h2>
+        <p
+          v-if="cicloActual"
+          class="text-xs text-[var(--color-ink)]/60"
+        >
+          Te quedan <strong class="text-[var(--color-ink)]">{{ cicloActual.sesionesRestantes }}</strong>
+          de {{ cicloActual.totalSesiones }} sesiones del proceso<span v-if="sesionesPorAgendar > 0"> · {{ sesionesPorAgendar }} aún sin fecha</span>
+        </p>
+      </div>
+      <ul
+        v-if="proximasSesiones.length > 0"
+        class="flex flex-wrap gap-2"
+      >
+        <li
+          v-for="(s, i) in proximasSesiones"
+          :key="s.id"
+        >
+          <button
+            type="button"
+            class="flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs transition-colors hover:bg-[var(--color-sage)]/10"
+            :class="i === 0 ? 'border-[var(--color-sage)] font-semibold text-[var(--color-sage)]' : 'border-[var(--color-line)] text-[var(--color-ink)]/80'"
+            :title="s.confirmada ? 'Confirmada — ver en la agenda' : 'Ver en la agenda'"
+            @click="irASesion(s)"
+          >
+            <span class="font-[family-name:var(--font-mono)]">{{ i + 1 }}</span>
+            {{ formatoProxima(s.fechaHora) }}
+            <span
+              v-if="s.confirmada"
+              aria-label="confirmada"
+            >✓</span>
+          </button>
+        </li>
+      </ul>
+      <p
+        v-else
+        class="text-xs text-[var(--color-ink)]/50"
+      >
+        No tienes sesiones agendadas a futuro. Puedes pedir una hora en el calendario de disponibilidad.
+      </p>
+    </section>
     <DisponibilidadCalendar
       class="mb-4"
       :slots="slotsLibres"
       @cambio-semana="onCambioSemanaDisponibilidad"
       @solicitar="abrirSolicitarSesion"
     />
-    <WeekCalendar
-      v-if="!loading"
-      class="mb-4"
-      :sesiones="sesiones"
-      @select="onSelectSesion"
-    />
+    <div
+      ref="calendarioContenedor"
+      class="scroll-mt-4"
+    >
+      <WeekCalendar
+        v-if="!loading"
+        ref="calendarioRef"
+        class="mb-4"
+        :sesiones="sesiones"
+        @select="onSelectSesion"
+      />
+    </div>
     <SkeletonBlock v-if="loading" />
     <EmptyState
       v-else-if="sesionesOrdenadas.length === 0"

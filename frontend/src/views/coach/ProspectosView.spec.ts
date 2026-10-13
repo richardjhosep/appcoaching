@@ -192,7 +192,7 @@ describe('ProspectosView', () => {
       tarifaHoraMoneda: 'clp',
       isActive: true,
       pagada: false,
-      horasContratadas: null,
+      horasContratadas: null, horasFijas: false,
       fechaInicio: null,
       fechaFin: null,
     })

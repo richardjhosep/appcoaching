@@ -193,8 +193,43 @@ describe('AgendaView', () => {
       new Date('2026-09-20T12:00').toISOString(),
       3,
       undefined,
+      'semanal',
+      3,
     )
     expect(document.body.textContent).not.toContain('Agendar sesión')
+  })
+
+  it('creates a serie with a custom periodicity (cada N semanas)', async () => {
+    vi.mocked(agendarSerieSesiones).mockResolvedValue([])
+    wrapper = mount(AgendaView)
+    await flushPromises()
+
+    const nuevaBtn = wrapper.findAll('button').find((b) => b.text() === '+ Nueva sesión')
+    await nuevaBtn!.trigger('click')
+    await flushPromises()
+
+    const modal = new DOMWrapper(document.body)
+    await modal.find('select').setValue('coachee-1')
+    await modal.find('input[type="datetime-local"]').setValue('2026-09-20T12:00')
+    await modal.find('input[type="checkbox"]').setValue(true)
+    const selects = modal.findAll('select')
+    await selects[selects.length - 1].setValue('personalizada')
+    expect(modal.text()).toContain('Cada cuántas semanas')
+    const numeros = modal.findAll('input[type="number"]')
+    await numeros[0].setValue(4) // cada cuántas semanas
+    await numeros[1].setValue(5) // número de sesiones
+    expect(modal.text()).toContain('una cada 4 semanas')
+    await modal.find('form').trigger('submit')
+    await flushPromises()
+
+    expect(agendarSerieSesiones).toHaveBeenLastCalledWith(
+      'coachee-1',
+      new Date('2026-09-20T12:00').toISOString(),
+      5,
+      undefined,
+      'personalizada',
+      4,
+    )
   })
 
   describe('KPIs de la cabecera', () => {

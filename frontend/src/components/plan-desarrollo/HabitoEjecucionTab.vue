@@ -95,8 +95,28 @@ async function agregarActividad() {
     nuevaActividad.fechaInicio = ''
     nuevaActividad.fechaFin = ''
     await refetch()
+    await notifySuccess('Actividad agregada', rangoFechas(creada.fechaInicio, creada.fechaFin) ?? 'Sin fechas — puedes agregarlas en la actividad.')
   } catch (err) {
     error.value = err instanceof ApiError ? err.message : 'No se pudo agregar la actividad.'
+    await notifyError('No se pudo agregar la actividad', error.value)
+  }
+}
+
+// Texto legible del período de una actividad — también cuando solo tiene fecha de término
+// (antes solo se mostraba si tenía inicio, y una actividad con solo "Fin" no mostraba nada).
+function rangoFechas(inicio: string | null, fin: string | null): string | null {
+  if (inicio && fin) return `${formatoFecha(inicio)} → ${formatoFecha(fin)}`
+  if (inicio) return `Desde ${formatoFecha(inicio)}`
+  if (fin) return `Hasta ${formatoFecha(fin)}`
+  return null
+}
+
+async function cambiarFecha(id: string, campo: 'fechaInicio' | 'fechaFin', valor: string) {
+  try {
+    await updateActividad(id, { [campo]: valor || null })
+    await refetch()
+  } catch (err) {
+    await notifyError('No se pudo cambiar la fecha', err instanceof ApiError ? err.message : 'Ocurrió un error inesperado.')
   }
 }
 
@@ -219,11 +239,42 @@ function objetivoDescripcion(objetivoId: string): string {
           :key="a.id"
           class="rounded-lg border border-[var(--color-line)] p-2 text-sm"
         >
-          <p>{{ a.actividad }}</p>
+          <div class="flex flex-wrap items-start justify-between gap-2">
+            <p>{{ a.actividad }}</p>
+            <span
+              class="shrink-0 rounded-full px-2.5 py-0.5 font-[family-name:var(--font-mono)] text-[11px] font-semibold"
+              :class="rangoFechas(a.fechaInicio, a.fechaFin)
+                ? 'bg-[var(--color-sage)]/15 text-[var(--color-sage)]'
+                : 'bg-[var(--color-ink)]/5 text-[var(--color-ink)]/50'"
+            >
+              {{ rangoFechas(a.fechaInicio, a.fechaFin) ?? 'Sin fechas' }}
+            </span>
+          </div>
           <p class="text-xs text-[var(--color-ink)]/60">
             Objetivo: {{ objetivoDescripcion(a.objetivoId) }}
-            <span v-if="a.fechaInicio"> · {{ formatoFecha(a.fechaInicio) }}<span v-if="a.fechaFin"> – {{ formatoFecha(a.fechaFin) }}</span></span>
           </p>
+          <div class="mt-1 flex flex-wrap gap-3 text-xs text-[var(--color-ink)]/60">
+            <label class="flex items-center gap-1">
+              Inicio
+              <input
+                type="date"
+                :value="a.fechaInicio ?? ''"
+                :min="fechaAperturaCiclo ?? undefined"
+                class="rounded border border-[var(--color-line)] px-1.5 py-0.5 text-xs"
+                @change="cambiarFecha(a.id, 'fechaInicio', ($event.target as HTMLInputElement).value)"
+              >
+            </label>
+            <label class="flex items-center gap-1">
+              Término
+              <input
+                type="date"
+                :value="a.fechaFin ?? ''"
+                :min="a.fechaInicio || fechaAperturaCiclo || undefined"
+                class="rounded border border-[var(--color-line)] px-1.5 py-0.5 text-xs"
+                @change="cambiarFecha(a.id, 'fechaFin', ($event.target as HTMLInputElement).value)"
+              >
+            </label>
+          </div>
           <div class="mt-1 flex items-center gap-2">
             <select
               :value="a.estado"
@@ -294,15 +345,17 @@ function objetivoDescripcion(objetivoId: string): string {
           Inicio
           <input
             v-model="nuevaActividad.fechaInicio"
+            data-nueva-actividad
             type="date"
             :min="fechaAperturaCiclo ?? undefined"
             class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
           >
         </label>
         <label class="text-sm">
-          Fin
+          Término
           <input
             v-model="nuevaActividad.fechaFin"
+            data-nueva-actividad
             type="date"
             :min="nuevaActividad.fechaInicio || fechaAperturaCiclo || undefined"
             class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"

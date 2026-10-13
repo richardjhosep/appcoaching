@@ -27,8 +27,12 @@ const seleccionadaId = ref<string | null>(null)
 
 const recursoAbierto = ref<Recurso | null>(null)
 const aprendizajesDelAbierto = ref<Aprendizaje[]>([])
-const nuevoAprendizaje = ref('')
+// Un registro = la parte estudiada (capítulo/s en un libro) + uno o más aprendizajes de esa
+// parte + cómo se aplica al trabajo (obligatorio).
+const nuevaSeccion = ref('')
+const nuevosAprendizajes = ref<string[]>([''])
 const nuevaAplicacion = ref('')
+const intentoGuardar = ref(false)
 const guardandoAprendizaje = ref(false)
 
 const arbol = computed(() => buildArbol(carpetas.value))
@@ -89,8 +93,7 @@ function seleccionar(id: string | null) {
 
 async function abrirRecurso(r: Recurso) {
   recursoAbierto.value = r
-  nuevoAprendizaje.value = ''
-  nuevaAplicacion.value = ''
+  limpiarFormAprendizaje()
   aprendizajesDelAbierto.value = await getMisAprendizajes(r.id)
 }
 
@@ -98,16 +101,53 @@ function cerrarModal() {
   recursoAbierto.value = null
 }
 
+function limpiarFormAprendizaje() {
+  nuevaSeccion.value = ''
+  nuevosAprendizajes.value = ['']
+  nuevaAplicacion.value = ''
+  intentoGuardar.value = false
+}
+
+// En un libro/texto el capítulo es obligatorio; en video/audio (o sin categoría) es opcional.
+const seccionObligatoria = computed(() => recursoAbierto.value?.categoria === 'texto')
+const etiquetaSeccion = computed(() => {
+  const categoria = recursoAbierto.value?.categoria
+  if (categoria === 'texto') return 'Capítulo(s) estudiado(s)'
+  if (categoria === 'video' || categoria === 'audio') return 'Parte o minuto (opcional)'
+  return 'Capítulo o sección (opcional)'
+})
+
+const aprendizajesValidos = computed(() => nuevosAprendizajes.value.map((a) => a.trim()).filter(Boolean))
+const faltaSeccion = computed(() => seccionObligatoria.value && !nuevaSeccion.value.trim())
+const faltaAprendizaje = computed(() => aprendizajesValidos.value.length === 0)
+const faltaAplicacion = computed(() => !nuevaAplicacion.value.trim())
+
+function agregarOtroAprendizaje() {
+  nuevosAprendizajes.value = [...nuevosAprendizajes.value, '']
+}
+
+function quitarAprendizaje(i: number) {
+  nuevosAprendizajes.value = nuevosAprendizajes.value.filter((_, idx) => idx !== i)
+}
+
+function lineas(contenido: string): string[] {
+  return contenido.split('\n').filter((l) => l.trim())
+}
+
 async function guardarAprendizaje() {
   const recurso = recursoAbierto.value
-  const contenido = nuevoAprendizaje.value.trim()
-  if (!recurso || !contenido) return
+  intentoGuardar.value = true
+  if (!recurso || faltaSeccion.value || faltaAprendizaje.value || faltaAplicacion.value) return
   guardandoAprendizaje.value = true
+  error.value = null
   try {
-    const aprendizaje = await addAprendizaje(recurso.id, contenido, nuevaAplicacion.value.trim() || undefined)
+    const aprendizaje = await addAprendizaje(recurso.id, {
+      aprendizajes: aprendizajesValidos.value,
+      aplicacion: nuevaAplicacion.value.trim(),
+      seccion: nuevaSeccion.value.trim() || undefined,
+    })
     aprendizajesDelAbierto.value = [aprendizaje, ...aprendizajesDelAbierto.value]
-    nuevoAprendizaje.value = ''
-    nuevaAplicacion.value = ''
+    limpiarFormAprendizaje()
   } catch (err) {
     error.value = err instanceof ApiError ? err.message : 'No se pudo guardar el aprendizaje.'
   } finally {
@@ -361,38 +401,119 @@ async function descargar(r: Recurso) {
           <li
             v-for="a in aprendizajesDelAbierto"
             :key="a.id"
+            class="rounded-lg border border-[var(--color-line)] p-2.5"
           >
-            <p>{{ a.contenido }}</p>
+            <p
+              v-if="a.seccion"
+              class="mb-1 text-xs font-semibold text-[var(--color-saltup)]"
+            >
+              {{ a.seccion }}
+            </p>
+            <ul
+              v-if="lineas(a.contenido).length > 1"
+              class="list-disc space-y-0.5 pl-4"
+            >
+              <li
+                v-for="(l, i) in lineas(a.contenido)"
+                :key="i"
+              >
+                {{ l }}
+              </li>
+            </ul>
+            <p v-else>
+              {{ a.contenido }}
+            </p>
             <p
               v-if="a.aplicacion"
-              class="text-xs text-[var(--color-ink)]/50"
+              class="mt-1 text-xs text-[var(--color-ink)]/60"
             >
-              ¿Cómo lo aplico? {{ a.aplicacion }}
+              <strong>¿Cómo lo aplico?</strong> {{ a.aplicacion }}
             </p>
           </li>
         </ul>
-        <div class="space-y-2">
-          <input
-            v-model="nuevoAprendizaje"
-            type="text"
-            placeholder="Registra un aprendizaje práctico"
-            class="w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
-          >
-          <input
-            v-model="nuevaAplicacion"
-            type="text"
-            placeholder="¿Cómo se aplica a mi trabajo? (opcional)"
-            class="w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
-            @keyup.enter="guardarAprendizaje"
-          >
+        <form
+          class="space-y-3 rounded-lg bg-[var(--color-parchment)]/40 p-3"
+          novalidate
+          @submit.prevent="guardarAprendizaje"
+        >
+          <label class="block text-xs font-medium">
+            {{ etiquetaSeccion }}
+            <input
+              v-model="nuevaSeccion"
+              type="text"
+              :placeholder="seccionObligatoria ? 'Ej. Capítulos 3 y 4' : 'Ej. minuto 12 al 25'"
+              class="mt-1 w-full rounded-lg border bg-white px-3 py-2 text-sm font-normal"
+              :class="intentoGuardar && faltaSeccion ? 'border-[var(--color-danger)]' : 'border-[var(--color-line)]'"
+            >
+            <span
+              v-if="intentoGuardar && faltaSeccion"
+              class="mt-1 block font-normal text-[var(--color-danger)]"
+            >Indica qué capítulo(s) estudiaste.</span>
+          </label>
+
+          <fieldset class="space-y-1.5">
+            <legend class="mb-1 text-xs font-medium">
+              Aprendizajes de esta parte
+            </legend>
+            <div
+              v-for="(_, i) in nuevosAprendizajes"
+              :key="i"
+              class="flex items-center gap-2"
+            >
+              <input
+                v-model="nuevosAprendizajes[i]"
+                type="text"
+                :placeholder="i === 0 ? 'Registra un aprendizaje práctico' : 'Otro aprendizaje'"
+                :aria-label="`Aprendizaje ${i + 1}`"
+                class="w-full rounded-lg border bg-white px-3 py-2 text-sm"
+                :class="intentoGuardar && faltaAprendizaje && i === 0 ? 'border-[var(--color-danger)]' : 'border-[var(--color-line)]'"
+              >
+              <button
+                v-if="nuevosAprendizajes.length > 1"
+                type="button"
+                class="shrink-0 text-xs text-[var(--color-ink)]/50 hover:text-[var(--color-danger)]"
+                :aria-label="`Quitar aprendizaje ${i + 1}`"
+                @click="quitarAprendizaje(i)"
+              >
+                ✕
+              </button>
+            </div>
+            <button
+              type="button"
+              class="text-xs text-[var(--color-saltup)] hover:underline"
+              @click="agregarOtroAprendizaje"
+            >
+              + Otro aprendizaje
+            </button>
+            <span
+              v-if="intentoGuardar && faltaAprendizaje"
+              class="block text-xs text-[var(--color-danger)]"
+            >Registra al menos un aprendizaje.</span>
+          </fieldset>
+
+          <label class="block text-xs font-medium">
+            ¿Cómo se aplica a mi trabajo?
+            <textarea
+              v-model="nuevaAplicacion"
+              rows="2"
+              placeholder="Ej. Lo voy a usar en mis reuniones 1:1 con el equipo"
+              class="mt-1 w-full rounded-lg border bg-white px-3 py-2 text-sm font-normal"
+              :class="intentoGuardar && faltaAplicacion ? 'border-[var(--color-danger)]' : 'border-[var(--color-line)]'"
+            />
+            <span
+              v-if="intentoGuardar && faltaAplicacion"
+              class="mt-1 block font-normal text-[var(--color-danger)]"
+            >Este campo es obligatorio: cuenta cómo lo llevarás a la práctica.</span>
+          </label>
+
           <button
-            class="rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm hover:bg-[var(--color-parchment)]/50 disabled:opacity-60"
+            type="submit"
+            class="rounded-lg bg-[var(--color-ink)] px-3 py-2 text-sm text-[var(--color-parchment)] disabled:opacity-60"
             :disabled="guardandoAprendizaje"
-            @click="guardarAprendizaje"
           >
-            Agregar
+            {{ guardandoAprendizaje ? 'Guardando…' : 'Guardar aprendizaje' }}
           </button>
-        </div>
+        </form>
       </div>
     </AppModal>
   </AppShell>

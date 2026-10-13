@@ -118,6 +118,7 @@ describe('PerfilCoachService', () => {
 
       expect(users.findOne).toHaveBeenCalledWith({
         where: { role: Role.COACH },
+        order: { createdAt: 'ASC' },
       });
       expect(perfil.coachUserId).toBe('coach-1');
     });
@@ -128,6 +129,35 @@ describe('PerfilCoachService', () => {
       await expect(service.obtenerDelCoach()).rejects.toThrow(
         NotFoundException,
       );
+    });
+  });
+
+  describe('obtenerParaActor', () => {
+    it('a COACH always gets their own perfil, even with another COACH user in the base', async () => {
+      perfiles.findOne.mockResolvedValue({ id: 'p2', coachUserId: 'coach-2' });
+
+      const perfil = await service.obtenerParaActor({
+        id: 'coach-2',
+        role: Role.COACH,
+      } as never);
+
+      expect(users.findOne).not.toHaveBeenCalled();
+      expect(perfiles.findOne).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { coachUserId: 'coach-2' } }),
+      );
+      expect(perfil.coachUserId).toBe('coach-2');
+    });
+
+    it('a COACHEE gets the perfil of the coach of the system', async () => {
+      users.findOne.mockResolvedValue({ id: 'coach-1', role: Role.COACH });
+      perfiles.findOne.mockResolvedValue({ id: 'p1', coachUserId: 'coach-1' });
+
+      const perfil = await service.obtenerParaActor({
+        id: 'coachee-1',
+        role: Role.COACHEE,
+      } as never);
+
+      expect(perfil.coachUserId).toBe('coach-1');
     });
   });
 
@@ -219,6 +249,81 @@ describe('PerfilCoachService', () => {
 
       expect(certificaciones.remove).toHaveBeenCalledWith(
         expect.objectContaining({ id: 'cert-1' }),
+      );
+    });
+  });
+
+  describe('actualizarCertificacion', () => {
+    it('replaces the text fields and keeps the archivo when none is uploaded', async () => {
+      perfiles.findOne.mockResolvedValue({ id: 'p1', coachUserId: 'u1' });
+      certificaciones.findOne.mockResolvedValue({
+        id: 'cert-1',
+        perfilCoachId: 'p1',
+        nombre: 'ICF ACC',
+        entidadEmisora: 'ICF',
+        fecha: '2020-01-01',
+        archivoPath: 'certificacion-a.pdf',
+        archivoNombre: 'a.pdf',
+      });
+
+      const cert = await service.actualizarCertificacion('u1', 'cert-1', {
+        nombre: 'ICF PCC',
+      });
+
+      expect(cert).toEqual(
+        expect.objectContaining({
+          nombre: 'ICF PCC',
+          entidadEmisora: null,
+          fecha: null,
+          archivoPath: 'certificacion-a.pdf',
+        }),
+      );
+    });
+
+    it('rejects editing a certificación that does not belong to the perfil', async () => {
+      perfiles.findOne.mockResolvedValue({ id: 'p1', coachUserId: 'u1' });
+      certificaciones.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.actualizarCertificacion('u1', 'cert-ajena', { nombre: 'X' }),
+      ).rejects.toThrow(NotFoundException);
+      expect(certificaciones.save).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('actualizarExperiencia', () => {
+    it('updates the fields and replaces the logo when a new one is uploaded', async () => {
+      perfiles.findOne.mockResolvedValue({ id: 'p1', coachUserId: 'u1' });
+      experiencias.findOne.mockResolvedValue({
+        id: 'exp-1',
+        perfilCoachId: 'p1',
+        empresa: 'Codelco',
+        fechaInicio: '2015-01-01',
+        logoPath: null,
+      });
+
+      const exp = await service.actualizarExperiencia(
+        'u1',
+        'exp-1',
+        {
+          empresa: 'Codelco Norte',
+          fechaInicio: '2016-01-01',
+          cargo: 'Gerente',
+        },
+        {
+          filename: 'logo-experiencia-x.png',
+          originalname: 'logo.png',
+        } as Express.Multer.File,
+      );
+
+      expect(exp).toEqual(
+        expect.objectContaining({
+          empresa: 'Codelco Norte',
+          cargo: 'Gerente',
+          fechaInicio: '2016-01-01',
+          fechaFin: null,
+          logoPath: 'logo-experiencia-x.png',
+        }),
       );
     });
   });

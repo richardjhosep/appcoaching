@@ -19,6 +19,7 @@ import { CreateActividadDto } from './dto/create-actividad.dto';
 import { UpdateActividadDto } from './dto/update-actividad.dto';
 import { SolicitarCambiosDto } from './dto/solicitar-cambios.dto';
 import { AsignarCompetenciaDto } from './dto/asignar-competencia.dto';
+import { SetTrabajarNivelesDto } from './dto/set-trabajar-niveles.dto';
 import { EstadoPlan } from './enums/estado-plan.enum';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -157,6 +158,20 @@ export class PlanesDesarrolloController {
       metadata: { competenciaId: dto.competenciaId },
     });
     return plan;
+  }
+
+  @Roles(Role.COACH)
+  @Patch(':coacheeId/niveles')
+  setTrabajarNiveles(
+    @Param('coacheeId') coacheeId: string,
+    @Body() dto: SetTrabajarNivelesDto,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.planes.setTrabajarNiveles(
+      coacheeId,
+      dto.trabajarNiveles,
+      actor,
+    );
   }
 
   @Roles(Role.COACH)

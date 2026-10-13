@@ -8,7 +8,12 @@ export interface Empresa {
   tarifaHoraMoneda: Moneda
   isActive: boolean
   pagada: boolean
+  // Valor manual — solo rige si `horasFijas`.
   horasContratadas: number | null
+  // Contrato con horas cerradas (caso excepcional). Si es false, las horas se calculan.
+  horasFijas: boolean
+  // Las que rigen: la suma de sesiones de los ciclos de sus coachees, o la manual si horasFijas.
+  horasContratadasEfectivas?: number | null
   fechaInicio: string | null
   fechaFin: string | null
   createdAt?: string
@@ -45,6 +50,7 @@ export function updateEmpresa(
       | 'tarifaHoraMoneda'
       | 'pagada'
       | 'horasContratadas'
+      | 'horasFijas'
       | 'isActive'
       | 'fechaInicio'
       | 'fechaFin'

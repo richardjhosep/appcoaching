@@ -31,6 +31,7 @@ import { MapasModule } from './mapas/mapas.module';
 import { MapasPersonalesModule } from './mapas-personales/mapas-personales.module';
 import { PizarraModule } from './pizarra/pizarra.module';
 import { RecursosPersonalesModule } from './recursos-personales/recursos-personales.module';
+import { DocumentosCoacheeModule } from './documentos-coachee/documentos-coachee.module';
 import { IndicadoresModule } from './indicadores/indicadores.module';
 import { RetroalimentacionModule } from './retroalimentacion/retroalimentacion.module';
 import { EjerciciosModule } from './ejercicios/ejercicios.module';
@@ -86,6 +87,7 @@ import { ProspectosModule } from './prospectos/prospectos.module';
     MapasPersonalesModule,
     PizarraModule,
     RecursosPersonalesModule,
+    DocumentosCoacheeModule,
     IndicadoresModule,
     RetroalimentacionModule,
     EjerciciosModule,

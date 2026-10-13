@@ -8,6 +8,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { IsNull, Repository } from 'typeorm';
 import { Competencia } from './entities/competencia.entity';
+import { EmpresaCompetencia } from '../empresas/entities/empresa-competencia.entity';
 import { COMPETENCIAS_SEED } from './competencias.seed-data';
 import { CreateCompetenciaEmpresaDto } from './dto/create-competencia-empresa.dto';
 import { UpdateCompetenciaEmpresaDto } from './dto/update-competencia-empresa.dto';
@@ -24,6 +25,8 @@ export class CompetenciasService implements OnApplicationBootstrap {
   constructor(
     @InjectRepository(Competencia)
     private readonly competencias: Repository<Competencia>,
+    @InjectRepository(EmpresaCompetencia)
+    private readonly empresaCompetencias: Repository<EmpresaCompetencia>,
   ) {}
 
   async onApplicationBootstrap(): Promise<void> {
@@ -95,6 +98,30 @@ export class CompetenciasService implements OnApplicationBootstrap {
     return [...globales, ...propias].sort((a, b) =>
       a.nombre.localeCompare(b.nombre),
     );
+  }
+
+  /**
+   * Las competencias que un coachee puede asociar al objetivo de su plan (feedback del coach,
+   * 10-10-2026): las de SU empresa — su manual propio (cargado desde el portal empresa) más las
+   * que el coach le asignó a esa empresa desde su catálogo (EmpresaCompetencia). Si la empresa
+   * no tiene ninguna de las dos, o el coachee es independiente, el catálogo completo del coach,
+   * para no dejarlo sin opciones.
+   */
+  async findParaPlan(empresaId: string | null): Promise<Competencia[]> {
+    if (!empresaId) return this.findAll();
+    const [propias, asignadas] = await Promise.all([
+      this.competencias.find({ where: { empresaId } }),
+      this.empresaCompetencias.find({
+        where: { empresaId },
+        relations: { competencia: true },
+      }),
+    ]);
+    const porId = new Map<string, Competencia>();
+    for (const c of propias) porId.set(c.id, c);
+    for (const a of asignadas)
+      if (a.competencia) porId.set(a.competencia.id, a.competencia);
+    if (porId.size === 0) return this.findAll();
+    return [...porId.values()].sort((a, b) => a.nombre.localeCompare(b.nombre));
   }
 
   findAllForEmpresa(empresaId: string): Promise<Competencia[]> {

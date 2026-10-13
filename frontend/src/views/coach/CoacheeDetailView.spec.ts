@@ -46,6 +46,7 @@ const planBase: PlanDesarrollo = {
   competencia: null,
   nivelActual: null,
   nivelObjetivo: null,
+  trabajarNiveles: false,
   plazo: null,
   descripcionEstadoActual: null,
   objetivoGeneral: null,

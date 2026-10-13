@@ -5,6 +5,8 @@ import AppModal from '../../components/AppModal.vue'
 import Pagination from '../../components/Pagination.vue'
 import StatusToggle from '../../components/StatusToggle.vue'
 import IconButton from '../../components/IconButton.vue'
+import { useAuthStore } from '../../stores/auth'
+import { useRouter } from 'vue-router'
 import SkeletonBlock from '../../components/SkeletonBlock.vue'
 import { createEmpresaUser, deleteUser, listUsers, resetPassword, setUserActivo, type UserAccount } from '../../api/users'
 import { listEmpresas, type Empresa } from '../../api/empresas'
@@ -129,6 +131,22 @@ async function toggleActivo(usuario: UserAccount) {
 }
 
 const restableciendo = ref<string | null>(null)
+
+// "Ver como": solo visible para el superadmin (auth.user.superadmin, decidido en el backend).
+const auth = useAuthStore()
+const router = useRouter()
+const entrandoVerComo = ref<string | null>(null)
+async function verComo(usuario: UserAccount) {
+  entrandoVerComo.value = usuario.id
+  try {
+    await auth.iniciarVerComo(usuario.id, '/coach/usuarios')
+    await router.push('/')
+  } catch (err) {
+    await notifyError('No se pudo entrar en modo "Ver como"', err instanceof ApiError ? err.message : 'Ocurrió un error inesperado.')
+  } finally {
+    entrandoVerComo.value = null
+  }
+}
 
 async function restablecer(usuario: UserAccount) {
   const confirmado = await confirmDialog({
@@ -320,13 +338,26 @@ async function eliminar(usuario: UserAccount) {
               </td>
               <td class="px-4 py-3">
                 <div class="flex items-center gap-2">
-                  <button
+                  <IconButton
+                    v-if="auth.user?.superadmin && u.role !== 'coach'"
+                    icon="ver"
+                    title="Ver como este usuario (solo lectura)"
+                    :disabled="entrandoVerComo === u.id"
+                    @click="verComo(u)"
+                  />
+                  <!-- Mismo ancho que el botón "Ver como" en las filas de coach, para que
+                       las demás acciones queden alineadas en columna. -->
+                  <span
+                    v-else-if="auth.user?.superadmin"
+                    class="inline-block w-8"
+                    aria-hidden="true"
+                  />
+                  <IconButton
+                    icon="llave"
+                    title="Restablecer contraseña"
                     :disabled="restableciendo === u.id"
-                    class="rounded-lg border border-[var(--color-line)] px-2 py-1 text-xs hover:bg-[var(--color-parchment)]/50 disabled:opacity-50"
                     @click="restablecer(u)"
-                  >
-                    Restablecer contraseña
-                  </button>
+                  />
                   <IconButton
                     icon="eliminar"
                     title="Eliminar"

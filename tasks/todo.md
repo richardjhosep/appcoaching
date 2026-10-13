@@ -2535,3 +2535,46 @@ sombras `--shadow-warm-*`): los primeros dos duplican patrones ya establecidos y
 aportar nada en una app sin modo oscuro; los `-subtle`/`shadow-warm` son una mejora real pero
 quedarían como tokens muertos sin una migración de los ~50 archivos que hoy usan opacidades
 inconsistentes (`/5` a `/25`) — se deja como limpieza aparte si el usuario la pide.
+
+---
+
+## 2026-10-10 — Feedback del coach (15 observaciones, lista del 10-10)
+
+Decisiones por defecto (usuario: "haz todo"):
+- Documentos del coachee visibles para los 3 roles (lo que pidió literalmente el coach).
+- Recurrencia: semanal / quincenal / mensual (mismo día del mes) / personalizada (cada N semanas).
+- Nivel de competencia: opcional por plan (no se elimina; alimenta indicadores de empresa).
+
+### Sprint 1 — bugs y quick wins
+- [x] Bug foto coach: GET /perfil-coach/foto lee el "primer coach" no determinista (hay 2 coach en BD) → coach lee su propia foto (me/foto) + obtenerDelCoach ordenado por createdAt
+- [x] Bug Empresas: el editor de empresa muestra solo catálogo global, no las competencias propias de la empresa
+- [x] Coachee.cargo (posición) en crear/editar coachee + ficha
+- [x] Número de sesiones al crear coachee (abre ciclo inicial)
+- [x] Editar certificaciones/experiencias del coach (PATCH)
+- [x] Mi Aprendizaje: "Mi Progreso" más compacto
+- [x] Hábitos/Ejecución: fecha visible al guardar
+### Sprint 2 — agenda y sesiones
+- [x] Recurrencia configurable de series
+- [x] Coachee Sesiones: resumen compacto de próximas sesiones con link a agenda
+- [x] Negocio: coachees activos por empresa sin depender de sesiones/pagada
+### Sprint 3 — contenido
+- [x] Biblioteca: capítulo/sección + aplicación obligatoria + agrupado
+- [x] Plan: competencias de la empresa (o asignadas por el coach) + niveles opcionales
+### Sprint 4 — documentos y horas
+- [x] DocumentoCoachee compartido (empresa/coachee/coach)
+- [x] Horas contratadas = suma sesiones de ciclos × duración, con "horas fijas" opcional
+
+### Revisión (2026-10-10)
+- Backend 606/606 (43 suites), frontend 583/583 (101 archivos), vue-tsc limpio, eslint limpio en lo tocado.
+- 5 migraciones nuevas (cargo, seccion de aprendizaje, trabajar_niveles, documentos_coachee, horas_fijas)
+  verificadas run → revert ×5 → run sobre `coaching_verify` (clon de la BD real, `CREATE DATABASE … TEMPLATE coaching`).
+- Verificado en Chrome headless (CDP) contra el clon, con SMTP apagado: foto del coach persiste con 3 usuarios COACH;
+  manual de Ferronor visible en el editor de empresa; horas efectivas (Ferronor 6 → 12 al crear un coachee de 6 sesiones);
+  Negocio lista los 7 coachees de Ferronor con "Pago pendiente"/"Sin ciclo"; serie mensual real (17-nov/17-dic/17-ene 07:00);
+  coachee: resumen de próximas sesiones + salto a la agenda, plan solo con competencias de Ferronor y sin niveles,
+  actividad con "Hasta 30 nov 2026", Biblioteca con validación y registro agrupado, CV subido en Mi cuenta;
+  empresa ve el CV del coachee (sin poder borrarlo) y sube su evaluación; el coach ve los 3 documentos.
+- Causas raíz encontradas: (1) GET /perfil-coach/foto resolvía "el primer COACH" sin orden — con 2 coaches en la BD
+  leía el perfil equivocado; (2) el editor de empresa y el plan del coachee pedían solo el catálogo global;
+  (3) Negocio armaba la lista de coachees desde sesiones del mes + empresa pagada (Ferronor no está marcada pagada
+  y 5 de 6 coachees no tenían ciclo).

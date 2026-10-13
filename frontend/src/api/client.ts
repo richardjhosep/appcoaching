@@ -61,7 +61,7 @@ async function rawUpload<T>(
   path: string,
   formData: FormData,
   token: string | null,
-  method: 'POST' | 'PUT',
+  method: 'POST' | 'PUT' | 'PATCH',
 ): Promise<T> {
   const res = await fetch(`${BASE_URL}${path}`, {
     method,
@@ -104,7 +104,7 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
 export async function apiUpload<T>(
   path: string,
   formData: FormData,
-  method: 'POST' | 'PUT' = 'POST',
+  method: 'POST' | 'PUT' | 'PATCH' = 'POST',
 ): Promise<T> {
   const auth = useAuthStore()
 

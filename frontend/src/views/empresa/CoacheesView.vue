@@ -10,6 +10,7 @@ import HistorialCiclos from '../../components/HistorialCiclos.vue'
 import CertificadoContenido from '../../components/CertificadoContenido.vue'
 import ImpactoNegocioCallout from '../../components/ImpactoNegocioCallout.vue'
 import NavIcon from '../../components/NavIcon.vue'
+import DocumentosCoacheePanel from '../../components/DocumentosCoacheePanel.vue'
 import { listCoachees, type CoacheeListItem } from '../../api/coachees'
 import { getPlanByCoachee } from '../../api/planesDesarrollo'
 import { getCiclosDeCoachee, type Ciclo } from '../../api/ciclos'
@@ -45,6 +46,7 @@ const modalHistorial = ref<FilaCoachee | null>(null)
 const modalCertificados = ref<FilaCoachee | null>(null)
 const certificadoPreview = ref<Ciclo | null>(null)
 const modalFeedback = ref<FilaCoachee | null>(null)
+const modalDocumentos = ref<FilaCoachee | null>(null)
 
 const formatoFecha = (fecha: string) =>
   new Date(fecha).toLocaleDateString('es-CL', { day: 'numeric', month: 'short', year: 'numeric' })
@@ -173,6 +175,12 @@ function cerrarModalCertificados() {
                 <p class="truncate font-medium">
                   {{ fila.coachee.nombre }}
                 </p>
+                <p
+                  v-if="fila.coachee.cargo"
+                  class="truncate text-xs text-[var(--color-ink)]/70"
+                >
+                  {{ fila.coachee.cargo }}
+                </p>
                 <p class="truncate text-xs text-[var(--color-ink)]/50">
                   {{ fila.resumen.competenciaNombre ?? 'Sin competencia definida' }}
                 </p>
@@ -248,6 +256,17 @@ function cerrarModalCertificados() {
                   :size="14"
                 />
                 Ver progreso
+              </button>
+              <button
+                type="button"
+                class="flex items-center gap-1.5 rounded-full border border-[var(--color-line)] px-3.5 py-2 text-xs font-medium hover:bg-[var(--color-parchment)]/60"
+                @click="modalDocumentos = fila"
+              >
+                <NavIcon
+                  name="legal"
+                  :size="14"
+                />
+                Documentos
               </button>
             </div>
           </div>
@@ -449,6 +468,22 @@ function cerrarModalCertificados() {
           {{ modalProgreso.cicloActual.resumenReunionInicial ?? 'Aún no redactado por el coach.' }}
         </div>
       </div>
+    </AppModal>
+
+    <!-- Modal: Documentos del proceso (compartidos con el coach y el coachee) -->
+    <AppModal
+      v-if="modalDocumentos"
+      title="Documentos del proceso"
+      size="lg"
+      @close="modalDocumentos = null"
+    >
+      <p class="mb-1 text-sm font-medium">
+        {{ modalDocumentos.coachee.nombre }}
+      </p>
+      <p class="mb-4 text-xs text-[var(--color-ink)]/55">
+        Lo que subas aquí lo ven el coach y el coachee; si el coachee ya lo subió, aparece en la lista.
+      </p>
+      <DocumentosCoacheePanel :coachee-id="modalDocumentos.coachee.id" />
     </AppModal>
 
     <!-- Modal: Ver historial -->

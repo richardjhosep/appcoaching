@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import NavIcon from './NavIcon.vue'
 import { ref } from 'vue'
 import {
   subirAdicional,
@@ -60,16 +61,26 @@ async function eliminar(doc: DocumentoAdicionalLegal) {
   <div>
     <button
       type="button"
-      class="flex w-full items-center justify-between text-left text-xs font-medium text-[var(--color-ink)]/70"
+      class="flex w-full items-center gap-3 rounded-xl px-1 py-1.5 text-left text-sm transition-colors hover:bg-[var(--color-parchment)]/50"
       @click="expandido = !expandido"
     >
-      <span>Otros documentos ({{ documentos.length }})</span>
-      <span>{{ expandido ? '▲' : '▼' }}</span>
+      <NavIcon
+        name="legal"
+        :size="16"
+        class="shrink-0 text-[var(--color-ink)]/50"
+      />
+      <span class="flex-1 font-medium">Otros documentos ({{ documentos.length }})</span>
+      <NavIcon
+        name="chevron"
+        :size="16"
+        class="shrink-0 text-[var(--color-ink)]/40 transition-transform"
+        :class="expandido ? '-rotate-90' : 'rotate-90'"
+      />
     </button>
 
     <div
       v-if="expandido"
-      class="mt-2 space-y-2"
+      class="mt-1 space-y-2 pl-8"
     >
       <p
         v-if="error"

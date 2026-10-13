@@ -15,4 +15,8 @@ export class UpdateEmpresaDto extends PartialType(CreateEmpresaDto) {
   @IsInt()
   @Min(0)
   horasContratadas?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  horasFijas?: boolean;
 }

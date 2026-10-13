@@ -29,6 +29,11 @@ vi.mock('../../api/solicitudes-sesion', () => ({
 import { getSlotsLibres } from '../../api/disponibilidad'
 import { crearSolicitudSesion } from '../../api/solicitudes-sesion'
 
+vi.mock('../../api/ciclos', () => ({
+  getMiCicloActual: vi.fn().mockResolvedValue(null),
+}))
+import { getMiCicloActual } from '../../api/ciclos'
+
 vi.mock('../../lib/notify', () => ({
   notifySuccess: vi.fn(),
   notifyError: vi.fn(),
@@ -212,5 +217,34 @@ describe('SesionesView', () => {
     await flushPromises()
 
     expect(crearSolicitudSesion).toHaveBeenCalledWith(slotIso, undefined)
+  })
+
+  it('summarizes the upcoming sessions and the ones still without a date, and jumps to the agenda on click', async () => {
+    const otraFutura: Sesion = { ...sesionFutura, id: 's4', fechaHora: '2998-06-01T15:00:00.000Z', confirmada: true }
+    // Copia: otro test confirma sesionFutura y muta el fixture compartido.
+    vi.mocked(getMisSesiones).mockResolvedValue([sesionPasadaPublicada, { ...sesionFutura, confirmada: false }, otraFutura])
+    vi.mocked(getMiCicloActual).mockResolvedValueOnce({ totalSesiones: 8, sesionesRestantes: 5 } as never)
+    const scrollIntoView = vi.fn()
+    Element.prototype.scrollIntoView = scrollIntoView
+
+    const wrapper = mount(SesionesView)
+    await flushPromises()
+
+    const resumen = wrapper.find('section[aria-label="Próximas sesiones"]')
+    expect(resumen.text()).toContain('Te quedan 5 de 8 sesiones del proceso')
+    expect(resumen.text()).toContain('3 aún sin fecha')
+    const chips = resumen.findAll('button')
+    // La más próxima primero (2998 antes que 2999), y la sesión pasada no aparece.
+    expect(chips).toHaveLength(2)
+    expect(chips[0].text()).toContain('jun')
+    expect(chips[0].text()).toContain('✓')
+    expect(chips[1].text()).not.toContain('✓')
+
+    await chips[0].trigger('click')
+    await flushPromises()
+
+    expect(scrollIntoView).toHaveBeenCalled()
+    // Resalta la tarjeta de detalle de esa sesión, igual que un clic dentro del calendario.
+    expect(wrapper.find('.ring-2').exists()).toBe(true)
   })
 })

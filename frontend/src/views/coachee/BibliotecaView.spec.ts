@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { mount, flushPromises } from '@vue/test-utils'
+import { mount, flushPromises, DOMWrapper } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import BibliotecaView from './BibliotecaView.vue'
 import type { Carpeta } from '../../api/carpetas'
@@ -25,7 +25,7 @@ vi.mock('../../api/recursos', async () => {
 })
 
 import { getMisCarpetas } from '../../api/carpetas'
-import { getMisRecursos, getMisAprendizajes } from '../../api/recursos'
+import { getMisRecursos, getMisAprendizajes, addAprendizaje } from '../../api/recursos'
 
 const raiz: Carpeta = {
   id: 'cp1',
@@ -163,5 +163,60 @@ describe('BibliotecaView', () => {
 
     expect(getMisAprendizajes).toHaveBeenCalledWith('r1')
     expect(document.body.textContent).toContain('Mis aprendizajes')
+  })
+
+  async function abrirLibro() {
+    vi.mocked(getMisRecursos).mockResolvedValue([{ ...recursoEnRaiz, categoria: 'texto', titulo: 'Libro de liderazgo' }])
+    // El modal se teletransporta a <body>; el test previo que abre un recurso no desmonta, así
+    // que se limpia acá para no encontrar inputs de un modal viejo.
+    document.body.innerHTML = ''
+    const wrapper = mount(BibliotecaView, { attachTo: document.body })
+    await flushPromises()
+    await wrapper.findAll('button').find((b) => b.text().includes('Liderazgo'))!.trigger('click')
+    await flushPromises()
+    await wrapper.findAll('button').find((b) => b.text().includes('Libro de liderazgo'))!.trigger('click')
+    await flushPromises()
+    return { wrapper, modal: new DOMWrapper(document.body) }
+  }
+
+  it('requires capítulo (in a book), at least one aprendizaje and the aplicación before saving', async () => {
+    vi.mocked(addAprendizaje).mockClear()
+    const { wrapper, modal } = await abrirLibro()
+
+    expect(modal.text()).toContain('Capítulo(s) estudiado(s)')
+    await modal.findAll('form').at(-1)!.trigger('submit')
+    await flushPromises()
+
+    expect(addAprendizaje).not.toHaveBeenCalled()
+    expect(modal.text()).toContain('Indica qué capítulo(s) estudiaste.')
+    expect(modal.text()).toContain('Registra al menos un aprendizaje.')
+    expect(modal.text()).toContain('Este campo es obligatorio')
+    wrapper.unmount()
+  })
+
+  it('saves several aprendizajes of the same capítulo together with its aplicación', async () => {
+    vi.mocked(addAprendizaje).mockClear()
+    vi.mocked(addAprendizaje).mockResolvedValue({
+      id: 'a1', recursoId: 'r1', coacheeId: 'c1', contenido: 'Escuchar\nPreguntar', aplicacion: 'En mis 1:1', seccion: 'Cap. 3', createdAt: '2026-10-10T00:00:00.000Z',
+    })
+    const { wrapper, modal } = await abrirLibro()
+
+    await modal.find('input[placeholder="Ej. Capítulos 3 y 4"]').setValue('Cap. 3')
+    await modal.find('input[aria-label="Aprendizaje 1"]').setValue('Escuchar')
+    await modal.findAll('button').find((b) => b.text() === '+ Otro aprendizaje')!.trigger('click')
+    await modal.find('input[aria-label="Aprendizaje 2"]').setValue('Preguntar')
+    await modal.find('textarea').setValue('En mis 1:1')
+    await modal.findAll('form').at(-1)!.trigger('submit')
+    await flushPromises()
+
+    expect(addAprendizaje).toHaveBeenCalledWith('r1', {
+      aprendizajes: ['Escuchar', 'Preguntar'],
+      aplicacion: 'En mis 1:1',
+      seccion: 'Cap. 3',
+    })
+    // El registro guardado aparece agrupado: capítulo + lista de aprendizajes + aplicación.
+    expect(modal.text()).toContain('Cap. 3')
+    expect(modal.findAll('li li')).toHaveLength(2)
+    wrapper.unmount()
   })
 })

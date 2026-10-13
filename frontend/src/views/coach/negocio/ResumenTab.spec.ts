@@ -37,7 +37,7 @@ const resumen: ResumenNegocio = {
       empresaId: 'e1',
       nombre: 'Empresa Uno',
       pagada: true,
-      horasContratadas: 10,
+      horasContratadas: 10, horasFijas: true,
       horasConsumidas: 4,
       ingresoDelPeriodo: 120000,
       ingresoProyectado: 60000,
@@ -50,7 +50,12 @@ const resumen: ResumenNegocio = {
   horasRealizadasTotal: 4,
   ingresoDelPeriodoTotal: 120000,
   ingresoProyectadoTotal: 60000,
-  coacheesActivos: 2,
+  coacheesActivos: 3,
+  carteraCoachees: [
+    { coacheeId: 'c1', nombre: 'Coachee de Empresa', empresaNombre: 'Empresa Uno', empresaPagada: true, totalSesiones: 8, sesionesRealizadas: 4, horasDelPeriodo: 4, montoAgendadoDelPeriodo: 180000, ingresoConfirmadoDelPeriodo: 180000 },
+    { coacheeId: 'c2', nombre: 'Coachee Independiente', empresaNombre: null, empresaPagada: null, totalSesiones: 6, sesionesRealizadas: 2, horasDelPeriodo: 2, montoAgendadoDelPeriodo: 45000, ingresoConfirmadoDelPeriodo: 45000 },
+    { coacheeId: 'c3', nombre: 'Coachee Nuevo Ferronor', empresaNombre: 'Ferronor', empresaPagada: false, totalSesiones: null, sesionesRealizadas: 0, horasDelPeriodo: 0, montoAgendadoDelPeriodo: 0, ingresoConfirmadoDelPeriodo: 0 },
+  ],
   satisfaccionPromedio: 4.5,
 }
 
@@ -122,15 +127,18 @@ describe('ResumenTab', () => {
     expect((horasInput.element as HTMLInputElement).value).toBe('10')
   })
 
-  it('shows a per-coachee income table on screen, including independientes not covered by the empresa table', async () => {
+  it('shows the whole active cartera, including a new coachee without sessions nor ciclo from an empresa not marked as pagada', async () => {
     const wrapper = mount(ResumenTab)
     await flushPromises()
 
     const text = wrapper.text()
-    expect(text).toContain('Ingresos por coachee')
+    expect(text).toContain('Cartera de coachees')
     expect(text).toContain('Coachee de Empresa')
     expect(text).toContain('Coachee Independiente')
-    expect(text).toContain('Independiente') // empresa column fallback for c2
+    expect(text).toContain('Coachee Nuevo Ferronor')
+    expect(text).toContain('Pago pendiente')
+    expect(text).toContain('Sin ciclo')
+    expect(text).toContain('4/8')
   })
 
   it('exports both empresas AND independientes to Excel, in separate sheets — not just empresas', async () => {
@@ -147,13 +155,22 @@ describe('ResumenTab', () => {
     expect(filasEmpresa).toEqual([
       { Empresa: 'Empresa Uno', Pagada: 'Sí', 'Horas contratadas': 10, 'Horas consumidas': 4, 'Ingreso del período': 120000, 'Ingreso proyectado': 60000 },
     ])
-    expect(filasCoachee).toEqual([
-      { Coachee: 'Coachee de Empresa', Empresa: 'Empresa Uno', 'Horas realizadas': 4, 'Ingreso del período': 120000, 'Ingreso proyectado': 60000 },
-      { Coachee: 'Coachee Independiente', Empresa: 'Independiente', 'Horas realizadas': 2, 'Ingreso del período': 45000, 'Ingreso proyectado': 0 },
-    ])
+    expect(filasCoachee).toHaveLength(3)
+    expect(filasCoachee[0]).toEqual({
+      Coachee: 'Coachee de Empresa',
+      Empresa: 'Empresa Uno',
+      'Pago empresa': 'Confirmado',
+      'Sesiones del proceso': 8,
+      'Sesiones realizadas': 4,
+      'Horas del período': 4,
+      'Agendado del período': 180000,
+      'Ingreso confirmado': 180000,
+    })
+    expect(filasCoachee[1]).toEqual(expect.objectContaining({ Empresa: 'Independiente', 'Pago empresa': '—' }))
+    expect(filasCoachee[2]).toEqual(expect.objectContaining({ 'Pago empresa': 'Pendiente', 'Sesiones del proceso': '' }))
 
     expect(bookAppendSheet).toHaveBeenCalledWith(expect.anything(), expect.anything(), 'Cobros por empresa')
-    expect(bookAppendSheet).toHaveBeenCalledWith(expect.anything(), expect.anything(), 'Cobros por coachee')
+    expect(bookAppendSheet).toHaveBeenCalledWith(expect.anything(), expect.anything(), 'Cartera de coachees')
     expect(writeFile).toHaveBeenCalledTimes(1)
   })
 

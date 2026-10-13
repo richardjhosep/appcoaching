@@ -12,6 +12,13 @@ import { CreateEmpresaDto } from './dto/create-empresa.dto';
 import { UpdateEmpresaDto } from './dto/update-empresa.dto';
 import { CreateGestionDto } from './dto/create-gestion.dto';
 import { assignDefined } from '../common/assign-defined.util';
+import { SESION_DURACION_MINUTOS } from '../sesiones/sesiones.constants';
+
+// Lo que devuelven los endpoints de empresa: la entidad + las horas contratadas que realmente
+// rigen (manual si `horasFijas`, si no la suma de sesiones de los ciclos de sus coachees).
+export type EmpresaConHoras = Empresa & {
+  horasContratadasEfectivas: number | null;
+};
 
 @Injectable()
 export class EmpresasService {
@@ -33,8 +40,64 @@ export class EmpresasService {
     return this.empresas.save(this.empresas.create(dto));
   }
 
-  findAll(): Promise<Empresa[]> {
-    return this.empresas.find({ order: { nombre: 'ASC' } });
+  async findAll(): Promise<EmpresaConHoras[]> {
+    return this.conHorasEfectivas(
+      await this.empresas.find({ order: { nombre: 'ASC' } }),
+    );
+  }
+
+  async findByIdConHoras(id: string): Promise<EmpresaConHoras> {
+    const [empresa] = await this.conHorasEfectivas([await this.findById(id)]);
+    return empresa;
+  }
+
+  /**
+   * Horas contratadas que rigen por empresa. Sin `horasFijas`: suma de `total_sesiones` de los
+   * ciclos de sus coachees abiertos dentro del período del contrato (fecha_inicio..fecha_fin,
+   * si están definidas) × la duración de una sesión. Con `horasFijas`: el valor manual.
+   */
+  async horasEfectivas(
+    empresas: Empresa[],
+  ): Promise<Map<string, number | null>> {
+    const resultado = new Map<string, number | null>();
+    const calculadas = empresas.filter((e) => !e.horasFijas);
+    for (const e of empresas) {
+      if (e.horasFijas) resultado.set(e.id, e.horasContratadas);
+    }
+    if (calculadas.length === 0) return resultado;
+    const filas = await this.empresas.manager.query<
+      { empresaId: string; sesiones: number }[]
+    >(
+      `SELECT c.empresa_id AS "empresaId", COALESCE(SUM(ci.total_sesiones), 0)::int AS sesiones
+         FROM ciclos_coaching ci
+         JOIN coachees c ON c.id = ci.coachee_id
+         JOIN empresas e ON e.id = c.empresa_id
+        WHERE c.empresa_id = ANY($1)
+          AND (e.fecha_inicio IS NULL OR ci.fecha_apertura >= e.fecha_inicio)
+          AND (e.fecha_fin IS NULL OR ci.fecha_apertura < e.fecha_fin + 1)
+        GROUP BY c.empresa_id`,
+      [calculadas.map((e) => e.id)],
+    );
+    const sesionesPorEmpresa = new Map(
+      filas.map((f) => [f.empresaId, f.sesiones]),
+    );
+    for (const e of calculadas) {
+      const sesiones = sesionesPorEmpresa.get(e.id) ?? 0;
+      resultado.set(
+        e.id,
+        Math.round((sesiones * SESION_DURACION_MINUTOS) / 60),
+      );
+    }
+    return resultado;
+  }
+
+  private async conHorasEfectivas(
+    empresas: Empresa[],
+  ): Promise<EmpresaConHoras[]> {
+    const horas = await this.horasEfectivas(empresas);
+    return empresas.map((e) =>
+      Object.assign(e, { horasContratadasEfectivas: horas.get(e.id) ?? null }),
+    );
   }
 
   async findById(id: string): Promise<Empresa> {

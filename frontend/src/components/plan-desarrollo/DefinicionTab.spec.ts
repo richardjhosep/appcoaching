@@ -35,6 +35,7 @@ const basePlan: PlanDesarrollo = {
   competenciaId: null,
   nivelActual: 2,
   nivelObjetivo: null,
+  trabajarNiveles: true,
   plazo: null,
   descripcionEstadoActual: null,
   objetivoGeneral: null,
@@ -79,8 +80,23 @@ describe('DefinicionTab', () => {
     expect(wrapper.find('select').attributes('disabled')).toBeUndefined()
     expect(numberInputs[0].attributes('disabled')).toBeUndefined() // nivelActual
     expect(numberInputs[1].attributes('disabled')).toBeUndefined() // nivelObjetivo
-    expect(textareas[0].attributes('disabled')).toBeUndefined() // descripcionEstadoActual
-    expect(textareas[1].attributes('disabled')).toBeUndefined() // objetivoGeneral
+    expect(textareas[0].attributes('disabled')).toBeUndefined() // objetivoGeneral (va primero)
+    expect(textareas[1].attributes('disabled')).toBeUndefined() // descripcionEstadoActual
+  })
+
+  it('hides nivel actual/objetivo and the autoevaluación when the coach chose not to work with niveles', () => {
+    const wrapper = mount(DefinicionTab, {
+      props: {
+        plan: { ...basePlan, trabajarNiveles: false, competenciaId: 'comp-1' },
+        competencias: [{ id: 'comp-1', nombre: 'Liderazgo', definicion: 'd', niveles: [{ nivel: 1, descripcion: 'x' }], empresaId: null }],
+      },
+    })
+
+    expect(wrapper.findAll('input[type="number"]')).toHaveLength(0)
+    expect(wrapper.text()).not.toContain('Nivel objetivo')
+    expect(wrapper.text()).not.toContain('Autoevaluación de competencia')
+    expect(wrapper.text()).toContain('Objetivo general del proceso')
+    expect(wrapper.text()).toContain('Competencia asociada al objetivo')
   })
 
   it('always shows the submit button, even on an already-sent plan', () => {

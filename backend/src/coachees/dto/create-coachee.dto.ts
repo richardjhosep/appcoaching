@@ -43,4 +43,8 @@ export class CreateCoacheeDto {
   @IsOptional()
   @IsString()
   areaGerencia?: string;
+
+  @IsOptional()
+  @IsString()
+  cargo?: string;
 }

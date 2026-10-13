@@ -1,4 +1,8 @@
-import { UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
@@ -24,7 +28,8 @@ describe('AuthService', () => {
   let coachees: { findByUserId: jest.Mock };
   let email: { sendPasswordReset: jest.Mock };
 
-  const CONFIG_VALUES: Record<string, string> = {
+  const CONFIG_VALUES: Record<string, unknown> = {
+    superadminEmails: ['super@example.com'],
     'jwt.accessSecret': 'access-secret',
     'jwt.accessTtl': '15m',
     'jwt.refreshSecret': 'refresh-secret',
@@ -364,6 +369,96 @@ describe('AuthService', () => {
         service.resetPasswordWithToken('bad-token', 'NuevaClave#2026Segura'),
       ).rejects.toThrow(UnauthorizedException);
       expect(users.setNewPassword).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('verComo', () => {
+    const superadmin = {
+      id: 'u-super',
+      email: 'Super@example.com',
+      role: Role.COACH,
+      empresaId: null,
+    };
+
+    it('issues a 30-min, read-only token for the coachee, marked with who asked, and audits it', async () => {
+      users.findById.mockResolvedValue({
+        id: 'u-coachee',
+        email: 'ana@example.com',
+        role: Role.COACHEE,
+        empresaId: null,
+      });
+
+      const result = await service.verComo(superadmin, 'u-coachee');
+
+      expect(result).toEqual({ accessToken: 'signed-token' });
+      expect(jwt.sign).toHaveBeenCalledWith(
+        expect.objectContaining({
+          sub: 'u-coachee',
+          role: Role.COACHEE,
+          impersonadoPor: 'u-super',
+        }),
+        expect.objectContaining({ expiresIn: 1800 }),
+      );
+      expect(audit.record).toHaveBeenCalledWith(
+        'VER_COMO_INICIADO',
+        expect.objectContaining({ userId: 'u-super', targetId: 'u-coachee' }),
+      );
+    });
+
+    it('rejects any user that is not in SUPERADMIN_EMAILS — including the coach', async () => {
+      await expect(
+        service.verComo(
+          {
+            id: 'u-coach',
+            email: 'fernando@example.com',
+            role: Role.COACH,
+            empresaId: null,
+          },
+          'u-coachee',
+        ),
+      ).rejects.toThrow(ForbiddenException);
+      expect(jwt.sign).not.toHaveBeenCalled();
+    });
+
+    it('cannot chain: an ongoing Ver como session cannot start another one', async () => {
+      await expect(
+        service.verComo({ ...superadmin, impersonadoPor: 'u-super' }, 'u-otro'),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('does not allow viewing as another coach', async () => {
+      users.findById.mockResolvedValue({
+        id: 'u-c2',
+        email: 'c2@example.com',
+        role: Role.COACH,
+        empresaId: null,
+      });
+
+      await expect(service.verComo(superadmin, 'u-c2')).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it('getProfile flags the superadmin, but never inside a Ver como session', async () => {
+      users.findById.mockResolvedValue({ mustChangePassword: true });
+
+      const propio = await service.getProfile({
+        id: 'u-super',
+        email: 'super@example.com',
+        role: Role.COACH,
+        empresaId: null,
+      });
+      const mirando = await service.getProfile({
+        id: 'u-emp',
+        email: 'emp@example.com',
+        role: Role.EMPRESA,
+        empresaId: 'e1',
+        impersonadoPor: 'u-super',
+      });
+
+      expect(propio.superadmin).toBe(true);
+      expect(mirando.superadmin).toBe(false);
+      expect(mirando.mustChangePassword).toBe(false);
     });
   });
 });

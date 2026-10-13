@@ -45,7 +45,9 @@ export interface EmpresaCobro {
   empresaId: string;
   nombre: string;
   pagada: boolean;
+  // Las que rigen (ver EmpresasService.horasEfectivas): calculadas, o manuales si horasFijas.
   horasContratadas: number | null;
+  horasFijas: boolean;
   horasConsumidas: number;
   ingresoDelPeriodo: number;
   ingresoProyectado: number;
@@ -63,6 +65,26 @@ export interface CoacheeCobro {
   horasRealizadas: number;
   ingresoDelPeriodo: number;
   ingresoProyectado: number;
+}
+
+// Una fila por coachee ACTIVO de la cartera, tenga o no sesiones este mes y esté o no pagada
+// su empresa — `porCoachee` solo trae actividad facturable del período, y por eso un coachee
+// recién creado (sin sesiones aún) o de una empresa no marcada como pagada no aparecía en
+// Negocio (feedback del coach con los nuevos de Ferronor, 10-10-2026).
+export interface CoacheeCartera {
+  coacheeId: string;
+  nombre: string;
+  empresaNombre: string | null;
+  // null = independiente (paga directo al coach, no hay pago de empresa que confirmar).
+  empresaPagada: boolean | null;
+  // Del ciclo abierto; null = todavía sin ciclo (sin número de sesiones definido).
+  totalSesiones: number | null;
+  sesionesRealizadas: number;
+  horasDelPeriodo: number;
+  // Valor de lo agendado en el período (realizado + por realizar), sin el filtro de pagada.
+  montoAgendadoDelPeriodo: number;
+  // Lo que ya cuenta como ingreso confirmado (mismo criterio que porCoachee).
+  ingresoConfirmadoDelPeriodo: number;
 }
 
 // Gasto real por coachee, sin el gate de `pagada` — a diferencia de `porCoachee` (que solo
@@ -348,6 +370,8 @@ export class NegocioService {
       this.empresas.find({ order: { nombre: 'ASC' } }),
       this.valorUfDelDia(),
     ]);
+    const horasContratadas =
+      await this.empresasService.horasEfectivas(empresas);
     const coacheeMap = new Map(coachees.map((c) => [c.id, c]));
 
     let horasRealizadasTotal = 0;
@@ -462,7 +486,8 @@ export class NegocioService {
         empresaId: empresa.id,
         nombre: empresa.nombre,
         pagada: empresa.pagada,
-        horasContratadas: empresa.horasContratadas,
+        horasContratadas: horasContratadas.get(empresa.id) ?? null,
+        horasFijas: empresa.horasFijas,
         ...datos,
       };
     });
@@ -644,6 +669,8 @@ export class NegocioService {
     const consumidasPorEmpresa = new Map(
       cobrosDelMes.porEmpresa.map((e) => [e.empresaId, e.horasConsumidas]),
     );
+    const horasContratadas =
+      await this.empresasService.horasEfectivas(empresas);
     const hoy = new Date();
     hoy.setHours(0, 0, 0, 0);
 
@@ -658,7 +685,7 @@ export class NegocioService {
         nombre: empresa.nombre,
         fechaFin: empresa.fechaFin,
         pagada: empresa.pagada,
-        horasContratadas: empresa.horasContratadas,
+        horasContratadas: horasContratadas.get(empresa.id) ?? null,
         horasConsumidasEsteMes: consumidasPorEmpresa.get(empresa.id) ?? 0,
         estado,
         diasParaVencer,
@@ -1082,9 +1109,14 @@ export class NegocioService {
     // producía el número quedara por debajo de "coachees que necesitan algo" (esa lista
     // sí incluye coachees sin ciclo abierto, ej. con el plan sin enviar): un coachee recién
     // creado, sin ciclo todavía, parecía "no contar" pese a seguir activo en la cartera.
-    const [cobros, coacheesActivos, satisfaccion] = await Promise.all([
+    const [cobros, activos, ciclosAbiertos, satisfaccion] = await Promise.all([
       this.calcularResumenCobros(),
-      this.coachees.count({ where: { activo: true } }),
+      this.coachees.find({
+        where: { activo: true },
+        relations: { empresa: true },
+        order: { nombre: 'ASC' },
+      }),
+      this.ciclos.findAllAbiertosConEstado(),
       this.postSesiones
         .createQueryBuilder('post')
         .select('AVG(post.utilidad)', 'avg')
@@ -1092,9 +1124,40 @@ export class NegocioService {
         .getRawOne<{ avg: string | null }>(),
     ]);
 
+    const cicloPorCoachee = new Map(
+      ciclosAbiertos.map((c) => [c.coacheeId, c]),
+    );
+    const gastoPorCoachee = new Map(
+      cobros.porCoacheeGastoBruto.map((c) => [c.coacheeId, c]),
+    );
+    const cobroPorCoachee = new Map(
+      cobros.porCoachee.map((c) => [c.coacheeId, c]),
+    );
+    const carteraCoachees: CoacheeCartera[] = activos.map((c) => {
+      const ciclo = cicloPorCoachee.get(c.id);
+      const gasto = gastoPorCoachee.get(c.id);
+      const cobro = cobroPorCoachee.get(c.id);
+      return {
+        coacheeId: c.id,
+        nombre: c.nombre,
+        empresaNombre: c.empresa?.nombre ?? null,
+        empresaPagada: c.empresaId ? (c.empresa?.pagada ?? false) : null,
+        totalSesiones: ciclo?.totalSesiones ?? null,
+        sesionesRealizadas: ciclo?.sesionesRealizadas ?? 0,
+        horasDelPeriodo: gasto?.horasRealizadas ?? 0,
+        montoAgendadoDelPeriodo: gasto
+          ? gasto.gastoBrutoDelPeriodo + gasto.gastoBrutoProyectado
+          : 0,
+        ingresoConfirmadoDelPeriodo: cobro
+          ? cobro.ingresoDelPeriodo + cobro.ingresoProyectado
+          : 0,
+      };
+    });
+
     return {
       ...cobros,
-      coacheesActivos,
+      coacheesActivos: activos.length,
+      carteraCoachees,
       satisfaccionPromedio: satisfaccion?.avg
         ? Math.round(Number(satisfaccion.avg) * 10) / 10
         : null,

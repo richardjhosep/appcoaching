@@ -24,6 +24,13 @@ export default () => ({
     refreshSecret: process.env.JWT_REFRESH_SECRET as string,
     refreshTtl: process.env.JWT_REFRESH_TTL ?? '7d',
   },
+  // Correos (separados por coma) con acceso a "Ver como": entrar en solo lectura al portal de
+  // un coachee o una empresa. Vacío = nadie. No es un rol: se decide por correo para no
+  // tocar los 3 roles del sistema.
+  superadminEmails: (process.env.SUPERADMIN_EMAILS ?? '')
+    .split(',')
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean),
   bcryptRounds: parseInt(process.env.BCRYPT_SALT_ROUNDS ?? '12', 10),
   seed: {
     coachEmail: process.env.SEED_COACH_EMAIL,

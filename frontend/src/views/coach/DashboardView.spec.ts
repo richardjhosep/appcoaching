@@ -89,6 +89,7 @@ const resumen: ResumenNegocio = {
   ingresoDelPeriodoTotal: 0,
   ingresoProyectadoTotal: 0,
   coacheesActivos: 5,
+  carteraCoachees: [],
   satisfaccionPromedio: 4.5,
 }
 
@@ -240,7 +241,7 @@ describe('DashboardView', () => {
     })
     vi.mocked(getResumenNegocio).mockResolvedValue({
       ...resumen,
-      porEmpresa: [{ empresaId: 'e1', nombre: 'Andes Minerals', pagada: false, horasContratadas: null, horasConsumidas: 1, ingresoDelPeriodo: 50000, ingresoProyectado: 0 }],
+      porEmpresa: [{ empresaId: 'e1', nombre: 'Andes Minerals', pagada: false, horasContratadas: null, horasFijas: false, horasConsumidas: 1, ingresoDelPeriodo: 50000, ingresoProyectado: 0 }],
       porCoachee: [
         { coacheeId: 'c1', nombre: 'Rodrigo Peña', empresaNombre: 'Andes Minerals', horasRealizadas: 1, ingresoDelPeriodo: 50000, ingresoProyectado: 0 },
         { coacheeId: 'c2', nombre: 'Ana Reagenda', empresaNombre: null, horasRealizadas: 1, ingresoDelPeriodo: 45000, ingresoProyectado: 0 },

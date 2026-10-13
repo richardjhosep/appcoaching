@@ -71,6 +71,10 @@ export class Coachee {
   @Column({ name: 'area_gerencia', type: 'varchar', nullable: true })
   areaGerencia: string | null;
 
+  // Posición dentro de la empresa (ej. "Jefe de Mantención") — texto libre.
+  @Column({ type: 'varchar', nullable: true })
+  cargo: string | null;
+
   @Column({ type: 'boolean', default: true })
   activo: boolean;
 

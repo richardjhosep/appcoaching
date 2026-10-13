@@ -115,6 +115,15 @@ export function agregarCertificacion(input: CreateCertificacionInput): Promise<C
   return apiUpload<CertificacionCoach>('/perfil-coach/me/certificaciones', form)
 }
 
+export function actualizarCertificacion(id: string, input: CreateCertificacionInput): Promise<CertificacionCoach> {
+  const form = new FormData()
+  form.set('nombre', input.nombre)
+  if (input.entidadEmisora) form.set('entidadEmisora', input.entidadEmisora)
+  if (input.fecha) form.set('fecha', input.fecha)
+  if (input.archivo) form.set('archivo', input.archivo)
+  return apiUpload<CertificacionCoach>(`/perfil-coach/me/certificaciones/${id}`, form, 'PATCH')
+}
+
 export function eliminarCertificacion(id: string): Promise<void> {
   return apiRequest<void>(`/perfil-coach/me/certificaciones/${id}`, { method: 'DELETE' })
 }
@@ -128,6 +137,17 @@ export function agregarExperiencia(input: CreateExperienciaInput): Promise<Exper
   if (input.descripcion) form.set('descripcion', input.descripcion)
   if (input.logo) form.set('logo', input.logo)
   return apiUpload<ExperienciaCoach>('/perfil-coach/me/experiencias', form)
+}
+
+export function actualizarExperiencia(id: string, input: CreateExperienciaInput): Promise<ExperienciaCoach> {
+  const form = new FormData()
+  form.set('empresa', input.empresa)
+  if (input.cargo) form.set('cargo', input.cargo)
+  form.set('fechaInicio', input.fechaInicio)
+  if (input.fechaFin) form.set('fechaFin', input.fechaFin)
+  if (input.descripcion) form.set('descripcion', input.descripcion)
+  if (input.logo) form.set('logo', input.logo)
+  return apiUpload<ExperienciaCoach>(`/perfil-coach/me/experiencias/${id}`, form, 'PATCH')
 }
 
 export function eliminarExperiencia(id: string): Promise<void> {

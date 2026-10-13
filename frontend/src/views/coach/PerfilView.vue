@@ -14,13 +14,17 @@ import {
   subirFoto,
   subirCv,
   agregarCertificacion,
+  actualizarCertificacion,
   eliminarCertificacion,
   agregarExperiencia,
+  actualizarExperiencia,
   eliminarExperiencia,
   obtenerUrlFoto,
   descargarCv,
   descargarCertificacion,
   type PerfilCoach,
+  type CertificacionCoach,
+  type ExperienciaCoach,
 } from '../../api/perfilCoach'
 
 const loading = ref(true)
@@ -145,27 +149,51 @@ function onCertArchivoChange(e: Event) {
   nuevaCert.archivo = (e.target as HTMLInputElement).files?.[0] ?? null
 }
 
-async function agregarCert() {
+// El mismo formulario sirve para agregar y para editar: con `editandoCertId` puesto, guardar
+// reemplaza esa certificación en vez de crear una nueva.
+const editandoCertId = ref<string | null>(null)
+
+function limpiarFormCert() {
+  editandoCertId.value = null
+  nuevaCert.nombre = ''
+  nuevaCert.entidadEmisora = ''
+  nuevaCert.fecha = ''
+  nuevaCert.archivo = null
+  const archivoInput = document.getElementById('cert-archivo-input') as HTMLInputElement | null
+  if (archivoInput) archivoInput.value = ''
+}
+
+function editarCert(cert: CertificacionCoach) {
+  limpiarFormCert()
+  editandoCertId.value = cert.id
+  nuevaCert.nombre = cert.nombre
+  nuevaCert.entidadEmisora = cert.entidadEmisora ?? ''
+  nuevaCert.fecha = cert.fecha ?? ''
+}
+
+async function guardarCert() {
   if (!nuevaCert.nombre.trim()) return
   agregandoCert.value = true
+  const input = {
+    nombre: nuevaCert.nombre.trim(),
+    entidadEmisora: nuevaCert.entidadEmisora.trim() || undefined,
+    fecha: nuevaCert.fecha || undefined,
+    archivo: nuevaCert.archivo ?? undefined,
+  }
   try {
-    const cert = await agregarCertificacion({
-      nombre: nuevaCert.nombre.trim(),
-      entidadEmisora: nuevaCert.entidadEmisora.trim() || undefined,
-      fecha: nuevaCert.fecha || undefined,
-      archivo: nuevaCert.archivo ?? undefined,
-    })
+    const id = editandoCertId.value
+    const cert = id ? await actualizarCertificacion(id, input) : await agregarCertificacion(input)
     if (perfil.value) {
-      perfil.value = { ...perfil.value, certificaciones: [...(perfil.value.certificaciones ?? []), cert] }
+      const actuales = perfil.value.certificaciones ?? []
+      perfil.value = {
+        ...perfil.value,
+        certificaciones: id ? actuales.map((c) => (c.id === id ? cert : c)) : [...actuales, cert],
+      }
     }
-    nuevaCert.nombre = ''
-    nuevaCert.entidadEmisora = ''
-    nuevaCert.fecha = ''
-    nuevaCert.archivo = null
-    const archivoInput = document.getElementById('cert-archivo-input') as HTMLInputElement | null
-    if (archivoInput) archivoInput.value = ''
+    if (id) await notifySuccess('Certificación actualizada')
+    limpiarFormCert()
   } catch (err) {
-    await notifyError('No se pudo agregar la certificación', err instanceof ApiError ? err.message : 'Ocurrió un error inesperado.')
+    await notifyError('No se pudo guardar la certificación', err instanceof ApiError ? err.message : 'Ocurrió un error inesperado.')
   } finally {
     agregandoCert.value = false
   }
@@ -201,37 +229,57 @@ function onExpLogoChange(e: Event) {
   nuevaExp.logo = (e.target as HTMLInputElement).files?.[0] ?? null
 }
 
-async function agregarExp() {
+// Mismo criterio que certificaciones: un solo formulario para agregar y editar.
+const editandoExpId = ref<string | null>(null)
+
+function limpiarFormExp() {
+  editandoExpId.value = null
+  nuevaExp.empresa = ''
+  nuevaExp.cargo = ''
+  nuevaExp.fechaInicio = ''
+  nuevaExp.fechaFin = ''
+  nuevaExp.descripcion = ''
+  nuevaExp.logo = null
+  const logoInput = document.getElementById('exp-logo-input') as HTMLInputElement | null
+  if (logoInput) logoInput.value = ''
+}
+
+function editarExp(exp: ExperienciaCoach) {
+  limpiarFormExp()
+  editandoExpId.value = exp.id
+  nuevaExp.empresa = exp.empresa
+  nuevaExp.cargo = exp.cargo ?? ''
+  nuevaExp.fechaInicio = exp.fechaInicio
+  nuevaExp.fechaFin = exp.fechaFin ?? ''
+  nuevaExp.descripcion = exp.descripcion ?? ''
+}
+
+async function guardarExp() {
   if (!nuevaExp.empresa.trim() || !nuevaExp.fechaInicio) return
   agregandoExp.value = true
+  const input = {
+    empresa: nuevaExp.empresa.trim(),
+    cargo: nuevaExp.cargo.trim() || undefined,
+    fechaInicio: nuevaExp.fechaInicio,
+    fechaFin: nuevaExp.fechaFin || undefined,
+    descripcion: nuevaExp.descripcion.trim() || undefined,
+    logo: nuevaExp.logo ?? undefined,
+  }
   try {
-    const exp = await agregarExperiencia({
-      empresa: nuevaExp.empresa.trim(),
-      cargo: nuevaExp.cargo.trim() || undefined,
-      fechaInicio: nuevaExp.fechaInicio,
-      fechaFin: nuevaExp.fechaFin || undefined,
-      descripcion: nuevaExp.descripcion.trim() || undefined,
-      logo: nuevaExp.logo ?? undefined,
-    })
+    const id = editandoExpId.value
+    const exp = id ? await actualizarExperiencia(id, input) : await agregarExperiencia(input)
     if (perfil.value) {
+      const otras = (perfil.value.experiencias ?? []).filter((e) => e.id !== id)
       // Más reciente primero, igual criterio que ya aplica el backend.
       perfil.value = {
         ...perfil.value,
-        experiencias: [exp, ...(perfil.value.experiencias ?? [])].sort((a, b) =>
-          b.fechaInicio.localeCompare(a.fechaInicio),
-        ),
+        experiencias: [exp, ...otras].sort((a, b) => b.fechaInicio.localeCompare(a.fechaInicio)),
       }
     }
-    nuevaExp.empresa = ''
-    nuevaExp.cargo = ''
-    nuevaExp.fechaInicio = ''
-    nuevaExp.fechaFin = ''
-    nuevaExp.descripcion = ''
-    nuevaExp.logo = null
-    const logoInput = document.getElementById('exp-logo-input') as HTMLInputElement | null
-    if (logoInput) logoInput.value = ''
+    if (id) await notifySuccess('Experiencia actualizada')
+    limpiarFormExp()
   } catch (err) {
-    await notifyError('No se pudo agregar la experiencia', err instanceof ApiError ? err.message : 'Ocurrió un error inesperado.')
+    await notifyError('No se pudo guardar la experiencia', err instanceof ApiError ? err.message : 'Ocurrió un error inesperado.')
   } finally {
     agregandoExp.value = false
   }
@@ -451,6 +499,7 @@ async function eliminarExp(id: string) {
             class="flex items-start gap-3 rounded-lg border border-[var(--color-line)] p-2.5 text-sm"
           >
             <ExperienciaLogo
+              :key="exp.logoPath ?? 'sin-logo'"
               :experiencia-id="exp.id"
               :tiene-logo="!!exp.logoPath"
               :empresa="exp.empresa"
@@ -469,13 +518,22 @@ async function eliminarExp(id: string) {
                 {{ exp.descripcion }}
               </p>
             </div>
-            <button
-              type="button"
-              class="shrink-0 text-xs text-[var(--color-danger)]/70 hover:underline"
-              @click="eliminarExp(exp.id)"
-            >
-              Eliminar
-            </button>
+            <div class="flex shrink-0 items-center gap-3">
+              <button
+                type="button"
+                class="text-xs text-[var(--color-saltup)] hover:underline"
+                @click="editarExp(exp)"
+              >
+                Editar
+              </button>
+              <button
+                type="button"
+                class="text-xs text-[var(--color-danger)]/70 hover:underline"
+                @click="eliminarExp(exp.id)"
+              >
+                Eliminar
+              </button>
+            </div>
           </li>
         </ul>
         <p
@@ -487,8 +545,14 @@ async function eliminarExp(id: string) {
 
         <form
           class="space-y-2 border-t border-[var(--color-line)] pt-3"
-          @submit.prevent="agregarExp"
+          @submit.prevent="guardarExp"
         >
+          <p
+            v-if="editandoExpId"
+            class="text-xs font-medium text-[var(--color-saltup)]"
+          >
+            Editando experiencia
+          </p>
           <div class="grid gap-2 sm:grid-cols-2">
             <label class="block text-xs">
               Empresa
@@ -536,7 +600,7 @@ async function eliminarExp(id: string) {
             />
           </label>
           <label class="block text-xs">
-            Logo de la empresa (opcional)
+            {{ editandoExpId ? 'Reemplazar logo (opcional)' : 'Logo de la empresa (opcional)' }}
             <input
               id="exp-logo-input"
               type="file"
@@ -545,13 +609,23 @@ async function eliminarExp(id: string) {
               @change="onExpLogoChange"
             >
           </label>
-          <button
-            type="submit"
-            class="rounded-lg bg-[var(--color-ink)] px-3 py-1.5 text-xs text-[var(--color-parchment)] disabled:opacity-50"
-            :disabled="agregandoExp"
-          >
-            {{ agregandoExp ? 'Agregando…' : '+ Agregar experiencia' }}
-          </button>
+          <div class="flex items-center gap-3">
+            <button
+              type="submit"
+              class="rounded-lg bg-[var(--color-ink)] px-3 py-1.5 text-xs text-[var(--color-parchment)] disabled:opacity-50"
+              :disabled="agregandoExp"
+            >
+              {{ agregandoExp ? 'Guardando…' : editandoExpId ? 'Guardar cambios' : '+ Agregar experiencia' }}
+            </button>
+            <button
+              v-if="editandoExpId"
+              type="button"
+              class="text-xs text-[var(--color-ink)]/60 hover:underline"
+              @click="limpiarFormExp"
+            >
+              Cancelar
+            </button>
+          </div>
         </form>
       </SectionCard>
 
@@ -590,6 +664,13 @@ async function eliminarExp(id: string) {
               </button>
               <button
                 type="button"
+                class="text-xs text-[var(--color-saltup)] hover:underline"
+                @click="editarCert(cert)"
+              >
+                Editar
+              </button>
+              <button
+                type="button"
                 class="text-xs text-[var(--color-danger)]/70 hover:underline"
                 @click="eliminarCert(cert.id)"
               >
@@ -607,8 +688,14 @@ async function eliminarExp(id: string) {
 
         <form
           class="space-y-2 border-t border-[var(--color-line)] pt-3"
-          @submit.prevent="agregarCert"
+          @submit.prevent="guardarCert"
         >
+          <p
+            v-if="editandoCertId"
+            class="text-xs font-medium text-[var(--color-saltup)]"
+          >
+            Editando certificación
+          </p>
           <div class="grid gap-2 sm:grid-cols-2">
             <label class="block text-xs">
               Nombre de la certificación
@@ -638,7 +725,7 @@ async function eliminarExp(id: string) {
               >
             </label>
             <label class="block text-xs">
-              Diploma / respaldo (PDF o imagen)
+              {{ editandoCertId ? 'Reemplazar diploma (opcional)' : 'Diploma / respaldo (PDF o imagen)' }}
               <input
                 id="cert-archivo-input"
                 type="file"
@@ -648,13 +735,23 @@ async function eliminarExp(id: string) {
               >
             </label>
           </div>
-          <button
-            type="submit"
-            class="rounded-lg bg-[var(--color-ink)] px-3 py-1.5 text-xs text-[var(--color-parchment)] disabled:opacity-50"
-            :disabled="agregandoCert"
-          >
-            {{ agregandoCert ? 'Agregando…' : '+ Agregar certificación' }}
-          </button>
+          <div class="flex items-center gap-3">
+            <button
+              type="submit"
+              class="rounded-lg bg-[var(--color-ink)] px-3 py-1.5 text-xs text-[var(--color-parchment)] disabled:opacity-50"
+              :disabled="agregandoCert"
+            >
+              {{ agregandoCert ? 'Guardando…' : editandoCertId ? 'Guardar cambios' : '+ Agregar certificación' }}
+            </button>
+            <button
+              v-if="editandoCertId"
+              type="button"
+              class="text-xs text-[var(--color-ink)]/60 hover:underline"
+              @click="limpiarFormCert"
+            >
+              Cancelar
+            </button>
+          </div>
         </form>
       </SectionCard>
     </div>

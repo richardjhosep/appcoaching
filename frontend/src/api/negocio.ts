@@ -5,7 +5,9 @@ export interface EmpresaCobro {
   empresaId: string
   nombre: string
   pagada: boolean
+  // Las que rigen (calculadas desde los ciclos, o manuales si horasFijas).
   horasContratadas: number | null
+  horasFijas: boolean
   horasConsumidas: number
   ingresoDelPeriodo: number
   ingresoProyectado: number
@@ -20,6 +22,19 @@ export interface CoacheeCobro {
   ingresoProyectado: number
 }
 
+// Todos los coachees activos, con o sin actividad este mes y esté o no pagada su empresa.
+export interface CoacheeCartera {
+  coacheeId: string
+  nombre: string
+  empresaNombre: string | null
+  empresaPagada: boolean | null
+  totalSesiones: number | null
+  sesionesRealizadas: number
+  horasDelPeriodo: number
+  montoAgendadoDelPeriodo: number
+  ingresoConfirmadoDelPeriodo: number
+}
+
 export interface ResumenNegocio {
   porEmpresa: EmpresaCobro[]
   // El backend ya lo incluye (calcularResumenCobros() completo) — sólo faltaba declararlo acá.
@@ -28,6 +43,7 @@ export interface ResumenNegocio {
   ingresoDelPeriodoTotal: number
   ingresoProyectadoTotal: number
   coacheesActivos: number
+  carteraCoachees: CoacheeCartera[]
   satisfaccionPromedio: number | null
 }
 

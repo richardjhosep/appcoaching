@@ -21,7 +21,7 @@ vi.mock('../../api/ciclos', async () => {
   return { ...actual, getMiCicloActual: vi.fn() }
 })
 
-import { addActividad } from '../../api/planesDesarrollo'
+import { addActividad, updateActividad } from '../../api/planesDesarrollo'
 import { getMiCicloActual } from '../../api/ciclos'
 
 const basePlan: PlanDesarrollo = {
@@ -30,6 +30,7 @@ const basePlan: PlanDesarrollo = {
   competenciaId: null,
   nivelActual: null,
   nivelObjetivo: null,
+  trabajarNiveles: false,
   plazo: null,
   descripcionEstadoActual: null,
   objetivoGeneral: null,
@@ -103,7 +104,7 @@ describe('HabitoEjecucionTab', () => {
   it('uses native date inputs for the new-activity form, bounded by the ciclo abierto', async () => {
     const wrapper = await mountTab()
 
-    const inputs = wrapper.findAll('input[type="date"]')
+    const inputs = wrapper.findAll('input[type="date"][data-nueva-actividad]')
     expect(inputs).toHaveLength(2)
     // fechaApertura del ciclo es '2026-08-01T...' → min debe ser '2026-08-01'
     expect(inputs[0].attributes('min')).toBe('2026-08-01')
@@ -114,7 +115,7 @@ describe('HabitoEjecucionTab', () => {
 
     const wrapper = await mountTab()
 
-    const inputs = wrapper.findAll('input[type="date"]')
+    const inputs = wrapper.findAll('input[type="date"][data-nueva-actividad]')
     expect(inputs[0].attributes('min')).toBeUndefined()
   })
 
@@ -135,7 +136,7 @@ describe('HabitoEjecucionTab', () => {
     const selects = wrapper.findAll('select')
     await selects[selects.length - 1].setValue('obj-1')
     await wrapper.find('input[type="text"]').setValue('Nueva actividad')
-    const dateInputs = wrapper.findAll('input[type="date"]')
+    const dateInputs = wrapper.findAll('input[type="date"][data-nueva-actividad]')
     await dateInputs[0].setValue('2026-09-05')
     await dateInputs[1].setValue('2026-09-20')
     const agregarBtn = wrapper.findAll('button').find((b) => b.text() === 'Agregar actividad')
@@ -148,5 +149,17 @@ describe('HabitoEjecucionTab', () => {
       fechaInicio: '2026-09-05',
       fechaFin: '2026-09-20',
     })
+  })
+
+  it('shows the término date even when the actividad has no inicio, and lets it be edited inline', async () => {
+    const wrapper = await mountTab()
+    // act-1 ya existe: sus dos inputs de fecha inline vienen antes que los del formulario nuevo.
+    const inline = wrapper.findAll('input[type="date"]:not([data-nueva-actividad])')
+    expect(inline).toHaveLength(2)
+
+    await inline[1].setValue('2026-09-30')
+    await flushPromises()
+
+    expect(updateActividad).toHaveBeenCalledWith('act-1', { fechaFin: '2026-09-30' })
   })
 })

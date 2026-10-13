@@ -190,7 +190,7 @@ function verCiclo(coacheeId: string) {
               Horas contratadas
             </p>
             <p class="font-[family-name:var(--font-mono)] text-lg">
-              {{ empresa.horasContratadas ?? '—' }}
+              {{ empresa.horasContratadasEfectivas ?? empresa.horasContratadas ?? '—' }}
             </p>
           </div>
           <div>

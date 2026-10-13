@@ -3,6 +3,7 @@ import { onMounted, ref, watch } from 'vue'
 import { getCoachee, obtenerUrlFotoDeCoachee, type Coachee } from '../../../api/coachees'
 import ConsentimientoInformado from '../../../components/ConsentimientoInformado.vue'
 import SkeletonBlock from '../../../components/SkeletonBlock.vue'
+import DocumentosCoacheePanel from '../../../components/DocumentosCoacheePanel.vue'
 import { iniciales } from '../../../lib/avatar'
 
 const props = defineProps<{ coacheeId: string }>()
@@ -62,6 +63,14 @@ function onConsentimientoActualizado(actualizado: { consentimientoInformado: boo
           </dt>
           <dd class="text-sm font-semibold text-[var(--color-ink)]">
             {{ coachee.empresa?.nombre ?? 'Independiente' }}
+          </dd>
+        </div>
+        <div>
+          <dt class="font-[family-name:var(--font-mono)] text-[11px] font-semibold uppercase text-[var(--color-ink)]/60">
+            Cargo
+          </dt>
+          <dd class="text-sm font-semibold text-[var(--color-ink)]">
+            {{ coachee.cargo ?? '—' }}
           </dd>
         </div>
         <div>
@@ -128,6 +137,16 @@ function onConsentimientoActualizado(actualizado: { consentimientoInformado: boo
         >
           Este coachee no ha compartido su perfil personal contigo.
         </p>
+      </div>
+
+      <div class="mt-6 border-t border-[var(--color-line)] pt-5">
+        <h2 class="mb-1 font-[family-name:var(--font-heading)] text-base font-semibold text-[var(--color-ink)]">
+          Documentos del proceso
+        </h2>
+        <p class="mb-3 text-xs text-[var(--color-ink)]/55">
+          Compartidos con el coachee y su empresa: lo que cualquiera de los tres suba, lo ven todos.
+        </p>
+        <DocumentosCoacheePanel :coachee-id="coachee.id" />
       </div>
     </div>
 

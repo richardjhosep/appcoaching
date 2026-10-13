@@ -43,17 +43,38 @@ describe('AprendizajesRecursoService', () => {
       );
 
       await expect(
-        service.addOwn('user-1', 'r1', 'aprendí algo'),
+        service.addOwn('user-1', 'r1', {
+          contenido: 'aprendí algo',
+          aplicacion: 'lo uso en mis 1:1',
+        }),
       ).rejects.toThrow(ForbiddenException);
     });
 
     it('creates the aprendizaje scoped to the resolved coachee', async () => {
       recursos.assertEnBibliotecaDeCoachee.mockResolvedValue('c1');
 
-      const aprendizaje = await service.addOwn('user-1', 'r1', 'aprendí algo');
+      const aprendizaje = await service.addOwn('user-1', 'r1', {
+        contenido: 'Escuchar antes de responder\nPreguntar más',
+        aplicacion: '  En mis reuniones de equipo  ',
+        seccion: 'Cap. 3 y 4',
+      });
 
       expect(aprendizaje.coacheeId).toBe('c1');
       expect(aprendizaje.recursoId).toBe('r1');
+      expect(aprendizaje.seccion).toBe('Cap. 3 y 4');
+      expect(aprendizaje.aplicacion).toBe('En mis reuniones de equipo');
+    });
+
+    it('stores a null seccion when it comes empty', async () => {
+      recursos.assertEnBibliotecaDeCoachee.mockResolvedValue('c1');
+
+      const aprendizaje = await service.addOwn('user-1', 'r1', {
+        contenido: 'x',
+        aplicacion: 'y',
+        seccion: '   ',
+      });
+
+      expect(aprendizaje.seccion).toBeNull();
     });
   });
 

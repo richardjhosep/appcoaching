@@ -90,6 +90,7 @@ const plan: PlanDesarrollo = {
   competenciaId: 'comp-1',
   nivelActual: null,
   nivelObjetivo: null,
+  trabajarNiveles: false,
   plazo: null,
   descripcionEstadoActual: null,
   objetivoGeneral: 'Impacto e Influencia',

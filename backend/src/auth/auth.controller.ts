@@ -4,6 +4,8 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  Param,
+  ParseUUIDPipe,
   Post,
   UseGuards,
 } from '@nestjs/common';
@@ -57,6 +59,16 @@ export class AuthController {
   ) {
     await this.auth.logout(user.id, dto.refreshToken);
     return { success: true };
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  @Post('ver-como/:userId')
+  verComo(
+    @CurrentUser() actor: AuthenticatedUser,
+    @Param('userId', ParseUUIDPipe) userId: string,
+  ) {
+    return this.auth.verComo(actor, userId);
   }
 
   @UseGuards(JwtAuthGuard)

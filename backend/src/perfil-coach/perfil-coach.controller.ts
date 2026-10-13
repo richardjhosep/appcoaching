@@ -112,6 +112,27 @@ export class PerfilCoachController {
     return this.perfilCoach.agregarCertificacion(actor.id, dto, archivo);
   }
 
+  // Edición: mismo multipart que el alta (el archivo es opcional — si no viene se conserva
+  // el actual). Semántica de reemplazo completo de los campos de texto: el formulario siempre
+  // manda lo que muestra, así que un opcional ausente significa "lo vació".
+  @Roles(Role.COACH)
+  @Patch('me/certificaciones/:id')
+  @UseInterceptors(
+    FileInterceptor('archivo', {
+      storage: storageDe('certificacion'),
+      limits: { fileSize: 20 * 1024 * 1024 },
+      fileFilter: soloPermitir(MIMETYPES_PDF_O_IMAGEN),
+    }),
+  )
+  actualizarCertificacion(
+    @CurrentUser() actor: AuthenticatedUser,
+    @Param('id') id: string,
+    @Body() dto: CreateCertificacionDto,
+    @UploadedFile() archivo?: Express.Multer.File,
+  ) {
+    return this.perfilCoach.actualizarCertificacion(actor.id, id, dto, archivo);
+  }
+
   @Roles(Role.COACH)
   @Delete('me/certificaciones/:id')
   eliminarCertificacion(
@@ -138,6 +159,25 @@ export class PerfilCoachController {
     return this.perfilCoach.agregarExperiencia(actor.id, dto, logo);
   }
 
+  // Mismo criterio que actualizarCertificacion.
+  @Roles(Role.COACH)
+  @Patch('me/experiencias/:id')
+  @UseInterceptors(
+    FileInterceptor('logo', {
+      storage: storageDe('logo-experiencia'),
+      limits: { fileSize: 5 * 1024 * 1024 },
+      fileFilter: soloPermitir(MIMETYPES_IMAGEN),
+    }),
+  )
+  actualizarExperiencia(
+    @CurrentUser() actor: AuthenticatedUser,
+    @Param('id') id: string,
+    @Body() dto: CreateExperienciaDto,
+    @UploadedFile() logo?: Express.Multer.File,
+  ) {
+    return this.perfilCoach.actualizarExperiencia(actor.id, id, dto, logo);
+  }
+
   @Roles(Role.COACH)
   @Delete('me/experiencias/:id')
   eliminarExperiencia(
@@ -151,14 +191,14 @@ export class PerfilCoachController {
   // del resto del proyecto (rutas literales primero).
   @Roles(Role.COACH, Role.COACHEE, Role.EMPRESA)
   @Get()
-  perfilDelCoach() {
-    return this.perfilCoach.obtenerDelCoach();
+  perfilDelCoach(@CurrentUser() actor: AuthenticatedUser) {
+    return this.perfilCoach.obtenerParaActor(actor);
   }
 
   @Roles(Role.COACH, Role.COACHEE, Role.EMPRESA)
   @Get('foto')
-  async foto(@Res() res: Response) {
-    const perfil = await this.perfilCoach.obtenerDelCoach();
+  async foto(@CurrentUser() actor: AuthenticatedUser, @Res() res: Response) {
+    const perfil = await this.perfilCoach.obtenerParaActor(actor);
     if (!perfil.fotoPath) {
       throw new NotFoundException(
         'El coach todavía no tiene una foto de perfil.',
@@ -169,8 +209,8 @@ export class PerfilCoachController {
 
   @Roles(Role.COACH, Role.COACHEE, Role.EMPRESA)
   @Get('cv')
-  async cv(@Res() res: Response) {
-    const perfil = await this.perfilCoach.obtenerDelCoach();
+  async cv(@CurrentUser() actor: AuthenticatedUser, @Res() res: Response) {
+    const perfil = await this.perfilCoach.obtenerParaActor(actor);
     if (!perfil.cvPath) {
       throw new NotFoundException('El coach todavía no tiene un CV cargado.');
     }
@@ -182,8 +222,12 @@ export class PerfilCoachController {
 
   @Roles(Role.COACH, Role.COACHEE, Role.EMPRESA)
   @Get('certificaciones/:id/archivo')
-  async archivoCertificacion(@Param('id') id: string, @Res() res: Response) {
-    const perfil = await this.perfilCoach.obtenerDelCoach();
+  async archivoCertificacion(
+    @CurrentUser() actor: AuthenticatedUser,
+    @Param('id') id: string,
+    @Res() res: Response,
+  ) {
+    const perfil = await this.perfilCoach.obtenerParaActor(actor);
     const certificacion = perfil.certificaciones?.find((c) => c.id === id);
     if (!certificacion?.archivoPath) {
       throw new NotFoundException(
@@ -198,8 +242,12 @@ export class PerfilCoachController {
 
   @Roles(Role.COACH, Role.COACHEE, Role.EMPRESA)
   @Get('experiencias/:id/logo')
-  async logoExperiencia(@Param('id') id: string, @Res() res: Response) {
-    const perfil = await this.perfilCoach.obtenerDelCoach();
+  async logoExperiencia(
+    @CurrentUser() actor: AuthenticatedUser,
+    @Param('id') id: string,
+    @Res() res: Response,
+  ) {
+    const perfil = await this.perfilCoach.obtenerParaActor(actor);
     const experiencia = perfil.experiencias?.find((e) => e.id === id);
     if (!experiencia?.logoPath) {
       throw new NotFoundException(

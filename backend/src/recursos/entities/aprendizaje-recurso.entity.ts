@@ -33,8 +33,13 @@ export class AprendizajeRecurso {
 
   // "¿Cómo se aplica a mi trabajo?" — separado de `contenido` porque en la plantilla real
   // (Excel de Plan de Desarrollo y la pauta en papel que usa el coach) son 2 columnas distintas.
+  // Nullable solo por los registros anteriores al 10-10-2026 — desde ahí la API lo exige.
   @Column({ type: 'text', nullable: true })
   aplicacion: string | null;
+
+  // Capítulo(s)/sección del libro, o parte/minuto de un video o audio.
+  @Column({ type: 'varchar', nullable: true })
+  seccion: string | null;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

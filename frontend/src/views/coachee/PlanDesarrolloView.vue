@@ -7,7 +7,7 @@ import HabitoEjecucionTab from '../../components/plan-desarrollo/HabitoEjecucion
 import FormacionTab from '../../components/plan-desarrollo/FormacionTab.vue'
 import SkeletonBlock from '../../components/SkeletonBlock.vue'
 import { getOwnPlan, type PlanDesarrollo } from '../../api/planesDesarrollo'
-import { listCompetencias, type Competencia } from '../../api/competencias'
+import { listCompetenciasParaMiPlan, type Competencia } from '../../api/competencias'
 import { getMiCicloActual, type Ciclo } from '../../api/ciclos'
 import { getMisCompetenciasEmpresa } from '../../api/coachees'
 import type { EmpresaCompetencia } from '../../api/empresas'
@@ -29,12 +29,16 @@ async function load() {
   loading.value = true
   const [p, c, ciclo, cp] = await Promise.all([
     getOwnPlan(),
-    listCompetencias(),
+    listCompetenciasParaMiPlan(),
     getMiCicloActual(),
     getMisCompetenciasEmpresa(),
   ])
   plan.value = p
-  competencias.value = c
+  // La competencia ya elegida se mantiene visible aunque haya salido de la lista de su empresa
+  // (ej. el coach cambió las asignadas después), para que el selector no quede en blanco.
+  competencias.value = p.competencia && !c.some((x) => x.id === p.competencia!.id)
+    ? [...c, { id: p.competencia.id, nombre: p.competencia.nombre, definicion: '', niveles: [], empresaId: null }]
+    : c
   cicloActual.value = ciclo
   competenciasPrioritarias.value = cp
   loading.value = false

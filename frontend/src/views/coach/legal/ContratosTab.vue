@@ -24,6 +24,8 @@ import ConsentimientoInformado from '../../../components/ConsentimientoInformado
 import Pagination from '../../../components/Pagination.vue'
 import NavIcon from '../../../components/NavIcon.vue'
 import SkeletonBlock from '../../../components/SkeletonBlock.vue'
+import AvanceFirmas from '../../../components/AvanceFirmas.vue'
+import { iniciales } from '../../../lib/avatar'
 
 type ItemEmpresa = EmpresaLegal & { tipo: 'empresa' }
 type ItemIndependiente = IndependienteLegal & { tipo: 'independiente' }
@@ -91,6 +93,13 @@ const itemsPagina = computed(() =>
 
 const alertas = computed(() => alertasLegales(resumen.value))
 
+const resumenAlertas = computed(() => [
+  { etiqueta: 'contratos pendientes', singular: 'contrato pendiente', valor: alertas.value.contratosPendientes, color: 'text-[var(--color-danger)]' },
+  { etiqueta: 'NDA pendientes', singular: 'NDA pendiente', valor: alertas.value.ndaPendientes, color: 'text-[var(--color-danger)]' },
+  { etiqueta: 'documentos vencidos', singular: 'documento vencido', valor: alertas.value.vencidos, color: 'text-[var(--color-bronze)]' },
+  { etiqueta: 'coachees sin consentimiento', singular: 'coachee sin consentimiento', valor: alertas.value.sinConsentimiento, color: 'text-[var(--color-danger)]' },
+])
+
 const hayAlertas = computed(
   () =>
     alertas.value.contratosPendientes > 0 ||
@@ -157,48 +166,43 @@ async function enviarSolicitudConsentimiento(coacheeId: string, nombre: string) 
       {{ error }}
     </p>
 
-    <div class="rounded-2xl border border-[var(--color-line)] bg-[var(--color-parchment)]/40 p-4">
-      <p class="text-sm text-[var(--color-ink)]/70">
-        Esta sección respalda la relación con cada empresa cliente y con cada coachee
-        independiente: el contrato de servicio, el acuerdo de confidencialidad (NDA), el
-        consentimiento informado, y cualquier otro documento de respaldo (correos, addendums). El
-        consentimiento informado es un trámite personal, independiente del Contrato/NDA — puede
-        estar firmado aunque el papeleo contractual siga pendiente, o al revés.
+    <div class="flex items-start gap-2.5 text-sm text-[var(--color-ink)]/60">
+      <span
+        class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[var(--color-ink)]/5 text-[11px] font-semibold text-[var(--color-ink)]/50"
+        aria-hidden="true"
+      >i</span>
+      <p class="max-w-3xl">
+        Contrato de servicio, NDA y carta de invitación por cada empresa y coachee independiente,
+        más cualquier otro respaldo (correos, addendums). El consentimiento informado es un
+        trámite personal, independiente del Contrato/NDA — puede estar firmado aunque el papeleo
+        contractual siga pendiente, o al revés.
       </p>
     </div>
 
+    <!-- Resumen: cifras grandes con su etiqueta, sin chips — mismo lenguaje que los KPIs. -->
     <div
       v-if="hayAlertas"
-      class="flex flex-wrap gap-2"
+      class="grid grid-cols-2 gap-3 sm:grid-cols-4"
     >
-      <span
-        v-if="alertas.contratosPendientes > 0"
-        class="rounded-full bg-[var(--color-danger)]/15 px-3 py-1 text-xs text-[var(--color-danger)]"
+      <div
+        v-for="a in resumenAlertas"
+        :key="a.etiqueta"
+        class="rounded-2xl border border-[var(--color-line)] bg-white px-4 py-3"
       >
-        ⚠ {{ alertas.contratosPendientes }} {{ alertas.contratosPendientes === 1 ? 'contrato pendiente' : 'contratos pendientes' }}
-      </span>
-      <span
-        v-if="alertas.ndaPendientes > 0"
-        class="rounded-full bg-[var(--color-danger)]/15 px-3 py-1 text-xs text-[var(--color-danger)]"
-      >
-        ⚠ {{ alertas.ndaPendientes }} {{ alertas.ndaPendientes === 1 ? 'NDA pendiente' : 'NDA pendientes' }}
-      </span>
-      <span
-        v-if="alertas.vencidos > 0"
-        class="rounded-full bg-[var(--color-bronze)]/20 px-3 py-1 text-xs text-[var(--color-bronze)]"
-      >
-        ⚠ {{ alertas.vencidos }} {{ alertas.vencidos === 1 ? 'documento vencido' : 'documentos vencidos' }}
-      </span>
-      <span
-        v-if="alertas.sinConsentimiento > 0"
-        class="rounded-full bg-[var(--color-danger)]/15 px-3 py-1 text-xs text-[var(--color-danger)]"
-      >
-        ⚠ {{ alertas.sinConsentimiento }} {{ alertas.sinConsentimiento === 1 ? 'coachee sin consentimiento' : 'coachees sin consentimiento' }}
-      </span>
+        <p
+          class="font-[family-name:var(--font-mono)] text-2xl font-semibold"
+          :class="a.valor === 0 ? 'text-[var(--color-ink)]/25' : a.color"
+        >
+          {{ a.valor }}
+        </p>
+        <p class="text-xs text-[var(--color-ink)]/60">
+          {{ a.valor === 1 ? a.singular : a.etiqueta }}
+        </p>
+      </div>
     </div>
     <p
       v-else
-      class="text-xs text-[var(--color-sage)]"
+      class="flex items-center gap-2 rounded-2xl bg-[var(--color-sage)]/10 px-4 py-3 text-sm font-medium text-[var(--color-sage)]"
     >
       ✓ Todo al día — sin documentos pendientes ni vencidos.
     </p>
@@ -213,17 +217,31 @@ async function enviarSolicitudConsentimiento(coacheeId: string, nombre: string) 
     <div
       v-for="item in itemsPagina"
       :key="claveItem(item)"
-      class="rounded-2xl border border-[var(--color-line)] bg-white p-4"
+      class="rounded-2xl border border-[var(--color-line)] bg-white p-5 shadow-sm"
     >
       <template v-if="item.tipo === 'empresa'">
-        <div class="mb-3 flex items-baseline gap-2">
-          <h2 class="text-sm font-medium">
-            {{ item.nombre }}
-          </h2>
-          <span class="text-xs text-[var(--color-ink)]/40">Empresa</span>
+        <div class="mb-4 flex items-center gap-3">
+          <span
+            class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--color-sage)]/12 text-[var(--color-sage)]"
+            aria-hidden="true"
+          >
+            <NavIcon
+              name="empresas"
+              :size="18"
+            />
+          </span>
+          <div class="min-w-0 flex-1">
+            <h2 class="font-[family-name:var(--font-heading)] font-semibold">
+              {{ item.nombre }}
+            </h2>
+            <p class="text-xs text-[var(--color-ink)]/45">
+              Empresa
+            </p>
+          </div>
+          <AvanceFirmas :item="item" />
         </div>
 
-        <div class="mb-3 grid gap-3 sm:grid-cols-3">
+        <div class="mb-4 grid gap-4 border-y border-[var(--color-line)]/70 py-4 sm:grid-cols-3 sm:gap-0 sm:divide-x sm:divide-[var(--color-line)]/70 [&>*]:sm:px-4 [&>*:first-child]:sm:pl-0">
           <DocumentoLegalSlot
             :target="{ empresaId: item.empresaId }"
             tipo="contrato"
@@ -252,15 +270,33 @@ async function enviarSolicitudConsentimiento(coacheeId: string, nombre: string) 
 
         <button
           type="button"
-          class="flex w-full items-center justify-between text-left text-xs font-medium text-[var(--color-ink)]/70"
+          class="flex w-full items-center gap-3 rounded-xl px-1 py-1.5 text-left text-sm transition-colors hover:bg-[var(--color-parchment)]/50"
           @click="toggleExpandido(item.empresaId)"
         >
-          <span>{{ item.coacheesConConsentimiento }} de {{ item.coacheesTotal }} coachees con consentimiento informado firmado</span>
-          <span>{{ expandidos.has(item.empresaId) ? '▲' : '▼' }}</span>
+          <NavIcon
+            name="coachees"
+            :size="16"
+            class="shrink-0 text-[var(--color-ink)]/50"
+          />
+          <span class="flex-1">
+            <span class="font-medium">{{ item.coacheesConConsentimiento }} de {{ item.coacheesTotal }} coachees con consentimiento informado firmado</span>
+            <span class="mt-1 block h-1 w-40 overflow-hidden rounded-full bg-[var(--color-line)]">
+              <span
+                class="block h-full rounded-full bg-[var(--color-sage)]"
+                :style="{ width: `${item.coacheesTotal ? (item.coacheesConConsentimiento / item.coacheesTotal) * 100 : 0}%` }"
+              />
+            </span>
+          </span>
+          <NavIcon
+            name="chevron"
+            :size="16"
+            class="shrink-0 text-[var(--color-ink)]/40 transition-transform"
+            :class="expandidos.has(item.empresaId) ? '-rotate-90' : 'rotate-90'"
+          />
         </button>
         <ul
           v-if="expandidos.has(item.empresaId)"
-          class="mt-2 space-y-1 text-sm"
+          class="mt-1 space-y-1.5 pl-8 text-sm"
         >
           <li
             v-for="c in coacheesDeEmpresa(item.empresaId)"
@@ -292,7 +328,7 @@ async function enviarSolicitudConsentimiento(coacheeId: string, nombre: string) 
           </li>
         </ul>
 
-        <div class="mt-3 border-t border-[var(--color-line)] pt-3">
+        <div class="mt-2">
           <OtrosDocumentosLegal
             :target="{ empresaId: item.empresaId }"
             :documentos="adicionalesDeEmpresa(item.empresaId)"
@@ -302,14 +338,25 @@ async function enviarSolicitudConsentimiento(coacheeId: string, nombre: string) 
       </template>
 
       <template v-else>
-        <div class="mb-3 flex items-baseline gap-2">
-          <h3 class="text-sm font-medium">
-            {{ item.nombre }}
-          </h3>
-          <span class="text-xs text-[var(--color-ink)]/40">Independiente</span>
+        <div class="mb-4 flex items-center gap-3">
+          <span
+            class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--color-ink)] text-xs font-semibold text-[var(--color-parchment)]"
+            aria-hidden="true"
+          >
+            {{ iniciales(item.nombre) }}
+          </span>
+          <div class="min-w-0 flex-1">
+            <h3 class="font-[family-name:var(--font-heading)] font-semibold">
+              {{ item.nombre }}
+            </h3>
+            <p class="text-xs text-[var(--color-ink)]/45">
+              Independiente
+            </p>
+          </div>
+          <AvanceFirmas :item="item" />
         </div>
 
-        <div class="mb-3 grid gap-3 sm:grid-cols-3">
+        <div class="mb-4 grid gap-4 border-y border-[var(--color-line)]/70 py-4 sm:grid-cols-3 sm:gap-0 sm:divide-x sm:divide-[var(--color-line)]/70 [&>*]:sm:px-4 [&>*:first-child]:sm:pl-0">
           <DocumentoLegalSlot
             :target="{ coacheeId: item.coacheeId }"
             tipo="contrato"
@@ -343,7 +390,7 @@ async function enviarSolicitudConsentimiento(coacheeId: string, nombre: string) 
           @actualizado="cargarResumen"
         />
 
-        <div class="mt-3 border-t border-[var(--color-line)] pt-3">
+        <div class="mt-2">
           <OtrosDocumentosLegal
             :target="{ coacheeId: item.coacheeId }"
             :documentos="adicionalesDeCoachee(item.coacheeId)"

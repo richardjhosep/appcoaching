@@ -46,7 +46,7 @@ export class EmpresasController {
   @Roles(Role.EMPRESA)
   @Get('me')
   findOwn(@CurrentUser() actor: AuthenticatedUser) {
-    return this.empresas.findById(actor.empresaId ?? '');
+    return this.empresas.findByIdConHoras(actor.empresaId ?? '');
   }
 
   // Declarada antes de ':id/competencias' por el mismo motivo que 'me' arriba.
@@ -59,7 +59,7 @@ export class EmpresasController {
   @Roles(Role.COACH)
   @Get(':id')
   findOne(@Param('id') id: string) {
-    return this.empresas.findById(id);
+    return this.empresas.findByIdConHoras(id);
   }
 
   @Roles(Role.COACH)

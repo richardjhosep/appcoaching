@@ -8,6 +8,9 @@ import { resolveColor, baseOption } from '../lib/echartsTheme'
 const props = defineProps<{
   puntos: PuntoProgreso[]
   avance: number | null
+  // Altura fija y baja en vez de la proporción 10:3 — para resúmenes (Mi Aprendizaje) donde a
+  // ancho completo de escritorio la proporción daba un gráfico de más de 300px de alto.
+  compacto?: boolean
 }>()
 
 const ordenados = computed(() =>
@@ -67,7 +70,8 @@ const option = computed(() => {
     <!-- Ver TendenciaChart.vue para por qué el tamaño va en este div y no en <VChart>. -->
     <div
       v-if="puntos.length > 0"
-      class="aspect-[10/3] w-full"
+      class="w-full"
+      :class="compacto ? 'h-32' : 'aspect-[10/3]'"
     >
       <VChart
         class="h-full w-full"
@@ -78,7 +82,8 @@ const option = computed(() => {
     </div>
     <p
       v-else
-      class="flex aspect-[10/3] items-center justify-center text-center text-xs text-[var(--color-ink)]/45"
+      class="flex items-center justify-center text-center text-xs text-[var(--color-ink)]/45"
+      :class="compacto ? 'h-16' : 'aspect-[10/3]'"
     >
       Tu progreso empieza en tu próxima sesión
     </p>

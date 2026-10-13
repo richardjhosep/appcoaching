@@ -106,8 +106,8 @@ async function guardar() {
   try {
     const updated = await updateOwnPlan({
       competenciaId: form.competenciaId || undefined,
-      nivelActual: form.nivelActual ?? undefined,
-      nivelObjetivo: form.nivelObjetivo ?? undefined,
+      nivelActual: props.plan.trabajarNiveles ? (form.nivelActual ?? undefined) : undefined,
+      nivelObjetivo: props.plan.trabajarNiveles ? (form.nivelObjetivo ?? undefined) : undefined,
       plazo: form.plazo || undefined,
       descripcionEstadoActual: form.descripcionEstadoActual || undefined,
       objetivoGeneral: form.objetivoGeneral || undefined,
@@ -183,7 +183,16 @@ async function enviar() {
     >
       <div class="grid gap-3 sm:grid-cols-2">
         <label class="text-sm sm:col-span-2">
-          Competencia a desarrollar
+          Objetivo general del proceso
+          <textarea
+            v-model="form.objetivoGeneral"
+            rows="3"
+            class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm disabled:bg-[var(--color-parchment)]/50"
+          />
+        </label>
+
+        <label class="text-sm sm:col-span-2">
+          Competencia asociada al objetivo
           <div
             v-if="competenciasPrioritarias.length"
             class="mb-1.5 mt-1 flex flex-wrap items-center gap-1.5"
@@ -219,7 +228,10 @@ async function enviar() {
           >{{ serverErrors.competenciaId }}</span>
         </label>
 
-        <label class="text-sm">
+        <label
+          v-if="plan.trabajarNiveles"
+          class="text-sm"
+        >
           Nivel actual (libre edición)
           <input
             v-model.number="form.nivelActual"
@@ -238,7 +250,10 @@ async function enviar() {
           >{{ nivelInfo(form.nivelActual)!.descripcion }}</span>
         </label>
 
-        <label class="text-sm">
+        <label
+          v-if="plan.trabajarNiveles"
+          class="text-sm"
+        >
           Nivel objetivo
           <input
             v-model.number="form.nivelObjetivo"
@@ -258,7 +273,7 @@ async function enviar() {
         </label>
 
         <label class="text-sm sm:col-span-2">
-          Plazo a lograr el nuevo nivel (libre edición)
+          {{ plan.trabajarNiveles ? 'Plazo a lograr el nuevo nivel (libre edición)' : 'Plazo (libre edición)' }}
           <input
             v-model="form.plazo"
             type="text"
@@ -273,15 +288,6 @@ async function enviar() {
             v-model="form.descripcionEstadoActual"
             rows="3"
             class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
-          />
-        </label>
-
-        <label class="text-sm sm:col-span-2">
-          Objetivo general
-          <textarea
-            v-model="form.objetivoGeneral"
-            rows="3"
-            class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm disabled:bg-[var(--color-parchment)]/50"
           />
         </label>
 
@@ -339,7 +345,7 @@ async function enviar() {
     </SectionCard>
 
     <SectionCard
-      v-if="competenciaSeleccionada"
+      v-if="competenciaSeleccionada && plan.trabajarNiveles"
       title="Autoevaluación de competencia"
       icon="objetivo"
     >

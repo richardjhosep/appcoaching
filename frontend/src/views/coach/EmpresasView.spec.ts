@@ -17,7 +17,7 @@ vi.mock('../../api/empresas', async () => {
 })
 vi.mock('../../api/competencias', async () => {
   const actual = await vi.importActual<typeof import('../../api/competencias')>('../../api/competencias')
-  return { ...actual, listCompetencias: vi.fn() }
+  return { ...actual, listCompetenciasDeEmpresaParaCoach: vi.fn() }
 })
 vi.mock('../../lib/notify', () => ({
   notifySuccess: vi.fn(),
@@ -42,13 +42,13 @@ import {
 import { notifySuccess, confirmDialog } from '../../lib/notify'
 import { getKpisDeEmpresa, getEncuestasDeEmpresa } from '../../api/satisfaccion'
 import type { KpisEmpresa, Encuesta } from '../../api/satisfaccion'
-import { listCompetencias } from '../../api/competencias'
+import { listCompetenciasDeEmpresaParaCoach } from '../../api/competencias'
 
 const hoyIso = new Date().toISOString()
 
 const empresas: Empresa[] = [
-  { id: 'e1', nombre: 'Empresa Activa', tarifaHora: 25000, tarifaHoraMoneda: 'clp', isActive: true, pagada: true, horasContratadas: 10, fechaInicio: null, fechaFin: null, createdAt: hoyIso },
-  { id: 'e2', nombre: 'Empresa Inactiva', tarifaHora: 20000, tarifaHoraMoneda: 'clp', isActive: false, pagada: false, horasContratadas: null, fechaInicio: null, fechaFin: null, createdAt: hoyIso },
+  { id: 'e1', nombre: 'Empresa Activa', tarifaHora: 25000, tarifaHoraMoneda: 'clp', isActive: true, pagada: true, horasContratadas: 10, horasFijas: false, fechaInicio: null, fechaFin: null, createdAt: hoyIso },
+  { id: 'e2', nombre: 'Empresa Inactiva', tarifaHora: 20000, tarifaHoraMoneda: 'clp', isActive: false, pagada: false, horasContratadas: null, horasFijas: false, fechaInicio: null, fechaFin: null, createdAt: hoyIso },
 ]
 
 describe('EmpresasView', () => {
@@ -64,7 +64,7 @@ describe('EmpresasView', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     vi.mocked(listEmpresas).mockResolvedValue(empresas)
-    vi.mocked(listCompetencias).mockResolvedValue([])
+    vi.mocked(listCompetenciasDeEmpresaParaCoach).mockResolvedValue([])
     vi.mocked(getCompetenciasDeEmpresa).mockResolvedValue([])
     vi.mocked(setCompetenciasDeEmpresa).mockResolvedValue([])
   })
@@ -80,8 +80,8 @@ describe('EmpresasView', () => {
 
   it('shows the contract end date, or a dash when it is not registered', async () => {
     vi.mocked(listEmpresas).mockResolvedValue([
-      { id: 'e1', nombre: 'Con Fecha', tarifaHora: 10000, tarifaHoraMoneda: 'clp', isActive: true, pagada: true, horasContratadas: null, fechaInicio: null, fechaFin: '2026-12-31', createdAt: hoyIso },
-      { id: 'e2', nombre: 'Sin Fecha', tarifaHora: 10000, tarifaHoraMoneda: 'clp', isActive: true, pagada: true, horasContratadas: null, fechaInicio: null, fechaFin: null, createdAt: hoyIso },
+      { id: 'e1', nombre: 'Con Fecha', tarifaHora: 10000, tarifaHoraMoneda: 'clp', isActive: true, pagada: true, horasContratadas: null, horasFijas: false, fechaInicio: null, fechaFin: '2026-12-31', createdAt: hoyIso },
+      { id: 'e2', nombre: 'Sin Fecha', tarifaHora: 10000, tarifaHoraMoneda: 'clp', isActive: true, pagada: true, horasContratadas: null, horasFijas: false, fechaInicio: null, fechaFin: null, createdAt: hoyIso },
     ])
 
     wrapper = mount(EmpresasView)
@@ -96,7 +96,7 @@ describe('EmpresasView', () => {
 
   it('shows empresas created before the current month by default — regresión del filtro de fecha que las ocultaba', async () => {
     vi.mocked(listEmpresas).mockResolvedValue([
-      { id: 'e3', nombre: 'Empresa Antigua', tarifaHora: 15000, tarifaHoraMoneda: 'clp', isActive: true, pagada: true, horasContratadas: null, fechaInicio: null, fechaFin: null, createdAt: '2020-01-01T00:00:00.000Z' },
+      { id: 'e3', nombre: 'Empresa Antigua', tarifaHora: 15000, tarifaHoraMoneda: 'clp', isActive: true, pagada: true, horasContratadas: null, horasFijas: false, fechaInicio: null, fechaFin: null, createdAt: '2020-01-01T00:00:00.000Z' },
     ])
 
     wrapper = mount(EmpresasView)
@@ -154,7 +154,7 @@ describe('EmpresasView', () => {
     vi.mocked(getCompetenciasDeEmpresa).mockResolvedValue([
       { id: 'ec1', empresaId: 'e1', competenciaId: 'comp-1', createdAt: hoyIso },
     ])
-    vi.mocked(listCompetencias).mockResolvedValue([
+    vi.mocked(listCompetenciasDeEmpresaParaCoach).mockResolvedValue([
       { id: 'comp-1', nombre: 'Liderazgo', definicion: 'def', niveles: [], empresaId: null },
       { id: 'comp-2', nombre: 'Comunicación', definicion: 'def', niveles: [], empresaId: null },
     ])
@@ -168,16 +168,35 @@ describe('EmpresasView', () => {
 
     const modal = new DOMWrapper(document.body)
     const checkboxes = modal.findAll('input[type="checkbox"]')
-    // checkboxes[0] es "Pagada" — las de competencias vienen después, en el mismo orden
-    // que competenciasDisponibles: Liderazgo (ya marcada), Comunicación.
-    expect((checkboxes[1].element as HTMLInputElement).checked).toBe(true)
-    expect((checkboxes[2].element as HTMLInputElement).checked).toBe(false)
+    // checkboxes[0] es "Horas fijas por contrato" y [1] "Pagada" — las de competencias vienen
+    // después, en el mismo orden que competenciasDisponibles: Liderazgo (ya marcada), Comunicación.
+    expect((checkboxes[2].element as HTMLInputElement).checked).toBe(true)
+    expect((checkboxes[3].element as HTMLInputElement).checked).toBe(false)
 
-    await checkboxes[2].setValue(true)
+    await checkboxes[3].setValue(true)
     await modal.find('form').trigger('submit')
     await flushPromises()
 
     expect(setCompetenciasDeEmpresa).toHaveBeenCalledWith('e1', ['comp-1', 'comp-2'])
+  })
+
+  it('shows the empresa\'s own manual (cargado desde su portal) apart from the coach catalog', async () => {
+    vi.mocked(getCompetenciasDeEmpresa).mockResolvedValue([])
+    vi.mocked(listCompetenciasDeEmpresaParaCoach).mockResolvedValue([
+      { id: 'comp-1', nombre: 'Liderazgo', definicion: 'def', niveles: [], empresaId: null },
+      { id: 'comp-e', nombre: 'Seguridad operacional', definicion: 'def', niveles: [], empresaId: 'e1' },
+    ])
+    wrapper = mount(EmpresasView)
+    await flushPromises()
+
+    await wrapper.find('button[title="Editar"]').trigger('click')
+    await flushPromises()
+
+    expect(listCompetenciasDeEmpresaParaCoach).toHaveBeenCalledWith('e1')
+    const modal = new DOMWrapper(document.body)
+    expect(modal.text()).toContain('Manual de la empresa')
+    expect(modal.text()).toContain('Seguridad operacional')
+    expect(modal.text()).toContain('Mi catálogo')
   })
 
   it('toggles estado after confirmation', async () => {
@@ -230,5 +249,27 @@ describe('EmpresasView', () => {
     expect(modal.text()).toContain('Felipe Cortes')
     expect(modal.text()).toContain('Comunicación: 5/5')
     expect(modal.text()).toContain('Excelente acompañamiento.')
+  })
+
+  it('shows the calculated horas by default and only sends a manual value when "horas fijas" is on', async () => {
+    vi.mocked(getCompetenciasDeEmpresa).mockResolvedValue([])
+    vi.mocked(listCompetenciasDeEmpresaParaCoach).mockResolvedValue([])
+    vi.mocked(updateEmpresa).mockResolvedValue(empresas[0])
+    vi.mocked(listEmpresas).mockResolvedValue([{ ...empresas[0], horasFijas: false, horasContratadasEfectivas: 14 }])
+    wrapper = mount(EmpresasView)
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('según sesiones')
+    await wrapper.find('button[title="Editar"]').trigger('click')
+    await flushPromises()
+    const modal = new DOMWrapper(document.body)
+    expect(modal.text()).toContain('14 h')
+    expect(modal.find('input[aria-label="Horas contratadas fijas"]').exists()).toBe(false)
+
+    await modal.find('form').trigger('submit')
+    await flushPromises()
+    const body = vi.mocked(updateEmpresa).mock.calls.at(-1)![1]
+    expect(body.horasFijas).toBe(false)
+    expect('horasContratadas' in body).toBe(false)
   })
 })

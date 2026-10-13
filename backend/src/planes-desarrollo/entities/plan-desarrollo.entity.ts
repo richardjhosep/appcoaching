@@ -40,6 +40,12 @@ export class PlanDesarrollo {
   @Column({ name: 'nivel_objetivo', type: 'int', nullable: true })
   nivelObjetivo: number | null;
 
+  // Si el plan mide nivel actual/objetivo de la competencia (y autoevaluación por nivel) —
+  // lo decide el coach por plan. Sin niveles, el plan queda en objetivo general + competencia
+  // asociada + descripción del estado actual.
+  @Column({ name: 'trabajar_niveles', type: 'boolean', default: false })
+  trabajarNiveles: boolean;
+
   @Column({ type: 'varchar', nullable: true })
   plazo: string | null;
 

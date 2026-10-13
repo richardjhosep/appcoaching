@@ -98,16 +98,19 @@ function exportarExcel() {
   }))
   XLSX.utils.book_append_sheet(libro, XLSX.utils.json_to_sheet(filasEmpresa), 'Cobros por empresa')
 
-  // Una fila por coachee con actividad de cobro este período — incluye tanto a los de
-  // empresa como a los independientes, que la hoja de arriba (por diseño) no cubre.
-  const filasCoachee = resumen.value.porCoachee.map((c) => ({
+  // Una fila por coachee activo de la cartera — incluye a los de empresa y a los
+  // independientes, tengan o no sesiones este mes.
+  const filasCoachee = resumen.value.carteraCoachees.map((c) => ({
     Coachee: c.nombre,
     Empresa: c.empresaNombre ?? 'Independiente',
-    'Horas realizadas': c.horasRealizadas,
-    'Ingreso del período': c.ingresoDelPeriodo,
-    'Ingreso proyectado': c.ingresoProyectado,
+    'Pago empresa': c.empresaPagada === null ? '—' : c.empresaPagada ? 'Confirmado' : 'Pendiente',
+    'Sesiones del proceso': c.totalSesiones ?? '',
+    'Sesiones realizadas': c.sesionesRealizadas,
+    'Horas del período': c.horasDelPeriodo,
+    'Agendado del período': c.montoAgendadoDelPeriodo,
+    'Ingreso confirmado': c.ingresoConfirmadoDelPeriodo,
   }))
-  XLSX.utils.book_append_sheet(libro, XLSX.utils.json_to_sheet(filasCoachee), 'Cobros por coachee')
+  XLSX.utils.book_append_sheet(libro, XLSX.utils.json_to_sheet(filasCoachee), 'Cartera de coachees')
 
   XLSX.writeFile(libro, `reporte-negocio-${new Date().toISOString().slice(0, 10)}.xlsx`)
 }
@@ -378,14 +381,21 @@ function exportarExcel() {
                 <span class="hidden print:inline">{{ e.pagada ? 'Sí' : 'No' }}</span>
               </td>
               <td class="py-2">
+                <!-- Editable aquí solo si la empresa tiene horas fijas; si no, se calculan solas
+                     desde las sesiones de sus coachees (se cambia en Empresas). -->
                 <input
+                  v-if="e.horasFijas"
                   type="number"
                   min="0"
                   :value="e.horasContratadas ?? ''"
                   class="w-16 rounded border border-[var(--color-line)] px-1 py-0.5 text-xs print:hidden"
                   @change="guardarHorasContratadas(e.empresaId, Number(($event.target as HTMLInputElement).value))"
                 >
-                <span class="hidden print:inline">{{ e.horasContratadas ?? '—' }}</span>
+                <span :class="e.horasFijas ? 'hidden print:inline' : ''">{{ e.horasContratadas ?? '—' }}</span>
+                <span
+                  v-if="!e.horasFijas"
+                  class="block text-[10px] text-[var(--color-ink)]/45 print:hidden"
+                >según sesiones</span>
               </td>
               <td class="py-2">
                 {{ e.horasConsumidas }}
@@ -409,16 +419,18 @@ function exportarExcel() {
 
     <div class="rounded-2xl border border-[var(--color-line)] bg-white p-4">
       <h2 class="mb-3 text-sm font-medium">
-        Ingresos por coachee
+        Cartera de coachees
       </h2>
       <p class="mb-3 text-xs text-[var(--color-ink)]/50">
-        Incluye tanto a los de empresa como a los independientes — estos últimos no aparecen en la tabla de arriba, que es por empresa. El "Proyectado" tiene el mismo filtro de empresas pagadas.
+        Todos tus coachees activos, tengan o no sesiones este mes. "Agendado" es el valor de lo
+        agendado en el período; "Confirmado" solo cuenta a los independientes y a las empresas
+        marcadas como "Pagada".
       </p>
       <p
-        v-if="resumen.porCoachee.length === 0"
+        v-if="resumen.carteraCoachees.length === 0"
         class="text-sm text-[var(--color-ink)]/60"
       >
-        Nadie tuvo actividad de cobro este período.
+        No tienes coachees activos.
       </p>
       <div
         v-else
@@ -434,19 +446,22 @@ function exportarExcel() {
                 Empresa
               </th>
               <th class="py-1">
-                Horas realizadas
+                Sesiones
               </th>
               <th class="py-1">
-                Ingreso período
+                Horas mes
               </th>
               <th class="py-1">
-                Proyectado
+                Agendado
+              </th>
+              <th class="py-1">
+                Confirmado
               </th>
             </tr>
           </thead>
           <tbody>
             <tr
-              v-for="c in resumen.porCoachee"
+              v-for="c in resumen.carteraCoachees"
               :key="c.coacheeId"
               class="border-t border-[var(--color-line)]"
             >
@@ -461,15 +476,27 @@ function exportarExcel() {
               </td>
               <td class="py-2 text-[var(--color-ink)]/70">
                 {{ c.empresaNombre ?? 'Independiente' }}
+                <span
+                  v-if="c.empresaPagada === false"
+                  class="ml-1 rounded-full bg-[var(--color-bronze)]/15 px-2 py-0.5 text-[10px] font-semibold text-[var(--color-bronze)]"
+                  title="Marca la empresa como pagada en la tabla de arriba para contarlo como ingreso confirmado"
+                >Pago pendiente</span>
+              </td>
+              <td class="py-2 font-[family-name:var(--font-mono)] text-xs">
+                <span v-if="c.totalSesiones !== null">{{ c.sesionesRealizadas }}/{{ c.totalSesiones }}</span>
+                <span
+                  v-else
+                  class="font-[family-name:var(--font-body)] text-[var(--color-bronze)]"
+                >Sin ciclo</span>
               </td>
               <td class="py-2">
-                {{ c.horasRealizadas }}
+                {{ c.horasDelPeriodo }}
               </td>
               <td class="py-2">
-                {{ monto(c.ingresoDelPeriodo) }}
+                {{ monto(c.montoAgendadoDelPeriodo) }}
               </td>
               <td class="py-2">
-                {{ monto(c.ingresoProyectado) }}
+                {{ monto(c.ingresoConfirmadoDelPeriodo) }}
               </td>
             </tr>
           </tbody>

@@ -71,6 +71,7 @@ export class CoacheesService {
         tarifaPropia: dto.tarifaPropia ?? null,
         tarifaPropiaMoneda: dto.tarifaPropiaMoneda ?? Moneda.CLP,
         areaGerencia: dto.areaGerencia ?? null,
+        cargo: dto.cargo ?? null,
       }),
     );
 

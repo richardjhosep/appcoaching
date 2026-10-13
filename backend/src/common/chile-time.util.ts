@@ -41,6 +41,34 @@ export function diaYHoraLocalChile(fecha: Date): {
   };
 }
 
+/** Fecha calendario (mes 1-12) y hora "HH:MM" de pared en Chile para un instante UTC. */
+export function fechaYHoraLocalChile(fecha: Date): {
+  anio: number;
+  mes: number;
+  dia: number;
+  hora: string;
+} {
+  const partes = Object.fromEntries(
+    new Intl.DateTimeFormat('en-US', {
+      timeZone: ZONA_HORARIA_COACH,
+      hourCycle: 'h23',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+      .formatToParts(fecha)
+      .map((p) => [p.type, p.value]),
+  );
+  return {
+    anio: Number(partes.year),
+    mes: Number(partes.month),
+    dia: Number(partes.day),
+    hora: `${partes.hour}:${partes.minute}`,
+  };
+}
+
 /** Minutos que hay que sumarle a un instante UTC para obtener su hora de pared en Chile. */
 function offsetMinutosEnSantiago(fechaUtc: Date): number {
   const partes = Object.fromEntries(

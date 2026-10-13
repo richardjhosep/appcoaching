@@ -14,6 +14,11 @@ vi.mock('../../api/empresas', async () => {
   const actual = await vi.importActual<typeof import('../../api/empresas')>('../../api/empresas')
   return { ...actual, listEmpresas: vi.fn() }
 })
+vi.mock('../../api/ciclos', () => ({
+  abrirCiclo: vi.fn(),
+  actualizarTotalSesiones: vi.fn(),
+  getCicloActualDeCoachee: vi.fn().mockResolvedValue(null),
+}))
 vi.mock('../../lib/notify', () => ({
   notifySuccess: vi.fn(),
   notifyError: vi.fn(),
@@ -23,14 +28,15 @@ vi.mock('../../api/indicadores', () => ({
   getUfHoy: vi.fn().mockResolvedValue({ valorUf: 39000, fecha: '2026-09-12', fuente: 'cmf', desactualizado: false }),
 }))
 
-import { listCoachees, createCoachee, setCoacheeActivo } from '../../api/coachees'
+import { listCoachees, createCoachee, updateCoachee, setCoacheeActivo } from '../../api/coachees'
 import { listEmpresas } from '../../api/empresas'
+import { abrirCiclo, actualizarTotalSesiones, getCicloActualDeCoachee } from '../../api/ciclos'
 import { confirmDialog, notifySuccess } from '../../lib/notify'
 
 const hoyIso = new Date().toISOString()
 
 const empresas: Empresa[] = [
-  { id: 'e1', nombre: 'Orbiflex', tarifaHora: 25000, tarifaHoraMoneda: 'clp', isActive: true, pagada: true, horasContratadas: 10, fechaInicio: null, fechaFin: null, createdAt: hoyIso },
+  { id: 'e1', nombre: 'Orbiflex', tarifaHora: 25000, tarifaHoraMoneda: 'clp', isActive: true, pagada: true, horasContratadas: 10, horasFijas: false, fechaInicio: null, fechaFin: null, createdAt: hoyIso },
 ]
 
 const coachees: CoacheeListItem[] = [
@@ -51,6 +57,7 @@ describe('CoacheesView', () => {
   })
 
   beforeEach(() => {
+    vi.clearAllMocks()
     setActivePinia(createPinia())
     vi.mocked(listCoachees).mockResolvedValue(coachees)
     vi.mocked(listEmpresas).mockResolvedValue(empresas)
@@ -118,6 +125,45 @@ describe('CoacheesView', () => {
     await flushPromises()
 
     expect(createCoachee).toHaveBeenCalledWith(expect.objectContaining({ nombre: 'Carla Nueva', email: 'carla@example.com' }))
+  })
+
+  it('creates a coachee with cargo and opens its ciclo with the número de sesiones', async () => {
+    vi.mocked(createCoachee).mockResolvedValue({ coachee: { ...coachees[0], id: 'nuevo' }, temporaryPassword: null })
+    wrapper = mount(CoacheesView, { global: { plugins: [router] } })
+    await flushPromises()
+
+    const nuevoBtn = wrapper.findAll('button').find((b) => b.text() === '+ Nuevo Coachee')
+    await nuevoBtn!.trigger('click')
+    await flushPromises()
+    const modal = new DOMWrapper(document.body)
+    await modal.find('input[type="text"]').setValue('Carla Nueva')
+    await modal.find('input[type="email"]').setValue('carla@example.com')
+    await modal.find('input[placeholder="Ej. Jefe de Mantención"]').setValue('Jefa de Planta')
+    await modal.find('input[placeholder="Ej. 8"]').setValue(6)
+    await modal.find('form').trigger('submit')
+    await flushPromises()
+
+    expect(createCoachee).toHaveBeenCalledWith(expect.objectContaining({ cargo: 'Jefa de Planta' }))
+    expect(abrirCiclo).toHaveBeenCalledWith('nuevo', 6)
+  })
+
+  it('edits the total of the open ciclo instead of opening a new one', async () => {
+    vi.mocked(getCicloActualDeCoachee).mockResolvedValueOnce({ id: 'ciclo-1', totalSesiones: 8 } as never)
+    vi.mocked(updateCoachee).mockResolvedValue(coachees[0] as never)
+    wrapper = mount(CoacheesView, { global: { plugins: [router] } })
+    await flushPromises()
+
+    await wrapper.find('button[title="Editar"]').trigger('click')
+    await flushPromises()
+    const modal = new DOMWrapper(document.body)
+    const sesiones = modal.find('input[placeholder="Ej. 8"]')
+    expect((sesiones.element as HTMLInputElement).value).toBe('8')
+    await sesiones.setValue(10)
+    await modal.find('form').trigger('submit')
+    await flushPromises()
+
+    expect(abrirCiclo).not.toHaveBeenCalled()
+    expect(actualizarTotalSesiones).toHaveBeenCalledWith('ciclo-1', 10)
   })
 
   it('creates a coachee with a tarifa propia in UF', async () => {

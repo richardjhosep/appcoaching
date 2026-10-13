@@ -13,6 +13,7 @@ vi.mock('../../api/perfilCoach', async () => {
     subirFoto: vi.fn(),
     subirCv: vi.fn(),
     agregarCertificacion: vi.fn(),
+    actualizarCertificacion: vi.fn(),
     eliminarCertificacion: vi.fn(),
     agregarExperiencia: vi.fn(),
     eliminarExperiencia: vi.fn(),
@@ -33,6 +34,7 @@ import {
   subirFoto,
   subirCv,
   agregarCertificacion,
+  actualizarCertificacion,
   eliminarCertificacion,
   agregarExperiencia,
   eliminarExperiencia,
@@ -67,6 +69,7 @@ const perfilVacio: PerfilCoach = {
 
 describe('PerfilView', () => {
   beforeEach(() => {
+    vi.clearAllMocks()
     setActivePinia(createPinia())
     vi.mocked(getMiPerfil).mockResolvedValue(perfilVacio)
     vi.mocked(obtenerUrlFoto).mockResolvedValue(null)
@@ -241,6 +244,27 @@ describe('PerfilView', () => {
 
     expect(eliminarCertificacion).toHaveBeenCalledWith('c1')
     expect(wrapper.text()).not.toContain('ICF ACC')
+  })
+
+  it('edits a certificación in place, reusing the form', async () => {
+    const cert = { id: 'c1', nombre: 'ICF ACC', entidadEmisora: 'ICF', fecha: null, archivoPath: null, archivoNombre: null, createdAt: '2026-01-01T00:00:00.000Z' }
+    vi.mocked(getMiPerfil).mockResolvedValue({ ...perfilVacio, certificaciones: [cert] })
+    vi.mocked(actualizarCertificacion).mockResolvedValue({ ...cert, nombre: 'ICF PCC' })
+    const wrapper = mount(PerfilView)
+    await flushPromises()
+
+    const editarBtns = wrapper.findAll('button').filter((b) => b.text() === 'Editar')
+    await editarBtns[editarBtns.length - 1]!.trigger('click')
+    expect(wrapper.text()).toContain('Editando certificación')
+    const nombreInput = wrapper.findAll('input[type="text"]').find((i) => (i.element as HTMLInputElement).value === 'ICF ACC')
+    await nombreInput!.setValue('ICF PCC')
+    await wrapper.findAll('form').find((f) => f.text().includes('Editando certificación'))!.trigger('submit')
+    await flushPromises()
+
+    expect(actualizarCertificacion).toHaveBeenCalledWith('c1', expect.objectContaining({ nombre: 'ICF PCC', entidadEmisora: 'ICF' }))
+    expect(agregarCertificacion).not.toHaveBeenCalled()
+    expect(wrapper.text()).toContain('ICF PCC')
+    expect(wrapper.text()).not.toContain('Editando certificación')
   })
 
   it('shows an error notification when saving fails', async () => {

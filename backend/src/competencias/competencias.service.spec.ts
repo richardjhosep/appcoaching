@@ -2,6 +2,7 @@ import { ConflictException, NotFoundException } from '@nestjs/common';
 import { Repository } from 'typeorm';
 import { CompetenciasService } from './competencias.service';
 import { Competencia } from './entities/competencia.entity';
+import { EmpresaCompetencia } from '../empresas/entities/empresa-competencia.entity';
 import { COMPETENCIAS_SEED } from './competencias.seed-data';
 
 type PartialCompetencia = Partial<Competencia>;
@@ -24,6 +25,8 @@ describe('CompetenciasService', () => {
     orUpdate: jest.Mock;
     execute: jest.Mock;
   };
+
+  let empresaCompetenciasRepo: { find: jest.Mock };
 
   beforeEach(() => {
     insertBuilder = {
@@ -49,8 +52,10 @@ describe('CompetenciasService', () => {
       delete: jest.fn<Promise<unknown>, unknown[]>(),
       createQueryBuilder: jest.fn().mockReturnValue(insertBuilder),
     };
+    empresaCompetenciasRepo = { find: jest.fn().mockResolvedValue([]) };
     service = new CompetenciasService(
       repo as unknown as Repository<Competencia>,
+      empresaCompetenciasRepo as unknown as Repository<EmpresaCompetencia>,
     );
   });
 
@@ -226,6 +231,46 @@ describe('CompetenciasService', () => {
         id: 'c1',
         empresaId: 'empresa-a',
       });
+    });
+  });
+
+  describe('findParaPlan', () => {
+    const global1 = { id: 'g1', nombre: 'Liderazgo', empresaId: null };
+    const global2 = { id: 'g2', nombre: 'Comunicación', empresaId: null };
+
+    it('an independiente gets the full catálogo del coach', async () => {
+      repo.find.mockResolvedValue([global1, global2]);
+
+      const result = await service.findParaPlan(null);
+
+      expect(result.map((c) => c.id)).toEqual(['g1', 'g2']);
+      expect(empresaCompetenciasRepo.find).not.toHaveBeenCalled();
+    });
+
+    it("returns only the empresa's own manual plus what the coach assigned to it — never the rest of the catálogo", async () => {
+      repo.find.mockResolvedValue([
+        { id: 'e1', nombre: 'Seguridad operacional', empresaId: 'emp-1' },
+      ]);
+      empresaCompetenciasRepo.find.mockResolvedValue([
+        { competencia: global2 },
+      ]);
+
+      const result = await service.findParaPlan('emp-1');
+
+      expect(result.map((c) => c.nombre)).toEqual([
+        'Comunicación',
+        'Seguridad operacional',
+      ]);
+    });
+
+    it('falls back to the full catálogo when the empresa has no manual nor assigned competencias', async () => {
+      repo.find
+        .mockResolvedValueOnce([]) // propias de la empresa
+        .mockResolvedValueOnce([global1, global2]); // catálogo global
+
+      const result = await service.findParaPlan('emp-sin-nada');
+
+      expect(result.map((c) => c.id)).toEqual(['g1', 'g2']);
     });
   });
 });

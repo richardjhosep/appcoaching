@@ -52,6 +52,19 @@ export function deleteCompetenciaEmpresa(id: string): Promise<{ success: boolean
   })
 }
 
+// --- Coachee: competencias que puede asociar al objetivo de su plan (las de su empresa:
+// manual propio + asignadas por el coach; o el catálogo del coach si no hay ninguna) ---
+
+export function listCompetenciasParaMiPlan(): Promise<Competencia[]> {
+  return apiRequest<Competencia[]>('/competencias/plan/me')
+}
+
+// --- Coach: catálogo global + manual propio de una empresa (editor de empresa) ---
+
+export function listCompetenciasDeEmpresaParaCoach(empresaId: string): Promise<Competencia[]> {
+  return apiRequest<Competencia[]>(`/competencias/empresa/${empresaId}`)
+}
+
 // --- Coach: catálogo visible para un coachee puntual (global + su empresa) ---
 
 export function listCompetenciasParaCoachee(coacheeId: string): Promise<Competencia[]> {

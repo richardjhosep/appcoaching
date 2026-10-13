@@ -259,4 +259,37 @@ describe('EmpresasService', () => {
       expect(mapa.size).toBe(2);
     });
   });
+
+  describe('horasEfectivas', () => {
+    it('sums the sesiones of the ciclos of its coachees (1h each), and keeps the manual value when horasFijas', async () => {
+      repo.manager.query.mockResolvedValue([
+        { empresaId: 'e-calc', sesiones: 14 },
+      ]);
+
+      const horas = await service.horasEfectivas([
+        { id: 'e-calc', horasContratadas: 12, horasFijas: false },
+        { id: 'e-fija', horasContratadas: 40, horasFijas: true },
+        { id: 'e-sin-ciclos', horasContratadas: null, horasFijas: false },
+      ] as never);
+
+      expect(horas.get('e-calc')).toBe(14);
+      expect(horas.get('e-fija')).toBe(40);
+      expect(horas.get('e-sin-ciclos')).toBe(0);
+      // Solo se consulta por las que se calculan.
+      expect(repo.manager.query).toHaveBeenCalledWith(expect.any(String), [
+        ['e-calc', 'e-sin-ciclos'],
+      ]);
+    });
+
+    it('does not query at all when every empresa has horas fijas', async () => {
+      repo.manager.query.mockClear();
+
+      const horas = await service.horasEfectivas([
+        { id: 'e-fija', horasContratadas: 40, horasFijas: true },
+      ] as never);
+
+      expect(horas.get('e-fija')).toBe(40);
+      expect(repo.manager.query).not.toHaveBeenCalled();
+    });
+  });
 });

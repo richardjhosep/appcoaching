@@ -33,7 +33,7 @@ import { getSolicitudes, type SolicitudProceso } from '../../api/satisfaccion'
 import { listCoachees, type CoacheeListItem } from '../../api/coachees'
 import { getResumenLegal, type ResumenLegal } from '../../api/legal'
 import { getSesionesSemana, type Sesion } from '../../api/sesiones'
-import { estadoVisual } from '../../lib/legalFormat'
+import { estadoVisual, ESTADO_VISUAL_LABEL, type EstadoVisualDocumento } from '../../lib/legalFormat'
 import { coacheesQueNecesitanAlgo, type CoacheeAtencion } from '../../lib/dashboardAtencion'
 import { buscarAproximado } from '../../lib/busquedaAproximada'
 import { iniciales } from '../../lib/avatar'
@@ -375,15 +375,27 @@ interface ItemAtencion {
   accion?: () => void
 }
 
-// Chip sutil (fondo tenue + borde del mismo color) para las banderas de atención — pedido
-// explícito del usuario 2026-09-15, que reemplaza la decisión anterior documentada abajo
-// ("un renglón por bandera, no una nube de chips") tras revisar juntos una referencia
-// visual. Mismo patrón bg/10 + texto + border/20 que ya usa el resto de la app (ver
-// SesionesTab.vue, IndicadoresBadge, etc.) — no es un token nuevo.
-const chipSeveridad: Record<Severidad, string> = {
-  danger: 'bg-[var(--color-danger)]/10 text-[var(--color-danger)] border border-[var(--color-danger)]/20',
-  bronze: 'bg-[var(--color-bronze)]/10 text-[var(--color-bronze)] border border-[var(--color-bronze)]/20',
-  sage: 'bg-[var(--color-sage)]/10 text-[var(--color-sage)] border border-[var(--color-sage)]/20',
+// 2026-10-10: los chips con fondo+borde se reemplazan por texto con un punto de color — con
+// varias banderas por coachee, tarjeta + chips + botón con borde daba "demasiadas cajas".
+const textoSeveridad: Record<Severidad, string> = {
+  danger: 'text-[var(--color-danger)]',
+  bronze: 'text-[var(--color-bronze)]',
+  sage: 'text-[var(--color-sage)]',
+}
+const textoEstadoLegal: Record<EstadoVisualDocumento, string> = {
+  firmado: 'text-[var(--color-sage)]',
+  pendiente: 'text-[var(--color-danger)]',
+  vencido: 'text-[var(--color-bronze)]',
+}
+const puntoEstadoLegal: Record<EstadoVisualDocumento, string> = {
+  firmado: 'bg-[var(--color-sage)]',
+  pendiente: 'bg-[var(--color-danger)]',
+  vencido: 'bg-[var(--color-bronze)]',
+}
+const puntoSeveridad: Record<Severidad, string> = {
+  danger: 'bg-[var(--color-danger)]',
+  bronze: 'bg-[var(--color-bronze)]',
+  sage: 'bg-[var(--color-sage)]',
 }
 
 // Orden de las banderas: lo urgente para el coachee primero (riesgo de que la relación se
@@ -932,95 +944,85 @@ const filasAtencion = computed<FilaAtencion[]>(() =>
           >
             ✓ Todo al día — ningún coachee necesita algo de ti ahora mismo.
           </p>
+          <!-- Lista plana (sin tarjeta por coachee ni chips con fondo): cada fila es avatar +
+               nombre + banderas como texto con un punto de color, y una sola acción como enlace.
+               Pedido del usuario 2026-10-10: "se ve mal con tantas cajas". -->
           <ul
             v-else
-            class="grid gap-3 text-sm md:grid-cols-2 2xl:grid-cols-3"
+            class="grid text-sm md:grid-cols-2 md:gap-x-8 2xl:grid-cols-3"
           >
             <li
               v-for="fila in filasAtencion"
               :key="fila.coachee.coacheeId"
-              class="rounded-xl border border-[var(--color-line)] p-3"
+              class="flex items-start gap-3 border-b border-[var(--color-line)]/70 py-3"
             >
-              <div class="mb-2 flex items-start gap-2.5">
-                <div
-                  class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--color-ink)] text-xs font-semibold text-[var(--color-parchment)]"
-                  aria-hidden="true"
-                >
-                  {{ iniciales(fila.coachee.nombre) }}
-                </div>
-                <div class="min-w-0 flex-1">
+              <div
+                class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--color-ink)] text-[11px] font-semibold text-[var(--color-parchment)]"
+                aria-hidden="true"
+              >
+                {{ iniciales(fila.coachee.nombre) }}
+              </div>
+              <div class="min-w-0 flex-1">
+                <div class="flex items-baseline justify-between gap-2">
                   <button
                     type="button"
-                    class="block truncate text-left font-medium transition-colors hover:text-[var(--color-sage)] hover:underline"
+                    class="truncate text-left font-medium transition-colors hover:text-[var(--color-sage)] hover:underline"
                     @click="verPerfil(fila.coachee.coacheeId)"
                   >
                     {{ fila.coachee.nombre }}
                   </button>
-                  <p class="truncate text-xs text-[var(--color-ink)]/50">
-                    {{ fila.empresaNombre ?? 'Independiente' }}
-                    <template v-if="fila.cobro">
-                      ·
-                      <span
-                        :class="{
-                          'text-[var(--color-danger)]': fila.cobro.severidad === 'danger',
-                          'text-[var(--color-sage)]': fila.cobro.severidad === 'sage',
-                        }"
-                      >{{ fila.cobro.texto }}</span>
-                    </template>
-                  </p>
+                  <button
+                    v-if="fila.primario?.accion"
+                    type="button"
+                    class="group inline-flex shrink-0 items-center gap-1 text-xs font-medium text-[var(--color-sage)] hover:underline"
+                    @click="fila.primario.accion"
+                  >
+                    {{ fila.primario.accionLabel?.replace(' →', '') }}
+                    <span
+                      aria-hidden="true"
+                      class="transition-transform group-hover:translate-x-0.5"
+                    >→</span>
+                  </button>
                 </div>
-              </div>
-
-              <div
-                v-if="fila.primario"
-                class="flex items-center justify-between gap-2"
-              >
-                <span
-                  class="rounded px-2 py-0.5 text-xs font-medium"
-                  :class="chipSeveridad[fila.primario.severidad]"
+                <p class="truncate text-xs text-[var(--color-ink)]/50">
+                  {{ fila.empresaNombre ?? 'Independiente' }}
+                  <template v-if="fila.cobro">
+                    ·
+                    <span
+                      :class="{
+                        'text-[var(--color-danger)]': fila.cobro.severidad === 'danger',
+                        'text-[var(--color-sage)]': fila.cobro.severidad === 'sage',
+                      }"
+                    >{{ fila.cobro.texto }}</span>
+                  </template>
+                </p>
+                <ul
+                  v-if="fila.primario"
+                  class="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-xs"
                 >
-                  {{ fila.primario.label }}
-                </span>
-                <button
-                  v-if="fila.primario.accion"
-                  type="button"
-                  class="group inline-flex shrink-0 items-center gap-1 rounded-full border border-[var(--color-line)] bg-white px-2 py-0.5 text-xs text-[var(--color-ink)]/70 hover:bg-[var(--color-parchment)] hover:text-[var(--color-ink)]"
-                  @click="fila.primario.accion"
-                >
-                  <NavIcon
-                    v-if="fila.primario.id !== 'plan-revisar'"
-                    name="correo"
-                    :size="11"
-                  /> {{ fila.primario.accionLabel }}
-                  <svg
-                    width="11"
-                    height="11"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    class="transition-transform group-hover:translate-x-0.5"
-                  ><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></svg>
-                </button>
-              </div>
-
-              <div
-                v-if="fila.secundarios.length > 0"
-                class="mt-1.5 flex flex-wrap gap-1 px-0.5"
-              >
-                <button
-                  v-for="item in fila.secundarios"
-                  :key="item.id"
-                  type="button"
-                  class="rounded px-1.5 py-0.5 text-[11px] font-medium disabled:cursor-default disabled:opacity-70"
-                  :class="[chipSeveridad[item.severidad], item.accion ? 'hover:brightness-95' : '']"
-                  :disabled="!item.accion"
-                  @click="item.accion"
-                >
-                  {{ item.label }}
-                </button>
+                  <li
+                    v-for="item in [fila.primario, ...fila.secundarios]"
+                    :key="item.id"
+                    class="inline-flex items-center gap-1.5"
+                    :class="textoSeveridad[item.severidad]"
+                  >
+                    <span
+                      class="h-1.5 w-1.5 shrink-0 rounded-full"
+                      :class="puntoSeveridad[item.severidad]"
+                      aria-hidden="true"
+                    />
+                    <button
+                      v-if="item !== fila.primario && item.accion"
+                      type="button"
+                      class="hover:underline"
+                      :title="item.accionLabel"
+                      @click="item.accion"
+                    >
+                      {{ item.label }}
+                    </button>
+                    <span v-else>{{ item.label }}</span>
+                  </li>
+                </ul>
               </div>
             </li>
           </ul>
@@ -1033,26 +1035,66 @@ const filasAtencion = computed<FilaAtencion[]>(() =>
           >
             ✓ Todo al día — sin contratos ni NDA pendientes.
           </p>
+          <!-- Mismo lenguaje visual que la lista de coachees: fila plana con ícono, el estado de
+               cada documento como texto + punto de color, y la acción como enlace. -->
           <ul
             v-else
-            class="space-y-1 text-sm"
+            class="grid text-sm md:grid-cols-2 md:gap-x-8 2xl:grid-cols-3"
           >
             <li
               v-for="e in empresasLegalPendientes"
               :key="e.empresaId"
+              class="flex items-start gap-3 border-b border-[var(--color-line)]/70 py-3"
             >
-              <RouterLink
-                to="/coach/legal"
-                class="font-medium transition-colors hover:text-[var(--color-sage)] hover:underline"
+              <div
+                class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--color-sage)]/12 text-[var(--color-sage)]"
+                aria-hidden="true"
               >
-                {{ e.nombre }}
-              </RouterLink>
-              <span class="text-[var(--color-ink)]/60">
-                —
-                <template v-if="estadoVisual(e.contrato) !== 'firmado'">Contrato </template>
-                <template v-if="estadoVisual(e.nda) !== 'firmado'">NDA</template>
-                pendiente
-              </span>
+                <NavIcon
+                  name="empresas"
+                  :size="15"
+                />
+              </div>
+              <div class="min-w-0 flex-1">
+                <div class="flex items-baseline justify-between gap-2">
+                  <RouterLink
+                    to="/coach/legal"
+                    class="truncate font-medium transition-colors hover:text-[var(--color-sage)] hover:underline"
+                  >
+                    {{ e.nombre }}
+                  </RouterLink>
+                  <RouterLink
+                    to="/coach/legal"
+                    class="group inline-flex shrink-0 items-center gap-1 text-xs font-medium text-[var(--color-sage)] hover:underline"
+                  >
+                    Revisar
+                    <span
+                      aria-hidden="true"
+                      class="transition-transform group-hover:translate-x-0.5"
+                    >→</span>
+                  </RouterLink>
+                </div>
+                <ul class="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-xs">
+                  <li
+                    v-for="d in [{ label: 'Contrato', doc: e.contrato }, { label: 'NDA', doc: e.nda }]"
+                    :key="d.label"
+                    class="inline-flex items-center gap-1.5"
+                    :class="textoEstadoLegal[estadoVisual(d.doc)]"
+                  >
+                    <span
+                      v-if="estadoVisual(d.doc) === 'firmado'"
+                      aria-hidden="true"
+                    >✓</span>
+                    <span
+                      v-else
+                      class="h-1.5 w-1.5 shrink-0 rounded-full"
+                      :class="puntoEstadoLegal[estadoVisual(d.doc)]"
+                      aria-hidden="true"
+                    />
+                    {{ d.label }} {{ ESTADO_VISUAL_LABEL[estadoVisual(d.doc)].toLowerCase() }}
+                  </li>
+                </ul>
+              </div>
             </li>
           </ul>
         </div>
