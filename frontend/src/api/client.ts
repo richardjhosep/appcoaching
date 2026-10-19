@@ -25,6 +25,12 @@ async function handleJsonResponse<T>(res: Response): Promise<T> {
 
   const data: unknown = await res.json().catch(() => null)
 
+  // 413 llega de nginx (página HTML, sin JSON) o de multer ("File too large", en inglés):
+  // en ambos casos el mensaje útil es el mismo.
+  if (res.status === 413) {
+    throw new ApiError(413, 'El archivo es demasiado grande. El máximo permitido es 20 MB.')
+  }
+
   if (!res.ok) {
     const body = data as { message?: string | string[]; fieldErrors?: Record<string, string> } | null
     const message = body?.message
