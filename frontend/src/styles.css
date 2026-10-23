@@ -23,6 +23,17 @@
      no tan serio". No reemplaza a los colores de estado, se suma como quinto tono. */
   --color-spark: #ca2b6d;
 
+  /* Texto secundario con contraste AA sobre ivory/blanco (ink al ~65 % y ~58 %).
+     Usar en vez de `text-ink/40..60` suelto. */
+  --color-muted: #636261;
+  --color-subtle: #72706d;
+  /* Velo de los modales/drawers. */
+  --color-scrim: rgb(0 0 0 / 0.4);
+
+  --radius-card: 1rem;
+  --shadow-card: 0 1px 2px rgb(18 18 18 / 0.06);
+  --shadow-pop: 0 10px 30px rgb(18 18 18 / 0.16);
+
   --font-heading: "Poppins", sans-serif;
   --font-body: "Inter", sans-serif;
   --font-mono: "JetBrains Mono", monospace;
@@ -81,7 +92,50 @@ button:not(:disabled),
   transform: rotateY(180deg);
 }
 
+/* Campo de formulario compartido (input/select/textarea nativos). Foco de marca visible,
+   estado de error vía aria-invalid y disabled. Está en @layer components para que
+   cualquier utilidad de Tailwind en el elemento siga ganando. */
+@layer components {
+  .field-input {
+    width: 100%;
+    border-radius: 0.5rem;
+    border: 1px solid var(--color-line);
+    background-color: white;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    color: var(--color-ink);
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .field-input::placeholder {
+    color: var(--color-subtle);
+  }
+  .field-input:focus-visible {
+    outline: none;
+    border-color: var(--color-sage);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-sage) 30%, transparent);
+  }
+  .field-input[aria-invalid="true"] {
+    border-color: var(--color-danger);
+  }
+  .field-input[aria-invalid="true"]:focus-visible {
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-danger) 25%, transparent);
+  }
+  .field-input:disabled {
+    opacity: 0.6;
+    background-color: var(--color-parchment);
+  }
+}
+
+/* Foco visible global para botones y enlaces que no definen el suyo. */
+:where(button, a, [role="button"], [role="tab"]):focus-visible {
+  outline: 2px solid var(--color-sage);
+  outline-offset: 2px;
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .animate-pulse {
+    animation: none;
+  }
   /* Cubre el spinner de SkeletonBlock (clase utilitaria animate-spin de
      Tailwind) — mismo criterio que fade-slide/flip-card más abajo. */
   .animate-spin {

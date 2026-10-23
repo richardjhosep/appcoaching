@@ -2578,3 +2578,63 @@ Decisiones por defecto (usuario: "haz todo"):
   leía el perfil equivocado; (2) el editor de empresa y el plan del coachee pedían solo el catálogo global;
   (3) Negocio armaba la lista de coachees desde sesiones del mes + empresa pagada (Ferronor no está marcada pagada
   y 5 de 6 coachees no tenían ciclo).
+
+---
+
+## Brechas UX + UI (rama `feat/ux-ui-brechas`, 2026-10-23)
+
+Origen: análisis de brechas UX y UI de los 3 perfiles (coach, coachee, empresa), estático sobre el código.
+Estrategia: primero bases compartidas (tokens + primitivas + a11y transversal), después migrar por perfil.
+
+### Fase 1 — Bases compartidas
+- [ ] Tokens en `@theme`: `--color-muted/subtle`, `--color-scrim`, sombras, radios; mínimo 12 px de texto informativo
+- [ ] `AppModal`: role=dialog, aria-modal, aria-labelledby, Escape, trampa de foco, devolver foco, bloquear scroll
+- [ ] `useCarga` + `ErrorState` ("Reintentar") para cargas con `Promise.allSettled`
+- [ ] `AppButton` (primary/secondary/danger/ghost, sm/md, foco sage, disabled, transición)
+- [ ] `FormField`/`TextInput`/`SelectInput`/`TextArea` (foco sage, error por campo, aria-invalid/describedby)
+- [ ] `StatusBadge` (sage/bronze/danger/neutral, basado en `coloresNivel`)
+- [ ] `KpiCard`
+- [ ] `TabBar` con role=tablist/tab/aria-selected
+- [ ] `SkeletonBlock` con forma (variante)
+- [ ] Borrar duplicados "… 2" (solo los que son copias idénticas/obsoletas, verificando con diff)
+
+### Fase 2 — Coachee
+- [ ] Carga resiliente en Mi Aprendizaje / Plan / Perfil / Cuenta / Mi Coach (allSettled + Reintentar)
+- [ ] Post-sesión: confirmDialog al publicar, notifySuccess al guardar, validación, selector 1-5 / 1-10, sin "null/5"
+- [ ] Reagendamiento: estado de la solicitud, botón deshabilitado si hay pendiente
+- [ ] Consentimiento informado visible en Mi cuenta + aviso en Mi Aprendizaje si está pendiente
+- [ ] Guía enlazada en la app + unificar `homeFor` (CambiarPasswordView → mi-aprendizaje)
+- [ ] Textos que contradecían el flujo (agendar = solicitar)
+- [ ] Navegación: grupo "Yo/Mi cuenta", íconos distintos
+- [ ] Calendario móvil: lista por día en pantallas pequeñas
+- [ ] a11y: tabs Plan/Playground, NotificationBell, calificación 1-5 táctil ≥44px, rel=noopener
+- [ ] Playground: tabs en lugar de 7 tarjetas; quiz con texto de la respuesta
+- [ ] Celebración (reduced-motion safe) en quiz/flashcards
+
+### Fase 3 — Coach
+- [ ] Carga resiliente (Dashboard, Coachees, Agenda, Prospectos, Usuarios, Recursos, Configuración)
+- [ ] BusquedaGlobal como combobox + Cmd/Ctrl+K + navegar a la entidad
+- [ ] Filtros/página de Coachees en la URL
+- [ ] Tablas: contenedor/cabecera unificados, `scope`, ordenamiento en Coachees/Empresas
+- [ ] Dashboard usa `TabBar`; chips → `StatusBadge`
+- [ ] CTA de siguiente paso tras crear empresa/coachee + checklist en dashboard
+- [ ] Errores de formulario en línea
+- [ ] Drawer: Escape + aria
+
+### Fase 4 — Empresa
+- [ ] Carga resiliente y datos parciales avisados (no "todo al día" si falló)
+- [ ] Informe ejecutivo imprimible: cabecera con logo, `@page`, `break-inside-avoid`, `print-color-adjust`
+- [ ] Dashboard: "Necesita tu atención" arriba, KPIs con color, grillas 2 col; `KpiCard`
+- [ ] Alerta operable con teclado (`<button>`/RouterLink) + texto de acción
+- [ ] Gráficos: role=img+aria-label, dona más grande y texto ≥12px, tema ECharts ampliado, colores sin colisión semántica
+- [ ] Competencias: grilla estructural en vez de `ml-[9.75rem]`
+- [ ] Texto de confidencialidad ("qué ve tu empresa") y glosario con `AyudaHerramienta`
+- [ ] Textos honestos de límites comerciales (pago registrado por el coach)
+- [ ] Filtro/búsqueda en Coachees
+
+### Fuera de alcance de esta rama (requiere decisión/backend grande)
+- Selector de período en informe ejecutivo (backend), ROI numérico, notificaciones backend para empresa,
+  PDF real, dark mode, reescritura completa de E2E (se corrigen solo las rutas rotas).
+
+### Verificación por fase
+vue-tsc + eslint + vitest verdes; commit por fase; comprobación visual en Chrome (CDP) al final.

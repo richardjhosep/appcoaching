@@ -15,15 +15,20 @@ defineEmits<{ 'update:modelValue': [T] }>()
 </script>
 
 <template>
-  <div class="inline-flex flex-wrap gap-1 rounded-full bg-[var(--color-parchment)]/70 p-1 shadow-sm ring-1 ring-white/60 backdrop-blur-sm">
+  <div
+    role="tablist"
+    class="inline-flex flex-wrap gap-1 rounded-full bg-[var(--color-parchment)]/70 p-1 shadow-sm ring-1 ring-white/60 backdrop-blur-sm"
+  >
     <button
       v-for="t in tabs"
       :key="t.key"
       type="button"
+      role="tab"
+      :aria-selected="modelValue === t.key"
       class="flex items-center gap-1.5 whitespace-nowrap rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors"
       :class="modelValue === t.key
         ? 'bg-[var(--color-ink)] text-[var(--color-parchment)] shadow-sm'
-        : 'text-[var(--color-ink)]/70 hover:bg-white/50'"
+        : 'text-[var(--color-muted)] hover:bg-white/50'"
       @click="$emit('update:modelValue', t.key)"
     >
       <NavIcon
@@ -34,8 +39,8 @@ defineEmits<{ 'update:modelValue': [T] }>()
       {{ t.label }}
       <span
         v-if="t.badge != null"
-        class="rounded-full px-1.5 py-0.5 text-[10px] font-semibold leading-none"
-        :class="modelValue === t.key ? 'bg-white/20' : 'bg-[var(--color-ink)]/10 text-[var(--color-ink)]/70'"
+        class="rounded-full px-1.5 py-0.5 text-[11px] font-semibold leading-none"
+        :class="modelValue === t.key ? 'bg-white/20' : 'bg-[var(--color-ink)]/10 text-[var(--color-muted)]'"
       >
         {{ t.badge }}
       </span>
