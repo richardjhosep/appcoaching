@@ -245,7 +245,9 @@ function motivoAlerta(fila: FilaDashboard): string {
               >
                 {{ iniciales(fila.coachee.nombre) }}
               </div>
-              <div class="min-w-0 flex-1">
+              <!-- basis-40: sin una base mínima el texto se aplasta en móvil (una palabra por línea)
+                   en vez de pasar la etiqueta y el enlace a la línea de abajo. -->
+              <div class="min-w-0 flex-1 basis-40">
                 <p class="font-medium">
                   {{ fila.coachee.nombre }}
                 </p>

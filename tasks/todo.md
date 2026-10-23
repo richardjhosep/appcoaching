@@ -2651,5 +2651,9 @@ vue-tsc + eslint + vitest verdes; commit por fase; comprobación visual en Chrom
 - **Hallazgo crítico fuera de alcance:** `ThrottlerModule.forRoot([{ ttl: 60_000, limit: 20 }])` (app.module.ts:50) limita TODA la API a 20 req/min por cliente
   (medido: la 21ª responde 429). El dashboard de empresa dispara ~4 llamadas por coachee, el del coach 14 y Mi Aprendizaje 12+, así que con
   equipos de 5+ personas se excede. Antes el `.catch(() => null)` lo escondía como "sin datos"; ahora se muestra "No pudimos cargar datos de N personas".
-  Decisión pendiente: subir el límite global (p. ej. 300/min, manteniendo el `@Throttle` estricto de login) y/o endpoint agregado para el dashboard de empresa; revisar también `trust proxy` tras nginx.
+  **RESUELTO (2026-10-23):** límite global subido a 300/min en `app.module.ts`; login/refresh/reset (5/min) y consentimiento (10-20/min)
+  conservan su `@Throttle` estricto. Verificado: 60 llamadas seguidas → 200; login sigue dando 429 desde el 5º intento; backend jest 620/620;
+  el dashboard de empresa (7 coachees) ya no muestra "datos incompletos". PENDIENTE: `trust proxy` — el backend no lo configura y detrás de nginx
+  `req.ip` sería la IP del proxy (todos los usuarios compartirían el contador); no se tocó porque la topología (nginx → ¿cloudflared?) define cuántos saltos confiar y un valor mal puesto permite falsear la IP.
+  Idea no hecha: endpoint agregado para el dashboard de empresa (hoy ~4 llamadas por coachee).
 - Pendiente aparte: archivos duplicados "… 2" sin versionar en backend/ y frontend/public/manual/ (idénticos a sus originales; solo se borraron los de frontend/src).

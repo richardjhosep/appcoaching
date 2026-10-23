@@ -47,7 +47,11 @@ import { ProspectosModule } from './prospectos/prospectos.module';
       load: [configuration],
       validate: validateEnv,
     }),
-    ThrottlerModule.forRoot([{ ttl: 60_000, limit: 20 }]),
+    // Límite GLOBAL por defecto (por cliente, 1 min). Un dashboard hace decenas de llamadas
+    // en paralelo (empresa: ~4 por coachee; coach: 14), así que 20/min devolvía 429 con
+    // equipos de 5+ personas. Las rutas sensibles mantienen su @Throttle propio y estricto
+    // (login/refresh/reset 5/min, consentimiento 10-20/min).
+    ThrottlerModule.forRoot([{ ttl: 60_000, limit: 300 }]),
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
