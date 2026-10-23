@@ -54,7 +54,7 @@ async function verCertificacion(id: string, nombre: string, archivoNombre: strin
           </p>
           <p
             v-if="perfil.titulo"
-            class="truncate text-xs text-[var(--color-ink)]/60"
+            class="truncate text-xs text-[var(--color-muted)]"
           >
             {{ perfil.titulo }}
           </p>
@@ -68,7 +68,7 @@ async function verCertificacion(id: string, nombre: string, archivoNombre: strin
       </p>
       <p
         v-else
-        class="text-sm text-[var(--color-ink)]/50"
+        class="text-sm text-[var(--color-muted)]"
       >
         Todavía no hay una presentación publicada.
       </p>
@@ -104,7 +104,7 @@ async function verCertificacion(id: string, nombre: string, archivoNombre: strin
             <p class="truncate font-medium">
               {{ exp.cargo ? `${exp.cargo} · ${exp.empresa}` : exp.empresa }}
             </p>
-            <p class="text-xs text-[var(--color-ink)]/60">
+            <p class="text-xs text-[var(--color-muted)]">
               {{ formatoPeriodo(exp.fechaInicio, exp.fechaFin) }}
             </p>
             <p
@@ -146,7 +146,7 @@ async function verCertificacion(id: string, nombre: string, archivoNombre: strin
             </p>
             <p
               v-if="cert.entidadEmisora"
-              class="truncate text-xs text-[var(--color-ink)]/60"
+              class="truncate text-xs text-[var(--color-muted)]"
             >
               {{ cert.entidadEmisora }}
             </p>
@@ -163,7 +163,7 @@ async function verCertificacion(id: string, nombre: string, archivoNombre: strin
       </ul>
       <p
         v-else
-        class="text-sm text-[var(--color-ink)]/50"
+        class="text-sm text-[var(--color-muted)]"
       >
         Sin certificaciones registradas todavía.
       </p>

@@ -26,7 +26,7 @@ watch(() => props.tieneLogo, cargar)
   >
   <div
     v-else
-    class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[var(--color-parchment)] text-sm font-semibold text-[var(--color-ink)]/60"
+    class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[var(--color-parchment)] text-sm font-semibold text-[var(--color-muted)]"
   >
     {{ iniciales(empresa) }}
   </div>

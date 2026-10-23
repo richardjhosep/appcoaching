@@ -128,7 +128,7 @@ async function descargar(doc: DocumentoCoachee) {
 
     <p
       v-if="cargando"
-      class="text-sm text-[var(--color-ink)]/50"
+      class="text-sm text-[var(--color-muted)]"
     >
       Cargando…
     </p>
@@ -148,7 +148,7 @@ async function descargar(doc: DocumentoCoachee) {
               class="font-normal text-[var(--color-ink)]/70"
             > · {{ d.descripcion }}</span>
           </p>
-          <p class="truncate text-xs text-[var(--color-ink)]/55">
+          <p class="truncate text-xs text-[var(--color-muted)]">
             {{ d.archivoNombre }} · {{ quienSubio(d) }} · {{ new Date(d.createdAt).toLocaleDateString('es-CL') }}
           </p>
         </div>
@@ -173,7 +173,7 @@ async function descargar(doc: DocumentoCoachee) {
     </ul>
     <p
       v-else
-      class="text-sm text-[var(--color-ink)]/50"
+      class="text-sm text-[var(--color-muted)]"
     >
       Todavía no hay documentos cargados.
     </p>

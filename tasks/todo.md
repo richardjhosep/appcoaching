@@ -2587,50 +2587,50 @@ Origen: análisis de brechas UX y UI de los 3 perfiles (coach, coachee, empresa)
 Estrategia: primero bases compartidas (tokens + primitivas + a11y transversal), después migrar por perfil.
 
 ### Fase 1 — Bases compartidas
-- [ ] Tokens en `@theme`: `--color-muted/subtle`, `--color-scrim`, sombras, radios; mínimo 12 px de texto informativo
-- [ ] `AppModal`: role=dialog, aria-modal, aria-labelledby, Escape, trampa de foco, devolver foco, bloquear scroll
-- [ ] `useCarga` + `ErrorState` ("Reintentar") para cargas con `Promise.allSettled`
-- [ ] `AppButton` (primary/secondary/danger/ghost, sm/md, foco sage, disabled, transición)
-- [ ] `FormField`/`TextInput`/`SelectInput`/`TextArea` (foco sage, error por campo, aria-invalid/describedby)
-- [ ] `StatusBadge` (sage/bronze/danger/neutral, basado en `coloresNivel`)
-- [ ] `KpiCard`
-- [ ] `TabBar` con role=tablist/tab/aria-selected
-- [ ] `SkeletonBlock` con forma (variante)
-- [ ] Borrar duplicados "… 2" (solo los que son copias idénticas/obsoletas, verificando con diff)
+- [x] Tokens en `@theme`: `--color-muted/subtle`, `--color-scrim`, sombras, radios; mínimo 12 px de texto informativo
+- [x] `AppModal`: role=dialog, aria-modal, aria-labelledby, Escape, trampa de foco, devolver foco, bloquear scroll
+- [x] `useCarga` + `ErrorState` ("Reintentar") para cargas con `Promise.allSettled`
+- [x] `AppButton` (primary/secondary/danger/ghost, sm/md, foco sage, disabled, transición)
+- [x] `FormField`/`TextInput`/`SelectInput`/`TextArea` (foco sage, error por campo, aria-invalid/describedby)
+- [x] `StatusBadge` (sage/bronze/danger/neutral, basado en `coloresNivel`)
+- [x] `KpiCard`
+- [x] `TabBar` con role=tablist/tab/aria-selected
+- [x] `SkeletonBlock` con forma (variante)
+- [x] Borrar duplicados "… 2" (solo los que son copias idénticas/obsoletas, verificando con diff)
 
 ### Fase 2 — Coachee
-- [ ] Carga resiliente en Mi Aprendizaje / Plan / Perfil / Cuenta / Mi Coach (allSettled + Reintentar)
-- [ ] Post-sesión: confirmDialog al publicar, notifySuccess al guardar, validación, selector 1-5 / 1-10, sin "null/5"
-- [ ] Reagendamiento: estado de la solicitud, botón deshabilitado si hay pendiente
-- [ ] Consentimiento informado visible en Mi cuenta + aviso en Mi Aprendizaje si está pendiente
-- [ ] Guía enlazada en la app + unificar `homeFor` (CambiarPasswordView → mi-aprendizaje)
-- [ ] Textos que contradecían el flujo (agendar = solicitar)
-- [ ] Navegación: grupo "Yo/Mi cuenta", íconos distintos
-- [ ] Calendario móvil: lista por día en pantallas pequeñas
-- [ ] a11y: tabs Plan/Playground, NotificationBell, calificación 1-5 táctil ≥44px, rel=noopener
-- [ ] Playground: tabs en lugar de 7 tarjetas; quiz con texto de la respuesta
-- [ ] Celebración (reduced-motion safe) en quiz/flashcards
+- [x] Carga resiliente en Mi Aprendizaje / Plan / Perfil / Cuenta / Mi Coach (allSettled + Reintentar)
+- [x] Post-sesión: confirmDialog al publicar, notifySuccess al guardar, validación, selector 1-5 / 1-10, sin "null/5"
+- [x] Reagendamiento: estado de la solicitud, botón deshabilitado si hay pendiente
+- [~] Consentimiento informado visible en Mi cuenta + aviso en Mi Aprendizaje si está pendiente (solo estado: firmar sigue siendo por enlace con token del email; flujo autenticado requiere endpoint nuevo)
+- [x] Guía enlazada en la app + unificar `homeFor` (CambiarPasswordView → mi-aprendizaje)
+- [x] Textos que contradecían el flujo (agendar = solicitar)
+- [x] Navegación: grupo "Yo/Mi cuenta", íconos distintos
+- [x] Calendario móvil: lista por día en pantallas pequeñas
+- [x] a11y: tabs Plan/Playground, NotificationBell, calificación 1-5 táctil ≥44px, rel=noopener
+- [x] Playground: tabs en lugar de 7 tarjetas; quiz con texto de la respuesta
+- [x] Celebración (reduced-motion safe) en quiz/flashcards
 
 ### Fase 3 — Coach
-- [ ] Carga resiliente (Dashboard, Coachees, Agenda, Prospectos, Usuarios, Recursos, Configuración)
-- [ ] BusquedaGlobal como combobox + Cmd/Ctrl+K + navegar a la entidad
-- [ ] Filtros/página de Coachees en la URL
-- [ ] Tablas: contenedor/cabecera unificados, `scope`, ordenamiento en Coachees/Empresas
-- [ ] Dashboard usa `TabBar`; chips → `StatusBadge`
-- [ ] CTA de siguiente paso tras crear empresa/coachee + checklist en dashboard
-- [ ] Errores de formulario en línea
-- [ ] Drawer: Escape + aria
+- [x] Carga resiliente (Dashboard, Coachees, Agenda, Prospectos, Usuarios, Recursos, Configuración)
+- [x] BusquedaGlobal como combobox + Cmd/Ctrl+K + navegar a la entidad
+- [x] Filtros/página de Coachees en la URL
+- [x] Tablas: contenedor/cabecera unificados, `scope`, ordenamiento en Coachees/Empresas (tablas anchas en móvil siguen con scroll horizontal, sin vista de tarjetas)
+- [x] Dashboard usa `TabBar`; chips → `StatusBadge`
+- [x] CTA de siguiente paso tras crear empresa/coachee + checklist en dashboard
+- [x] Errores de formulario en línea
+- [x] Drawer: Escape + aria (en AppShell)
 
 ### Fase 4 — Empresa
-- [ ] Carga resiliente y datos parciales avisados (no "todo al día" si falló)
-- [ ] Informe ejecutivo imprimible: cabecera con logo, `@page`, `break-inside-avoid`, `print-color-adjust`
-- [ ] Dashboard: "Necesita tu atención" arriba, KPIs con color, grillas 2 col; `KpiCard`
-- [ ] Alerta operable con teclado (`<button>`/RouterLink) + texto de acción
-- [ ] Gráficos: role=img+aria-label, dona más grande y texto ≥12px, tema ECharts ampliado, colores sin colisión semántica
-- [ ] Competencias: grilla estructural en vez de `ml-[9.75rem]`
-- [ ] Texto de confidencialidad ("qué ve tu empresa") y glosario con `AyudaHerramienta`
-- [ ] Textos honestos de límites comerciales (pago registrado por el coach)
-- [ ] Filtro/búsqueda en Coachees
+- [x] Carga resiliente y datos parciales avisados (no "todo al día" si falló)
+- [x] Informe ejecutivo imprimible: cabecera con logo, `@page`, `break-inside-avoid`, `print-color-adjust`
+- [x] Dashboard: "Necesita tu atención" arriba, KPIs con color, grillas 2 col; `KpiCard`
+- [x] Alerta operable con teclado (`<button>`/RouterLink) + texto de acción
+- [x] Gráficos: role=img+aria-label, dona más grande y texto ≥12px, tema ECharts ampliado, colores sin colisión semántica
+- [x] Competencias: grilla estructural en vez de `ml-[9.75rem]`
+- [x] Texto de confidencialidad ("qué ve tu empresa") y glosario con `AyudaHerramienta`
+- [x] Textos honestos de límites comerciales (pago registrado por el coach)
+- [x] Filtro/búsqueda en Coachees
 
 ### Fuera de alcance de esta rama (requiere decisión/backend grande)
 - Selector de período en informe ejecutivo (backend), ROI numérico, notificaciones backend para empresa,
@@ -2638,3 +2638,18 @@ Estrategia: primero bases compartidas (tokens + primitivas + a11y transversal), 
 
 ### Verificación por fase
 vue-tsc + eslint + vitest verdes; commit por fase; comprobación visual en Chrome (CDP) al final.
+
+### Revisión (2026-10-23)
+- Frontend: vue-tsc limpio, eslint 0 errores (4 warnings preexistentes), vitest 700/700 (113 archivos); backend `jest src/sesiones` 79/79.
+- Verificado en Chrome headless (CDP) contra el clon `coaching_verify` con SMTP vacío: coach (dashboard, coachees con orden/filtros/Ctrl+K, móvil),
+  coachee (Mi Aprendizaje con "Primeros pasos", grupo "Yo", Playground con TabBar, Sesiones móvil con lista de horas libres) y
+  empresa (dashboard reordenado con "Necesita tu atención" arriba, confidencialidad/glosario, informe con botón "Imprimir / Guardar como PDF").
+  Ningún perfil tiene desborde horizontal de página en 1440 ni 390 px.
+- Hallazgo en la verificación: el checklist "Primeros pasos" duplicaba los avisos de consentimiento/plan → los avisos solo salen con el checklist oculto.
+- Backend tocado: `GET /sesiones/me/reagendamientos` (coachee) y rechazo 409 de una segunda solicitud pendiente por sesión. Sin migraciones.
+- NO verificado visualmente: impresión real del informe/finanzas (`@page`, saltos), Biblioteca y pestañas Mapas/Pizarra/Ejercicios/Test de Estilo del Playground.
+- **Hallazgo crítico fuera de alcance:** `ThrottlerModule.forRoot([{ ttl: 60_000, limit: 20 }])` (app.module.ts:50) limita TODA la API a 20 req/min por cliente
+  (medido: la 21ª responde 429). El dashboard de empresa dispara ~4 llamadas por coachee, el del coach 14 y Mi Aprendizaje 12+, así que con
+  equipos de 5+ personas se excede. Antes el `.catch(() => null)` lo escondía como "sin datos"; ahora se muestra "No pudimos cargar datos de N personas".
+  Decisión pendiente: subir el límite global (p. ej. 300/min, manteniendo el `@Throttle` estricto de login) y/o endpoint agregado para el dashboard de empresa; revisar también `trust proxy` tras nginx.
+- Pendiente aparte: archivos duplicados "… 2" sin versionar en backend/ y frontend/public/manual/ (idénticos a sus originales; solo se borraron los de frontend/src).

@@ -42,7 +42,7 @@ defineEmits<{ 'update:modelValue': [Moneda] }>()
     </p>
     <p
       v-else-if="valorUf !== null && fecha"
-      class="text-xs text-[var(--color-ink)]/50"
+      class="text-xs text-[var(--color-muted)]"
     >
       UF {{ formatoFechaCorta(fecha) }}: {{ formatCLP(valorUf) }}
       <span

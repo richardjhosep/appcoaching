@@ -197,7 +197,7 @@ async function enviar() {
             v-if="competenciasPrioritarias.length"
             class="mb-1.5 mt-1 flex flex-wrap items-center gap-1.5"
           >
-            <span class="text-xs text-[var(--color-ink)]/50">Tu empresa prioriza:</span>
+            <span class="text-xs text-[var(--color-muted)]">Tu empresa prioriza:</span>
             <span
               v-for="c in competenciasPrioritarias"
               :key="c.id"
@@ -246,7 +246,7 @@ async function enviar() {
           >{{ serverErrors.nivelActual }}</span>
           <span
             v-if="nivelInfo(form.nivelActual)"
-            class="mt-1 block text-xs text-[var(--color-ink)]/60"
+            class="mt-1 block text-xs text-[var(--color-muted)]"
           >{{ nivelInfo(form.nivelActual)!.descripcion }}</span>
         </label>
 
@@ -268,7 +268,7 @@ async function enviar() {
           >{{ serverErrors.nivelObjetivo }}</span>
           <span
             v-if="nivelInfo(form.nivelObjetivo)"
-            class="mt-1 block text-xs text-[var(--color-ink)]/60"
+            class="mt-1 block text-xs text-[var(--color-muted)]"
           >{{ nivelInfo(form.nivelObjetivo)!.descripcion }}</span>
         </label>
 
@@ -311,7 +311,7 @@ async function enviar() {
           :key="o.id"
           class="flex items-center gap-2 text-sm"
         >
-          <span class="font-[family-name:var(--font-mono)] text-[var(--color-ink)]/50">{{ o.orden }}.</span>
+          <span class="font-[family-name:var(--font-mono)] text-[var(--color-muted)]">{{ o.orden }}.</span>
           <input
             :value="o.descripcion"
             class="flex-1 rounded-lg border border-[var(--color-line)] px-2 py-1 text-sm disabled:bg-[var(--color-parchment)]/50"
@@ -349,7 +349,7 @@ async function enviar() {
       title="Autoevaluación de competencia"
       icon="objetivo"
     >
-      <p class="mb-3 text-xs text-[var(--color-ink)]/60">
+      <p class="mb-3 text-xs text-[var(--color-muted)]">
         Marca en qué nivel de "{{ competenciaSeleccionada.nombre }}" crees estar hoy y describe un
         ejemplo concreto que lo demuestre.
       </p>
@@ -363,7 +363,7 @@ async function enviar() {
           :key="a.id"
           class="rounded-lg border border-[var(--color-line)] p-2"
         >
-          <p class="text-xs text-[var(--color-ink)]/50">
+          <p class="text-xs text-[var(--color-muted)]">
             {{ new Date(a.createdAt).toLocaleDateString('es-CL') }} — Nivel {{ a.nivel }}
           </p>
           <p>{{ a.ejemplo }}</p>

@@ -26,7 +26,7 @@ async function descargarPdf(ciclo: Ciclo) {
   <div>
     <p
       v-if="ciclos.length === 0"
-      class="text-sm text-[var(--color-ink)]/60"
+      class="text-sm text-[var(--color-muted)]"
     >
       Sin ciclos anteriores.
     </p>
@@ -45,7 +45,7 @@ async function descargarPdf(ciclo: Ciclo) {
         >
           <span class="font-medium">
             {{ formatoFecha(ciclo.fechaApertura) }}
-            <span class="text-[var(--color-ink)]/40">→</span>
+            <span class="text-[var(--color-subtle)]">→</span>
             {{ ciclo.fechaCierre ? formatoFecha(ciclo.fechaCierre) : 'en curso' }}
           </span>
           <span class="flex shrink-0 items-center gap-2">
@@ -62,7 +62,7 @@ async function descargarPdf(ciclo: Ciclo) {
             <NavIcon
               name="chevron"
               :size="14"
-              class="text-[var(--color-ink)]/40 transition-transform"
+              class="text-[var(--color-subtle)] transition-transform"
               :class="expandido === ciclo.id ? 'rotate-90' : ''"
             />
           </span>
@@ -74,7 +74,7 @@ async function descargarPdf(ciclo: Ciclo) {
           <ImpactoNegocioCallout :impacto="ciclo.impactoNegocio" />
 
           <div>
-            <p class="mb-1 text-xs font-medium uppercase tracking-wide text-[var(--color-ink)]/50">
+            <p class="mb-1 text-xs font-medium uppercase tracking-wide text-[var(--color-muted)]">
               Resumen de reunión inicial
             </p>
             <p class="text-sm">
@@ -83,7 +83,7 @@ async function descargarPdf(ciclo: Ciclo) {
           </div>
 
           <div v-if="ciclo.informeFinal">
-            <p class="mb-1 text-xs font-medium uppercase tracking-wide text-[var(--color-ink)]/50">
+            <p class="mb-1 text-xs font-medium uppercase tracking-wide text-[var(--color-muted)]">
               Informe final
             </p>
             <div class="max-h-64 overflow-y-auto rounded-lg bg-[var(--color-parchment)]/40 p-3 text-sm leading-relaxed whitespace-pre-line">

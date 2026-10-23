@@ -109,7 +109,7 @@ function tocar(nodo: NodoPosicionado) {
         <span class="line-clamp-2 flex-1">{{ n.label }}</span>
         <span
           v-if="n.tieneHijosOcultos"
-          class="shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold"
+          class="shrink-0 rounded-full px-1.5 py-0.5 text-xs font-semibold"
           :class="n.x === 0 ? 'bg-white/20' : 'bg-[var(--color-parchment)] text-[var(--color-bronze)]'"
         >+{{ n.hijos.length }}</span>
       </button>

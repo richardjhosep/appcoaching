@@ -28,7 +28,7 @@ function quitar() {
 
 <template>
   <div class="flex flex-wrap items-center gap-2 text-xs">
-    <span class="text-[var(--color-ink)]/50">
+    <span class="text-[var(--color-muted)]">
       {{ formatearFechaLimite(fechaLimite) ?? 'Sin fecha límite' }}
     </span>
     <input
@@ -45,7 +45,7 @@ function quitar() {
     </button>
     <button
       v-if="fechaLimite"
-      class="text-[var(--color-ink)]/40 hover:underline disabled:opacity-60"
+      class="text-[var(--color-subtle)] hover:underline disabled:opacity-60"
       :disabled="guardando"
       @click="quitar"
     >

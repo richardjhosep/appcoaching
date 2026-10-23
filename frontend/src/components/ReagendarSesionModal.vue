@@ -49,7 +49,7 @@ async function guardar() {
     >
       <p
         v-if="sesion.coachee?.nombre"
-        class="text-sm text-[var(--color-ink)]/60"
+        class="text-sm text-[var(--color-muted)]"
       >
         {{ sesion.coachee.nombre }} — sesión actual del
         {{ new Date(sesion.fechaHora).toLocaleString('es-CL', { dateStyle: 'medium', timeStyle: 'short' }) }}

@@ -61,12 +61,12 @@ const porcentaje = computed(() =>
 const circleClass: Record<EstadoEtapa, string> = {
   done: 'bg-[var(--color-sage)] text-white',
   current: 'bg-[var(--color-bronze)] text-white',
-  pending: 'bg-[var(--color-parchment)] text-[var(--color-ink)]/40 border border-[var(--color-line)]',
+  pending: 'bg-[var(--color-parchment)] text-[var(--color-subtle)] border border-[var(--color-line)]',
 }
 const labelClass: Record<EstadoEtapa, string> = {
   done: 'text-[var(--color-sage)]',
   current: 'text-[var(--color-bronze)] font-medium',
-  pending: 'text-[var(--color-ink)]/40',
+  pending: 'text-[var(--color-subtle)]',
 }
 const lineClass: Record<EstadoEtapa, string> = {
   done: 'bg-[var(--color-sage)]',
@@ -86,7 +86,7 @@ const lineClass: Record<EstadoEtapa, string> = {
     v-else
     class="rounded-2xl border border-[var(--color-line)] bg-white p-4"
   >
-    <p class="mb-3 text-xs text-[var(--color-ink)]/60">
+    <p class="mb-3 text-xs text-[var(--color-muted)]">
       {{ completadas }} de {{ etapas.length }} etapas completadas · {{ porcentaje }}%
     </p>
     <div class="flex items-center overflow-x-auto pb-1">
@@ -119,7 +119,7 @@ const lineClass: Record<EstadoEtapa, string> = {
             </div>
           </div>
           <span
-            class="w-20 text-center text-[11px] leading-tight"
+            class="w-20 text-center text-xs leading-tight"
             :class="labelClass[etapa.estado]"
           >{{ etapa.label }}</span>
         </div>

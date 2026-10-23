@@ -408,7 +408,7 @@ const esHoy = (d: Date) => esMismoDia(d, new Date())
             <div
               v-for="h in horas"
               :key="h"
-              class="pr-1.5 text-right text-[11px] font-medium text-white/90"
+              class="pr-1.5 text-right text-xs font-medium text-white/90"
               :style="{ height: `${ALTO_HORA}px` }"
             >
               {{ horaLabel(h) }}
@@ -423,7 +423,7 @@ const esHoy = (d: Date) => esMismoDia(d, new Date())
           :class="i >= 5 ? 'bg-[var(--color-parchment)]/50' : ''"
         >
           <div
-            class="flex h-8 flex-col items-center justify-center text-[11px] font-medium"
+            class="flex h-8 flex-col items-center justify-center text-xs font-medium"
             :class="esHoy(dia) ? 'text-[var(--color-sage)]' : 'text-[var(--color-ink)]/70'"
           >
             <span>{{ diasLabel[i] }} {{ diaLabel(dia) }}</span>
@@ -463,7 +463,7 @@ const esHoy = (d: Date) => esMismoDia(d, new Date())
                 height: `${Math.max(16, Math.abs(arrastre.actualY - arrastre.inicioY))}px`,
               }"
             >
-              <span class="block px-1 py-0.5 text-[10px] font-medium text-[var(--color-sage)]">
+              <span class="block px-1 py-0.5 text-xs font-medium text-[var(--color-sage)]">
                 {{ horaVistaPrevia }}
               </span>
             </div>
@@ -492,14 +492,14 @@ const esHoy = (d: Date) => esMismoDia(d, new Date())
               >
                 <span
                   v-if="bloque.nombreCoachee"
-                  class="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-white/70 text-[8px] font-bold text-[var(--color-ink)]"
+                  class="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-white/70 text-xs font-bold text-[var(--color-ink)]"
                   aria-hidden="true"
                 >{{ iniciales(bloque.nombreCoachee) }}</span>
                 <span class="min-w-0 flex-1 truncate">
                   {{ new Date(bloque.fechaHora).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' }) }}
                   <span
                     v-if="bloque.nombreCoachee"
-                    class="block truncate text-[11px] font-normal opacity-90"
+                    class="block truncate text-xs font-normal opacity-90"
                   >{{ bloque.nombreCoachee }}</span>
                 </span>
               </button>

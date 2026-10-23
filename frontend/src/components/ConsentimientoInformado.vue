@@ -48,7 +48,7 @@ async function enviarSolicitud() {
 <template>
   <div class="rounded-lg border border-[var(--color-line)] p-3">
     <div class="mb-1.5 flex items-center justify-between gap-2">
-      <p class="text-xs font-medium uppercase text-[var(--color-ink)]/60">
+      <p class="text-xs font-medium uppercase text-[var(--color-muted)]">
         Consentimiento informado
       </p>
       <span
@@ -63,7 +63,7 @@ async function enviarSolicitud() {
 
     <p
       v-if="informado"
-      class="text-xs text-[var(--color-ink)]/60"
+      class="text-xs text-[var(--color-muted)]"
     >
       Firmado<template v-if="fecha">
         el {{ new Date(fecha).toLocaleDateString('es-CL') }}
@@ -71,7 +71,7 @@ async function enviarSolicitud() {
     </p>
     <p
       v-else
-      class="text-xs text-[var(--color-ink)]/60"
+      class="text-xs text-[var(--color-muted)]"
     >
       Sin firmar todavía.
     </p>

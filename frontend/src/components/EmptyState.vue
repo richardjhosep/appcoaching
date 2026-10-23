@@ -19,7 +19,7 @@ withDefaults(defineProps<{ icon: string; title: string; description?: string }>(
     </p>
     <p
       v-if="description"
-      class="max-w-sm text-sm text-[var(--color-ink)]/60"
+      class="max-w-sm text-sm text-[var(--color-muted)]"
     >
       {{ description }}
     </p>

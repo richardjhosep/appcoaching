@@ -22,13 +22,13 @@ const fechaGenerado = new Date().toLocaleDateString('es-CL', { day: 'numeric', m
     <h1 class="mb-1 font-[family-name:var(--font-heading)] text-2xl font-semibold">
       Resumen de proceso de coaching
     </h1>
-    <p class="mb-6 text-sm text-[var(--color-ink)]/60">
+    <p class="mb-6 text-sm text-[var(--color-muted)]">
       {{ nombreCoachee }} · generado el {{ fechaGenerado }}
     </p>
 
     <div class="mb-6 grid gap-4 border-t border-[var(--color-line)] pt-4 sm:grid-cols-2">
       <div>
-        <p class="text-xs font-medium uppercase tracking-wide text-[var(--color-ink)]/45">
+        <p class="text-xs font-medium uppercase tracking-wide text-[var(--color-subtle)]">
           Objetivo del proceso
         </p>
         <p class="text-sm">
@@ -36,7 +36,7 @@ const fechaGenerado = new Date().toLocaleDateString('es-CL', { day: 'numeric', m
         </p>
       </div>
       <div v-if="competencia">
-        <p class="text-xs font-medium uppercase tracking-wide text-[var(--color-ink)]/45">
+        <p class="text-xs font-medium uppercase tracking-wide text-[var(--color-subtle)]">
           Competencia
         </p>
         <p class="text-sm">
@@ -44,7 +44,7 @@ const fechaGenerado = new Date().toLocaleDateString('es-CL', { day: 'numeric', m
         </p>
       </div>
       <div>
-        <p class="text-xs font-medium uppercase tracking-wide text-[var(--color-ink)]/45">
+        <p class="text-xs font-medium uppercase tracking-wide text-[var(--color-subtle)]">
           Inicio del proceso
         </p>
         <p class="text-sm">
@@ -52,7 +52,7 @@ const fechaGenerado = new Date().toLocaleDateString('es-CL', { day: 'numeric', m
         </p>
       </div>
       <div>
-        <p class="text-xs font-medium uppercase tracking-wide text-[var(--color-ink)]/45">
+        <p class="text-xs font-medium uppercase tracking-wide text-[var(--color-subtle)]">
           Próxima sesión
         </p>
         <p class="text-sm">
@@ -62,7 +62,7 @@ const fechaGenerado = new Date().toLocaleDateString('es-CL', { day: 'numeric', m
     </div>
 
     <div class="mb-6 border-t border-[var(--color-line)] pt-4">
-      <p class="mb-2 text-xs font-medium uppercase tracking-wide text-[var(--color-ink)]/45">
+      <p class="mb-2 text-xs font-medium uppercase tracking-wide text-[var(--color-subtle)]">
         Avance general
       </p>
       <p class="font-[family-name:var(--font-mono)] text-2xl font-semibold">
@@ -71,7 +71,7 @@ const fechaGenerado = new Date().toLocaleDateString('es-CL', { day: 'numeric', m
     </div>
 
     <div class="mb-6 border-t border-[var(--color-line)] pt-4">
-      <p class="mb-2 text-xs font-medium uppercase tracking-wide text-[var(--color-ink)]/45">
+      <p class="mb-2 text-xs font-medium uppercase tracking-wide text-[var(--color-subtle)]">
         Plan de ejecución
       </p>
       <p class="text-sm">
@@ -84,7 +84,7 @@ const fechaGenerado = new Date().toLocaleDateString('es-CL', { day: 'numeric', m
       v-if="logrosRecientes.length > 0"
       class="border-t border-[var(--color-line)] pt-4"
     >
-      <p class="mb-2 text-xs font-medium uppercase tracking-wide text-[var(--color-ink)]/45">
+      <p class="mb-2 text-xs font-medium uppercase tracking-wide text-[var(--color-subtle)]">
         Logros recientes
       </p>
       <ul class="space-y-1 text-sm">
@@ -92,7 +92,7 @@ const fechaGenerado = new Date().toLocaleDateString('es-CL', { day: 'numeric', m
           v-for="(logro, i) in logrosRecientes"
           :key="i"
         >
-          <span class="font-[family-name:var(--font-mono)] text-xs text-[var(--color-ink)]/50">{{ logro.fecha }}</span>
+          <span class="font-[family-name:var(--font-mono)] text-xs text-[var(--color-muted)]">{{ logro.fecha }}</span>
           — {{ logro.descripcion }}
         </li>
       </ul>

@@ -40,7 +40,7 @@ function toggle(id: string, event: Event) {
           v-if="n.hijos.length"
           type="button"
           class="shrink-0 rounded p-0.5"
-          :class="n.id === seleccionadaId ? 'text-[var(--color-parchment)]/80' : 'text-[var(--color-ink)]/40'"
+          :class="n.id === seleccionadaId ? 'text-[var(--color-parchment)]/80' : 'text-[var(--color-subtle)]'"
           :aria-label="expandidas.has(n.id) ? 'Contraer' : 'Expandir'"
           @click="toggle(n.id, $event)"
         >

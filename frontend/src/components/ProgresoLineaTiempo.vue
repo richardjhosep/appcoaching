@@ -25,7 +25,7 @@ const entradas = computed(() =>
 <template>
   <div
     v-if="puntos.length === 0"
-    class="text-sm text-[var(--color-ink)]/60"
+    class="text-sm text-[var(--color-muted)]"
   >
     Aún no hay datos de progreso (se completan al publicar un post-sesión).
   </div>
@@ -77,7 +77,7 @@ const entradas = computed(() =>
           >{{ entrada.cercaniaObjetivo }}</text>
         </svg>
         <span
-          class="rounded-full px-2 py-0.5 text-[9px] font-semibold"
+          class="rounded-full px-2 py-0.5 text-xs font-semibold"
           :class="entrada.colores.texto"
           :style="{ backgroundColor: entrada.colores.suave }"
         >Puntaje {{ entrada.cercaniaObjetivo }}/10</span>

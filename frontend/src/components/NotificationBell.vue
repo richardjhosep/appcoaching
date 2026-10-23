@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   getMisNotificaciones,
@@ -13,15 +13,33 @@ const router = useRouter()
 const open = ref(false)
 const notificaciones = ref<Notificacion[]>([])
 const unreadCount = ref(0)
+const errorLista = ref(false)
+const ariaLabel = computed(() =>
+  unreadCount.value > 0 ? `Notificaciones, ${unreadCount.value} sin leer` : 'Notificaciones',
+)
 let pollHandle: ReturnType<typeof setInterval> | undefined
 
 async function refreshCount() {
-  const { count } = await getNoLeidasCount()
-  unreadCount.value = count
+  try {
+    const { count } = await getNoLeidasCount()
+    unreadCount.value = count
+  } catch {
+    // El contador es decorativo: un fallo de red no debe romper el encabezado ni dejar un
+    // rechazo sin manejar cada 60 s.
+  }
 }
 
 async function loadList() {
-  notificaciones.value = await getMisNotificaciones()
+  errorLista.value = false
+  try {
+    notificaciones.value = await getMisNotificaciones()
+  } catch {
+    errorLista.value = true
+  }
+}
+
+function onKeydown(e: KeyboardEvent) {
+  if (e.key === 'Escape' && open.value) open.value = false
 }
 
 async function toggle() {
@@ -45,10 +63,12 @@ async function onClickNotificacion(n: Notificacion) {
 
 onMounted(() => {
   void refreshCount()
+  document.addEventListener('keydown', onKeydown)
   pollHandle = setInterval(() => void refreshCount(), 60_000)
 })
 
 onUnmounted(() => {
+  document.removeEventListener('keydown', onKeydown)
   if (pollHandle) clearInterval(pollHandle)
 })
 </script>
@@ -57,8 +77,10 @@ onUnmounted(() => {
   <div class="relative">
     <button
       type="button"
-      aria-label="Notificaciones"
-      class="relative flex h-9 w-9 items-center justify-center rounded-full hover:bg-[var(--color-parchment)]/60"
+      :aria-label="ariaLabel"
+      aria-haspopup="true"
+      :aria-expanded="open"
+      class="relative flex h-11 w-11 items-center sm:h-9 sm:w-9 justify-center rounded-full hover:bg-[var(--color-parchment)]/60"
       @click="toggle"
     >
       <svg
@@ -76,7 +98,8 @@ onUnmounted(() => {
       </svg>
       <span
         v-if="unreadCount > 0"
-        class="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--color-saltup)] px-1 text-[10px] font-medium text-white"
+        class="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--color-saltup)] px-1 text-xs font-medium text-white"
+        aria-hidden="true"
       >
         {{ unreadCount > 99 ? '99+' : unreadCount }}
       </span>
@@ -90,11 +113,25 @@ onUnmounted(() => {
     />
     <div
       v-if="open"
-      class="absolute right-0 top-full z-30 mt-2 w-80 rounded-xl border border-[var(--color-line)] bg-white p-2 shadow-xl"
+      class="absolute right-0 top-full z-30 mt-2 w-80 max-w-[calc(100vw-2rem)] rounded-xl border border-[var(--color-line)] bg-white p-2 shadow-[var(--shadow-pop)]"
     >
       <p
-        v-if="notificaciones.length === 0"
-        class="p-3 text-sm text-[var(--color-ink)]/60"
+        v-if="errorLista"
+        role="alert"
+        class="p-3 text-sm text-[var(--color-danger)]"
+      >
+        No pudimos cargar tus notificaciones.
+        <button
+          type="button"
+          class="underline"
+          @click="loadList"
+        >
+          Reintentar
+        </button>
+      </p>
+      <p
+        v-else-if="notificaciones.length === 0"
+        class="p-3 text-sm text-[var(--color-muted)]"
       >
         No tienes notificaciones.
       </p>
@@ -119,7 +156,7 @@ onUnmounted(() => {
               />
               {{ n.mensaje }}
             </span>
-            <span class="text-xs text-[var(--color-ink)]/50">
+            <span class="text-xs text-[var(--color-subtle)]">
               {{ new Date(n.createdAt).toLocaleString('es-CL') }}
             </span>
           </button>

@@ -21,7 +21,7 @@ const emit = defineEmits<{ toggle: [] }>()
     </span>
     <span
       class="text-xs"
-      :class="active ? 'text-[var(--color-sage)]' : 'text-[var(--color-ink)]/50'"
+      :class="active ? 'text-[var(--color-sage)]' : 'text-[var(--color-muted)]'"
     >
       {{ active ? 'Activo' : 'Inactivo' }}
     </span>

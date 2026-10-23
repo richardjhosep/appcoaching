@@ -124,6 +124,40 @@ button:not(:disabled),
     opacity: 0.6;
     background-color: var(--color-parchment);
   }
+
+  /* Tabla de mantenedor compartida: contenedor con scroll horizontal + cabecera unificada.
+     Uso: <div class="data-table-wrap"><table class="data-table">…</table></div> */
+  .data-table-wrap {
+    overflow-x: auto;
+    border-radius: 1rem;
+    border: 1px solid var(--color-line);
+    background-color: white;
+  }
+  .data-table {
+    width: 100%;
+    text-align: left;
+    font-size: 0.875rem;
+  }
+  .data-table thead tr {
+    border-bottom: 1px solid var(--color-line);
+    background-color: var(--color-parchment);
+    font-size: 0.75rem;
+    color: var(--color-muted);
+  }
+  .data-table th {
+    padding: 0.75rem 1rem;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  .data-table td {
+    padding: 0.75rem 1rem;
+  }
+  .data-table tbody tr {
+    border-bottom: 1px solid var(--color-line);
+  }
+  .data-table tbody tr:last-child {
+    border-bottom: 0;
+  }
 }
 
 /* Foco visible global para botones y enlaces que no definen el suyo. */
@@ -132,7 +166,25 @@ button:not(:disabled),
   outline-offset: 2px;
 }
 
+/* Celebración ligera al terminar quiz/flashcards con éxito: el ícono "salta" y un aro se
+   expande una vez. Solo CSS; se desactiva con prefers-reduced-motion (ver abajo). */
+@keyframes celebrar-pop {
+  0% { transform: scale(0.6); opacity: 0; }
+  60% { transform: scale(1.12); opacity: 1; }
+  100% { transform: scale(1); }
+}
+@keyframes celebrar-aro {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-spark) 45%, transparent); }
+  100% { box-shadow: 0 0 0 22px transparent; }
+}
+.celebrar {
+  animation: celebrar-pop 0.55s ease-out both, celebrar-aro 0.9s ease-out 0.2s 1 both;
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .celebrar {
+    animation: none;
+  }
   .animate-pulse {
     animation: none;
   }
@@ -145,5 +197,32 @@ button:not(:disabled),
   .fade-slide-leave-active,
   .flip-card-inner {
     transition: none !important;
+  }
+}
+
+/* Impresión / "Guardar como PDF" (Informe ejecutivo, Finanzas, Certificado). */
+@page {
+  margin: 16mm;
+}
+
+@media print {
+  /* Sin esto el navegador descarta fondos y colores al imprimir (barras, chips, KPIs). */
+  * {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+  /* Tarjetas, filas y gráficos no se parten entre dos páginas. */
+  .rounded-xl,
+  .rounded-2xl,
+  tr,
+  li,
+  [role="img"],
+  svg {
+    break-inside: avoid;
+  }
+  h1,
+  h2,
+  h3 {
+    break-after: avoid;
   }
 }

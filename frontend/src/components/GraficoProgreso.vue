@@ -82,7 +82,7 @@ const option = computed(() => {
     </div>
     <p
       v-else
-      class="flex items-center justify-center text-center text-xs text-[var(--color-ink)]/45"
+      class="flex items-center justify-center text-center text-xs text-[var(--color-subtle)]"
       :class="compacto ? 'h-16' : 'aspect-[10/3]'"
     >
       Tu progreso empieza en tu próxima sesión
@@ -92,7 +92,7 @@ const option = computed(() => {
       v-if="avance !== null"
       class="mt-2 flex items-center justify-between text-sm"
     >
-      <span class="text-[var(--color-ink)]/60">Avance general</span>
+      <span class="text-[var(--color-muted)]">Avance general</span>
       <span
         class="font-[family-name:var(--font-mono)] font-semibold"
         :class="coloresNivel[nivelProgreso(avance)].texto"

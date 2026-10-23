@@ -57,7 +57,7 @@ async function handleSubmit() {
         >
           ¡Bienvenido de vuelta!
         </h1>
-        <p class="mb-6 text-sm text-[var(--color-ink)]/60">
+        <p class="mb-6 text-sm text-[var(--color-muted)]">
           Ingresa a tu cuenta para continuar
         </p>
 

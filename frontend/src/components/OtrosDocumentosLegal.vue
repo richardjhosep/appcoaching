@@ -67,13 +67,13 @@ async function eliminar(doc: DocumentoAdicionalLegal) {
       <NavIcon
         name="legal"
         :size="16"
-        class="shrink-0 text-[var(--color-ink)]/50"
+        class="shrink-0 text-[var(--color-muted)]"
       />
       <span class="flex-1 font-medium">Otros documentos ({{ documentos.length }})</span>
       <NavIcon
         name="chevron"
         :size="16"
-        class="shrink-0 text-[var(--color-ink)]/40 transition-transform"
+        class="shrink-0 text-[var(--color-subtle)] transition-transform"
         :class="expandido ? '-rotate-90' : 'rotate-90'"
       />
     </button>
@@ -116,7 +116,7 @@ async function eliminar(doc: DocumentoAdicionalLegal) {
       </ul>
       <p
         v-else
-        class="text-xs text-[var(--color-ink)]/50"
+        class="text-xs text-[var(--color-muted)]"
       >
         Sin documentos adicionales.
       </p>

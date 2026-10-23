@@ -119,7 +119,7 @@ async function descargar() {
 
     <p
       v-if="visual === 'firmado'"
-      class="mt-2 text-xs text-[var(--color-ink)]/55"
+      class="mt-2 text-xs text-[var(--color-muted)]"
     >
       Firmado<template v-if="doc.fecha">
         el {{ new Date(`${doc.fecha}T00:00:00`).toLocaleDateString('es-CL', { day: 'numeric', month: 'short', year: 'numeric' }) }}
@@ -136,7 +136,7 @@ async function descargar() {
     </p>
     <p
       v-else
-      class="mt-2 text-xs text-[var(--color-ink)]/45"
+      class="mt-2 text-xs text-[var(--color-subtle)]"
     >
       Sin firmar todavía.
     </p>

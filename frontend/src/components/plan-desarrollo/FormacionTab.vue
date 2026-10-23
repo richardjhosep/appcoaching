@@ -248,7 +248,7 @@ const notasAntiguas = computed(() =>
       title="Mis materiales de formación"
       icon="formacion"
     >
-      <p class="mb-3 text-xs text-[var(--color-ink)]/60">
+      <p class="mb-3 text-xs text-[var(--color-muted)]">
         Libros, artículos, videos, podcasts o prácticas que tú mismo encontraste — independiente
         de lo que tu coach te haya asignado arriba.
       </p>
@@ -287,7 +287,7 @@ const notasAntiguas = computed(() =>
               >{{ r.titulo }}</span>
               <p
                 v-if="r.notas"
-                class="mt-1 text-xs text-[var(--color-ink)]/60"
+                class="mt-1 text-xs text-[var(--color-muted)]"
               >
                 {{ r.notas }}
               </p>
@@ -353,7 +353,7 @@ const notasAntiguas = computed(() =>
       v-if="notasAntiguas.length"
       class="rounded-2xl border border-[var(--color-line)] bg-white p-4"
     >
-      <summary class="cursor-pointer text-xs font-medium uppercase tracking-wide text-[var(--color-ink)]/45">
+      <summary class="cursor-pointer text-xs font-medium uppercase tracking-wide text-[var(--color-subtle)]">
         Notas antiguas de formación
       </summary>
       <div class="mt-3 space-y-2">

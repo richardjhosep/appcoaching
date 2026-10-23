@@ -41,7 +41,7 @@ async function enviar() {
         <h1 class="mb-1 font-[family-name:var(--font-heading)] text-lg font-semibold">
           ¿Olvidaste tu contraseña?
         </h1>
-        <p class="mb-6 text-sm text-[var(--color-ink)]/60">
+        <p class="mb-6 text-sm text-[var(--color-muted)]">
           Ingresa tu correo y te enviamos un enlace para elegir una nueva.
         </p>
 

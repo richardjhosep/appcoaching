@@ -35,7 +35,7 @@ defineProps<{ impacto: string | null }>()
       </p>
       <p
         v-else
-        class="mt-0.5 text-sm italic text-[var(--color-ink)]/40"
+        class="mt-0.5 text-sm italic text-[var(--color-subtle)]"
       >
         Sin registrar todavía
       </p>

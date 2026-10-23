@@ -19,7 +19,7 @@ function go(page: number) {
 </script>
 
 <template>
-  <div class="flex flex-wrap items-center justify-between gap-3 text-sm text-[var(--color-ink)]/60">
+  <div class="flex flex-wrap items-center justify-between gap-3 text-sm text-[var(--color-muted)]">
     <span>Mostrando {{ rangeStart }}–{{ rangeEnd }} de {{ totalItems }} registro(s)</span>
     <div class="flex items-center gap-3">
       <button

@@ -46,7 +46,7 @@ describe('NotificationBell', () => {
     const wrapper = mount(NotificationBell, { global: { plugins: [router] } })
     await flushPromises()
 
-    expect(wrapper.find('[aria-label="Notificaciones"] span').exists()).toBe(false)
+    expect(wrapper.find('button[aria-haspopup] span').exists()).toBe(false)
     wrapper.unmount()
   })
 
@@ -70,7 +70,7 @@ describe('NotificationBell', () => {
     const wrapper = mount(NotificationBell, { global: { plugins: [router] } })
     await flushPromises()
 
-    await wrapper.find('[aria-label="Notificaciones"]').trigger('click')
+    await wrapper.find('button[aria-haspopup]').trigger('click')
     await flushPromises()
 
     expect(wrapper.text()).toContain('Tu coach respondió tu solicitud de reagendamiento')
@@ -82,5 +82,30 @@ describe('NotificationBell', () => {
     expect(marcarNotificacionLeida).toHaveBeenCalledWith('n1')
     expect(pushSpy).toHaveBeenCalledWith('/coachee/sesiones')
     wrapper.unmount()
+  })
+  it('anuncia la cantidad de no leídas en la etiqueta y el estado expandido', async () => {
+    vi.mocked(getNoLeidasCount).mockResolvedValue({ count: 3 })
+    vi.mocked(getMisNotificaciones).mockResolvedValue(notificaciones)
+    const wrapper = mount(NotificationBell, { global: { plugins: [router] } })
+    await flushPromises()
+
+    const boton = wrapper.find('button[aria-haspopup]')
+    expect(boton.attributes('aria-label')).toBe('Notificaciones, 3 sin leer')
+    expect(boton.attributes('aria-expanded')).toBe('false')
+
+    await boton.trigger('click')
+    expect(boton.attributes('aria-expanded')).toBe('true')
+  })
+
+  it('no revienta y ofrece reintentar si falla la lista', async () => {
+    vi.mocked(getNoLeidasCount).mockResolvedValue({ count: 0 })
+    vi.mocked(getMisNotificaciones).mockRejectedValue(new Error('x'))
+    const wrapper = mount(NotificationBell, { global: { plugins: [router] } })
+    await flushPromises()
+
+    await wrapper.find('button[aria-haspopup]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.find('[role="alert"]').text()).toContain('No pudimos cargar')
   })
 })

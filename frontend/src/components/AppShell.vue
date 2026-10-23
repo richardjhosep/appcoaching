@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { changeOwnPassword } from '../api/users'
@@ -9,6 +9,7 @@ import { ApiError } from '../api/client'
 import { notifyError, notifySuccess } from '../lib/notify'
 import { validateNewPassword } from '../lib/password'
 import AppLogo from './AppLogo.vue'
+import AppButton from './AppButton.vue'
 import AppModal from './AppModal.vue'
 import NavIcon from './NavIcon.vue'
 import BusquedaGlobal from './BusquedaGlobal.vue'
@@ -84,8 +85,6 @@ const coacheeNavGroups: NavGroup[] = [
       { to: '/coachee/sesiones', label: 'Sesiones', icon: 'sesiones' },
       { to: '/coachee/progreso', label: 'Progreso', icon: 'progreso' },
       { to: '/coachee/mi-coach', label: 'Mi Coach', icon: 'contacto' },
-      { to: '/coachee/perfil', label: 'Mi perfil', icon: 'contacto' },
-      { to: '/coachee/cuenta', label: 'Mi cuenta', icon: 'legal' },
     ],
   },
   {
@@ -96,6 +95,16 @@ const coacheeNavGroups: NavGroup[] = [
       // conviven en /coachee/playground como pestañas (ver PlaygroundView.vue). Biblioteca
       // queda aparte: es material compartido por el coach, no una herramienta de práctica.
       { to: '/coachee/playground', label: 'Playground', icon: 'playground' },
+    ],
+  },
+  // Perfil y cuenta (documentos, inversión, contraseña) no son parte del "proceso" de
+  // coaching: viven juntos aparte, con íconos propios (antes Mi Coach y Mi perfil
+  // compartían 'contacto' y Mi cuenta usaba el de 'legal').
+  {
+    label: 'Yo',
+    items: [
+      { to: '/coachee/perfil', label: 'Mi perfil', icon: 'usuarios' },
+      { to: '/coachee/cuenta', label: 'Mi cuenta', icon: 'configuracion' },
     ],
   },
 ]
@@ -160,6 +169,17 @@ const navGroups = computed<NavGroup[]>(() => {
   if (auth.user?.role === 'empresa') return empresaNavGroups
   return []
 })
+
+function onShellKeydown(e: KeyboardEvent) {
+  if (e.key !== 'Escape') return
+  if (userPanelOpen.value) {
+    userPanelOpen.value = false
+  } else if (sidebarOpen.value && !window.matchMedia('(min-width: 640px)').matches) {
+    sidebarOpen.value = false
+  }
+}
+onMounted(() => document.addEventListener('keydown', onShellKeydown))
+onBeforeUnmount(() => document.removeEventListener('keydown', onShellKeydown))
 
 function closeOnMobileNav() {
   if (!window.matchMedia('(min-width: 640px)').matches) {
@@ -227,7 +247,8 @@ async function guardarPassword() {
   <div class="min-h-screen bg-[var(--color-ivory)] text-[var(--color-ink)]">
     <div
       v-if="sidebarOpen"
-      class="fixed inset-0 z-30 bg-black/40 sm:hidden"
+      class="fixed inset-0 z-30 bg-[var(--color-scrim)] sm:hidden"
+      aria-hidden="true"
       @click="sidebarOpen = false"
     />
 
@@ -241,8 +262,9 @@ async function guardarPassword() {
           dark
         />
         <button
+          type="button"
           aria-label="Cerrar menú"
-          class="rounded-lg p-1 hover:bg-white/10"
+          class="flex h-11 w-11 items-center justify-center rounded-lg hover:bg-white/10 sm:h-9 sm:w-9"
           @click="sidebarOpen = false"
         >
           <svg
@@ -264,7 +286,10 @@ async function guardarPassword() {
         <BusquedaGlobal />
       </div>
 
-      <nav class="flex-1 select-none overflow-y-auto px-3 py-3">
+      <nav
+        aria-label="Navegación principal"
+        class="flex-1 select-none overflow-y-auto px-3 py-3"
+      >
         <div
           v-for="(group, i) in navGroups"
           :key="i"
@@ -272,7 +297,7 @@ async function guardarPassword() {
         >
           <p
             v-if="group.label"
-            class="mb-1 px-3 text-[10px] font-medium uppercase tracking-wide text-[var(--color-parchment)]/40"
+            class="mb-1 px-3 text-xs font-medium uppercase tracking-wide text-[var(--color-parchment)]/60"
           >
             {{ group.label }}
           </p>
@@ -336,8 +361,9 @@ async function guardarPassword() {
       >
         <button
           v-if="!sidebarOpen"
+          type="button"
           aria-label="Abrir menú"
-          class="rounded-lg p-1.5 hover:bg-[var(--color-parchment)]/60"
+          class="flex h-11 w-11 items-center justify-center rounded-lg hover:bg-[var(--color-parchment)]/60 sm:h-9 sm:w-9"
           @click="sidebarOpen = true"
         >
           <svg
@@ -352,12 +378,16 @@ async function guardarPassword() {
         </button>
         <div class="flex-1" />
         <template v-if="auth.user">
-          <NotificationBell />
+          <!-- Hoy ningún evento del backend notifica al rol empresa (solo coach/coachee):
+               una campana que siempre está vacía solo confunde. -->
+          <NotificationBell v-if="auth.user.role !== 'empresa'" />
           <div class="relative">
             <button
               type="button"
               aria-label="Cuenta"
-              class="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-[var(--color-ink)] text-xs font-semibold text-[var(--color-parchment)]"
+              aria-haspopup="true"
+              :aria-expanded="userPanelOpen"
+              class="flex h-11 w-11 items-center justify-center overflow-hidden rounded-full bg-[var(--color-ink)] text-xs font-semibold sm:h-9 sm:w-9 text-[var(--color-parchment)]"
               @click="userPanelOpen = !userPanelOpen"
             >
               <img
@@ -378,7 +408,7 @@ async function guardarPassword() {
             />
             <div
               v-if="userPanelOpen"
-              class="absolute right-0 top-full z-30 mt-2 w-72 rounded-xl border border-[var(--color-line)] bg-white p-4 shadow-xl"
+              class="absolute right-0 top-full z-30 mt-2 w-72 rounded-xl border border-[var(--color-line)] bg-white p-4 shadow-[var(--shadow-pop)]"
             >
               <div class="flex items-center gap-3">
                 <div class="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--color-ink)] text-sm font-semibold text-[var(--color-parchment)]">
@@ -396,12 +426,12 @@ async function guardarPassword() {
                   <p class="truncate font-[family-name:var(--font-heading)] text-sm font-semibold">
                     {{ auth.user.nombre || rolLabels[auth.user.role] }}
                   </p>
-                  <span class="mt-0.5 inline-block rounded-full bg-[var(--color-parchment)] px-2 py-0.5 text-[10px] uppercase tracking-wide text-[var(--color-ink)]/70">
+                  <span class="mt-0.5 inline-block rounded-full bg-[var(--color-parchment)] px-2 py-0.5 text-xs uppercase tracking-wide text-[var(--color-muted)]">
                     {{ rolLabels[auth.user.role] }}
                   </span>
                 </div>
               </div>
-              <p class="mt-2 truncate text-xs text-[var(--color-ink)]/60">
+              <p class="mt-2 truncate text-xs text-[var(--color-muted)]">
                 {{ auth.user.email }}
               </p>
 
@@ -480,20 +510,18 @@ async function guardarPassword() {
         </PasswordField>
 
         <div class="flex justify-end gap-2 pt-2">
-          <button
-            type="button"
-            class="rounded-lg border border-[var(--color-line)] px-4 py-2 text-sm"
+          <AppButton
+            variant="secondary"
             @click="changePasswordModalOpen = false"
           >
             Cancelar
-          </button>
-          <button
+          </AppButton>
+          <AppButton
             type="submit"
-            :disabled="guardandoPassword"
-            class="rounded-lg bg-[var(--color-ink)] px-4 py-2 text-sm text-[var(--color-parchment)] disabled:opacity-60"
+            :loading="guardandoPassword"
           >
             {{ guardandoPassword ? 'Guardando…' : 'Guardar' }}
-          </button>
+          </AppButton>
         </div>
       </form>
     </AppModal>

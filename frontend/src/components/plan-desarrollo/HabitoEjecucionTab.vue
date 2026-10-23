@@ -242,18 +242,18 @@ function objetivoDescripcion(objetivoId: string): string {
           <div class="flex flex-wrap items-start justify-between gap-2">
             <p>{{ a.actividad }}</p>
             <span
-              class="shrink-0 rounded-full px-2.5 py-0.5 font-[family-name:var(--font-mono)] text-[11px] font-semibold"
+              class="shrink-0 rounded-full px-2.5 py-0.5 font-[family-name:var(--font-mono)] text-xs font-semibold"
               :class="rangoFechas(a.fechaInicio, a.fechaFin)
                 ? 'bg-[var(--color-sage)]/15 text-[var(--color-sage)]'
-                : 'bg-[var(--color-ink)]/5 text-[var(--color-ink)]/50'"
+                : 'bg-[var(--color-ink)]/5 text-[var(--color-muted)]'"
             >
               {{ rangoFechas(a.fechaInicio, a.fechaFin) ?? 'Sin fechas' }}
             </span>
           </div>
-          <p class="text-xs text-[var(--color-ink)]/60">
+          <p class="text-xs text-[var(--color-muted)]">
             Objetivo: {{ objetivoDescripcion(a.objetivoId) }}
           </p>
-          <div class="mt-1 flex flex-wrap gap-3 text-xs text-[var(--color-ink)]/60">
+          <div class="mt-1 flex flex-wrap gap-3 text-xs text-[var(--color-muted)]">
             <label class="flex items-center gap-1">
               Inicio
               <input

@@ -62,7 +62,7 @@ async function guardar() {
         <h1 class="mb-1 font-[family-name:var(--font-heading)] text-lg font-semibold">
           Elige una nueva contraseña
         </h1>
-        <p class="mb-6 text-sm text-[var(--color-ink)]/60">
+        <p class="mb-6 text-sm text-[var(--color-muted)]">
           Este enlace es de un solo uso y vale por 60 minutos desde que lo pediste.
         </p>
 
