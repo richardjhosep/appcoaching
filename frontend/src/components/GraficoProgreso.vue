@@ -4,6 +4,7 @@ import type { PuntoProgreso } from '../api/seguimiento'
 import { nivelProgreso, coloresNivel } from '../lib/nivelProgreso'
 import { VChart, ECHARTS_INIT_OPTIONS } from '../lib/echartsCore'
 import { resolveColor, baseOption } from '../lib/echartsTheme'
+import EscalaProgreso from './EscalaProgreso.vue'
 
 const props = defineProps<{
   puntos: PuntoProgreso[]
@@ -69,7 +70,7 @@ const option = computed(() => {
   <div>
     <!-- Ver TendenciaChart.vue para por qué el tamaño va en este div y no en <VChart>. -->
     <div
-      v-if="puntos.length > 0"
+      v-if="puntos.length > 1"
       class="w-full"
       :class="compacto ? 'h-32' : 'aspect-[10/3]'"
     >
@@ -79,6 +80,17 @@ const option = computed(() => {
         :init-options="ECHARTS_INIT_OPTIONS"
         autoresize
       />
+    </div>
+    <!-- Con una sola sesión un gráfico de líneas queda en un punto suelto que no dice nada:
+         se muestra el valor sobre la escala 1-10 como punto de partida. -->
+    <div
+      v-else-if="puntos.length === 1"
+      class="space-y-2 py-2"
+    >
+      <p class="text-xs text-[var(--color-muted)]">
+        Tu punto de partida
+      </p>
+      <EscalaProgreso :valor="puntos[0]!.cercaniaObjetivo" />
     </div>
     <p
       v-else

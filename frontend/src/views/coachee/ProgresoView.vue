@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import AppShell from '../../components/AppShell.vue'
-import ProgresoLineaTiempo from '../../components/ProgresoLineaTiempo.vue'
-import GraficoProgreso from '../../components/GraficoProgreso.vue'
+import ProgresoCamino from '../../components/ProgresoCamino.vue'
 import HistorialCiclos from '../../components/HistorialCiclos.vue'
 import SectionCard from '../../components/SectionCard.vue'
 import EmptyState from '../../components/EmptyState.vue'
@@ -236,29 +235,10 @@ async function guardarRetro() {
           title="Aún no te has autoevaluado"
           description="El avance general se calcula con las autoevaluaciones que completas en cada post-sesión."
         />
-        <!-- Dos vistas del mismo dato lado a lado, no una sola apilada a todo el ancho (a todo
-             ancho el gráfico de tendencia se ve mal, demasiado estirado): la línea de tiempo
-             da el detalle con la nota de cada sesión, la tendencia da la vista general. -->
-        <div
+        <ProgresoCamino
           v-else
-          class="grid gap-6 lg:grid-cols-2"
-        >
-          <div>
-            <p class="mb-2 text-xs font-medium uppercase tracking-wide text-[var(--color-muted)]">
-              Cercanía al objetivo por sesión
-            </p>
-            <ProgresoLineaTiempo :puntos="puntos" />
-          </div>
-          <div>
-            <p class="mb-2 text-xs font-medium uppercase tracking-wide text-[var(--color-muted)]">
-              Tu tendencia
-            </p>
-            <GraficoProgreso
-              :puntos="puntos"
-              :avance="avance"
-            />
-          </div>
-        </div>
+          :puntos="puntos"
+        />
       </SectionCard>
 
       <SectionCard
