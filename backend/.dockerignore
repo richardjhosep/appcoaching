@@ -3,3 +3,5 @@ dist
 coverage
 .env
 *.log
+# Copias accidentales de Finder ("archivo 2.ext"): no deben entrar a la imagen (duplicaban migraciones)
+**/* 2.*

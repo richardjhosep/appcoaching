@@ -2,3 +2,5 @@ node_modules
 dist
 .env
 *.log
+# Copias accidentales de Finder ("archivo 2.ext")
+**/* 2.*
