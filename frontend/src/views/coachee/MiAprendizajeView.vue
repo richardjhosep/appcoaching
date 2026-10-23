@@ -7,7 +7,7 @@ import ErrorState from '../../components/ErrorState.vue'
 import SectionCard from '../../components/SectionCard.vue'
 import EmptyState from '../../components/EmptyState.vue'
 import SkeletonBlock from '../../components/SkeletonBlock.vue'
-import GraficoProgreso from '../../components/GraficoProgreso.vue'
+import ProgresoCamino from '../../components/ProgresoCamino.vue'
 import { getMisSesiones } from '../../api/sesiones'
 import { getMisRecursos, listMisAprendizajes } from '../../api/recursos'
 import { listQuizzesDisponibles } from '../../api/quiz'
@@ -15,7 +15,7 @@ import { listFlashcardsDisponibles } from '../../api/flashcards'
 import { listMapasDisponibles } from '../../api/mapas'
 import { listEjerciciosDisponibles } from '../../api/ejercicios'
 import { listTestsEstiloDisponibles } from '../../api/testEstilo'
-import { getMisEntradasDiario, getMiAvance, getMiLineaProgreso, type PuntoProgreso } from '../../api/seguimiento'
+import { getMisEntradasDiario, getMiLineaProgreso, type PuntoProgreso } from '../../api/seguimiento'
 import { getOwnPlan } from '../../api/planesDesarrollo'
 import { getMyCoachee, type Coachee } from '../../api/coachees'
 import { resumenAprendizaje, type ResumenAprendizaje, type TipoTarea } from '../../lib/miAprendizaje'
@@ -24,7 +24,6 @@ import { useCarga } from '../../lib/useCarga'
 
 const router = useRouter()
 const resumen = ref<ResumenAprendizaje | null>(null)
-const avance = ref<number | null>(null)
 const puntos = ref<PuntoProgreso[]>([])
 const coachee = ref<Coachee | null>(null)
 const pasos = ref<PrimerPaso[]>([])
@@ -53,7 +52,7 @@ const consentimientoPendiente = computed(() => coachee.value !== null && !coache
 const { loading, error, fallos, recargar, tolerar } = useCarga(async () => {
   // El plan y las sesiones son críticos (sin ellos el resumen sería engañoso): si fallan, se
   // muestra el error con "Reintentar". El resto se tolera y se avisa si faltó algo.
-  const [plan, sesiones, recursos, aprendizajes, quizzes, flashcards, mapas, ejercicios, testEstilo, diario, a, p, co] =
+  const [plan, sesiones, recursos, aprendizajes, quizzes, flashcards, mapas, ejercicios, testEstilo, diario, p, co] =
     await Promise.all([
       getOwnPlan(),
       getMisSesiones(),
@@ -65,7 +64,6 @@ const { loading, error, fallos, recargar, tolerar } = useCarga(async () => {
       tolerar(listEjerciciosDisponibles()),
       tolerar(listTestsEstiloDisponibles()),
       tolerar(getMisEntradasDiario()),
-      tolerar(getMiAvance()),
       tolerar(getMiLineaProgreso()),
       tolerar(getMyCoachee()),
     ])
@@ -82,7 +80,6 @@ const { loading, error, fallos, recargar, tolerar } = useCarga(async () => {
     planEstado: plan.estado,
     actividades: plan.actividades,
   })
-  avance.value = a?.avance ?? null
   puntos.value = p ?? []
   coachee.value = co ?? null
   pasos.value = primerosPasos({ coachee: coachee.value, plan, totalSesiones: sesiones.length })
@@ -174,9 +171,12 @@ function formatFecha(fecha: string): string {
           <li
             v-for="paso in pasos"
             :key="paso.id"
-            class="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[var(--color-line)]/60 px-3 py-2"
+            class="flex items-center justify-between gap-3 rounded-lg border border-[var(--color-line)]/60 px-3 py-2"
           >
-            <span :class="paso.hecho ? 'text-[var(--color-muted)] line-through' : ''">
+            <span
+              class="min-w-0 flex-1"
+              :class="paso.hecho ? 'text-[var(--color-muted)] line-through' : ''"
+            >
               <span
                 aria-hidden="true"
                 class="mr-1"
@@ -189,6 +189,7 @@ function formatFecha(fecha: string): string {
             </span>
             <AppButton
               v-if="!paso.hecho"
+              class="shrink-0"
               variant="secondary"
               size="sm"
               @click="ir(paso.ruta)"
@@ -280,9 +281,8 @@ function formatFecha(fecha: string): string {
           title="Mi progreso"
           icon="progreso"
         >
-          <GraficoProgreso
+          <ProgresoCamino
             :puntos="puntos"
-            :avance="avance"
             compacto
           />
           <AppButton

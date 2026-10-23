@@ -212,6 +212,21 @@ describe('CoacheesView (empresa)', () => {
     expect(modal.text()).toContain('Reunión inicial.')
   })
 
+  it('shows the avance in the progreso modal as a 0-10 ring with a third-person sentence', async () => {
+    vi.mocked(listCoachees).mockResolvedValue([coacheeActivo])
+    vi.mocked(getCiclosDeCoachee).mockResolvedValue([cicloAbierto])
+    vi.mocked(getAvanceDeCoachee).mockResolvedValue({ avance: 80 })
+
+    const wrapper = await mountView()
+    await wrapper.findAll('button').find((b) => b.text() === 'Ver progreso')!.trigger('click')
+    await flushPromises()
+
+    const modal = new DOMWrapper(document.body)
+    expect(modal.find('svg[aria-label="Cercanía al objetivo: 8 de 10"]').exists()).toBe(true)
+    expect(modal.text()).toContain('Muy cerca de su objetivo')
+    expect(modal.text()).toContain('Última autoevaluación del coachee')
+  })
+
   it('opens the historial modal for a closed-process coachee', async () => {
     vi.mocked(listCoachees).mockResolvedValue([coacheeCerrado])
     vi.mocked(getCiclosDeCoachee).mockResolvedValue([cicloCerrado])

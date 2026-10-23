@@ -1,12 +1,35 @@
 import type { PuntoProgreso } from '../api/seguimiento'
 import { nivelProgreso, type NivelProgreso } from './nivelProgreso'
 
-// Frase en lenguaje llano para cada nivel (mismos umbrales que nivelProgreso: 40 y 80 sobre 100,
-// o sea 4 y 8 sobre 10). Nunca se usa solo el color para comunicar el estado.
-export const FRASE_NIVEL: Record<NivelProgreso, string> = {
-  alto: 'Muy cerca de tu objetivo',
-  medio: 'Avanzando hacia tu objetivo',
-  bajo: 'Recién comenzando el camino',
+/** Quién mira: el propio coachee ("tu") o el coach/empresa hablando de un coachee ("su"). */
+export type Audiencia = 'propio' | 'coachee'
+
+// Textos en lenguaje llano. Las frases de nivel usan los mismos umbrales que nivelProgreso (40 y
+// 80 sobre 100, o sea 4 y 8 sobre 10) y NUNCA se comunica el estado solo con el color.
+export function textos(audiencia: Audiencia) {
+  const propio = audiencia === 'propio'
+  return {
+    frase: {
+      alto: propio ? 'Muy cerca de tu objetivo' : 'Muy cerca de su objetivo',
+      medio: propio ? 'Avanzando hacia tu objetivo' : 'Avanzando hacia su objetivo',
+      bajo: propio ? 'Recién comenzando el camino' : 'Recién comenzando el camino',
+    } satisfies Record<NivelProgreso, string>,
+    captionConFecha: (fecha: string) =>
+      propio
+        ? `Tu autoevaluación al cerrar la sesión del ${fecha}.`
+        : `Autoevaluación del coachee al cerrar la sesión del ${fecha}.`,
+    captionSinFecha: propio ? 'Tu última autoevaluación.' : 'Última autoevaluación del coachee.',
+    anterior: propio ? 'respecto a tu sesión anterior' : 'respecto a la sesión anterior',
+    igual: propio ? 'Igual que en tu sesión anterior' : 'Igual que en la sesión anterior',
+    desdeInicio: propio ? 'Desde tu primera sesión:' : 'Desde la primera sesión:',
+    partida: propio ? 'Este es tu punto de partida' : 'Este es el punto de partida',
+    partidaAyuda: propio
+      ? 'Con tu próxima sesión empezaremos a dibujar tu evolución y podrás ver cuánto avanzas.'
+      : 'Con la próxima sesión empezará a dibujarse su evolución.',
+    vacio: propio
+      ? 'Tu progreso empieza en tu próxima sesión: al publicar tu post-sesión verás aquí cómo avanzas.'
+      : 'Aún no hay autoevaluaciones: se completan cuando el coachee publica un post-sesión.',
+  }
 }
 
 export interface VariacionProgreso {
@@ -39,13 +62,21 @@ export function formatoDelta(delta: number): string {
   return '0'
 }
 
-export function resumenAccesible(puntos: PuntoProgreso[]): string {
+export function resumenAccesible(puntos: PuntoProgreso[], audiencia: Audiencia = 'propio'): string {
   const asc = ordenarPorFecha(puntos)
   if (asc.length === 0) return 'Sin sesiones evaluadas todavía.'
   const ultimo = asc[asc.length - 1]!
-  if (asc.length === 1) return `Punto de partida: ${ultimo.cercaniaObjetivo} sobre 10 en tu primera sesión.`
+  const de = audiencia === 'propio' ? 'tu' : 'su'
+  if (asc.length === 1) return `Punto de partida: ${ultimo.cercaniaObjetivo} sobre 10 en ${de} primera sesión.`
   const primero = asc[0]!
-  return `Evolución de tu cercanía al objetivo en ${asc.length} sesiones: de ${primero.cercaniaObjetivo} a ${ultimo.cercaniaObjetivo} sobre 10.`
+  return `Evolución de ${de} cercanía al objetivo en ${asc.length} sesiones: de ${primero.cercaniaObjetivo} a ${ultimo.cercaniaObjetivo} sobre 10.`
+}
+
+export function fechaCorta(iso: string): string {
+  return new Date(iso).toLocaleDateString('es-CL', { day: 'numeric', month: 'short' })
+}
+export function fechaLarga(iso: string): string {
+  return new Date(iso).toLocaleDateString('es-CL', { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
 export function nivelDePunto(p: PuntoProgreso): NivelProgreso {

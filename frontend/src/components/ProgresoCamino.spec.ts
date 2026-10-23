@@ -43,7 +43,7 @@ describe('ProgresoCamino', () => {
     }
 
     expect(option.yAxis).toMatchObject({ min: 0, max: 10 })
-    expect(option.series[0]).toMatchObject({ name: 'Tu cercanía', data: [3, 7] })
+    expect(option.series[0]).toMatchObject({ name: 'Cercanía', data: [3, 7] })
     expect(option.series[1]).toMatchObject({ name: 'Objetivo', data: [10, 10] })
     expect(w.find('[role="img"][aria-label^="Evolución"]').exists()).toBe(true)
   })
@@ -97,5 +97,40 @@ describe('ProgresoCamino', () => {
     })
     expect(tres.text()).toContain('Desde tu primera sesión')
     expect(tres.text()).toContain('+5')
+  })
+
+  it('para el coach/empresa (audiencia coachee) habla en tercera persona', () => {
+    const w = mount(ProgresoCamino, {
+      props: {
+        audiencia: 'coachee',
+        puntos: [p('a', '2026-01-10T12:00:00.000Z', 3), p('b', '2026-02-10T12:00:00.000Z', 6), p('c', '2026-03-10T12:00:00.000Z', 8)],
+      },
+    })
+
+    expect(w.text()).toContain('Muy cerca de su objetivo')
+    expect(w.text()).toContain('Autoevaluación del coachee al cerrar la sesión del')
+    expect(w.text()).toContain('+2 respecto a la sesión anterior')
+    expect(w.text()).toContain('Desde la primera sesión:')
+    expect(w.text()).not.toMatch(/\btu\b|\btus\b/i)
+  })
+
+  it('audiencia coachee sin sesiones explica cuándo se completa la autoevaluación', () => {
+    const w = mount(ProgresoCamino, { props: { audiencia: 'coachee', puntos: [] } })
+
+    expect(w.text()).toContain('se completan cuando el coachee publica un post-sesión')
+  })
+
+  it('modo compacto: sin historial ni título de evolución, y con una sola sesión no dibuja escala ni gráfico', () => {
+    const una = mount(ProgresoCamino, { props: { compacto: true, puntos: [p('a', '2026-01-10T12:00:00.000Z', 4, 'x')] } })
+    expect(una.text()).not.toContain('Sesión a sesión')
+    expect(una.text()).not.toContain('Tu evolución')
+    expect(una.findComponent(VChart).exists()).toBe(false)
+    expect(una.text()).toContain('Con tu próxima sesión empezaremos a dibujar tu evolución')
+
+    const varias = mount(ProgresoCamino, {
+      props: { compacto: true, puntos: [p('a', '2026-01-10T12:00:00.000Z', 4), p('b', '2026-02-10T12:00:00.000Z', 6)] },
+    })
+    expect(varias.findComponent(VChart).exists()).toBe(true)
+    expect(varias.findAll('li')).toHaveLength(0)
   })
 })

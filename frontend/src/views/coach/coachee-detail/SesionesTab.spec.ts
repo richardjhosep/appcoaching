@@ -50,6 +50,39 @@ const solicitudDeOtroCoachee: SolicitudReagendamiento = {
   coachee: { id: 'coachee-2', nombre: 'Beto' },
 }
 
+describe('SesionesTab — camino de crecimiento', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    vi.mocked(getSesionesDeCoachee).mockResolvedValue([])
+    vi.mocked(getLogrosDeCoachee).mockResolvedValue([])
+    vi.mocked(getSolicitudesReagendamiento).mockResolvedValue([])
+  })
+
+  it('shows the coachee progress in third person with the change vs the previous session', async () => {
+    vi.mocked(getLineaProgresoDeCoachee).mockResolvedValue([
+      { sesionId: 'a', fecha: '2026-08-01T12:00:00.000Z', cercaniaObjetivo: 4, aprendizaje: 'Primero' },
+      { sesionId: 'b', fecha: '2026-08-15T12:00:00.000Z', cercaniaObjetivo: 7, aprendizaje: 'Segundo' },
+    ])
+
+    const wrapper = mount(SesionesTab, { props: { coacheeId: 'coachee-1' } })
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Camino de crecimiento')
+    expect(wrapper.text()).toContain('Avanzando hacia su objetivo')
+    expect(wrapper.text()).toContain('+3 respecto a la sesión anterior')
+    expect(wrapper.text()).toContain('Segundo')
+  })
+
+  it('explains when the coachee has not self-evaluated yet', async () => {
+    vi.mocked(getLineaProgresoDeCoachee).mockResolvedValue([])
+
+    const wrapper = mount(SesionesTab, { props: { coacheeId: 'coachee-1' } })
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('se completan cuando el coachee publica un post-sesión')
+  })
+})
+
 describe('SesionesTab — solicitudes de reagendamiento', () => {
   beforeEach(() => {
     setActivePinia(createPinia())

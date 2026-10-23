@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppShell from '../../components/AppShell.vue'
+import ProgresoActual from '../../components/ProgresoActual.vue'
 import EmptyState from '../../components/EmptyState.vue'
 import SkeletonBlock from '../../components/SkeletonBlock.vue'
 import ErrorState from '../../components/ErrorState.vue'
@@ -537,23 +538,13 @@ function cerrarModalCertificados() {
         title="Todavía no hay autoevaluaciones"
         description="El avance se calcula con las autoevaluaciones del coachee en cada post-sesión."
       />
-      <template v-else>
-        <p
-          class="mb-2 font-[family-name:var(--font-mono)] text-3xl"
-          :style="{ color: coloresNivel[nivelProgreso(modalProgreso.resumen.avance)].fuerte }"
-        >
-          {{ modalProgreso.resumen.avance }}%
-        </p>
-        <div
-          class="mb-5 h-2.5 w-full overflow-hidden rounded-full"
-          :style="{ backgroundColor: coloresNivel[nivelProgreso(modalProgreso.resumen.avance)].suave }"
-        >
-          <div
-            class="h-full rounded-full"
-            :style="{ width: `${modalProgreso.resumen.avance}%`, backgroundColor: coloresNivel[nivelProgreso(modalProgreso.resumen.avance)].fuerte }"
-          />
-        </div>
-      </template>
+      <ProgresoActual
+        v-else
+        class="mb-5"
+        :valor="modalProgreso.resumen.avance / 10"
+        audiencia="coachee"
+        compacto
+      />
 
       <div
         v-if="modalProgreso.cicloActual"

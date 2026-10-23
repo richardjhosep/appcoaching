@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch, type ComponentPublicInstance } from 'vue'
-import ProgresoLineaTiempo from '../../../components/ProgresoLineaTiempo.vue'
+import ProgresoCamino from '../../../components/ProgresoCamino.vue'
 import WeekCalendar from '../../../components/WeekCalendar.vue'
 import AppModal from '../../../components/AppModal.vue'
 import ReagendarSesionModal from '../../../components/ReagendarSesionModal.vue'
@@ -14,7 +14,6 @@ import {
   type Sesion,
 } from '../../../api/sesiones'
 import {
-  getAvanceDeCoachee,
   getLineaProgresoDeCoachee,
   getLogrosDeCoachee,
   type Logro,
@@ -26,13 +25,11 @@ import {
   type SolicitudReagendamiento,
 } from '../../../api/solicitudes-reagendamiento'
 import { ApiError } from '../../../api/client'
-import { nivelProgreso, coloresNivel } from '../../../lib/nivelProgreso'
 import { aDatetimeLocal } from '../../../lib/dateRange'
 
 const props = defineProps<{ coacheeId: string }>()
 
 const loading = ref(true)
-const avance = ref<number | null>(null)
 const puntos = ref<PuntoProgreso[]>([])
 const logros = ref<Logro[]>([])
 const sesiones = ref<Sesion[]>([])
@@ -41,8 +38,6 @@ const error = ref<string | null>(null)
 const guardandoAsistencia = ref<string | null>(null)
 const guardandoNotas = ref<string | null>(null)
 const registroEdit = ref<Record<string, RegistroSesionInput>>({})
-
-const coloresAvance = computed(() => coloresNivel[nivelProgreso(avance.value ?? 0)])
 
 const sesionesPasadas = computed(() => {
   const ahora = Date.now()
@@ -181,14 +176,12 @@ const ultimaPostSesionPublicada = computed(() => {
 
 async function load() {
   loading.value = true
-  const [a, p, l, s, r] = await Promise.all([
-    getAvanceDeCoachee(props.coacheeId),
+  const [p, l, s, r] = await Promise.all([
     getLineaProgresoDeCoachee(props.coacheeId),
     getLogrosDeCoachee(props.coacheeId),
     getSesionesDeCoachee(props.coacheeId),
     getSolicitudesReagendamiento(),
   ])
-  avance.value = a.avance
   puntos.value = p
   logros.value = l
   sesiones.value = s
@@ -247,43 +240,13 @@ async function onSesionEliminada() {
       <!-- Columna principal: operativa y progreso -->
       <div class="space-y-6 lg:col-span-8">
         <div class="rounded-2xl border border-[var(--color-line)] bg-white p-6 shadow-sm">
-          <h2 class="mb-1 text-sm font-medium">
-            Avance general
+          <h2 class="mb-3 text-sm font-medium">
+            Camino de crecimiento
           </h2>
-          <p
-            v-if="avance === null"
-            class="text-sm text-[var(--color-muted)]"
-          >
-            El coachee aún no se ha autoevaluado en ningún post-sesión.
-          </p>
-          <template v-else>
-            <p
-              class="mb-2 font-[family-name:var(--font-mono)] text-3xl font-semibold tracking-tight"
-              :class="coloresAvance.texto"
-            >
-              {{ avance }}%
-            </p>
-            <div
-              class="h-2.5 w-full overflow-hidden rounded-full"
-              :style="{ backgroundColor: coloresAvance.suave }"
-              role="progressbar"
-              :aria-valuenow="avance ?? 0"
-              aria-valuemin="0"
-              aria-valuemax="100"
-            >
-              <div
-                class="h-full rounded-full transition-all"
-                :style="{ width: `${avance}%`, backgroundColor: coloresAvance.fuerte }"
-              />
-            </div>
-          </template>
-
-          <div class="mt-5 border-t border-[var(--color-line)] pt-5">
-            <h2 class="mb-3 text-sm font-medium">
-              Línea de tiempo (cercanía al objetivo por sesión)
-            </h2>
-            <ProgresoLineaTiempo :puntos="puntos" />
-          </div>
+          <ProgresoCamino
+            :puntos="puntos"
+            audiencia="coachee"
+          />
         </div>
 
         <div

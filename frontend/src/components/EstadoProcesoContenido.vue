@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import ProgresoActual from './ProgresoActual.vue'
+
 defineProps<{
   nombreCoachee: string
   objetivo: string
@@ -65,8 +67,16 @@ const fechaGenerado = new Date().toLocaleDateString('es-CL', { day: 'numeric', m
       <p class="mb-2 text-xs font-medium uppercase tracking-wide text-[var(--color-subtle)]">
         Avance general
       </p>
-      <p class="font-[family-name:var(--font-mono)] text-2xl font-semibold">
-        {{ avance !== null ? `${avance}%` : 'Sin autoevaluar aún' }}
+      <ProgresoActual
+        v-if="avance !== null"
+        :valor="avance / 10"
+        compacto
+      />
+      <p
+        v-else
+        class="text-sm text-[var(--color-muted)]"
+      >
+        Sin autoevaluar aún
       </p>
     </div>
 
