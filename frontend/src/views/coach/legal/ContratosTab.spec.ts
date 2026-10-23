@@ -143,7 +143,8 @@ describe('ContratosTab', () => {
     const wrapper = mount(ContratosTab)
     await flushPromises()
 
-    expect(wrapper.text()).toContain('trámite personal, independiente del Contrato/NDA')
+    expect(wrapper.text()).toContain('El consentimiento informado va por separado')
+    expect(wrapper.text()).toContain('trámite personal del coachee, independiente del Contrato/NDA')
   })
 
   it('shows the pending-items alert strip based on the full resumen, not just the visible page', async () => {

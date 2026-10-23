@@ -166,18 +166,46 @@ async function enviarSolicitudConsentimiento(coacheeId: string, nombre: string) 
       {{ error }}
     </p>
 
-    <div class="flex items-start gap-2.5 text-sm text-[var(--color-muted)]">
-      <span
-        class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[var(--color-ink)]/5 text-xs font-semibold text-[var(--color-muted)]"
-        aria-hidden="true"
-      >i</span>
-      <p class="max-w-3xl">
-        Contrato de servicio, NDA y carta de invitación por cada empresa y coachee independiente,
-        más cualquier otro respaldo (correos, addendums). El consentimiento informado es un
-        trámite personal, independiente del Contrato/NDA — puede estar firmado aunque el papeleo
-        contractual siga pendiente, o al revés.
-      </p>
-    </div>
+    <section
+      aria-labelledby="legal-ayuda-titulo"
+      class="grid gap-4 rounded-2xl border border-[var(--color-line)] bg-white p-4 text-sm sm:grid-cols-2"
+    >
+      <div>
+        <h3
+          id="legal-ayuda-titulo"
+          class="font-[family-name:var(--font-heading)] font-semibold text-[var(--color-ink)]"
+        >
+          Qué se gestiona aquí
+        </h3>
+        <p class="mt-1 text-[var(--color-muted)]">
+          Por cada empresa y por cada coachee independiente:
+        </p>
+        <ul class="mt-2 flex flex-wrap gap-1.5">
+          <li class="rounded-full bg-[var(--color-parchment)] px-2.5 py-1 text-xs font-medium text-[var(--color-ink)]">
+            Contrato de servicio
+          </li>
+          <li class="rounded-full bg-[var(--color-parchment)] px-2.5 py-1 text-xs font-medium text-[var(--color-ink)]">
+            NDA
+          </li>
+          <li class="rounded-full bg-[var(--color-parchment)] px-2.5 py-1 text-xs font-medium text-[var(--color-ink)]">
+            Carta de invitación
+          </li>
+        </ul>
+        <p class="mt-2 text-xs text-[var(--color-muted)]">
+          Puedes sumar cualquier otro respaldo: correos, addendums.
+        </p>
+      </div>
+
+      <div class="rounded-xl border border-[var(--color-saltup)]/30 bg-[var(--color-saltup)]/5 p-3">
+        <p class="font-medium text-[var(--color-ink)]">
+          El consentimiento informado va por separado
+        </p>
+        <p class="mt-1 text-[var(--color-muted)]">
+          Es un trámite personal del coachee, independiente del Contrato/NDA. Puede estar firmado
+          aunque falte el contrato, o al revés.
+        </p>
+      </div>
+    </section>
 
     <!-- Resumen: cifras grandes con su etiqueta, sin chips — mismo lenguaje que los KPIs. -->
     <div
