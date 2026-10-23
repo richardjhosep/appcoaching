@@ -13,8 +13,8 @@ defineEmits<{ click: [] }>()
     :aria-label="title"
     class="inline-flex h-8 w-8 items-center justify-center rounded-lg border transition-colors disabled:cursor-not-allowed disabled:opacity-40"
     :class="icon === 'eliminar'
-      ? 'border-red-200 text-red-600 hover:bg-red-50'
-      : 'border-[var(--color-line)] text-[var(--color-ink)]/70 hover:bg-[var(--color-parchment)]/60'"
+      ? 'border-[var(--color-danger)]/30 text-[var(--color-danger)] hover:bg-[var(--color-danger)]/10'
+      : 'border-[var(--color-line)] text-[var(--color-muted)] hover:bg-[var(--color-parchment)]/60'"
     @click="$emit('click')"
   >
     <svg

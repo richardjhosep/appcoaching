@@ -189,3 +189,19 @@ export function solicitarReagendamiento(
     body: { motivo: motivo || undefined },
   })
 }
+
+export interface SolicitudReagendamientoMia {
+  id: string
+  sesionId: string
+  estado: 'pendiente' | 'resuelta'
+  motivo: string | null
+  respuestaCoach: string | null
+  createdAt: string
+  resolvedAt: string | null
+}
+
+// Estado de mis solicitudes de reagendamiento (más reciente primero) — para mostrar
+// "Solicitud pendiente" por sesión y no permitir duplicarlas.
+export function getMisReagendamientos(): Promise<SolicitudReagendamientoMia[]> {
+  return apiRequest<SolicitudReagendamientoMia[]>('/sesiones/me/reagendamientos')
+}

@@ -100,4 +100,27 @@ describe('PerfilView (coachee)', () => {
 
     expect(wrapper.find('img').attributes('src')).toBe('blob:mock-url')
   })
+
+  it('shows an error state with retry when the perfil fails to load', async () => {
+    vi.mocked(getMyCoachee).mockRejectedValueOnce(new Error('perfil caído'))
+
+    const wrapper = mount(PerfilView)
+    await flushPromises()
+    expect(wrapper.find('[role="alert"]').text()).toContain('perfil caído')
+
+    await wrapper.findAll('button').find((b) => b.text() === 'Reintentar')!.trigger('click')
+    await flushPromises()
+    expect((wrapper.find('input[type="text"]').element as HTMLInputElement).value).toBe('Rodrigo Peña')
+  })
+
+  it('labels the editable fields', async () => {
+    const wrapper = mount(PerfilView)
+    await flushPromises()
+
+    for (const etiqueta of ['Teléfono', 'Email de contacto', 'Sobre mí (opcional)']) {
+      const label = wrapper.findAll('label').find((l) => l.text() === etiqueta)
+      expect(label, etiqueta).toBeTruthy()
+      expect(wrapper.find(`#${label!.attributes('for')}`).exists()).toBe(true)
+    }
+  })
 })

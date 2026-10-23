@@ -39,7 +39,7 @@ const pasos: Paso[] = [
     id: 'sesiones',
     titulo: 'Mis sesiones',
     descripcion:
-      'Un calendario semanal con los horarios que tu coach dejó disponibles. Tocas un horario libre para agendar tu sesión, y desde ahí también puedes pedir reagendar si algo cambia.',
+      'Un calendario semanal con los horarios que tu coach dejó disponibles. Tocas un horario libre para solicitarlo: tu coach recibe la solicitud y la aprueba (la sesión queda agendada cuando responde). Desde ahí también puedes pedir reagendar si algo cambia, y ves si tu solicitud sigue pendiente.',
     imagen: '/manual/sesiones.jpg',
     tip: 'Si necesitas reagendar, hazlo con la mayor anticipación posible — tu coach recibe una notificación y responde tu solicitud desde la plataforma.',
   },
@@ -113,7 +113,7 @@ const pasos: Paso[] = [
       </div>
 
       <nav class="mt-6 rounded-2xl border border-[var(--color-line)] bg-white p-6">
-        <h2 class="mb-3 font-[family-name:var(--font-heading)] text-xs font-semibold tracking-[0.06em] text-[var(--color-ink)]/50 uppercase">
+        <h2 class="mb-3 font-[family-name:var(--font-heading)] text-xs font-semibold tracking-[0.06em] text-[var(--color-muted)] uppercase">
           Contenido
         </h2>
         <ol class="grid grid-cols-1 gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
@@ -173,7 +173,7 @@ const pasos: Paso[] = [
         </div>
       </section>
 
-      <footer class="mt-16 border-t border-[var(--color-line)] pt-6 text-center text-xs text-[var(--color-ink)]/50">
+      <footer class="mt-16 border-t border-[var(--color-line)] pt-6 text-center text-xs text-[var(--color-muted)]">
         <p>© {{ new Date().getFullYear() }} CoachNexus · Gestiona tu práctica. Multiplica tu impacto.</p>
         <p class="mt-1">Si tienes dudas sobre cómo usar la plataforma, consúltalas directamente con tu coach.</p>
       </footer>

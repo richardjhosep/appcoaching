@@ -225,7 +225,7 @@ async function descargar(r: Recurso) {
                 <p class="text-sm font-medium">
                   {{ c.nombre }}
                 </p>
-                <p class="text-xs text-[var(--color-ink)]/50">
+                <p class="text-xs text-[var(--color-muted)]">
                   {{ totalRecursosEn(c.id) }} recurso{{ totalRecursosEn(c.id) === 1 ? '' : 's' }}
                 </p>
               </div>
@@ -233,7 +233,7 @@ async function descargar(r: Recurso) {
           </TransitionGroup>
 
           <template v-if="recursosSueltos.length">
-            <p class="mb-2 text-xs font-medium uppercase tracking-wide text-[var(--color-ink)]/45">
+            <p class="mb-2 text-xs font-medium uppercase tracking-wide text-[var(--color-muted)]">
               Compartidos contigo directamente
             </p>
             <TransitionGroup
@@ -256,7 +256,7 @@ async function descargar(r: Recurso) {
                 </p>
                 <p
                   v-if="formatearFechaLimite(r.fechaLimite)"
-                  class="text-[11px] text-[var(--color-bronze)]"
+                  class="text-xs text-[var(--color-bronze)]"
                 >
                   {{ formatearFechaLimite(r.fechaLimite) }}
                 </p>
@@ -267,7 +267,7 @@ async function descargar(r: Recurso) {
       </template>
 
       <template v-else>
-        <nav class="mb-4 flex flex-wrap items-center gap-1 text-sm text-[var(--color-ink)]/60">
+        <nav class="mb-4 flex flex-wrap items-center gap-1 text-sm text-[var(--color-muted)]">
           <button
             class="hover:text-[var(--color-ink)] hover:underline"
             @click="seleccionar(null)"
@@ -315,7 +315,7 @@ async function descargar(r: Recurso) {
               <p class="text-sm font-medium">
                 {{ s.nombre }}
               </p>
-              <p class="text-xs text-[var(--color-ink)]/50">
+              <p class="text-xs text-[var(--color-muted)]">
                 {{ totalRecursosEn(s.id) }} recurso{{ totalRecursosEn(s.id) === 1 ? '' : 's' }}
               </p>
             </div>
@@ -350,7 +350,7 @@ async function descargar(r: Recurso) {
             </p>
             <p
               v-if="formatearFechaLimite(r.fechaLimite)"
-              class="text-[11px] text-[var(--color-bronze)]"
+              class="text-xs text-[var(--color-bronze)]"
             >
               {{ formatearFechaLimite(r.fechaLimite) }}
             </p>
@@ -380,7 +380,7 @@ async function descargar(r: Recurso) {
             v-if="recursoAbierto.tipo === 'link'"
             :href="recursoAbierto.url!"
             target="_blank"
-            rel="noopener"
+            rel="noopener noreferrer"
             class="mt-2 inline-block text-sm text-[var(--color-saltup)] underline"
           >Abrir link</a>
           <button
@@ -394,7 +394,7 @@ async function descargar(r: Recurso) {
       </div>
 
       <div class="mt-4 space-y-2 border-t border-[var(--color-line)] pt-4">
-        <p class="text-xs font-medium uppercase tracking-wide text-[var(--color-ink)]/45">
+        <p class="text-xs font-medium uppercase tracking-wide text-[var(--color-muted)]">
           Mis aprendizajes
         </p>
         <ul class="space-y-2 text-sm">
@@ -425,7 +425,7 @@ async function descargar(r: Recurso) {
             </p>
             <p
               v-if="a.aplicacion"
-              class="mt-1 text-xs text-[var(--color-ink)]/60"
+              class="mt-1 text-xs text-[var(--color-muted)]"
             >
               <strong>¿Cómo lo aplico?</strong> {{ a.aplicacion }}
             </p>
@@ -471,7 +471,7 @@ async function descargar(r: Recurso) {
               <button
                 v-if="nuevosAprendizajes.length > 1"
                 type="button"
-                class="shrink-0 text-xs text-[var(--color-ink)]/50 hover:text-[var(--color-danger)]"
+                class="shrink-0 text-xs text-[var(--color-muted)] hover:text-[var(--color-danger)]"
                 :aria-label="`Quitar aprendizaje ${i + 1}`"
                 @click="quitarAprendizaje(i)"
               >

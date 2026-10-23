@@ -2,7 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppShell from '../../components/AppShell.vue'
-import NavIcon from '../../components/NavIcon.vue'
+import TabBar from '../../components/TabBar.vue'
 import QuizTab from './playground/QuizTab.vue'
 import FlashcardsTab from './playground/FlashcardsTab.vue'
 import MapasTab from './playground/MapasTab.vue'
@@ -17,17 +17,18 @@ import { listMapasPersonales } from '../../api/mapasPersonales'
 import { listEjerciciosDisponibles } from '../../api/ejercicios'
 import { listTestsEstiloDisponibles } from '../../api/testEstilo'
 import { listarNotas } from '../../api/pizarra'
+import { useCarga } from '../../lib/useCarga'
 
 const route = useRoute()
 const router = useRouter()
 
 type TabKey = 'quiz' | 'flashcards' | 'mapas' | 'mis-mapas' | 'ejercicios' | 'test-estilo' | 'pizarra'
 
-// Mismo patrón que HerramientasView.vue (coach): antes eran 5 ítems de menú aparte, ahora cards
-// grandes que hacen de selector de pestaña — mismo mecanismo `?tab=`. "Mapas mentales" es lo
+// Mismo patrón que HerramientasView.vue (coach): antes eran 5 ítems de menú aparte, ahora una
+// barra de pestañas (TabBar, con scroll horizontal en móvil) — mismo mecanismo `?tab=`. "Mapas mentales" es lo
 // que asigna el coach (solo lectura); "Mis mapas" y "Mi pizarra" son propios del coachee,
 // editables y 100% privados — deliberadamente pestañas distintas para no mezclar conceptos.
-const tabs: Array<{ key: TabKey; label: string; icon: string }> = [
+const tabs: Array<{ key: TabKey; label: string; icon: string; badge?: number | null }> = [
   { key: 'quiz', label: 'Quiz', icon: 'quiz' },
   { key: 'flashcards', label: 'Flashcards', icon: 'flashcards' },
   { key: 'mapas', label: 'Mapas mentales', icon: 'mapa' },
@@ -56,26 +57,31 @@ const conteos = ref<Record<TabKey, number | null>>({
   'test-estilo': null,
 })
 
-onMounted(async () => {
+// Los conteos son decorativos: si una llamada falla, esa pestaña simplemente no muestra
+// número (en vez de romper la pantalla).
+const { tolerar, recargar } = useCarga(async () => {
   const [quizzes, flashcards, mapas, misMapas, notas, ejercicios, tests] = await Promise.all([
-    listQuizzesDisponibles(),
-    listFlashcardsDisponibles(),
-    listMapasDisponibles(),
-    listMapasPersonales(),
-    listarNotas(),
-    listEjerciciosDisponibles(),
-    listTestsEstiloDisponibles(),
+    tolerar(listQuizzesDisponibles()),
+    tolerar(listFlashcardsDisponibles()),
+    tolerar(listMapasDisponibles()),
+    tolerar(listMapasPersonales()),
+    tolerar(listarNotas()),
+    tolerar(listEjerciciosDisponibles()),
+    tolerar(listTestsEstiloDisponibles()),
   ])
   conteos.value = {
-    quiz: quizzes.length,
-    flashcards: flashcards.length,
-    mapas: mapas.length,
-    'mis-mapas': misMapas.length,
-    pizarra: notas.length,
-    ejercicios: ejercicios.length,
-    'test-estilo': tests.length,
+    quiz: quizzes?.length ?? null,
+    flashcards: flashcards?.length ?? null,
+    mapas: mapas?.length ?? null,
+    'mis-mapas': misMapas?.length ?? null,
+    pizarra: notas?.length ?? null,
+    ejercicios: ejercicios?.length ?? null,
+    'test-estilo': tests?.length ?? null,
   }
 })
+onMounted(recargar)
+
+const tabsConConteo = computed(() => tabs.map((t) => ({ ...t, badge: conteos.value[t.key] })))
 </script>
 
 <template>
@@ -83,30 +89,17 @@ onMounted(async () => {
     <h1 class="mb-1 font-[family-name:var(--font-heading)] text-xl font-semibold">
       Playground
     </h1>
-    <p class="mb-4 text-sm text-[var(--color-ink)]/60">
+    <p class="mb-4 text-sm text-[var(--color-muted)]">
       Tu espacio para practicar — quiz, flashcards, mapas mentales, ejercicios y tu test de estilo.
     </p>
 
-    <div class="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
-      <button
-        v-for="t in tabs"
-        :key="t.key"
-        type="button"
-        class="flex flex-col items-start gap-2 rounded-2xl border bg-white p-4 text-left transition-all hover:-translate-y-0.5 hover:shadow-md"
-        :class="activeTab === t.key
-          ? 'border-[var(--color-sage)] bg-[var(--color-sage)]/5 shadow-sm'
-          : 'border-[var(--color-line)] hover:border-[var(--color-sage)]'"
-        @click="irATab(t.key)"
-      >
-        <NavIcon
-          :name="t.icon"
-          :size="20"
-          :class="activeTab === t.key ? 'text-[var(--color-sage)]' : 'text-[var(--color-ink)]/60'"
-        />
-        <span class="text-sm font-medium">
-          {{ t.label }} ({{ conteos[t.key] ?? '…' }})
-        </span>
-      </button>
+    <div class="mb-5 max-w-full overflow-x-auto">
+      <TabBar
+        :tabs="tabsConConteo"
+        :model-value="activeTab"
+        scroll
+        @update:model-value="irATab"
+      />
     </div>
 
     <QuizTab v-if="activeTab === 'quiz'" />

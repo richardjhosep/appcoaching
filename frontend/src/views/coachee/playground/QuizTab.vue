@@ -53,6 +53,12 @@ async function abrir(id: string) {
   await cargarMiHistorial(id)
 }
 
+// Texto de la opción correcta (no "la opción N"); si por algo no se encuentra, cae al número.
+function textoRespuestaCorrecta(preguntaId: string, indice: number): string {
+  const pregunta = quizAbierto.value?.preguntas.find((p) => p.id === preguntaId)
+  return pregunta?.opciones[indice] ?? `la opción ${indice + 1}`
+}
+
 function cerrar() {
   quizAbierto.value = null
   resultado.value = null
@@ -116,7 +122,7 @@ async function enviar() {
       </p>
       <p
         v-if="quiz.competencia"
-        class="text-xs text-[var(--color-ink)]/50"
+        class="text-xs text-[var(--color-muted)]"
       >
         {{ quiz.competencia.nombre }} · {{ quiz.totalPreguntas }} pregunta{{ quiz.totalPreguntas === 1 ? '' : 's' }}
       </p>
@@ -144,7 +150,7 @@ async function enviar() {
     class="mx-auto max-w-xl"
   >
     <button
-      class="mb-4 text-sm text-[var(--color-ink)]/60 hover:text-[var(--color-ink)] hover:underline"
+      class="mb-4 text-sm text-[var(--color-muted)] hover:text-[var(--color-ink)] hover:underline"
       @click="cerrar"
     >
       ← Volver a Quiz
@@ -163,7 +169,7 @@ async function enviar() {
           :key="intento.id"
           class="flex items-center gap-2"
         >
-          <span class="font-[family-name:var(--font-mono)] text-xs text-[var(--color-ink)]/40">
+          <span class="font-[family-name:var(--font-mono)] text-xs text-[var(--color-muted)]">
             {{ new Date(intento.createdAt).toLocaleDateString('es-CL') }}
           </span>
           <span class="flex-1" />
@@ -174,7 +180,7 @@ async function enviar() {
               ? 'text-[var(--color-sage)]'
               : intento.puntaje < miHistorial[i - 1].puntaje
                 ? 'text-[var(--color-bronze)]'
-                : 'text-[var(--color-ink)]/30'"
+                : 'text-[var(--color-muted)]'"
           >
             {{ intento.puntaje > miHistorial[i - 1].puntaje ? '↑ mejoraste' : intento.puntaje < miHistorial[i - 1].puntaje ? '↓' : '=' }}
           </span>
@@ -233,7 +239,7 @@ async function enviar() {
     >
       <div
         class="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full"
-        :class="resultado.puntaje === resultado.totalPreguntas ? 'bg-[var(--color-spark)]/10 text-[var(--color-spark)]' : 'bg-[var(--color-parchment)] text-[var(--color-bronze)]'"
+        :class="resultado.puntaje === resultado.totalPreguntas ? 'celebrar bg-[var(--color-spark)]/10 text-[var(--color-spark)]' : 'bg-[var(--color-parchment)] text-[var(--color-bronze)]'"
       >
         <NavIcon
           name="trofeo"
@@ -243,8 +249,8 @@ async function enviar() {
       <p class="mb-1 font-[family-name:var(--font-heading)] text-2xl font-semibold">
         {{ resultado.puntaje }}/{{ resultado.totalPreguntas }}
       </p>
-      <p class="mb-5 text-sm text-[var(--color-ink)]/60">
-        Respuestas correctas
+      <p class="mb-5 text-sm text-[var(--color-muted)]">
+        {{ resultado.puntaje === resultado.totalPreguntas ? '¡Perfecto! Todas correctas' : 'Respuestas correctas' }}
       </p>
       <ul class="mb-5 space-y-2 text-left text-sm">
         <li
@@ -255,7 +261,12 @@ async function enviar() {
           <span :class="detalle.correcta ? 'text-[var(--color-sage)]' : 'text-[var(--color-danger)]'">
             {{ detalle.correcta ? '✓' : '✗' }}
           </span>
-          <span>Pregunta {{ i + 1 }}{{ !detalle.correcta ? ` — la respuesta correcta era la opción ${detalle.respuestaCorrecta + 1}` : '' }}</span>
+          <span>
+            Pregunta {{ i + 1 }}<template v-if="!detalle.correcta">
+              — la respuesta correcta era:
+              <strong>{{ textoRespuestaCorrecta(detalle.preguntaId, detalle.respuestaCorrecta) }}</strong>
+            </template>
+          </span>
         </li>
       </ul>
       <button

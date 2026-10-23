@@ -7,9 +7,12 @@ import NavIcon from './NavIcon.vue'
 // y una pestaña activa con fondo sólido — más una insignia opcional para cuando la pestaña
 // representa un conteo (ej. alertas pendientes). Genérico sobre `T` para que cada vista
 // mantenga su propio union type de claves sin castear.
+// `scroll`: en vez de envolver a varias líneas, mantiene una sola fila con scroll horizontal
+// (útil en móvil con muchas pestañas).
 defineProps<{
   tabs: Array<{ key: T; label: string; icon?: string; badge?: number | null }>
   modelValue: T
+  scroll?: boolean
 }>()
 defineEmits<{ 'update:modelValue': [T] }>()
 </script>
@@ -17,7 +20,8 @@ defineEmits<{ 'update:modelValue': [T] }>()
 <template>
   <div
     role="tablist"
-    class="inline-flex flex-wrap gap-1 rounded-full bg-[var(--color-parchment)]/70 p-1 shadow-sm ring-1 ring-white/60 backdrop-blur-sm"
+    class="inline-flex gap-1 rounded-full bg-[var(--color-parchment)]/70 p-1 shadow-sm ring-1 ring-white/60 backdrop-blur-sm"
+    :class="scroll ? 'max-w-full flex-nowrap overflow-x-auto' : 'flex-wrap'"
   >
     <button
       v-for="t in tabs"
@@ -39,7 +43,7 @@ defineEmits<{ 'update:modelValue': [T] }>()
       {{ t.label }}
       <span
         v-if="t.badge != null"
-        class="rounded-full px-1.5 py-0.5 text-[11px] font-semibold leading-none"
+        class="rounded-full px-1.5 py-0.5 text-xs font-semibold leading-none"
         :class="modelValue === t.key ? 'bg-white/20' : 'bg-[var(--color-ink)]/10 text-[var(--color-muted)]'"
       >
         {{ t.badge }}

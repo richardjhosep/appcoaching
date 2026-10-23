@@ -79,7 +79,7 @@ function repasarDeNuevo() {
     v-else-if="sesionTerminada"
     class="mx-auto max-w-md rounded-2xl border border-[var(--color-line)] bg-white p-8 text-center"
   >
-    <div class="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-[var(--color-spark)]/10 text-[var(--color-spark)]">
+    <div class="celebrar mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-[var(--color-spark)]/10 text-[var(--color-spark)]">
       <NavIcon
         name="trofeo"
         :size="26"
@@ -88,7 +88,7 @@ function repasarDeNuevo() {
     <p class="mb-1 font-[family-name:var(--font-heading)] text-2xl font-semibold">
       {{ revisadas }}
     </p>
-    <p class="mb-5 text-sm text-[var(--color-ink)]/60">
+    <p class="mb-5 text-sm text-[var(--color-muted)]">
       Flashcard{{ revisadas === 1 ? '' : 's' }} repasada{{ revisadas === 1 ? '' : 's' }} hoy
     </p>
     <button
@@ -103,7 +103,7 @@ function repasarDeNuevo() {
     v-else-if="actual"
     class="mx-auto max-w-md"
   >
-    <p class="mb-3 text-center text-xs text-[var(--color-ink)]/50">
+    <p class="mb-3 text-center text-xs text-[var(--color-muted)]">
       Quedan {{ mazo.length }} · {{ actual.competencia?.nombre }}
       <span
         v-if="formatearFechaLimite(actual.fechaLimite)"
@@ -132,7 +132,7 @@ function repasarDeNuevo() {
 
     <p
       v-if="!flipped"
-      class="mb-4 text-center text-xs text-[var(--color-ink)]/50"
+      class="mb-4 text-center text-xs text-[var(--color-muted)]"
     >
       Toca la tarjeta para ver la respuesta
     </p>

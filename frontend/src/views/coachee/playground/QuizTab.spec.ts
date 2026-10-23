@@ -104,6 +104,37 @@ describe('QuizTab (coachee)', () => {
 
     expect(enviarIntento).toHaveBeenCalledWith('quiz-1', [0, 0])
     expect(wrapper.text()).toContain('1/2')
+    // Muestra el texto de la respuesta correcta, no "la opción N".
+    expect(wrapper.text()).toContain('la respuesta correcta era:')
+    expect(wrapper.text()).toContain('D')
+    expect(wrapper.text()).not.toContain('la opción 2')
+    expect(wrapper.find('.celebrar').exists()).toBe(false)
+  })
+
+  it('celebrates a perfect score', async () => {
+    vi.mocked(listQuizzesDisponibles).mockResolvedValue([quizResumen])
+    vi.mocked(getQuizParaResponder).mockResolvedValue(quizParaResponder)
+    vi.mocked(enviarIntento).mockResolvedValue({
+      puntaje: 2,
+      totalPreguntas: 2,
+      detalle: [
+        { preguntaId: 'p1', correcta: true, respuestaCorrecta: 0 },
+        { preguntaId: 'p2', correcta: true, respuestaCorrecta: 0 },
+      ],
+    })
+
+    const wrapper = mount(QuizTab)
+    await flushPromises()
+    await wrapper.findAll('button').find((b) => b.text().includes('Comunicación efectiva'))!.trigger('click')
+    await flushPromises()
+    const radios = wrapper.findAll('input[type="radio"]')
+    await radios[0].setValue(true)
+    await radios[2].setValue(true)
+    await wrapper.findAll('button').find((b) => b.text() === 'Enviar respuestas')!.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.find('.celebrar').exists()).toBe(true)
+    expect(wrapper.text()).toContain('Todas correctas')
   })
 
   it('shows "Tu progreso" with only the coachee\'s own past attempts for this quiz', async () => {

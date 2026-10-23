@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
 import { Repository } from 'typeorm';
@@ -40,6 +44,16 @@ export class SolicitudesReagendamientoService {
       coachee.id,
     );
 
+    // Una solicitud pendiente por sesión: evita duplicar avisos al coach.
+    const pendiente = await this.solicitudes.findOne({
+      where: { sesionId, estado: EstadoSolicitud.PENDIENTE },
+    });
+    if (pendiente) {
+      throw new ConflictException(
+        'Ya tienes una solicitud de reagendamiento pendiente para esta sesión.',
+      );
+    }
+
     const solicitud = await this.solicitudes.save(
       this.solicitudes.create({
         sesionId,
@@ -68,6 +82,18 @@ export class SolicitudesReagendamientoService {
     }
 
     return solicitud;
+  }
+
+  /** Solicitudes del coachee autenticado (más reciente primero) para mostrar su estado por sesión. */
+  async findMine(actorUserId: string): Promise<SolicitudReagendamiento[]> {
+    const coachee = await this.coachees.findByUserId(actorUserId);
+    if (!coachee) {
+      throw new NotFoundException('Perfil de coachee no encontrado.');
+    }
+    return this.solicitudes.find({
+      where: { coacheeId: coachee.id },
+      order: { createdAt: 'DESC' },
+    });
   }
 
   findAllPending(): Promise<SolicitudReagendamiento[]> {

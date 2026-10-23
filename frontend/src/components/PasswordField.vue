@@ -28,13 +28,14 @@ const visible = ref(false)
         required
         :minlength="minlength"
         :autocomplete="autocomplete"
+        :aria-invalid="invalid || undefined"
         :class="inputClass ?? ['w-full rounded-lg border px-3 py-2 pr-10 text-sm', invalid ? 'border-[var(--color-danger)]' : 'border-[var(--color-line)]']"
         @input="emit('update:modelValue', ($event.target as HTMLInputElement).value)"
       >
       <button
         type="button"
         :aria-label="visible ? 'Ocultar contraseña' : 'Mostrar contraseña'"
-        class="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-[var(--color-ink)]/40 hover:text-[var(--color-ink)]"
+        class="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-[var(--color-muted)] hover:text-[var(--color-ink)]"
         @click="visible = !visible"
       >
         <svg

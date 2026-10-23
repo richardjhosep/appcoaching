@@ -64,7 +64,7 @@ function cerrar() {
       </p>
       <p
         v-if="mapa.competencia"
-        class="text-xs text-[var(--color-ink)]/50"
+        class="text-xs text-[var(--color-muted)]"
       >
         {{ mapa.competencia.nombre }} · {{ mapa.totalNodos }} nodo{{ mapa.totalNodos === 1 ? '' : 's' }}
       </p>
@@ -79,7 +79,7 @@ function cerrar() {
 
   <div v-else>
     <button
-      class="mb-4 text-sm text-[var(--color-ink)]/60 hover:text-[var(--color-ink)] hover:underline"
+      class="mb-4 text-sm text-[var(--color-muted)] hover:text-[var(--color-ink)] hover:underline"
       @click="cerrar"
     >
       ← Volver a Mapas mentales
@@ -87,7 +87,7 @@ function cerrar() {
     <h2 class="mb-3 font-[family-name:var(--font-heading)] text-lg font-semibold">
       {{ mapaAbierto.titulo }}
     </h2>
-    <p class="mb-3 text-xs text-[var(--color-ink)]/50">
+    <p class="mb-3 text-xs text-[var(--color-muted)]">
       Toca un nodo para ver su detalle. Los nodos con "+" tienen ramas escondidas — tócalos para desplegarlas.
     </p>
 
@@ -110,13 +110,13 @@ function cerrar() {
         </p>
         <p
           v-else-if="nodoSeleccionado"
-          class="text-sm text-[var(--color-ink)]/50"
+          class="text-sm text-[var(--color-muted)]"
         >
           Este nodo no tiene texto adicional.
         </p>
         <p
           v-else
-          class="text-sm text-[var(--color-ink)]/50"
+          class="text-sm text-[var(--color-muted)]"
         >
           Toca un nodo del mapa para ver su detalle acá.
         </p>

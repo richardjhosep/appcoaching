@@ -137,4 +137,49 @@ describe('CuentaView (coachee)', () => {
 
     expect(getMiInversion).toHaveBeenCalledWith('semestre')
   })
+
+  it('shows the consentimiento informado as "Firmado" with its date', async () => {
+    vi.mocked(getMyCoachee).mockResolvedValue({ ...coacheeEmpresa, consentimientoFecha: '2026-08-01T12:00:00.000Z' })
+
+    const wrapper = mount(CuentaView)
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Consentimiento informado')
+    expect(wrapper.text()).toContain('Firmado')
+    expect(wrapper.text()).toContain('Registraste tu consentimiento')
+  })
+
+  it('shows the consentimiento informado as "Pendiente" with instructions when not signed', async () => {
+    vi.mocked(getMyCoachee).mockResolvedValue({ ...coacheeEmpresa, consentimientoInformado: false })
+
+    const wrapper = mount(CuentaView)
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Pendiente')
+    expect(wrapper.text()).toContain('Tu coach te envía un correo con un enlace')
+  })
+
+  it('shows an error state with retry when the cuenta fails to load', async () => {
+    vi.mocked(getMyCoachee).mockRejectedValueOnce(new Error('sin red'))
+    vi.mocked(getMyCoachee).mockResolvedValueOnce(coacheeEmpresa)
+
+    const wrapper = mount(CuentaView)
+    await flushPromises()
+    expect(wrapper.find('[role="alert"]').text()).toContain('sin red')
+
+    await wrapper.findAll('button').find((b) => b.text() === 'Reintentar')!.trigger('click')
+    await flushPromises()
+    expect(wrapper.text()).toContain('Consentimiento informado')
+  })
+
+  it('keeps the rest of the cuenta when "Mi inversión" fails, with its own retry', async () => {
+    vi.mocked(getMyCoachee).mockResolvedValue(coacheeIndependiente)
+    vi.mocked(getMiInversion).mockRejectedValueOnce(new Error('x'))
+
+    const wrapper = mount(CuentaView)
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Consentimiento informado')
+    expect(wrapper.text()).toContain('No pudimos cargar tu inversión')
+  })
 })

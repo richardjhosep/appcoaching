@@ -7,19 +7,27 @@ import DisponibilidadCalendar from '../../components/DisponibilidadCalendar.vue'
 import EmptyState from '../../components/EmptyState.vue'
 import NavIcon from '../../components/NavIcon.vue'
 import SkeletonBlock from '../../components/SkeletonBlock.vue'
+import ErrorState from '../../components/ErrorState.vue'
+import AppButton from '../../components/AppButton.vue'
+import StatusBadge from '../../components/StatusBadge.vue'
+import RatingSelector from '../../components/RatingSelector.vue'
+import FormField from '../../components/FormField.vue'
 import {
   getMisSesiones,
   guardarPostSesion,
   publicarPostSesion,
   solicitarReagendamiento,
   confirmarSesion,
+  getMisReagendamientos,
   type Sesion,
+  type SolicitudReagendamientoMia,
 } from '../../api/sesiones'
 import { getSlotsLibres } from '../../api/disponibilidad'
 import { getMiCicloActual, type Ciclo } from '../../api/ciclos'
 import { crearSolicitudSesion } from '../../api/solicitudes-sesion'
 import { ApiError } from '../../api/client'
-import { notifySuccess, notifyError } from '../../lib/notify'
+import { notifySuccess, notifyError, confirmDialog } from '../../lib/notify'
+import { useCarga } from '../../lib/useCarga'
 import { nivelProgreso, coloresNivel } from '../../lib/nivelProgreso'
 
 function coloresCercania(valor: number) {
@@ -27,9 +35,16 @@ function coloresCercania(valor: number) {
 }
 
 const sesiones = ref<Sesion[]>([])
-const loading = ref(true)
 const savingId = ref<string | null>(null)
 const errorPorSesion = reactive<Record<string, string>>({})
+
+// Estado de mis solicitudes de reagendamiento: una sesión con solicitud pendiente muestra el
+// chip y no deja pedir otra (el backend también lo rechaza).
+const solicitudesReagendamiento = ref<SolicitudReagendamientoMia[]>([])
+const sesionIdsConSolicitudPendiente = computed(
+  () => new Set(solicitudesReagendamiento.value.filter((r) => r.estado === 'pendiente').map((r) => r.sesionId)),
+)
+const tieneSolicitudPendiente = (sesion: Sesion) => sesionIdsConSolicitudPendiente.value.has(sesion.id)
 
 const reagendarModalOpen = ref(false)
 const sesionParaReagendar = ref<Sesion | null>(null)
@@ -49,6 +64,7 @@ async function enviarSolicitudReagendamiento() {
   try {
     await solicitarReagendamiento(sesion.id, motivoReagendamiento.value || undefined)
     reagendarModalOpen.value = false
+    solicitudesReagendamiento.value = await getMisReagendamientos().catch(() => solicitudesReagendamiento.value)
     await notifySuccess('Solicitud enviada', 'Tu coach recibió tu solicitud de reagendamiento.')
   } catch (err) {
     await notifyError(
@@ -140,13 +156,17 @@ function yaRealizada(sesion: Sesion): boolean {
 
 const cicloActual = ref<Ciclo | null>(null)
 
-async function load() {
-  loading.value = true
-  const [s, c] = await Promise.all([getMisSesiones(), getMiCicloActual().catch(() => null)])
+const { loading, error, recargar, tolerar } = useCarga(async () => {
+  // Las sesiones son críticas; ciclo y solicitudes de reagendamiento son complementarios.
+  const [s, c, r] = await Promise.all([
+    getMisSesiones(),
+    tolerar(getMiCicloActual()),
+    tolerar(getMisReagendamientos()),
+  ])
   sesiones.value = s
-  cicloActual.value = c
-  loading.value = false
-}
+  cicloActual.value = c ?? null
+  solicitudesReagendamiento.value = r ?? []
+})
 
 // Resumen rápido de lo que falta: las agendadas a futuro (más próxima primero) y, si hay ciclo
 // abierto, cuántas del total contratado todavía no tienen fecha.
@@ -177,21 +197,39 @@ function formatoProxima(iso: string): string {
   return new Date(iso).toLocaleString('es-CL', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
 }
 
-onMounted(load)
+onMounted(recargar)
+
+function cuerpoPostSesion(sesion: Sesion) {
+  const f = formFor(sesion)
+  return {
+    aprendizaje: f.aprendizaje.trim() || undefined,
+    utilidad: f.utilidad ?? undefined,
+    cercaniaObjetivo: f.cercaniaObjetivo ?? undefined,
+    recomendacion: f.recomendacion.trim() || undefined,
+    temasProximaSesion: f.temasProximaSesion.trim() || undefined,
+  }
+}
+
+// Obligatorios para publicar (los mismos que exige el backend).
+const erroresPublicar = reactive<Record<string, { aprendizaje?: string; utilidad?: string; cercania?: string }>>({})
+
+function validarParaPublicar(sesion: Sesion): boolean {
+  const f = formFor(sesion)
+  const errores = {
+    aprendizaje: f.aprendizaje.trim() ? undefined : 'Cuéntanos tu aprendizaje principal.',
+    utilidad: f.utilidad ? undefined : 'Elige qué tan útil fue la sesión.',
+    cercania: f.cercaniaObjetivo ? undefined : 'Elige qué tan cerca estás de tu objetivo.',
+  }
+  erroresPublicar[sesion.id] = errores
+  return !errores.aprendizaje && !errores.utilidad && !errores.cercania
+}
 
 async function guardarBorrador(sesion: Sesion) {
   savingId.value = sesion.id
   errorPorSesion[sesion.id] = ''
   try {
-    const f = formFor(sesion)
-    const postSesion = await guardarPostSesion(sesion.id, {
-      aprendizaje: f.aprendizaje || undefined,
-      utilidad: f.utilidad ?? undefined,
-      cercaniaObjetivo: f.cercaniaObjetivo ?? undefined,
-      recomendacion: f.recomendacion || undefined,
-      temasProximaSesion: f.temasProximaSesion || undefined,
-    })
-    sesion.postSesion = postSesion
+    sesion.postSesion = await guardarPostSesion(sesion.id, cuerpoPostSesion(sesion))
+    await notifySuccess('Borrador guardado')
   } catch (err) {
     errorPorSesion[sesion.id] = err instanceof ApiError ? err.message : 'No se pudo guardar.'
   } finally {
@@ -200,10 +238,21 @@ async function guardarBorrador(sesion: Sesion) {
 }
 
 async function publicar(sesion: Sesion) {
-  savingId.value = sesion.id
   errorPorSesion[sesion.id] = ''
+  if (!validarParaPublicar(sesion)) return
+  // Publicar es irreversible: confirmar antes.
+  const ok = await confirmDialog({
+    title: '¿Publicar tu post-sesión?',
+    text: 'Una vez publicado no podrás editarlo y tu coach lo verá.',
+    confirmText: 'Publicar',
+  })
+  if (!ok) return
+  savingId.value = sesion.id
   try {
+    // El backend publica lo guardado: se guarda lo escrito primero, así no se pierde nada.
+    await guardarPostSesion(sesion.id, cuerpoPostSesion(sesion))
     sesion.postSesion = await publicarPostSesion(sesion.id)
+    await notifySuccess('Post-sesión publicada')
   } catch (err) {
     errorPorSesion[sesion.id] = err instanceof ApiError ? err.message : 'No se pudo publicar.'
   } finally {
@@ -233,7 +282,7 @@ function onSelectSesion(id: string) {
       Mis sesiones
     </h1>
     <section
-      v-if="!loading && (proximasSesiones.length > 0 || cicloActual)"
+      v-if="!loading && !error && (proximasSesiones.length > 0 || cicloActual)"
       class="mb-4 rounded-2xl border border-[var(--color-line)] bg-white p-4"
       aria-label="Próximas sesiones"
     >
@@ -243,7 +292,7 @@ function onSelectSesion(id: string) {
         </h2>
         <p
           v-if="cicloActual"
-          class="text-xs text-[var(--color-ink)]/60"
+          class="text-xs text-[var(--color-muted)]"
         >
           Te quedan <strong class="text-[var(--color-ink)]">{{ cicloActual.sesionesRestantes }}</strong>
           de {{ cicloActual.totalSesiones }} sesiones del proceso<span v-if="sesionesPorAgendar > 0"> · {{ sesionesPorAgendar }} aún sin fecha</span>
@@ -275,9 +324,9 @@ function onSelectSesion(id: string) {
       </ul>
       <p
         v-else
-        class="text-xs text-[var(--color-ink)]/50"
+        class="text-xs text-[var(--color-muted)]"
       >
-        No tienes sesiones agendadas a futuro. Puedes pedir una hora en el calendario de disponibilidad.
+        No tienes sesiones agendadas a futuro. Puedes solicitar una hora en el calendario de disponibilidad; tu coach la aprueba.
       </p>
     </section>
     <DisponibilidadCalendar
@@ -291,7 +340,7 @@ function onSelectSesion(id: string) {
       class="scroll-mt-4"
     >
       <WeekCalendar
-        v-if="!loading"
+        v-if="!loading && !error"
         ref="calendarioRef"
         class="mb-4"
         :sesiones="sesiones"
@@ -299,11 +348,16 @@ function onSelectSesion(id: string) {
       />
     </div>
     <SkeletonBlock v-if="loading" />
+    <ErrorState
+      v-else-if="error"
+      :description="error"
+      @retry="recargar"
+    />
     <EmptyState
       v-else-if="sesionesOrdenadas.length === 0"
       icon="sesiones"
       title="Todavía no tienes sesiones agendadas"
-      description="Cuando tu coach agende una sesión contigo, va a aparecer acá y en el calendario de arriba."
+      description="Pide una hora en el calendario de disponibilidad: tu coach recibe la solicitud y, cuando la aprueba, la sesión aparece acá. También puede agendarla él directamente."
     />
     <TransitionGroup
       v-else
@@ -322,23 +376,13 @@ function onSelectSesion(id: string) {
           <span class="text-sm font-medium text-[var(--color-ink)]">
             {{ new Date(sesion.fechaHora).toLocaleString('es-CL', { dateStyle: 'medium', timeStyle: 'short' }) }}
           </span>
-          <span
-            class="flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold"
-            :class="yaRealizada(sesion) ? 'bg-[var(--color-sage)] text-white' : 'bg-[var(--color-sage)]/15 text-[var(--color-sage)]'"
-          >
-            <svg
+          <StatusBadge :tone="yaRealizada(sesion) ? 'sage' : 'neutral'">
+            <span
               v-if="yaRealizada(sesion)"
-              width="11"
-              height="11"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="3"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            ><path d="M5 13l4 4L19 7" /></svg>
+              aria-hidden="true"
+            >✓</span>
             {{ yaRealizada(sesion) ? 'Realizada' : 'Programada' }}
-          </span>
+          </StatusBadge>
         </div>
 
         <div
@@ -365,7 +409,7 @@ function onSelectSesion(id: string) {
               v-if="sesion.linkVideollamada"
               :href="sesion.linkVideollamada"
               target="_blank"
-              rel="noopener"
+              rel="noopener noreferrer"
               class="inline-flex items-center gap-1.5 rounded-full bg-[var(--color-saltup)]/10 px-3 py-1 text-[var(--color-saltup)] hover:bg-[var(--color-saltup)]/20"
             >
               <svg
@@ -378,7 +422,7 @@ function onSelectSesion(id: string) {
             </a>
             <span
               v-else
-              class="text-[var(--color-ink)]/50"
+              class="text-[var(--color-muted)]"
             >Esta sesión no fue grabada.</span>
           </p>
           <div
@@ -397,13 +441,13 @@ function onSelectSesion(id: string) {
                   :size="12"
                   class="text-[var(--color-spark)]"
                 />
-                Cercanía al objetivo: {{ sesion.postSesion.cercaniaObjetivo }}/10</span>
-              <span class="rounded-full bg-[var(--color-ink)]/5 px-3 py-1 text-xs font-semibold text-[var(--color-ink)]/70">
-                Utilidad: {{ sesion.postSesion.utilidad }}/5
+                Cercanía al objetivo: {{ sesion.postSesion.cercaniaObjetivo ?? '—' }}<template v-if="sesion.postSesion.cercaniaObjetivo != null">/10</template></span>
+              <span class="rounded-full bg-[var(--color-ink)]/5 px-3 py-1 text-xs font-semibold text-[var(--color-muted)]">
+                Utilidad: {{ sesion.postSesion.utilidad ?? '—' }}<template v-if="sesion.postSesion.utilidad != null">/5</template>
               </span>
             </div>
             <div>
-              <p class="text-xs font-medium uppercase tracking-wide text-[var(--color-ink)]/45">
+              <p class="text-xs font-medium uppercase tracking-wide text-[var(--color-muted)]">
                 Aprendizaje
               </p>
               <p class="mt-0.5 text-[var(--color-ink)]/90">
@@ -411,7 +455,7 @@ function onSelectSesion(id: string) {
               </p>
             </div>
             <div v-if="sesion.postSesion.recomendacion">
-              <p class="text-xs font-medium uppercase tracking-wide text-[var(--color-ink)]/45">
+              <p class="text-xs font-medium uppercase tracking-wide text-[var(--color-muted)]">
                 Mi recomendación
               </p>
               <p class="mt-0.5 text-[var(--color-ink)]/90">
@@ -419,7 +463,7 @@ function onSelectSesion(id: string) {
               </p>
             </div>
             <div v-if="sesion.postSesion.temasProximaSesion">
-              <p class="text-xs font-medium uppercase tracking-wide text-[var(--color-ink)]/45">
+              <p class="text-xs font-medium uppercase tracking-wide text-[var(--color-muted)]">
                 Temas para la próxima sesión
               </p>
               <p class="mt-0.5 text-[var(--color-ink)]/90">
@@ -431,7 +475,7 @@ function onSelectSesion(id: string) {
             v-else
             class="space-y-3 rounded-xl border border-[var(--color-line)]/60 bg-[var(--color-parchment)]/30 p-4"
           >
-            <p class="flex items-center gap-1.5 text-xs font-medium text-[var(--color-ink)]/70">
+            <p class="flex items-center gap-1.5 text-xs font-medium text-[var(--color-muted)]">
               <NavIcon
                 name="lista"
                 :size="14"
@@ -444,67 +488,98 @@ function onSelectSesion(id: string) {
             >
               {{ errorPorSesion[sesion.id] }}
             </p>
-            <label class="block text-sm">
-              Aprendizaje principal
-              <textarea
-                v-model="formFor(sesion).aprendizaje"
-                rows="2"
-                class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
-              />
-            </label>
+            <FormField
+              label="Aprendizaje principal"
+              :error="erroresPublicar[sesion.id]?.aprendizaje"
+            >
+              <template #default="{ id, describedby, invalid }">
+                <textarea
+                  :id="id"
+                  v-model="formFor(sesion).aprendizaje"
+                  rows="2"
+                  class="field-input"
+                  :aria-describedby="describedby"
+                  :aria-invalid="invalid"
+                />
+              </template>
+            </FormField>
             <div class="grid gap-3 sm:grid-cols-2">
-              <label class="text-sm">
-                Utilidad de la sesión (1-5)
-                <input
-                  v-model.number="formFor(sesion).utilidad"
-                  type="number"
-                  min="1"
-                  max="5"
-                  class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+              <div>
+                <p class="text-sm font-medium">
+                  Utilidad de la sesión (1-5)
+                </p>
+                <RatingSelector
+                  v-model="formFor(sesion).utilidad"
+                  class="mt-1"
+                  :max="5"
+                  label="Utilidad de la sesión, de 1 a 5"
+                  :invalid="!!erroresPublicar[sesion.id]?.utilidad"
+                />
+                <p
+                  v-if="erroresPublicar[sesion.id]?.utilidad"
+                  role="alert"
+                  class="mt-1 text-xs text-[var(--color-danger)]"
                 >
-              </label>
-              <label class="text-sm">
-                Qué tan cerca estás de tu objetivo (1-10)
-                <input
-                  v-model.number="formFor(sesion).cercaniaObjetivo"
-                  type="number"
-                  min="1"
-                  max="10"
-                  class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+                  {{ erroresPublicar[sesion.id]?.utilidad }}
+                </p>
+              </div>
+              <div>
+                <p class="text-sm font-medium">
+                  Qué tan cerca estás de tu objetivo (1-10)
+                </p>
+                <RatingSelector
+                  v-model="formFor(sesion).cercaniaObjetivo"
+                  class="mt-1"
+                  :max="10"
+                  label="Qué tan cerca estás de tu objetivo, de 1 a 10"
+                  :invalid="!!erroresPublicar[sesion.id]?.cercania"
+                />
+                <p
+                  v-if="erroresPublicar[sesion.id]?.cercania"
+                  role="alert"
+                  class="mt-1 text-xs text-[var(--color-danger)]"
                 >
-              </label>
+                  {{ erroresPublicar[sesion.id]?.cercania }}
+                </p>
+              </div>
             </div>
-            <label class="block text-sm">
-              Mi recomendación para seguir mejorando el proceso de coaching es...
-              <textarea
-                v-model="formFor(sesion).recomendacion"
-                rows="2"
-                class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
-              />
-            </label>
-            <label class="block text-sm">
-              Temas propuestos para la próxima sesión
-              <textarea
-                v-model="formFor(sesion).temasProximaSesion"
-                rows="2"
-                class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
-              />
-            </label>
-            <div class="flex gap-2">
-              <button
-                class="rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm hover:bg-[var(--color-parchment)]/50"
+            <FormField label="Mi recomendación para seguir mejorando el proceso de coaching es...">
+              <template #default="{ id }">
+                <textarea
+                  :id="id"
+                  v-model="formFor(sesion).recomendacion"
+                  rows="2"
+                  class="field-input"
+                />
+              </template>
+            </FormField>
+            <FormField label="Temas propuestos para la próxima sesión">
+              <template #default="{ id }">
+                <textarea
+                  :id="id"
+                  v-model="formFor(sesion).temasProximaSesion"
+                  rows="2"
+                  class="field-input"
+                />
+              </template>
+            </FormField>
+            <p class="text-xs text-[var(--color-muted)]">
+              Para publicar son obligatorios el aprendizaje, la utilidad y la cercanía al objetivo.
+            </p>
+            <div class="flex flex-wrap gap-2">
+              <AppButton
+                variant="secondary"
                 :disabled="savingId === sesion.id"
                 @click="guardarBorrador(sesion)"
               >
                 Guardar borrador
-              </button>
-              <button
-                class="rounded-lg bg-[var(--color-sage)] px-3 py-2 text-sm font-medium text-white disabled:opacity-60"
-                :disabled="savingId === sesion.id"
+              </AppButton>
+              <AppButton
+                :loading="savingId === sesion.id"
                 @click="publicar(sesion)"
               >
                 Publicar
-              </button>
+              </AppButton>
             </div>
           </div>
         </template>
@@ -519,30 +594,40 @@ function onSelectSesion(id: string) {
             <a
               :href="sesion.linkVideollamada"
               target="_blank"
+              rel="noopener noreferrer"
               class="text-[var(--color-sage)] underline"
             >Link de la videollamada</a>
           </p>
           <div class="flex flex-wrap items-center gap-2">
-            <span
+            <StatusBadge
               v-if="sesion.confirmada"
-              class="flex items-center gap-1 rounded-full bg-[var(--color-sage)]/15 px-2.5 py-1 text-xs font-semibold text-[var(--color-sage)]"
+              tone="sage"
             >
               ✓ Confirmada
-            </span>
-            <button
+            </StatusBadge>
+            <AppButton
               v-else
-              class="rounded-lg bg-[var(--color-sage)] px-3 py-2 text-xs font-medium text-white disabled:opacity-60"
-              :disabled="confirmandoId === sesion.id"
+              size="sm"
+              :loading="confirmandoId === sesion.id"
               @click="confirmar(sesion)"
             >
               {{ confirmandoId === sesion.id ? 'Confirmando…' : 'Confirmar asistencia' }}
-            </button>
-            <button
-              class="rounded-lg border border-[var(--color-line)] px-3 py-2 text-xs hover:bg-[var(--color-parchment)]/50"
+            </AppButton>
+            <StatusBadge
+              v-if="tieneSolicitudPendiente(sesion)"
+              tone="bronze"
+            >
+              Solicitud pendiente
+            </StatusBadge>
+            <AppButton
+              variant="secondary"
+              size="sm"
+              :disabled="tieneSolicitudPendiente(sesion)"
+              :title="tieneSolicitudPendiente(sesion) ? 'Ya enviaste una solicitud; tu coach la responderá' : undefined"
               @click="abrirSolicitarReagendamiento(sesion)"
             >
               Solicitar reagendamiento
-            </button>
+            </AppButton>
           </div>
         </div>
       </div>
@@ -559,33 +644,33 @@ function onSelectSesion(id: string) {
       >
         <p
           v-if="sesionParaReagendar"
-          class="font-[family-name:var(--font-mono)] text-sm text-[var(--color-ink)]/70"
+          class="font-[family-name:var(--font-mono)] text-sm text-[var(--color-muted)]"
         >
           Sesión actual: {{ new Date(sesionParaReagendar.fechaHora).toLocaleString('es-CL') }}
         </p>
-        <label class="block text-sm">
-          Motivo (opcional)
-          <textarea
-            v-model="motivoReagendamiento"
-            rows="3"
-            class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
-          />
-        </label>
+        <FormField label="Motivo (opcional)">
+          <template #default="{ id }">
+            <textarea
+              :id="id"
+              v-model="motivoReagendamiento"
+              rows="3"
+              class="field-input"
+            />
+          </template>
+        </FormField>
         <div class="flex justify-end gap-2 pt-2">
-          <button
-            type="button"
-            class="rounded-lg border border-[var(--color-line)] px-4 py-2 text-sm"
+          <AppButton
+            variant="secondary"
             @click="reagendarModalOpen = false"
           >
             Cancelar
-          </button>
-          <button
+          </AppButton>
+          <AppButton
             type="submit"
-            :disabled="enviandoReagendamiento"
-            class="rounded-lg bg-[var(--color-ink)] px-4 py-2 text-sm text-[var(--color-parchment)] disabled:opacity-60"
+            :loading="enviandoReagendamiento"
           >
             {{ enviandoReagendamiento ? 'Enviando…' : 'Enviar' }}
-          </button>
+          </AppButton>
         </div>
       </form>
     </AppModal>
@@ -601,33 +686,36 @@ function onSelectSesion(id: string) {
       >
         <p
           v-if="slotSeleccionado"
-          class="font-[family-name:var(--font-mono)] text-sm text-[var(--color-ink)]/70"
+          class="font-[family-name:var(--font-mono)] text-sm text-[var(--color-muted)]"
         >
           Horario: {{ new Date(slotSeleccionado).toLocaleString('es-CL', { dateStyle: 'medium', timeStyle: 'short' }) }}
         </p>
-        <label class="block text-sm">
-          Motivo (opcional)
-          <textarea
-            v-model="motivoSolicitud"
-            rows="3"
-            class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
-          />
-        </label>
+        <p class="text-xs text-[var(--color-muted)]">
+          Es una solicitud: tu coach la revisa y la sesión queda agendada cuando la aprueba.
+        </p>
+        <FormField label="Motivo (opcional)">
+          <template #default="{ id }">
+            <textarea
+              :id="id"
+              v-model="motivoSolicitud"
+              rows="3"
+              class="field-input"
+            />
+          </template>
+        </FormField>
         <div class="flex justify-end gap-2 pt-2">
-          <button
-            type="button"
-            class="rounded-lg border border-[var(--color-line)] px-4 py-2 text-sm"
+          <AppButton
+            variant="secondary"
             @click="solicitarSesionModalOpen = false"
           >
             Cancelar
-          </button>
-          <button
+          </AppButton>
+          <AppButton
             type="submit"
-            :disabled="enviandoSolicitud"
-            class="rounded-lg bg-[var(--color-sage)] px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
+            :loading="enviandoSolicitud"
           >
-            {{ enviandoSolicitud ? 'Enviando…' : 'Pedir esta hora' }}
-          </button>
+            {{ enviandoSolicitud ? 'Enviando…' : 'Solicitar esta hora' }}
+          </AppButton>
         </div>
       </form>
     </AppModal>

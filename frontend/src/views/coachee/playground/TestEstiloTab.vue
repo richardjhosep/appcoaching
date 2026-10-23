@@ -116,7 +116,7 @@ async function enviar() {
       </p>
       <p
         v-if="test.competencia"
-        class="text-xs text-[var(--color-ink)]/50"
+        class="text-xs text-[var(--color-muted)]"
       >
         {{ test.competencia.nombre }} · {{ test.totalPreguntas }} pregunta{{ test.totalPreguntas === 1 ? '' : 's' }}
       </p>
@@ -144,7 +144,7 @@ async function enviar() {
     class="mx-auto max-w-xl"
   >
     <button
-      class="mb-4 text-sm text-[var(--color-ink)]/60 hover:text-[var(--color-ink)] hover:underline"
+      class="mb-4 text-sm text-[var(--color-muted)] hover:text-[var(--color-ink)] hover:underline"
       @click="cerrar"
     >
       ← Volver a Test de Estilo
@@ -159,11 +159,11 @@ async function enviar() {
       </h2>
       <p
         v-if="testAbierto.descripcion"
-        class="mb-4 text-sm text-[var(--color-ink)]/60"
+        class="mb-4 text-sm text-[var(--color-muted)]"
       >
         {{ testAbierto.descripcion }}
       </p>
-      <p class="mb-4 text-xs text-[var(--color-ink)]/50">
+      <p class="mb-4 text-xs text-[var(--color-muted)]">
         Para cada par, elige la afirmación que más se parece a cómo actúas normalmente — no
         hay respuestas correctas o incorrectas.
       </p>
@@ -172,7 +172,7 @@ async function enviar() {
           v-for="(pregunta, i) in testAbierto.preguntas"
           :key="pregunta.id"
         >
-          <p class="mb-2 text-xs font-medium text-[var(--color-ink)]/50">
+          <p class="mb-2 text-xs font-medium text-[var(--color-muted)]">
             {{ i + 1 }} de {{ testAbierto.preguntas.length }}
           </p>
           <div class="grid gap-2">
@@ -222,7 +222,7 @@ async function enviar() {
         <p class="mb-1 font-[family-name:var(--font-heading)] text-xl font-semibold">
           {{ resultado.categoriaDominante }}
         </p>
-        <p class="text-sm text-[var(--color-ink)]/60">
+        <p class="text-sm text-[var(--color-muted)]">
           Tu estilo predominante
         </p>
       </div>
@@ -232,14 +232,14 @@ async function enviar() {
           :key="fila.categoria"
           class="flex items-center gap-2 text-sm"
         >
-          <span class="w-28 shrink-0 truncate text-[var(--color-ink)]/60">{{ fila.categoria }}</span>
+          <span class="w-28 shrink-0 truncate text-[var(--color-muted)]">{{ fila.categoria }}</span>
           <div class="h-2.5 flex-1 overflow-hidden rounded-full bg-[var(--color-parchment)]">
             <div
               class="h-full rounded-full bg-[var(--color-sage)]"
               :style="{ width: `${(fila.conteo / fila.max) * 100}%` }"
             />
           </div>
-          <span class="w-4 shrink-0 text-right font-[family-name:var(--font-mono)] text-[var(--color-ink)]/60">{{ fila.conteo }}</span>
+          <span class="w-4 shrink-0 text-right font-[family-name:var(--font-mono)] text-[var(--color-muted)]">{{ fila.conteo }}</span>
         </div>
       </div>
       <button
@@ -263,7 +263,7 @@ async function enviar() {
           :key="intento.id"
           class="flex items-center justify-between"
         >
-          <span class="font-[family-name:var(--font-mono)] text-xs text-[var(--color-ink)]/40">
+          <span class="font-[family-name:var(--font-mono)] text-xs text-[var(--color-muted)]">
             {{ new Date(intento.createdAt).toLocaleDateString('es-CL') }}
           </span>
           <span class="text-[var(--color-ink)]/70">{{ intento.categoriaDominante }}</span>

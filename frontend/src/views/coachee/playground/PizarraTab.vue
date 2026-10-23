@@ -76,7 +76,7 @@ async function onEliminar(id: string) {
       <h2 class="font-[family-name:var(--font-heading)] text-lg font-semibold">
         Mi pizarra
       </h2>
-      <p class="text-xs text-[var(--color-ink)]/50">
+      <p class="text-xs text-[var(--color-muted)]">
         Notas para organizar tus ideas al estudiar — solo tú las ves.
       </p>
     </div>

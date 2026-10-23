@@ -5,6 +5,7 @@ import { useAuthStore } from '../stores/auth'
 import { changeOwnPassword } from '../api/users'
 import { ApiError } from '../api/client'
 import { validateNewPassword } from '../lib/password'
+import AppButton from '../components/AppButton.vue'
 import PasswordField from '../components/PasswordField.vue'
 import PasswordStrengthMeter from '../components/PasswordStrengthMeter.vue'
 
@@ -19,8 +20,9 @@ const saving = ref(false)
 
 function homeFor(role: string): string {
   if (role === 'coach') return '/coach/dashboard'
-  if (role === 'coachee') return '/coachee/plan'
-  return '/empresa/coachees'
+  // Mismo destino que el router (router/index.ts): Mi Aprendizaje es el aterrizaje del coachee.
+  if (role === 'coachee') return '/coachee/mi-aprendizaje'
+  return '/empresa/dashboard'
 }
 
 async function guardar() {
@@ -52,7 +54,7 @@ async function guardar() {
     <h1 class="mb-1 font-[family-name:var(--font-heading)] text-xl font-semibold">
       Cambia tu contraseña
     </h1>
-    <p class="mb-6 text-sm text-[var(--color-ink)]/60">
+    <p class="mb-6 text-sm text-[var(--color-muted)]">
       Por seguridad, antes de continuar debes cambiar la contraseña temporal que recibiste.
     </p>
 
@@ -62,6 +64,7 @@ async function guardar() {
     >
       <p
         v-if="error"
+        role="alert"
         class="rounded-lg bg-[var(--color-danger)]/10 p-3 text-sm text-[var(--color-danger)]"
       >
         {{ error }}
@@ -71,6 +74,7 @@ async function guardar() {
         v-model="currentPassword"
         label="Contraseña temporal actual"
         autocomplete="current-password"
+        :invalid="!!error && !currentPassword"
       />
 
       <div>
@@ -79,6 +83,7 @@ async function guardar() {
           label="Nueva contraseña"
           autocomplete="new-password"
           :minlength="12"
+          :invalid="!!error && !!validateNewPassword(newPassword)"
         />
         <PasswordStrengthMeter :password="newPassword" />
       </div>
@@ -88,15 +93,16 @@ async function guardar() {
         label="Confirmar nueva contraseña"
         autocomplete="new-password"
         :minlength="12"
+        :invalid="!!error && confirmPassword !== newPassword"
       />
 
-      <button
+      <AppButton
         type="submit"
-        :disabled="saving"
-        class="w-full rounded-lg bg-[var(--color-ink)] px-4 py-2 text-sm font-medium text-[var(--color-parchment)] disabled:opacity-60"
+        class="w-full"
+        :loading="saving"
       >
-        Cambiar contraseña
-      </button>
+        {{ saving ? 'Guardando…' : 'Cambiar contraseña' }}
+      </AppButton>
     </form>
   </div>
 </template>

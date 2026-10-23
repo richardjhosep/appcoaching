@@ -10,7 +10,7 @@ test('coachee logs in and registers a logro in Mi progreso', async ({ page }) =>
   await page.getByLabel('Contraseña').fill(coacheePassword)
   await page.getByRole('button', { name: 'Ingresar' }).click()
 
-  await page.waitForURL('**/coachee/plan')
+  await page.waitForURL('**/coachee/mi-aprendizaje')
 
   await page.goto('/coachee/progreso')
   await expect(page.getByRole('heading', { name: 'Mi progreso' })).toBeVisible()

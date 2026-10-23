@@ -49,4 +49,18 @@ describe('TabBar', () => {
     expect(buttons[1].classes()).toContain('bg-[var(--color-ink)]')
     expect(buttons[0].classes()).not.toContain('bg-[var(--color-ink)]')
   })
+
+  it('keeps a single scrollable row when `scroll` is set', () => {
+    const wrapper = mount(TabBar, { props: { tabs, modelValue: 'a' as Key, scroll: true } })
+    const lista = wrapper.find('[role="tablist"]')
+
+    expect(lista.classes()).toContain('overflow-x-auto')
+    expect(lista.classes()).toContain('flex-nowrap')
+    expect(lista.classes()).not.toContain('flex-wrap')
+  })
+
+  it('wraps by default (backwards compatible)', () => {
+    const wrapper = mount(TabBar, { props: { tabs, modelValue: 'a' as Key } })
+    expect(wrapper.find('[role="tablist"]').classes()).toContain('flex-wrap')
+  })
 })

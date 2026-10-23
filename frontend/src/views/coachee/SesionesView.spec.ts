@@ -14,10 +14,18 @@ vi.mock('../../api/sesiones', async () => {
     publicarPostSesion: vi.fn(),
     solicitarReagendamiento: vi.fn(),
     confirmarSesion: vi.fn(),
+    getMisReagendamientos: vi.fn(),
   }
 })
 
-import { getMisSesiones, solicitarReagendamiento, confirmarSesion } from '../../api/sesiones'
+import {
+  getMisSesiones,
+  solicitarReagendamiento,
+  confirmarSesion,
+  getMisReagendamientos,
+  guardarPostSesion,
+  publicarPostSesion,
+} from '../../api/sesiones'
 
 vi.mock('../../api/disponibilidad', () => ({
   getSlotsLibres: vi.fn(),
@@ -37,7 +45,9 @@ import { getMiCicloActual } from '../../api/ciclos'
 vi.mock('../../lib/notify', () => ({
   notifySuccess: vi.fn(),
   notifyError: vi.fn(),
+  confirmDialog: vi.fn(),
 }))
+import { notifySuccess, confirmDialog } from '../../lib/notify'
 
 const sesionPasadaSinPublicar: Sesion = {
   id: 's1',
@@ -84,6 +94,11 @@ describe('SesionesView', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     vi.mocked(getMisSesiones).mockReset()
+    vi.mocked(getMisReagendamientos).mockReset().mockResolvedValue([])
+    vi.mocked(guardarPostSesion).mockReset()
+    vi.mocked(publicarPostSesion).mockReset()
+    vi.mocked(confirmDialog).mockReset()
+    vi.mocked(notifySuccess).mockReset()
     vi.mocked(getSlotsLibres).mockReset().mockResolvedValue([])
     vi.mocked(crearSolicitudSesion).mockReset()
     vi.mocked(confirmarSesion).mockReset()
@@ -212,7 +227,7 @@ describe('SesionesView', () => {
     await flushPromises()
 
     const modal = new DOMWrapper(document.body)
-    const enviarBtn = modal.findAll('button').find((b) => b.text() === 'Pedir esta hora')
+    const enviarBtn = modal.findAll('button').find((b) => b.text() === 'Solicitar esta hora')
     await enviarBtn!.trigger('click')
     await flushPromises()
 
@@ -246,5 +261,138 @@ describe('SesionesView', () => {
     expect(scrollIntoView).toHaveBeenCalled()
     // Resalta la tarjeta de detalle de esa sesión, igual que un clic dentro del calendario.
     expect(wrapper.find('.ring-2').exists()).toBe(true)
+  })
+
+  it('shows "Solicitud pendiente" and disables the reschedule button while a request is pending', async () => {
+    vi.mocked(getMisSesiones).mockResolvedValue([{ ...sesionFutura }])
+    vi.mocked(getMisReagendamientos).mockResolvedValue([
+      {
+        id: 'r1',
+        sesionId: 's3',
+        estado: 'pendiente',
+        motivo: null,
+        respuestaCoach: null,
+        createdAt: '2026-01-01T00:00:00.000Z',
+        resolvedAt: null,
+      },
+    ])
+
+    const wrapper = mount(SesionesView)
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Solicitud pendiente')
+    const btn = wrapper.findAll('button').find((b) => b.text() === 'Solicitar reagendamiento')!
+    expect(btn.attributes('disabled')).toBeDefined()
+  })
+
+  it('keeps the reschedule button enabled when the previous request was already resolved', async () => {
+    vi.mocked(getMisSesiones).mockResolvedValue([{ ...sesionFutura }])
+    vi.mocked(getMisReagendamientos).mockResolvedValue([
+      {
+        id: 'r1',
+        sesionId: 's3',
+        estado: 'resuelta',
+        motivo: null,
+        respuestaCoach: 'ok',
+        createdAt: '2026-01-01T00:00:00.000Z',
+        resolvedAt: '2026-01-02T00:00:00.000Z',
+      },
+    ])
+
+    const wrapper = mount(SesionesView)
+    await flushPromises()
+
+    expect(wrapper.text()).not.toContain('Solicitud pendiente')
+    const btn = wrapper.findAll('button').find((b) => b.text() === 'Solicitar reagendamiento')!
+    expect(btn.attributes('disabled')).toBeUndefined()
+  })
+
+  it('does not publish without the required fields and shows inline errors', async () => {
+    vi.mocked(getMisSesiones).mockResolvedValue([sesionPasadaSinPublicar])
+
+    const wrapper = mount(SesionesView)
+    await flushPromises()
+    await wrapper.findAll('button').find((b) => b.text() === 'Publicar')!.trigger('click')
+    await flushPromises()
+
+    expect(confirmDialog).not.toHaveBeenCalled()
+    expect(publicarPostSesion).not.toHaveBeenCalled()
+    expect(wrapper.text()).toContain('Cuéntanos tu aprendizaje principal.')
+    expect(wrapper.text()).toContain('Elige qué tan útil fue la sesión.')
+    expect(wrapper.text()).toContain('Elige qué tan cerca estás de tu objetivo.')
+  })
+
+  it('asks for confirmation before publishing, saves the draft first and notifies', async () => {
+    vi.mocked(getMisSesiones).mockResolvedValue([{ ...sesionPasadaSinPublicar, id: 's9' }])
+    vi.mocked(confirmDialog).mockResolvedValue(true)
+    const publicada = { ...sesionPasadaPublicada.postSesion!, sesionId: 's9', aprendizaje: 'Mi aprendizaje', utilidad: 4, cercaniaObjetivo: 7 }
+    vi.mocked(guardarPostSesion).mockResolvedValue({ ...publicada, publicada: false })
+    vi.mocked(publicarPostSesion).mockResolvedValue(publicada)
+
+    const wrapper = mount(SesionesView)
+    await flushPromises()
+    await wrapper.find('textarea').setValue('Mi aprendizaje')
+    await wrapper.find('[role="group"][aria-label^="Utilidad"] button:nth-child(4)').trigger('click')
+    await wrapper.find('[role="group"][aria-label^="Qué tan cerca"] button:nth-child(7)').trigger('click')
+    await wrapper.findAll('button').find((b) => b.text() === 'Publicar')!.trigger('click')
+    await flushPromises()
+
+    expect(confirmDialog).toHaveBeenCalled()
+    expect(guardarPostSesion).toHaveBeenCalledWith('s9', expect.objectContaining({ aprendizaje: 'Mi aprendizaje', utilidad: 4, cercaniaObjetivo: 7 }))
+    expect(publicarPostSesion).toHaveBeenCalledWith('s9')
+    expect(notifySuccess).toHaveBeenCalledWith('Post-sesión publicada')
+    expect(wrapper.text()).toContain('Utilidad: 4/5')
+  })
+
+  it('does not publish when the coachee cancels the confirmation', async () => {
+    vi.mocked(getMisSesiones).mockResolvedValue([{ ...sesionPasadaSinPublicar, id: 's8' }])
+    vi.mocked(confirmDialog).mockResolvedValue(false)
+
+    const wrapper = mount(SesionesView)
+    await flushPromises()
+    await wrapper.find('textarea').setValue('Algo')
+    await wrapper.find('[role="group"][aria-label^="Utilidad"] button:nth-child(2)').trigger('click')
+    await wrapper.find('[role="group"][aria-label^="Qué tan cerca"] button:nth-child(3)').trigger('click')
+    await wrapper.findAll('button').find((b) => b.text() === 'Publicar')!.trigger('click')
+    await flushPromises()
+
+    expect(publicarPostSesion).not.toHaveBeenCalled()
+  })
+
+  it('notifies when the draft is saved', async () => {
+    vi.mocked(getMisSesiones).mockResolvedValue([{ ...sesionPasadaSinPublicar, id: 's7' }])
+    vi.mocked(guardarPostSesion).mockResolvedValue({ ...sesionPasadaPublicada.postSesion!, publicada: false })
+
+    const wrapper = mount(SesionesView)
+    await flushPromises()
+    await wrapper.findAll('button').find((b) => b.text() === 'Guardar borrador')!.trigger('click')
+    await flushPromises()
+
+    expect(notifySuccess).toHaveBeenCalledWith('Borrador guardado')
+  })
+
+  it('never renders "null/5" for a published post-sesión without ratings', async () => {
+    vi.mocked(getMisSesiones).mockResolvedValue([
+      { ...sesionPasadaPublicada, postSesion: { ...sesionPasadaPublicada.postSesion!, utilidad: null, cercaniaObjetivo: null } },
+    ])
+
+    const wrapper = mount(SesionesView)
+    await flushPromises()
+
+    expect(wrapper.text()).not.toContain('null')
+    expect(wrapper.text()).toContain('Utilidad: —')
+  })
+
+  it('shows an error state with retry when the sessions fail to load', async () => {
+    vi.mocked(getMisSesiones).mockRejectedValueOnce(new Error('sin conexión'))
+    vi.mocked(getMisSesiones).mockResolvedValueOnce([])
+
+    const wrapper = mount(SesionesView)
+    await flushPromises()
+    expect(wrapper.find('[role="alert"]').text()).toContain('sin conexión')
+
+    await wrapper.findAll('button').find((b) => b.text() === 'Reintentar')!.trigger('click')
+    await flushPromises()
+    expect(wrapper.find('[role="alert"]').exists()).toBe(false)
   })
 })

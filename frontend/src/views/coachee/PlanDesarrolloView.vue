@@ -6,6 +6,9 @@ import DefinicionTab from '../../components/plan-desarrollo/DefinicionTab.vue'
 import HabitoEjecucionTab from '../../components/plan-desarrollo/HabitoEjecucionTab.vue'
 import FormacionTab from '../../components/plan-desarrollo/FormacionTab.vue'
 import SkeletonBlock from '../../components/SkeletonBlock.vue'
+import ErrorState from '../../components/ErrorState.vue'
+import TabBar from '../../components/TabBar.vue'
+import { useCarga } from '../../lib/useCarga'
 import { getOwnPlan, type PlanDesarrollo } from '../../api/planesDesarrollo'
 import { listCompetenciasParaMiPlan, type Competencia } from '../../api/competencias'
 import { getMiCicloActual, type Ciclo } from '../../api/ciclos'
@@ -16,17 +19,15 @@ const plan = ref<PlanDesarrollo | null>(null)
 const competencias = ref<Competencia[]>([])
 const competenciasPrioritarias = ref<EmpresaCompetencia[]>([])
 const cicloActual = ref<Ciclo | null>(null)
-const loading = ref(true)
 const tab = ref<'definicion' | 'habito' | 'formacion'>('definicion')
 
 const tabs = [
-  { id: 'definicion', label: 'Definición' },
-  { id: 'habito', label: 'Hábito y ejecución' },
-  { id: 'formacion', label: 'Formación' },
+  { key: 'definicion', label: 'Definición' },
+  { key: 'habito', label: 'Hábito y ejecución' },
+  { key: 'formacion', label: 'Formación' },
 ] as const
 
-async function load() {
-  loading.value = true
+const { loading, error, recargar } = useCarga(async () => {
   const [p, c, ciclo, cp] = await Promise.all([
     getOwnPlan(),
     listCompetenciasParaMiPlan(),
@@ -41,10 +42,9 @@ async function load() {
     : c
   cicloActual.value = ciclo
   competenciasPrioritarias.value = cp
-  loading.value = false
-}
+})
 
-onMounted(load)
+onMounted(recargar)
 
 function handleUpdated(updated: PlanDesarrollo) {
   // Varias acciones (agregar un objetivo, guardar la definición, guardar hábito…)
@@ -61,6 +61,11 @@ function handleUpdated(updated: PlanDesarrollo) {
 <template>
   <AppShell>
     <SkeletonBlock v-if="loading" />
+    <ErrorState
+      v-else-if="error"
+      :description="error"
+      @retry="recargar"
+    />
     <div v-else-if="plan">
       <h1 class="mb-4 font-[family-name:var(--font-heading)] text-xl font-semibold">
         Mi plan de desarrollo
@@ -77,21 +82,12 @@ function handleUpdated(updated: PlanDesarrollo) {
         <strong>Comentario del coach:</strong> {{ plan.comentarioCoach }}
       </p>
 
-      <div class="mb-4 flex w-fit gap-1 rounded-full bg-[var(--color-parchment)] p-1">
-        <button
-          v-for="t in tabs"
-          :key="t.id"
-          class="rounded-full px-3.5 py-1.5 text-sm transition-colors"
-          :class="
-            tab === t.id
-              ? 'bg-[var(--color-ink)] text-[var(--color-parchment)]'
-              : 'text-[var(--color-ink)]/70 hover:text-[var(--color-ink)]'
-          "
-          @click="tab = t.id"
-        >
-          {{ t.label }}
-        </button>
-      </div>
+      <TabBar
+        v-model="tab"
+        class="mb-4"
+        scroll
+        :tabs="tabs"
+      />
 
       <DefinicionTab
         v-if="tab === 'definicion'"

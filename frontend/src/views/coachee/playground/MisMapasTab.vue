@@ -179,7 +179,7 @@ async function eliminarNodo() {
         <h2 class="font-[family-name:var(--font-heading)] text-lg font-semibold">
           Mis mapas mentales
         </h2>
-        <p class="text-xs text-[var(--color-ink)]/50">
+        <p class="text-xs text-[var(--color-muted)]">
           Tuyos, para organizar tus propias ideas — nadie más los ve.
         </p>
       </div>
@@ -228,7 +228,7 @@ async function eliminarNodo() {
 
   <template v-else>
     <button
-      class="mb-4 text-sm text-[var(--color-ink)]/60 hover:text-[var(--color-ink)] hover:underline"
+      class="mb-4 text-sm text-[var(--color-muted)] hover:text-[var(--color-ink)] hover:underline"
       @click="volverALista"
     >
       ← Volver a Mis mapas mentales
@@ -303,7 +303,7 @@ async function eliminarNodo() {
           </div>
 
           <div class="mt-4 space-y-2 border-t border-[var(--color-line)] pt-4">
-            <p class="text-xs font-medium uppercase tracking-wide text-[var(--color-ink)]/45">
+            <p class="text-xs font-medium uppercase tracking-wide text-[var(--color-muted)]">
               Agregar nodo hijo de "{{ nodoSeleccionado.label }}"
             </p>
             <input
@@ -336,7 +336,7 @@ async function eliminarNodo() {
         </template>
         <p
           v-else
-          class="text-sm text-[var(--color-ink)]/50"
+          class="text-sm text-[var(--color-muted)]"
         >
           Toca un nodo del mapa para editarlo o agregarle ramas.
         </p>

@@ -10,6 +10,9 @@ import NavIcon from '../../components/NavIcon.vue'
 import AppModal from '../../components/AppModal.vue'
 import CertificadoContenido from '../../components/CertificadoContenido.vue'
 import SkeletonBlock from '../../components/SkeletonBlock.vue'
+import AppButton from '../../components/AppButton.vue'
+import StatusBadge from '../../components/StatusBadge.vue'
+import RatingSelector from '../../components/RatingSelector.vue'
 import {
   addEntradaDiario,
   addLogro,
@@ -32,7 +35,7 @@ import {
   type RetroalimentacionCierre,
 } from '../../api/retroalimentacion'
 import { ApiError } from '../../api/client'
-import { notifyError, notifySuccess } from '../../lib/notify'
+import { confirmDialog, notifyError, notifySuccess } from '../../lib/notify'
 import { resultadoLabel } from '../../lib/resultadoCiclo'
 import {
   getPreguntasRetroalimentacion,
@@ -113,6 +116,13 @@ async function agregarLogro() {
 }
 
 async function borrarLogro(id: string) {
+  const ok = await confirmDialog({
+    title: '¿Quitar este logro?',
+    text: 'Se eliminará de tu lista.',
+    confirmText: 'Quitar',
+    danger: true,
+  })
+  if (!ok) return
   try {
     await removeLogro(id)
     logros.value = logros.value.filter((l) => l.id !== id)
@@ -234,13 +244,13 @@ async function guardarRetro() {
           class="grid gap-6 lg:grid-cols-2"
         >
           <div>
-            <p class="mb-2 text-xs font-medium uppercase tracking-wide text-[var(--color-ink)]/45">
+            <p class="mb-2 text-xs font-medium uppercase tracking-wide text-[var(--color-muted)]">
               Cercanía al objetivo por sesión
             </p>
             <ProgresoLineaTiempo :puntos="puntos" />
           </div>
           <div>
-            <p class="mb-2 text-xs font-medium uppercase tracking-wide text-[var(--color-ink)]/45">
+            <p class="mb-2 text-xs font-medium uppercase tracking-wide text-[var(--color-muted)]">
               Tu tendencia
             </p>
             <GraficoProgreso
@@ -271,19 +281,21 @@ async function guardarRetro() {
             class="flex items-center justify-between gap-3 rounded-xl border border-[var(--color-line)] p-3"
           >
             <span>Ciclo cerrado el {{ new Date(c.fechaCierre!).toLocaleDateString('es-CL') }}</span>
-            <span
+            <StatusBadge
               v-if="cicloIdsConRetro.has(c.id)"
-              class="text-xs text-[var(--color-sage)]"
+              tone="sage"
             >
               Enviada ✓
-            </span>
-            <button
+            </StatusBadge>
+            <AppButton
               v-else
-              class="shrink-0 rounded-lg border border-[var(--color-line)] px-3 py-1.5 text-xs hover:bg-[var(--color-parchment)]/50"
+              class="shrink-0"
+              variant="secondary"
+              size="sm"
               @click="abrirRetro(c)"
             >
               Completar retroalimentación
-            </button>
+            </AppButton>
           </li>
         </ul>
       </SectionCard>
@@ -309,18 +321,19 @@ async function guardarRetro() {
               <p class="text-sm font-medium">
                 Certificado de finalización
               </p>
-              <p class="flex flex-wrap items-center gap-2 text-xs text-[var(--color-ink)]/60">
+              <p class="flex flex-wrap items-center gap-2 text-xs text-[var(--color-muted)]">
                 <span>Ciclo cerrado el {{ new Date(c.fechaCierre!).toLocaleDateString('es-CL') }}</span>
-                <span class="rounded-full bg-[var(--color-parchment)] px-2 py-0.5">{{ resultadoLabel[c.resultado!] }}</span>
+                <StatusBadge>{{ resultadoLabel[c.resultado!] }}</StatusBadge>
               </p>
             </div>
             <div class="flex shrink-0 gap-2">
-              <button
-                class="rounded-lg border border-[var(--color-line)] px-3 py-1.5 text-xs hover:bg-[var(--color-parchment)]/50"
+              <AppButton
+                variant="secondary"
+                size="sm"
                 @click="previewCiclo = c"
               >
                 Vista previa
-              </button>
+              </AppButton>
               <RouterLink
                 :to="{ name: 'coachee-certificado', params: { cicloId: c.id } }"
                 class="rounded-lg bg-[var(--color-ink)] px-3 py-1.5 text-xs text-[var(--color-parchment)]"
@@ -353,18 +366,20 @@ async function guardarRetro() {
                 class="mt-0.5 shrink-0 text-[var(--color-spark)]"
               />
               <span>
-                <span class="font-[family-name:var(--font-mono)] text-[var(--color-ink)]/50">{{ logro.fecha }}</span>
+                <span class="font-[family-name:var(--font-mono)] text-[var(--color-muted)]">{{ logro.fecha }}</span>
                 — {{ logro.descripcion }}
                 <span
                   v-if="logro.situacion"
-                  class="block text-xs text-[var(--color-ink)]/50"
+                  class="block text-xs text-[var(--color-muted)]"
                 >
                   Situación: {{ logro.situacion }}
                 </span>
               </span>
             </span>
             <button
-              class="shrink-0 text-xs text-[var(--color-bronze)] hover:underline"
+              type="button"
+              class="inline-flex min-h-11 shrink-0 items-center px-2 text-xs text-[var(--color-bronze)] hover:underline sm:min-h-0 sm:px-0"
+              :aria-label="`Quitar el logro: ${logro.descripcion}`"
               @click="borrarLogro(logro.id)"
             >
               Quitar
@@ -376,29 +391,32 @@ async function guardarRetro() {
             <input
               v-model="nuevaFecha"
               type="date"
-              class="rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+              aria-label="Fecha del logro"
+              class="field-input sm:w-auto"
             >
             <input
               v-model="nuevaSituacion"
               type="text"
+              aria-label="Situación que lo gatilló (opcional)"
               placeholder="¿Qué situación lo gatilló? (opcional)"
-              class="flex-1 rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+              class="field-input flex-1"
             >
           </div>
           <div class="flex flex-col gap-2 sm:flex-row">
             <input
               v-model="nuevaDescripcion"
               type="text"
+              aria-label="Descripción del logro"
               placeholder="Describe tu logro"
-              class="flex-1 rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+              class="field-input flex-1"
               @keyup.enter="agregarLogro"
             >
-            <button
-              class="rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm hover:bg-[var(--color-parchment)]/50"
+            <AppButton
+              variant="secondary"
               @click="agregarLogro"
             >
               Agregar
-            </button>
+            </AppButton>
           </div>
         </div>
       </SectionCard>
@@ -422,7 +440,7 @@ async function guardarRetro() {
             :key="entrada.id"
             class="rounded-xl border border-[var(--color-line)]/60 bg-[var(--color-parchment)]/40 p-3 text-sm"
           >
-            <p class="mb-1 font-[family-name:var(--font-mono)] text-xs text-[var(--color-ink)]/50">
+            <p class="mb-1 font-[family-name:var(--font-mono)] text-xs text-[var(--color-muted)]">
               {{ new Date(entrada.createdAt).toLocaleString('es-CL', { dateStyle: 'medium', timeStyle: 'short' }) }}
             </p>
             <p class="whitespace-pre-wrap">
@@ -433,16 +451,17 @@ async function guardarRetro() {
         <textarea
           v-model="nuevaEntradaDiario"
           rows="4"
+          aria-label="Nueva reflexión"
           placeholder="Escribe una nueva reflexión…"
-          class="mb-3 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+          class="field-input mb-3"
         />
-        <button
-          class="rounded-lg bg-[var(--color-ink)] px-4 py-2 text-sm text-[var(--color-parchment)] disabled:opacity-60"
-          :disabled="guardandoDiario || !nuevaEntradaDiario.trim()"
+        <AppButton
+          :loading="guardandoDiario"
+          :disabled="!nuevaEntradaDiario.trim()"
           @click="agregarEntradaDiario"
         >
           {{ guardandoDiario ? 'Guardando…' : 'Guardar' }}
-        </button>
+        </AppButton>
       </SectionCard>
     </div>
 
@@ -491,7 +510,7 @@ async function guardarRetro() {
         >
           {{ errorRetro }}
         </p>
-        <p class="text-xs text-[var(--color-ink)]/60">
+        <p class="text-xs text-[var(--color-muted)]">
           Evalúa de 1 (nada de acuerdo) a 5 (totalmente de acuerdo).
         </p>
         <div
@@ -508,20 +527,12 @@ async function guardarRetro() {
               class="flex flex-col gap-1 rounded-lg border border-[var(--color-line)] p-2 text-xs sm:flex-row sm:items-center sm:justify-between"
             >
               <span class="sm:max-w-[70%]">{{ p.afirmacion }}</span>
-              <div class="flex gap-1">
-                <button
-                  v-for="valor in [1, 2, 3, 4, 5]"
-                  :key="valor"
-                  type="button"
-                  class="h-7 w-7 shrink-0 rounded-full border text-xs"
-                  :class="respuestasRetro[p.afirmacion] === valor
-                    ? 'border-[var(--color-ink)] bg-[var(--color-ink)] text-[var(--color-parchment)]'
-                    : 'border-[var(--color-line)]'"
-                  @click="respuestasRetro[p.afirmacion] = valor"
-                >
-                  {{ valor }}
-                </button>
-              </div>
+              <RatingSelector
+                :model-value="respuestasRetro[p.afirmacion] ?? null"
+                :max="5"
+                :label="`${p.afirmacion} (de 1 a 5)`"
+                @update:model-value="(v) => (v === null ? delete respuestasRetro[p.afirmacion] : (respuestasRetro[p.afirmacion] = v))"
+              />
             </div>
           </div>
         </div>
@@ -531,7 +542,7 @@ async function guardarRetro() {
           <textarea
             v-model="abiertasRetro.loQueMasGusto"
             rows="2"
-            class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+            class="field-input mt-1"
           />
         </label>
         <label class="block text-sm">
@@ -539,7 +550,7 @@ async function guardarRetro() {
           <textarea
             v-model="abiertasRetro.mayoresAprendizajes"
             rows="2"
-            class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+            class="field-input mt-1"
           />
         </label>
         <label class="block text-sm">
@@ -547,7 +558,7 @@ async function guardarRetro() {
           <textarea
             v-model="abiertasRetro.sugerencias"
             rows="2"
-            class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+            class="field-input mt-1"
           />
         </label>
         <label class="block text-sm">
@@ -555,7 +566,7 @@ async function guardarRetro() {
           <textarea
             v-model="abiertasRetro.otrosComentarios"
             rows="2"
-            class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+            class="field-input mt-1"
           />
         </label>
 

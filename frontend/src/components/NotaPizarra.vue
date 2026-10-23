@@ -92,7 +92,7 @@ function onTextoChange(e: Event) {
       :value="nota.texto"
       rows="4"
       placeholder="Escribe aquí…"
-      class="w-full resize-none border-none bg-transparent text-sm text-[#1a1a1a] outline-none placeholder:text-black/40"
+      class="w-full resize-none border-none bg-transparent text-sm text-[var(--color-ink)] outline-none placeholder:text-[var(--color-muted)]"
       @pointerdown.stop
       @change="onTextoChange"
     />

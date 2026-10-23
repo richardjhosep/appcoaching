@@ -5,6 +5,7 @@
 // en vez de agregarle un tercer modo a WeekCalendar.
 import { computed, ref, watch } from 'vue'
 import { inicioDeSemana } from '../lib/dateRange'
+import DisponibilidadLista from './DisponibilidadLista.vue'
 
 const props = defineProps<{ slots: string[] }>()
 const emit = defineEmits<{ 'cambio-semana': [desde: string, hasta: string]; solicitar: [string] }>()
@@ -84,19 +85,21 @@ const esHoy = (d: Date) => esMismoDia(d, new Date())
       </h2>
       <div class="flex items-center gap-1 text-sm">
         <button
-          class="rounded-lg border border-[var(--color-line)] px-2 py-1 hover:bg-[var(--color-parchment)]/50"
+          aria-label="Semana anterior"
+          class="min-h-11 min-w-11 rounded-lg border border-[var(--color-line)] px-2 py-1 hover:bg-[var(--color-parchment)]/50 sm:min-h-0 sm:min-w-0"
           @click="semanaAnterior"
         >
           ←
         </button>
         <button
-          class="rounded-lg border border-[var(--color-line)] px-2 py-1 hover:bg-[var(--color-parchment)]/50"
+          class="min-h-11 min-w-11 rounded-lg border border-[var(--color-line)] px-2 py-1 hover:bg-[var(--color-parchment)]/50 sm:min-h-0 sm:min-w-0"
           @click="irAHoy"
         >
           Hoy
         </button>
         <button
-          class="rounded-lg border border-[var(--color-line)] px-2 py-1 hover:bg-[var(--color-parchment)]/50"
+          aria-label="Semana siguiente"
+          class="min-h-11 min-w-11 rounded-lg border border-[var(--color-line)] px-2 py-1 hover:bg-[var(--color-parchment)]/50 sm:min-h-0 sm:min-w-0"
           @click="semanaSiguiente"
         >
           →
@@ -104,14 +107,22 @@ const esHoy = (d: Date) => esMismoDia(d, new Date())
       </div>
     </div>
 
-    <div class="overflow-x-auto">
+    <!-- Móvil (<sm): lista de horarios libres por día en vez de la grilla de 640px+. -->
+    <DisponibilidadLista
+      class="sm:hidden"
+      :dias="diasSemana"
+      :slots="slots"
+      @solicitar="(iso) => emit('solicitar', iso)"
+    />
+
+    <div class="hidden overflow-x-auto sm:block">
       <div class="flex min-w-[640px]">
         <div class="w-12 shrink-0">
           <div class="h-8" />
           <div
             v-for="h in horas"
             :key="h"
-            class="pr-1 text-right text-[11px] font-medium text-[var(--color-ink)]/60"
+            class="pr-1 text-right text-xs font-medium text-[var(--color-muted)]"
             :style="{ height: `${ALTO_HORA}px` }"
           >
             {{ horaLabel(h) }}
@@ -124,8 +135,8 @@ const esHoy = (d: Date) => esMismoDia(d, new Date())
           class="flex-1 border-l border-[var(--color-line)]"
         >
           <div
-            class="flex h-8 flex-col items-center justify-center text-[11px] font-medium"
-            :class="esHoy(dia) ? 'text-[var(--color-sage)]' : 'text-[var(--color-ink)]/70'"
+            class="flex h-8 flex-col items-center justify-center text-xs font-medium"
+            :class="esHoy(dia) ? 'text-[var(--color-sage)]' : 'text-[var(--color-muted)]'"
           >
             <span>{{ diasLabel[i] }} {{ diaLabel(dia) }}</span>
           </div>
@@ -142,7 +153,7 @@ const esHoy = (d: Date) => esMismoDia(d, new Date())
             <button
               v-for="bloque in bloquesPorDia[i]"
               :key="bloque.iso"
-              class="absolute left-0.5 right-0.5 rounded border border-[var(--color-sage)] bg-[var(--color-sage)]/15 px-1 py-0.5 text-left text-[11px] font-semibold leading-tight text-[var(--color-sage)] hover:bg-[var(--color-sage)]/25"
+              class="absolute left-0.5 right-0.5 rounded border border-[var(--color-sage)] bg-[var(--color-sage)]/15 px-1 py-0.5 text-left text-xs font-semibold leading-tight text-[var(--color-sage)] hover:bg-[var(--color-sage)]/25"
               :style="{ top: `${bloque.top}px`, height: `${ALTO_HORA}px` }"
               title="Pedir esta hora"
               @click="emit('solicitar', bloque.iso)"

@@ -113,13 +113,13 @@ async function enviar() {
       </p>
       <p
         v-if="ejercicio.competencia"
-        class="text-xs text-[var(--color-ink)]/50"
+        class="text-xs text-[var(--color-muted)]"
       >
         {{ ejercicio.competencia.nombre }}
       </p>
       <p
         v-if="ejercicio.numeroVersiones > 0"
-        class="text-xs text-[var(--color-ink)]/50"
+        class="text-xs text-[var(--color-muted)]"
       >
         {{ ejercicio.numeroVersiones }} versión{{ ejercicio.numeroVersiones === 1 ? '' : 'es' }} enviada{{ ejercicio.numeroVersiones === 1 ? '' : 's' }}
         <span
@@ -141,7 +141,7 @@ async function enviar() {
     class="mx-auto max-w-2xl"
   >
     <button
-      class="mb-4 text-sm text-[var(--color-ink)]/60 hover:text-[var(--color-ink)] hover:underline"
+      class="mb-4 text-sm text-[var(--color-muted)] hover:text-[var(--color-ink)] hover:underline"
       @click="cerrar"
     >
       ← Volver a Ejercicios
@@ -231,7 +231,7 @@ async function enviar() {
           </p>
           <p
             v-else
-            class="text-xs text-[var(--color-ink)]/40"
+            class="text-xs text-[var(--color-muted)]"
           >
             Sin feedback todavía.
           </p>

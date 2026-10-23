@@ -3,6 +3,9 @@ import { onMounted, ref } from 'vue'
 import AppShell from '../../components/AppShell.vue'
 import SectionCard from '../../components/SectionCard.vue'
 import SkeletonBlock from '../../components/SkeletonBlock.vue'
+import ErrorState from '../../components/ErrorState.vue'
+import StatusBadge from '../../components/StatusBadge.vue'
+import { useCarga } from '../../lib/useCarga'
 import TabBar from '../../components/TabBar.vue'
 import DocumentosCoacheePanel from '../../components/DocumentosCoacheePanel.vue'
 import { getMyCoachee, type Coachee } from '../../api/coachees'
@@ -13,11 +16,10 @@ import {
   type TipoDocumentoLegal,
 } from '../../api/legal'
 import { getMiInversion, type MiInversion, type PeriodoComercial } from '../../api/negocio'
-import { estadoVisual, ESTADO_VISUAL_LABEL, ESTADO_VISUAL_COLOR } from '../../lib/legalFormat'
+import { estadoVisual, ESTADO_VISUAL_LABEL, type EstadoVisualDocumento } from '../../lib/legalFormat'
 import { ApiError } from '../../api/client'
 import { notifyError } from '../../lib/notify'
 
-const loading = ref(true)
 const coachee = ref<Coachee | null>(null)
 const documentos = ref<MisDocumentosLegales | null>(null)
 
@@ -25,16 +27,20 @@ async function cargarDocumentos() {
   documentos.value = await getMisDocumentosLegales()
 }
 
-async function load() {
-  loading.value = true
+const { loading, error, recargar } = useCarga(async () => {
   coachee.value = await getMyCoachee()
   await cargarDocumentos()
   if (!coachee.value.empresaId) {
     await cargarInversion()
   }
-  loading.value = false
+})
+onMounted(recargar)
+
+const TONO_DOCUMENTO: Record<EstadoVisualDocumento, 'sage' | 'danger' | 'bronze'> = {
+  firmado: 'sage',
+  pendiente: 'danger',
+  vencido: 'bronze',
 }
-onMounted(load)
 
 const LABEL_DOCUMENTO: Record<TipoDocumentoLegal, string> = {
   contrato: 'Contrato',
@@ -60,11 +66,20 @@ const PERIODOS: Array<{ key: PeriodoComercial; label: string; icon: string }> = 
 const periodo = ref<PeriodoComercial>('mes')
 const inversion = ref<MiInversion | null>(null)
 const loadingInversion = ref(true)
+const errorInversion = ref(false)
 
+// "Mi inversión" es secundaria: si falla, el resto de la cuenta se sigue mostrando y esa
+// tarjeta ofrece su propio "Reintentar".
 async function cargarInversion() {
   loadingInversion.value = true
-  inversion.value = await getMiInversion(periodo.value)
-  loadingInversion.value = false
+  errorInversion.value = false
+  try {
+    inversion.value = await getMiInversion(periodo.value)
+  } catch {
+    errorInversion.value = true
+  } finally {
+    loadingInversion.value = false
+  }
 }
 
 async function cambiarPeriodo(p: PeriodoComercial) {
@@ -80,20 +95,57 @@ const formatoCLP = new Intl.NumberFormat('es-CL', { style: 'currency', currency:
     <h1 class="mb-1 font-[family-name:var(--font-heading)] text-xl font-semibold">
       Mi cuenta
     </h1>
-    <p class="mb-4 text-sm text-[var(--color-ink)]/60">
+    <p class="mb-4 text-sm text-[var(--color-muted)]">
       Tus documentos y, si aplica, cuánto has generado en el período.
+      <RouterLink
+        :to="{ name: 'guia-coachee' }"
+        class="ml-1 text-[var(--color-saltup)] hover:underline"
+      >
+        Ver la guía de la plataforma
+      </RouterLink>
     </p>
 
     <SkeletonBlock v-if="loading" />
+    <ErrorState
+      v-else-if="error"
+      :description="error"
+      @retry="recargar"
+    />
     <div
       v-else-if="coachee && documentos"
       class="space-y-4"
     >
       <SectionCard
+        title="Consentimiento informado"
+        icon="legal"
+      >
+        <div class="flex flex-wrap items-center gap-2">
+          <StatusBadge :tone="coachee.consentimientoInformado ? 'sage' : 'danger'">
+            {{ coachee.consentimientoInformado ? 'Firmado' : 'Pendiente' }}
+          </StatusBadge>
+          <span
+            v-if="coachee.consentimientoInformado && coachee.consentimientoFecha"
+            class="text-xs text-[var(--color-muted)]"
+          >
+            el {{ new Date(coachee.consentimientoFecha).toLocaleDateString('es-CL') }}
+          </span>
+        </div>
+        <p class="mt-2 text-xs text-[var(--color-muted)]">
+          <template v-if="coachee.consentimientoInformado">
+            Registraste tu consentimiento para el proceso de coaching.
+          </template>
+          <template v-else>
+            Tu coach te envía un correo con un enlace para que lo confirmes. Si no lo encuentras,
+            revisa tu carpeta de spam o pídele que te lo reenvíe.
+          </template>
+        </p>
+      </SectionCard>
+
+      <SectionCard
         title="Documentos de mi proceso"
         icon="legal"
       >
-        <p class="mb-3 text-xs text-[var(--color-ink)]/50">
+        <p class="mb-3 text-xs text-[var(--color-muted)]">
           CV, evaluaciones de desempeño, descriptor de cargo… Lo que subas aquí lo ven tu coach y
           tu empresa, y lo que ellos suban lo ves tú — así nadie tiene que volver a cargarlo.
         </p>
@@ -104,7 +156,7 @@ const formatoCLP = new Intl.NumberFormat('es-CL', { style: 'currency', currency:
         title="Mis documentos"
         icon="legal"
       >
-        <p class="mb-3 text-xs text-[var(--color-ink)]/50">
+        <p class="mb-3 text-xs text-[var(--color-muted)]">
           {{ documentos.alcance === 'empresa'
             ? 'Este es el contrato entre tu empresa y tu coach.'
             : 'Tu contrato personal con tu coach.' }}
@@ -121,29 +173,26 @@ const formatoCLP = new Intl.NumberFormat('es-CL', { style: 'currency', currency:
           >
             <div class="mb-2 flex items-center justify-between">
               <span class="font-medium">{{ LABEL_DOCUMENTO[tipo] }}</span>
-              <span
-                class="rounded-full px-2 py-0.5 text-xs"
-                :class="[ESTADO_VISUAL_COLOR[estadoVisual(doc)].bg, ESTADO_VISUAL_COLOR[estadoVisual(doc)].texto]"
-              >
+              <StatusBadge :tone="TONO_DOCUMENTO[estadoVisual(doc)]">
                 {{ ESTADO_VISUAL_LABEL[estadoVisual(doc)] }}
-              </span>
+              </StatusBadge>
             </div>
             <p
               v-if="doc.fecha"
-              class="text-xs text-[var(--color-ink)]/60"
+              class="text-xs text-[var(--color-muted)]"
             >
               Fecha: {{ new Date(`${doc.fecha}T00:00:00`).toLocaleDateString('es-CL') }}
             </p>
             <p
               v-if="doc.vigencia"
-              class="text-xs text-[var(--color-ink)]/60"
+              class="text-xs text-[var(--color-muted)]"
             >
               Vigencia: {{ new Date(`${doc.vigencia}T00:00:00`).toLocaleDateString('es-CL') }}
             </p>
             <button
               v-if="doc.tieneArchivo"
               type="button"
-              class="mt-2 text-xs text-[var(--color-saltup)] hover:underline"
+              class="mt-2 inline-flex min-h-11 items-center text-xs text-[var(--color-saltup)] hover:underline sm:min-h-0"
               @click="descargar(tipo, LABEL_DOCUMENTO[tipo])"
             >
               ⬇ Descargar
@@ -157,7 +206,7 @@ const formatoCLP = new Intl.NumberFormat('es-CL', { style: 'currency', currency:
         title="Mi inversión"
         icon="negocio"
       >
-        <p class="mb-3 text-xs text-[var(--color-ink)]/50">
+        <p class="mb-3 text-xs text-[var(--color-muted)]">
           Lo que has generado en el período, según tus sesiones realizadas — no es un estado de
           pago.
         </p>
@@ -168,12 +217,17 @@ const formatoCLP = new Intl.NumberFormat('es-CL', { style: 'currency', currency:
           @update:model-value="cambiarPeriodo"
         />
         <SkeletonBlock v-if="loadingInversion" />
+        <ErrorState
+          v-else-if="errorInversion"
+          title="No pudimos cargar tu inversión"
+          @retry="cargarInversion"
+        />
         <div
           v-else-if="inversion"
           class="grid grid-cols-2 gap-3 sm:grid-cols-3"
         >
           <div>
-            <p class="text-xs text-[var(--color-ink)]/60">
+            <p class="text-xs text-[var(--color-muted)]">
               Horas realizadas
             </p>
             <p class="font-[family-name:var(--font-mono)] text-xl">
@@ -181,7 +235,7 @@ const formatoCLP = new Intl.NumberFormat('es-CL', { style: 'currency', currency:
             </p>
           </div>
           <div>
-            <p class="text-xs text-[var(--color-ink)]/60">
+            <p class="text-xs text-[var(--color-muted)]">
               Monto del período
             </p>
             <p class="font-[family-name:var(--font-mono)] text-xl text-[var(--color-sage)]">
@@ -189,7 +243,7 @@ const formatoCLP = new Intl.NumberFormat('es-CL', { style: 'currency', currency:
             </p>
           </div>
           <div>
-            <p class="text-xs text-[var(--color-ink)]/60">
+            <p class="text-xs text-[var(--color-muted)]">
               Proyectado
             </p>
             <p class="font-[family-name:var(--font-mono)] text-xl text-[var(--color-bronze)]">

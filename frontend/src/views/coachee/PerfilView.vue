@@ -3,6 +3,10 @@ import { onMounted, reactive, ref } from 'vue'
 import AppShell from '../../components/AppShell.vue'
 import SectionCard from '../../components/SectionCard.vue'
 import SkeletonBlock from '../../components/SkeletonBlock.vue'
+import ErrorState from '../../components/ErrorState.vue'
+import AppButton from '../../components/AppButton.vue'
+import FormField from '../../components/FormField.vue'
+import { useCarga } from '../../lib/useCarga'
 import { notifyError, notifySuccess } from '../../lib/notify'
 import { iniciales } from '../../lib/avatar'
 import { ApiError } from '../../api/client'
@@ -14,7 +18,6 @@ import {
   type Coachee,
 } from '../../api/coachees'
 
-const loading = ref(true)
 const coachee = ref<Coachee | null>(null)
 const fotoUrl = ref<string | null>(null)
 
@@ -39,13 +42,14 @@ async function cargarFoto() {
   fotoUrl.value = coachee.value?.fotoPath ? await obtenerUrlMiFotoCoachee() : null
 }
 
-async function load() {
-  loading.value = true
+const { loading, error, recargar } = useCarga(async () => {
   aplicarCoachee(await getMyCoachee())
-  await cargarFoto()
-  loading.value = false
-}
-onMounted(load)
+  // La foto es secundaria: si falla, el perfil se muestra con iniciales.
+  await cargarFoto().catch(() => {
+    fotoUrl.value = null
+  })
+})
+onMounted(recargar)
 
 async function guardar() {
   guardando.value = true
@@ -89,11 +93,16 @@ async function onFotoChange(e: Event) {
     <h1 class="mb-1 font-[family-name:var(--font-heading)] text-xl font-semibold">
       Mi perfil
     </h1>
-    <p class="mb-4 text-sm text-[var(--color-ink)]/60">
+    <p class="mb-4 text-sm text-[var(--color-muted)]">
       Tu información personal — nadie la ve salvo que tú lo decidas.
     </p>
 
     <SkeletonBlock v-if="loading" />
+    <ErrorState
+      v-else-if="error"
+      :description="error"
+      @retry="recargar"
+    />
     <div
       v-else-if="coachee"
       class="space-y-4"
@@ -136,47 +145,58 @@ async function onFotoChange(e: Event) {
           class="space-y-3"
           @submit.prevent="guardar"
         >
-          <label class="block text-sm">
-            Nombre
-            <input
-              :value="coachee.nombre"
-              type="text"
-              disabled
-              class="mt-1 w-full rounded-lg border border-[var(--color-line)] bg-[var(--color-parchment)]/40 px-3 py-2 text-sm text-[var(--color-ink)]/60"
-            >
-            <span class="mt-1 block text-xs text-[var(--color-ink)]/50">
-              Lo define tu coach — escríbele si necesitas corregirlo.
-            </span>
-          </label>
+          <FormField
+            label="Nombre"
+            hint="Lo define tu coach — escríbele si necesitas corregirlo."
+          >
+            <template #default="{ id, describedby }">
+              <input
+                :id="id"
+                :value="coachee.nombre"
+                type="text"
+                disabled
+                class="field-input bg-[var(--color-parchment)]/40 text-[var(--color-muted)]"
+                :aria-describedby="describedby"
+              >
+            </template>
+          </FormField>
 
           <div class="grid gap-3 sm:grid-cols-2">
-            <label class="block text-sm">
-              Teléfono
-              <input
-                v-model="form.telefono"
-                type="tel"
-                class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
-              >
-            </label>
-            <label class="block text-sm">
-              Email de contacto
-              <input
-                v-model="form.emailContacto"
-                type="email"
-                class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
-              >
-            </label>
+            <FormField label="Teléfono">
+              <template #default="{ id }">
+                <input
+                  :id="id"
+                  v-model="form.telefono"
+                  type="tel"
+                  autocomplete="tel"
+                  class="field-input"
+                >
+              </template>
+            </FormField>
+            <FormField label="Email de contacto">
+              <template #default="{ id }">
+                <input
+                  :id="id"
+                  v-model="form.emailContacto"
+                  type="email"
+                  autocomplete="email"
+                  class="field-input"
+                >
+              </template>
+            </FormField>
           </div>
 
-          <label class="block text-sm">
-            Sobre mí (opcional)
-            <textarea
-              v-model="form.bio"
-              rows="3"
-              placeholder="Cuéntanos algo sobre ti — intereses, qué te gustaría lograr, lo que quieras compartir."
-              class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
-            />
-          </label>
+          <FormField label="Sobre mí (opcional)">
+            <template #default="{ id }">
+              <textarea
+                :id="id"
+                v-model="form.bio"
+                rows="3"
+                placeholder="Cuéntanos algo sobre ti — intereses, qué te gustaría lograr, lo que quieras compartir."
+                class="field-input"
+              />
+            </template>
+          </FormField>
 
           <label class="flex items-start gap-3 rounded-lg border border-[var(--color-line)] p-3 text-sm">
             <input
@@ -186,7 +206,7 @@ async function onFotoChange(e: Event) {
             >
             <span>
               <span class="block font-medium">Mi coach puede ver mi perfil</span>
-              <span class="block text-xs text-[var(--color-ink)]/60">
+              <span class="block text-xs text-[var(--color-muted)]">
                 Si lo activas, tu coach podrá ver tu foto y lo que escribiste en "Sobre mí".
                 Distinto del consentimiento del proceso de coaching — esto es solo tu
                 presentación personal, y lo puedes desactivar cuando quieras.
@@ -195,13 +215,12 @@ async function onFotoChange(e: Event) {
           </label>
 
           <div class="flex justify-end pt-2">
-            <button
+            <AppButton
               type="submit"
-              :disabled="guardando"
-              class="rounded-lg bg-[var(--color-ink)] px-4 py-2 text-sm text-[var(--color-parchment)] disabled:opacity-60"
+              :loading="guardando"
             >
               {{ guardando ? 'Guardando…' : 'Guardar' }}
-            </button>
+            </AppButton>
           </div>
         </form>
       </SectionCard>

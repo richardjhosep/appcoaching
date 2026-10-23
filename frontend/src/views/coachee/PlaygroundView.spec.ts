@@ -144,16 +144,37 @@ describe('PlaygroundView', () => {
     expect(router.currentRoute.value.query.tab).toBe('pizarra')
   })
 
-  it('shows a live item count on each card', async () => {
+  it('shows a live item count on each tab', async () => {
     const wrapper = mount(PlaygroundView, { global: { plugins: [router], stubs } })
     await flushPromises()
 
-    expect(wrapper.text()).toContain('Quiz (1)')
-    expect(wrapper.text()).toContain('Flashcards (2)')
-    expect(wrapper.text()).toContain('Mapas mentales (0)')
-    expect(wrapper.text()).toContain('Mis mapas (1)')
-    expect(wrapper.text()).toContain('Mi pizarra (0)')
-    expect(wrapper.text()).toContain('Ejercicios (1)')
-    expect(wrapper.text()).toContain('Test de Estilo (0)')
+    const tabs = wrapper.findAll('[role="tab"]').map((t) => t.text().replace(/\s+/g, ' '))
+    expect(tabs).toContain('Quiz 1')
+    expect(tabs).toContain('Flashcards 2')
+    expect(tabs).toContain('Mapas mentales 0')
+    expect(tabs).toContain('Mis mapas 1')
+    expect(tabs).toContain('Mi pizarra 0')
+    expect(tabs).toContain('Ejercicios 1')
+    expect(tabs).toContain('Test de Estilo 0')
+  })
+
+  it('exposes the sections as an accessible tablist with the active one selected', async () => {
+    const wrapper = mount(PlaygroundView, { global: { plugins: [router], stubs } })
+    await flushPromises()
+
+    expect(wrapper.find('[role="tablist"]').exists()).toBe(true)
+    const seleccionadas = wrapper.findAll('[role="tab"][aria-selected="true"]')
+    expect(seleccionadas).toHaveLength(1)
+    expect(seleccionadas[0].text()).toContain('Quiz')
+  })
+
+  it('still renders the tabs when a count request fails', async () => {
+    vi.mocked(listarNotas).mockRejectedValue(new Error('boom'))
+    const wrapper = mount(PlaygroundView, { global: { plugins: [router], stubs } })
+    await flushPromises()
+
+    const tabs = wrapper.findAll('[role="tab"]').map((t) => t.text().replace(/\s+/g, ' '))
+    expect(tabs).toContain('Mi pizarra')
+    expect(tabs).toContain('Quiz 1')
   })
 })

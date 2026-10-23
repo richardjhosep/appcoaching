@@ -53,4 +53,16 @@ describe('MiCoachView', () => {
     expect(wrapper.text()).toContain('Fernando Ramos')
     expect(wrapper.text()).toContain('Bio real del coach.')
   })
+
+  it('shows an error state with retry when the perfil fails to load', async () => {
+    vi.mocked(getPerfilCoach).mockRejectedValueOnce(new Error('coach caído'))
+
+    const wrapper = mount(MiCoachView)
+    await flushPromises()
+    expect(wrapper.find('[role="alert"]').text()).toContain('coach caído')
+
+    await wrapper.findAll('button').find((b) => b.text() === 'Reintentar')!.trigger('click')
+    await flushPromises()
+    expect(wrapper.text()).toContain('Fernando Ramos')
+  })
 })

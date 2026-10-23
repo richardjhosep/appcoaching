@@ -62,6 +62,12 @@ export class SesionesController {
   }
 
   @Roles(Role.COACHEE)
+  @Get('me/reagendamientos')
+  findMisReagendamientos(@CurrentUser() actor: AuthenticatedUser) {
+    return this.solicitudes.findMine(actor.id);
+  }
+
+  @Roles(Role.COACHEE)
   @Get('me/proxima')
   findProxima(@CurrentUser() actor: AuthenticatedUser) {
     return this.sesiones.findProximaForCoachee(actor.id);

@@ -1,4 +1,4 @@
-import { NotFoundException } from '@nestjs/common';
+import { ConflictException, NotFoundException } from '@nestjs/common';
 import { Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import { SolicitudesReagendamientoService } from './solicitudes-reagendamiento.service';
@@ -67,6 +67,28 @@ describe('SolicitudesReagendamientoService', () => {
     );
   });
 
+  describe('findMine', () => {
+    it('throws NotFoundException without coachee profile', async () => {
+      coachees.findByUserId.mockResolvedValue(null);
+      await expect(service.findMine('user-x')).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('lists only the coachee requests, newest first', async () => {
+      coachees.findByUserId.mockResolvedValue({ id: 'coachee-1' });
+      repo.find.mockResolvedValue([{ id: 'r1', sesionId: 's1' }]);
+
+      const res = await service.findMine('user-1');
+
+      expect(res).toHaveLength(1);
+      expect(repo.find).toHaveBeenCalledWith({
+        where: { coacheeId: 'coachee-1' },
+        order: { createdAt: 'DESC' },
+      });
+    });
+  });
+
   describe('create', () => {
     it('throws NotFoundException when the actor has no coachee profile', async () => {
       coachees.findByUserId.mockResolvedValue(null);
@@ -102,6 +124,24 @@ describe('SolicitudesReagendamientoService', () => {
       expect(solicitud.sesionId).toBe('s1');
       expect(solicitud.coacheeId).toBe('coachee-1');
       expect(solicitud.motivo).toBe('tengo un viaje');
+    });
+
+    it('rejects a second request while one is pending for the session', async () => {
+      coachees.findByUserId.mockResolvedValue({
+        id: 'coachee-1',
+        nombre: 'Ana',
+      });
+      sesiones.findOneOwnedByCoachee.mockResolvedValue({
+        id: 's1',
+        coacheeId: 'coachee-1',
+        fechaHora: new Date('2026-08-05T15:00:00.000Z'),
+      });
+      repo.findOne.mockResolvedValue({ id: 'prev' });
+
+      await expect(service.create('s1', 'user-1')).rejects.toThrow(
+        ConflictException,
+      );
+      expect(repo.save).not.toHaveBeenCalled();
     });
 
     it('notifies and emails every coach', async () => {
