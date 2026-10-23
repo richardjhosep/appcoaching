@@ -1,4 +1,4 @@
-# Flujos por rol — CoachOS
+# Flujos por rol — CoachNexus
 
 Qué puede hacer cada rol dentro de la plataforma, organizado por vista/módulo. Los 3 roles son **Coach**, **Coachee** y **Empresa**; todos pasan por un cambio de contraseña obligatorio en el primer login (`/cambiar-password`).
 
@@ -6,11 +6,26 @@ Qué puede hacer cada rol dentro de la plataforma, organizado por vista/módulo.
 
 ## Coach
 
-### Dashboard (`/coach/dashboard`)
-- Ver KPIs: coachees activos, planes pendientes, ingreso del período (CLP), satisfacción promedio.
-- Banner de bienvenida con acceso directo a Coachees si todavía no hay ninguno cargado.
-- Pestañas de pendientes: planes pendientes / solicitudes comerciales pendientes / ciclos por vencer.
-- Click en un plan pendiente → va a la pestaña Plan de ese coachee; click en un ciclo por vencer → va a la pestaña Sesiones.
+### Búsqueda global y atajos
+- Buscador en el menú lateral (combobox accesible): busca coachees, empresas, competencias y recursos. **Ctrl/Cmd + K** lo enfoca desde cualquier pantalla; flechas + Enter para elegir, Escape para cerrar.
+- Elegir un coachee abre su ficha; elegir una empresa abre su editor en Empresas (`/coach/empresas?id=…`).
+
+### Panorama (`/coach/dashboard`) — es el home del coach tras el login
+- Si falta algo, tarjeta **"Primeros pasos"** (empresa → coachee → ciclo → plan → sesión), calculada con datos reales y descartable.
+- Si alguna carga secundaria falla, un aviso lo dice (y permite reintentar) en vez de mostrar "todo al día" falso; si fallan las cargas críticas se muestra un error con **Reintentar**.
+- **Atención inmediata**: sesiones sin confirmar (hoy/mañana), contratos por vencer sin gestión (botón Gestionar → historial de renovación) y pagos pendientes.
+- KPIs (horas de la semana, empresas por renovar, ingreso esperado, empresas sin fecha de contrato), **Esta semana** (sesiones agrupadas por día), **Cartera de empresas** con semáforo y proyección económica.
+- Pestañas de pendientes: coachees que necesitan algo (con recordatorios de sesión/progreso/plan por correo), empresas con contrato/NDA pendiente, solicitudes comerciales, prospectos con seguimiento vencido.
+- Buscador aproximado de coachees (tolera errores de tipeo y tildes).
+
+### Mi agenda (`/coach/agenda`)
+- Calendario semanal con todas las sesiones; crear sesión (suelta o **serie** semanal/quincenal/mensual/personalizada), reagendar (modal o arrastrando; si es de una serie, elegir si aplica a las futuras) y cancelar.
+- **Solicitudes de sesión pendientes** de los coachees: aprobar o rechazar con mensaje opcional.
+- Disponibilidad semanal: bloques por día que ven los coachees para pedir hora.
+
+### Prospectos (`/coach/prospectos`)
+- Pipeline de negocio aún sin firmar (empresa o persona): filtrar por etapa/fuente, crear, editar, eliminar.
+- **Gestionar** (bitácora con próximo seguimiento), **Ganado** (convierte en Empresa o Coachee y lleva a la entidad creada) y **Perdido**.
 
 ### Planes de desarrollo (`/coach/planes`)
 - Listar los planes de todos los coachees, filtrar por estado (sin enviar / pendiente de aprobación / cambios solicitados / aprobado / todos).
@@ -48,37 +63,47 @@ Qué puede hacer cada rol dentro de la plataforma, organizado por vista/módulo.
 - Buscar por título / filtrar por etiqueta.
 - Asignar o desasignar un recurso a coachees específicos.
 
-### Panel de negocio (`/coach/negocio`)
+### Negocio — pestaña Resumen (`/coach/negocio`)
 - Ver KPIs: horas realizadas del mes, ingreso del período, ingreso proyectado, coachees activos, satisfacción promedio.
 - Ver alertas: ciclos por vencer, coachees sin logros recientes, coachees sin próxima sesión (cada una lleva a la pestaña Sesiones del coachee).
 - Ver avance promedio por área/gerencia (gráfico de barras).
 - Por empresa: marcar pagada, editar horas contratadas.
 - Exportar a Excel y exportar/imprimir el panel completo en PDF.
 
-### Legal y auditoría — Legal (`/coach/legal`)
+### Legal y auditoría — Contratos y Privacidad (`/coach/legal`, pestañas `?tab=`)
 - Por empresa: estado del contrato/NDA (pendiente/firmado), fecha, vigencia.
 - Ver consentimiento informado (X de Y) por empresa y por coachees independientes; marcar/desmarcar cada uno.
 - Ver panel de cumplimiento LPDP (checklist de solo lectura).
 
-### Legal y auditoría — Auditoría (`/coach/auditoria`)
+### Legal y auditoría — Auditoría (`/coach/legal?tab=auditoria`; `/coach/auditoria` redirige)
 - Ver bitácora de auditoría del sistema (fecha, acción, destino), con filtros por texto de acción y por coachee/ID.
 
-### Gestión comercial (`/coach/comercial`)
+### Negocio — pestaña Comercial (`/coach/negocio?tab=comercial`; `/coach/comercial` redirige)
 - Ver solicitudes de nuevos procesos enviadas por empresas; marcar como **atendida**.
 - Ver procesos cerrados; botón directo "Abrir nuevo proceso con [coachee]" → pestaña Ciclo de ese coachee.
 
 ### Empresas (`/coach/empresas`)
-- Listar/buscar/filtrar por nombre, estado (activa/inactiva), rango de fecha de creación.
-- Crear empresa (nombre + tarifa/hora).
+- Listar/buscar/filtrar por nombre, estado (activa/inactiva), rango de fecha de creación; ordenar por columna.
+- Crear empresa (nombre + tarifa/hora, en CLP o UF) → aparece el atajo **"Crear coachee de esta empresa"**.
 - Editar empresa (nombre, tarifa/hora, horas contratadas, pagada).
 - Activar/desactivar (con confirmación) y eliminar (con confirmación).
 
 ### Coachees (`/coach/coachees`)
-- Listar/buscar/filtrar por nombre/email, empresa, estado, rango de fecha de creación.
-- Crear coachee (nombre + email obligatorios; empresa opcional o "Independiente"; jefe directo, objetivo, tarifa propia, área/gerencia) — crea el login automáticamente y **envía el correo de bienvenida con contraseña temporal**; la credencial también se muestra en pantalla.
+- Listar/buscar/filtrar por nombre/email, empresa, estado, rango de fecha de creación; ordenar por columna. Filtros, página y orden viven en la URL: al volver desde la ficha se restauran.
+- Sin coachees: estado vacío con **Crear primer coachee**.
+- Crear coachee (nombre + email obligatorios; empresa opcional o "Independiente"; cargo, jefe directo, objetivo, tarifa propia, área/gerencia, número de sesiones del proceso) — crea el login automáticamente y **envía el correo de bienvenida con contraseña temporal** (la contraseña ya no se muestra en pantalla). Los errores de validación aparecen junto a cada campo.
 - Editar coachee (mismos campos, sin email).
 - Activar/desactivar (bloquea/desbloquea el login sin perder datos) y eliminar.
 - Ver coachee → entra al detalle.
+
+### Herramientas (`/coach/herramientas`)
+- Quiz, flashcards, mapas mentales, ejercicios y test de estilo del coach (selector por tarjetas, `?tab=`).
+
+### Configuración (`/coach/configuracion`)
+- Catálogos parametrizables (grupo / clave / valor / estado), p. ej. fuentes de prospecto: crear, editar, activar/desactivar y eliminar sin necesidad de un despliegue.
+
+### Mi perfil (`/coach/perfil`)
+- Perfil profesional que ven coachees y empresas (foto, bio, metodología, certificaciones, contacto, CV).
 
 ### Usuarios (`/coach/usuarios`)
 - Listar/buscar/filtrar todas las cuentas por email, rol, estado, rango de fecha.
@@ -133,19 +158,39 @@ Qué puede hacer cada rol dentro de la plataforma, organizado por vista/módulo.
 
 ## Empresa
 
-### Mis coachees (`/empresa/coachees`)
-- Ver la lista de coachees que pertenecen a la empresa.
-- Click en un coachee → vista de Ciclo de ese coachee.
+Todas las pantallas cargan con reintento: si una llamada falla se muestra un aviso con **Reintentar**, y si solo fallan los datos de algunas personas se indica "No pudimos cargar datos de N personas; los indicadores pueden estar incompletos" (esas personas no se presentan como "al día").
 
-### Ciclo (`/empresa/coachees/:id/ciclo`)
-- Por coachee: ver ciclo abierto actual (sesiones realizadas/total, resumen de reunión inicial escrito por el coach, aviso de "por vencer").
-- Ver historial de ciclos cerrados.
-- Todo en solo lectura: la empresa no edita sesiones, planes ni contenido del ciclo.
+### Resumen (`/empresa/dashboard`)
+- Indicadores: procesos terminados/en curso, tasa de asistencia y satisfacción promedio (con color según los mismos umbrales que el avance).
+- **Necesita tu atención**: personas con sesiones pendientes sin agendar o ciclo por vencer; cada fila es un enlace que abre el progreso de esa persona en Coachees.
+- Nota **"Qué ve tu empresa y qué no"** y glosario (ciclo, tasa de asistencia, avance, niveles de competencia).
+- Mi contrato (horas, tarifa, estado de pago — registrado por el coach —, término), Finanzas (mes/semestre/año, ejecutado vs agendado), Tendencia de 6 meses, últimos impactos en el negocio, distribución por departamento y competencias trabajadas (contratadas vs trabajadas).
+
+### Mis coachees (`/empresa/coachees`)
+- Lista de coachees de la empresa en pestañas **Activos** / **Procesos cerrados**, con buscador por nombre y filtro "Solo con alertas".
+- Activos: avance, sesiones realizadas/total, próxima sesión, avisos (sin sesión agendada, ciclo por vencer), progreso y documentos del proceso (compartidos con coach y coachee).
+- Cerrados: resultado, fechas, historial de ciclos, certificado (vista previa y **Imprimir / Guardar como PDF**) y feedback del coachee al cierre.
+- Todo en solo lectura salvo subir documentos del proceso: la empresa no edita sesiones, planes ni contenido del ciclo.
+- Qué ve la empresa: avance general, sesiones realizadas y próxima agendada, objetivo del plan, resultado, feedback e impacto en el negocio al cierre, documentos compartidos. Qué no ve: notas privadas del coach, detalle de cada sesión, diario/mapas/pizarra del coachee.
+
+### Finanzas (`/empresa/finanzas`)
+- Cabecera de reporte (logo, empresa, "Emitido el …") e **Imprimir / Guardar como PDF** (usa la impresión del navegador; no hay selector de período).
+- Este mes (gasto, horas consumidas/contratadas, estado de pago registrado por el coach, monto pendiente), gasto por coachee, proyección mensual/semestral/anual de lo ya agendado y retorno de la inversión por proceso cerrado. Selector CLP/UF.
+
+### Informe ejecutivo (`/empresa/informe`)
+- Informe imprimible (mismos criterios de impresión): indicadores, tendencia, retorno de la inversión (con distribución de resultados) y resumen financiero. Si falla la carga de cualquier fuente se muestra el error en vez de un informe parcial.
 
 ### Satisfacción y procesos (`/empresa/satisfaccion`)
-- Ver KPIs: procesos terminados, procesos en curso, tasa de asistencia, satisfacción promedio.
-- Enviar encuesta de satisfacción (calificación 1–5 + comentario opcional).
-- Solicitar un nuevo proceso (nombre sugerido + mensaje opcional) — el coach la ve en Dashboard/Gestión comercial y su estado (pendiente/atendida) se refleja de vuelta acá.
+- Encuesta de satisfacción por proceso cerrado (categorías 1–5 + comentario opcional) y solicitud de un nuevo proceso (nombre sugerido + mensaje); el estado (pendiente/atendida) se refleja de vuelta. Si no se pudieron revisar los procesos de alguna persona se avisa.
+
+### Competencias (`/empresa/competencias`)
+- Crear, editar y eliminar las competencias propias de la empresa con sus niveles; el coach las ve y elige cuál desarrollar en cada coachee.
+
+### Mi Coach (`/empresa/coach`)
+- Perfil real del coach (foto, bio, metodología, certificaciones, contacto, CV), en solo lectura.
+
+### Certificado (`/empresa/coachees/:coacheeId/ciclos/:cicloId/certificado`)
+- Certificado imprimible de un ciclo cerrado con resultado, con la marca CoachNexus; **Imprimir / Guardar como PDF**.
 
 ---
 
@@ -158,8 +203,10 @@ Qué puede hacer cada rol dentro de la plataforma, organizado por vista/módulo.
 - **Correos de acceso**: crear un coachee, crear una cuenta Empresa, o restablecer cualquier contraseña dispara un correo real con contraseña temporal y link de acceso; quien lo recibe queda forzado a cambiar la contraseña en su primer login.
 - **Recursos**: el coach crea y asigna recursos a coachees puntuales; lo asignado (o autoagregado) aparece en "Mi biblioteca" del coachee, y los "aprendizajes" privados que el coachee registra por recurso los puede ver el coach (no editarlos).
 - **Consentimiento informado**: el mismo estado se puede marcar tanto desde la pestaña Perfil del detalle de coachee como en bloque desde la vista Legal.
+- **Prospecto → cliente**: al marcar un prospecto como ganado se crea la Empresa o el Coachee y el coach aterriza directamente en esa entidad.
+- **Empresa → primer coachee**: tras crear una empresa, el atajo "Crear coachee de esta empresa" abre el alta con la empresa ya elegida.
 
 ## Notas de alcance (funcionalidad de backend sin UI expuesta)
 
-- **Reagendamiento de sesiones**: existen endpoints de backend para que el coachee solicite reagendar una sesión y el coach responda (`solicitudes-reagendamiento`), pero ninguna vista del frontend los expone todavía.
+- **Reagendamiento de sesiones**: sí tiene UI. El coachee solicita reagendar desde "Mis sesiones" (y ve el estado de su solicitud; no puede duplicar una pendiente); el coach responde en la pestaña Sesiones del detalle del coachee, y además puede reagendar directamente desde Mi agenda o el detalle (modal o arrastrando en el calendario).
 - **Autogestión de contacto del coachee** (`PATCH /coachees/me/contact`): el backend lo permite, pero el coach solo lo ve en modo lectura en la pestaña Perfil — no hay un formulario en el frontend donde el propio coachee lo edite.
