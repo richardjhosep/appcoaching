@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, useId } from 'vue'
 import type { Moneda } from '../lib/moneda'
 import { clpAUf, formatCLP, formatUF, ufAClp } from '../lib/moneda'
 import { getUfHoy } from '../api/indicadores'
@@ -15,6 +15,7 @@ const emit = defineEmits<{
   'update:moneda': [Moneda]
 }>()
 
+const errorId = useId()
 const valorUf = ref<number | null>(null)
 onMounted(async () => {
   valorUf.value = await getUfHoy().then((v) => v.valorUf).catch(() => null)
@@ -42,6 +43,8 @@ const glosa = computed(() => {
           :step="moneda === 'uf' ? 0.01 : 1"
           class="w-full rounded-lg border px-3 py-2 text-sm"
           :class="error ? 'border-[var(--color-danger)]' : 'border-[var(--color-line)]'"
+          :aria-invalid="error ? true : undefined"
+          :aria-describedby="error ? errorId : undefined"
           @input="emit('update:modelValue', ($event.target as HTMLInputElement).value === '' ? null : Number(($event.target as HTMLInputElement).value))"
         >
         <select
@@ -60,11 +63,13 @@ const glosa = computed(() => {
     </label>
     <span
       v-if="error"
+      :id="errorId"
+      role="alert"
       class="mt-1 block text-xs text-[var(--color-danger)]"
     >{{ error }}</span>
     <span
       v-else-if="glosa"
-      class="mt-1 block text-xs text-[var(--color-ink)]/50"
+      class="mt-1 block text-xs text-[var(--color-muted)]"
     >{{ glosa }} al valor UF de hoy</span>
   </div>
 </template>

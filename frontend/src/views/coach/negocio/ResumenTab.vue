@@ -7,6 +7,7 @@ import { updateEmpresa } from '../../../api/empresas'
 import { getUfHoy } from '../../../api/indicadores'
 import { ApiError } from '../../../api/client'
 import NavIcon from '../../../components/NavIcon.vue'
+import StatusBadge from '../../../components/StatusBadge.vue'
 import SkeletonBlock from '../../../components/SkeletonBlock.vue'
 import MonedaToggle from '../../../components/MonedaToggle.vue'
 import { formatMonto, type Moneda } from '../../../lib/moneda'
@@ -155,7 +156,7 @@ function exportarExcel() {
 
     <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
       <div class="rounded-2xl border border-[var(--color-line)] bg-white p-4">
-        <p class="text-xs text-[var(--color-ink)]/60">
+        <p class="text-xs text-[var(--color-muted)]">
           Horas realizadas (mes)
         </p>
         <p class="font-[family-name:var(--font-mono)] text-2xl">
@@ -163,7 +164,7 @@ function exportarExcel() {
         </p>
       </div>
       <div class="rounded-2xl border border-[var(--color-line)] bg-white p-4">
-        <p class="text-xs text-[var(--color-ink)]/60">
+        <p class="text-xs text-[var(--color-muted)]">
           Ingreso del período
         </p>
         <p class="font-[family-name:var(--font-mono)] text-2xl text-[var(--color-sage)]">
@@ -171,7 +172,7 @@ function exportarExcel() {
         </p>
       </div>
       <div class="rounded-2xl border border-[var(--color-line)] bg-white p-4">
-        <p class="text-xs text-[var(--color-ink)]/60">
+        <p class="text-xs text-[var(--color-muted)]">
           Ingreso proyectado
         </p>
         <p class="font-[family-name:var(--font-mono)] text-2xl">
@@ -179,7 +180,7 @@ function exportarExcel() {
         </p>
       </div>
       <div class="rounded-2xl border border-[var(--color-line)] bg-white p-4">
-        <p class="text-xs text-[var(--color-ink)]/60">
+        <p class="text-xs text-[var(--color-muted)]">
           Coachees activos
         </p>
         <p class="font-[family-name:var(--font-mono)] text-2xl">
@@ -187,7 +188,7 @@ function exportarExcel() {
         </p>
       </div>
       <div class="rounded-2xl border border-[var(--color-line)] bg-white p-4">
-        <p class="text-xs text-[var(--color-ink)]/60">
+        <p class="text-xs text-[var(--color-muted)]">
           Satisfacción promedio
         </p>
         <p class="font-[family-name:var(--font-mono)] text-2xl">
@@ -214,7 +215,7 @@ function exportarExcel() {
           </div>
           <p
             v-if="alertas.ciclosPorVencer.length === 0"
-            class="text-xs italic text-[var(--color-ink)]/40"
+            class="text-xs italic text-[var(--color-muted)]"
           >
             Sin pendientes.
           </p>
@@ -231,7 +232,7 @@ function exportarExcel() {
                 class="w-full rounded-lg px-2 py-1 text-left text-sm hover:bg-[var(--color-parchment)]/60"
                 @click="irASeguimiento(c.coacheeId)"
               >
-                {{ c.nombre }} <span class="text-xs text-[var(--color-ink)]/50">({{ c.sesionesRestantes }} rest.)</span>
+                {{ c.nombre }} <span class="text-xs text-[var(--color-muted)]">({{ c.sesionesRestantes }} rest.)</span>
               </button>
             </li>
           </ul>
@@ -246,7 +247,7 @@ function exportarExcel() {
           </div>
           <p
             v-if="alertas.coacheesSinLogros.length === 0"
-            class="text-xs italic text-[var(--color-ink)]/40"
+            class="text-xs italic text-[var(--color-muted)]"
           >
             Sin pendientes.
           </p>
@@ -278,7 +279,7 @@ function exportarExcel() {
           </div>
           <p
             v-if="alertas.coacheesSinProximaSesion.length === 0"
-            class="text-xs italic text-[var(--color-ink)]/40"
+            class="text-xs italic text-[var(--color-muted)]"
           >
             Sin pendientes.
           </p>
@@ -309,7 +310,7 @@ function exportarExcel() {
       </h2>
       <p
         v-if="avancePorArea.length === 0"
-        class="text-sm text-[var(--color-ink)]/60"
+        class="text-sm text-[var(--color-muted)]"
       >
         Todavía no hay autoevaluaciones registradas.
       </p>
@@ -338,26 +339,26 @@ function exportarExcel() {
       <h2 class="mb-3 text-sm font-medium">
         Horas contratadas vs. consumidas por empresa
       </h2>
-      <div class="overflow-x-auto">
-        <table class="w-full text-left text-sm">
+      <div class="data-table-wrap">
+        <table class="data-table">
           <thead>
-            <tr class="text-xs text-[var(--color-ink)]/60">
-              <th class="py-1">
+            <tr>
+              <th scope="col">
                 Empresa
               </th>
-              <th class="py-1">
+              <th scope="col">
                 Pagada
               </th>
-              <th class="py-1">
+              <th scope="col">
                 Contratadas
               </th>
-              <th class="py-1">
+              <th scope="col">
                 Consumidas
               </th>
-              <th class="py-1">
+              <th scope="col">
                 Ingreso período
               </th>
-              <th class="py-1">
+              <th scope="col">
                 Proyectado
               </th>
             </tr>
@@ -366,7 +367,6 @@ function exportarExcel() {
             <tr
               v-for="e in resumen.porEmpresa"
               :key="e.empresaId"
-              class="border-t border-[var(--color-line)]"
             >
               <td class="py-2">
                 {{ e.nombre }}
@@ -394,7 +394,7 @@ function exportarExcel() {
                 <span :class="e.horasFijas ? 'hidden print:inline' : ''">{{ e.horasContratadas ?? '—' }}</span>
                 <span
                   v-if="!e.horasFijas"
-                  class="block text-[10px] text-[var(--color-ink)]/45 print:hidden"
+                  class="block text-xs text-[var(--color-muted)] print:hidden"
                 >según sesiones</span>
               </td>
               <td class="py-2">
@@ -410,7 +410,7 @@ function exportarExcel() {
           </tbody>
         </table>
       </div>
-      <p class="mt-3 text-xs text-[var(--color-ink)]/50">
+      <p class="mt-3 text-xs text-[var(--color-muted)]">
         "Proyectado" solo cuenta empresas marcadas como "Pagada" — es el ingreso que puedes dar
         por confirmado, no todo lo que hay agendado. La empresa ve, en su propia Finanzas, el
         gasto agendado sin ese filtro, así que ese número puede ser mayor al tuyo.
@@ -421,40 +421,40 @@ function exportarExcel() {
       <h2 class="mb-3 text-sm font-medium">
         Cartera de coachees
       </h2>
-      <p class="mb-3 text-xs text-[var(--color-ink)]/50">
+      <p class="mb-3 text-xs text-[var(--color-muted)]">
         Todos tus coachees activos, tengan o no sesiones este mes. "Agendado" es el valor de lo
         agendado en el período; "Confirmado" solo cuenta a los independientes y a las empresas
         marcadas como "Pagada".
       </p>
       <p
         v-if="resumen.carteraCoachees.length === 0"
-        class="text-sm text-[var(--color-ink)]/60"
+        class="text-sm text-[var(--color-muted)]"
       >
         No tienes coachees activos.
       </p>
       <div
         v-else
-        class="overflow-x-auto"
+        class="data-table-wrap"
       >
-        <table class="w-full text-left text-sm">
+        <table class="data-table">
           <thead>
-            <tr class="text-xs text-[var(--color-ink)]/60">
-              <th class="py-1">
+            <tr>
+              <th scope="col">
                 Coachee
               </th>
-              <th class="py-1">
+              <th scope="col">
                 Empresa
               </th>
-              <th class="py-1">
+              <th scope="col">
                 Sesiones
               </th>
-              <th class="py-1">
+              <th scope="col">
                 Horas mes
               </th>
-              <th class="py-1">
+              <th scope="col">
                 Agendado
               </th>
-              <th class="py-1">
+              <th scope="col">
                 Confirmado
               </th>
             </tr>
@@ -463,7 +463,6 @@ function exportarExcel() {
             <tr
               v-for="c in resumen.carteraCoachees"
               :key="c.coacheeId"
-              class="border-t border-[var(--color-line)]"
             >
               <td class="py-2">
                 <button
@@ -476,11 +475,14 @@ function exportarExcel() {
               </td>
               <td class="py-2 text-[var(--color-ink)]/70">
                 {{ c.empresaNombre ?? 'Independiente' }}
-                <span
+                <StatusBadge
                   v-if="c.empresaPagada === false"
-                  class="ml-1 rounded-full bg-[var(--color-bronze)]/15 px-2 py-0.5 text-[10px] font-semibold text-[var(--color-bronze)]"
+                  tone="bronze"
+                  class="ml-1"
                   title="Marca la empresa como pagada en la tabla de arriba para contarlo como ingreso confirmado"
-                >Pago pendiente</span>
+                >
+                  Pago pendiente
+                </StatusBadge>
               </td>
               <td class="py-2 font-[family-name:var(--font-mono)] text-xs">
                 <span v-if="c.totalSesiones !== null">{{ c.sesionesRealizadas }}/{{ c.totalSesiones }}</span>

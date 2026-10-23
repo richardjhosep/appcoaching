@@ -6,6 +6,10 @@ import IconButton from '../../components/IconButton.vue'
 import StatusToggle from '../../components/StatusToggle.vue'
 import SectionCard from '../../components/SectionCard.vue'
 import SkeletonBlock from '../../components/SkeletonBlock.vue'
+import ErrorState from '../../components/ErrorState.vue'
+import EmptyState from '../../components/EmptyState.vue'
+import AppButton from '../../components/AppButton.vue'
+import FormField from '../../components/FormField.vue'
 import {
   actualizarParametro,
   crearParametro,
@@ -15,18 +19,19 @@ import {
 } from '../../api/configuracion'
 import { ApiError } from '../../api/client'
 import { notifyError, notifySuccess, confirmDialog } from '../../lib/notify'
+import { useCarga } from '../../lib/useCarga'
+import { enfocarPrimerInvalido } from '../../lib/enfocarInvalido'
 
-const loading = ref(true)
 const parametros = ref<ParametroConfiguracion[]>([])
 const filtroGrupo = ref('')
 
 async function load() {
-  loading.value = true
   parametros.value = await listarParametros()
-  loading.value = false
 }
 
-onMounted(load)
+const { loading, error, recargar } = useCarga(load)
+
+onMounted(recargar)
 
 // Un grupo puede ser un "índice" (su valor apunta a otro grupo, como RETROALIMENTACION_BLOQUES)
 // o una hoja con los propios parámetros — se listan juntos, agrupados, en el orden en que
@@ -49,7 +54,7 @@ const agrupados = computed(() => {
 async function toggleEstado(parametro: ParametroConfiguracion) {
   try {
     await actualizarParametro(parametro.id, { estado: !parametro.estado })
-    await load()
+    await recargar()
   } catch (err) {
     await notifyError('No se pudo cambiar el estado', err instanceof ApiError ? err.message : 'Ocurrió un error inesperado.')
   }
@@ -93,7 +98,9 @@ function validar(): boolean {
   errors.grupo = form.grupo.trim() ? undefined : 'Ingresa un grupo.'
   errors.clave = form.clave.trim() ? undefined : 'Ingresa una clave.'
   errors.valor = form.valor.trim() ? undefined : 'Ingresa un valor.'
-  return !errors.grupo && !errors.clave && !errors.valor
+  const valido = !errors.grupo && !errors.clave && !errors.valor
+  if (!valido) void enfocarPrimerInvalido()
+  return valido
 }
 
 async function guardar() {
@@ -117,7 +124,7 @@ async function guardar() {
       })
     }
     modalOpen.value = false
-    await load()
+    await recargar()
     await notifySuccess(editando.value ? 'Parámetro actualizado' : 'Parámetro creado')
   } catch (err) {
     serverError.value = err instanceof ApiError ? err.message : 'Ocurrió un error inesperado.'
@@ -136,7 +143,7 @@ async function eliminar(parametro: ParametroConfiguracion) {
   if (!confirmado) return
   try {
     await eliminarParametro(parametro.id)
-    await load()
+    await recargar()
     await notifySuccess('Parámetro eliminado')
   } catch (err) {
     await notifyError('No se pudo eliminar', err instanceof ApiError ? err.message : 'Ocurrió un error inesperado.')
@@ -151,20 +158,35 @@ async function eliminar(parametro: ParametroConfiguracion) {
         <h1 class="font-[family-name:var(--font-heading)] text-xl font-semibold">
           Configuración
         </h1>
-        <p class="text-sm text-[var(--color-ink)]/60">
+        <p class="text-sm text-[var(--color-muted)]">
           Datos parametrizables del sistema — grupo, clave, valor y estado. Editables sin
           necesidad de un despliegue.
         </p>
       </div>
-      <button
-        class="rounded-lg bg-[var(--color-ink)] px-4 py-2 text-sm font-medium text-[var(--color-parchment)]"
-        @click="abrirCrear"
-      >
+      <AppButton @click="abrirCrear">
         + Nuevo parámetro
-      </button>
+      </AppButton>
     </div>
 
-    <SkeletonBlock v-if="loading" />
+    <SkeletonBlock
+      v-if="loading"
+      variant="table"
+      :rows="6"
+    />
+    <ErrorState
+      v-else-if="error"
+      @retry="recargar"
+    />
+    <EmptyState
+      v-else-if="parametros.length === 0"
+      icon="configuracion"
+      title="Todavía no hay parámetros"
+      description="Los catálogos del sistema (fuentes de prospectos, bloques de retroalimentación, etc.) aparecerán aquí."
+    >
+      <AppButton @click="abrirCrear">
+        Crear parámetro
+      </AppButton>
+    </EmptyState>
     <div
       v-else
       class="space-y-4"
@@ -172,7 +194,8 @@ async function eliminar(parametro: ParametroConfiguracion) {
       <div class="flex flex-wrap items-center gap-2">
         <select
           v-model="filtroGrupo"
-          class="rounded-lg border border-[var(--color-line)] px-3 py-1.5 text-sm"
+          aria-label="Filtrar por grupo"
+          class="field-input w-auto"
         >
           <option value="">
             Grupo: Todos
@@ -185,7 +208,7 @@ async function eliminar(parametro: ParametroConfiguracion) {
             {{ g }}
           </option>
         </select>
-        <span class="ml-auto text-xs text-[var(--color-ink)]/50">{{ filtrados.length }} parámetro(s)</span>
+        <span class="ml-auto text-xs text-[var(--color-muted)]">{{ filtrados.length }} parámetro(s)</span>
       </div>
 
       <SectionCard
@@ -194,20 +217,29 @@ async function eliminar(parametro: ParametroConfiguracion) {
         :title="grupo"
         icon="configuracion"
       >
-        <div class="overflow-x-auto rounded-xl border border-[var(--color-line)]">
-          <table class="w-full text-left text-sm">
+        <div class="data-table-wrap">
+          <table class="data-table">
             <thead>
-              <tr class="border-b border-[var(--color-line)] bg-[var(--color-parchment)] text-xs text-[var(--color-ink)]/60">
-                <th class="w-16 px-4 py-2.5">
+              <tr>
+                <th
+                  scope="col"
+                  class="w-16"
+                >
                   Clave
                 </th>
-                <th class="px-4 py-2.5">
+                <th scope="col">
                   Valor
                 </th>
-                <th class="w-28 px-4 py-2.5">
+                <th
+                  scope="col"
+                  class="w-28"
+                >
                   Estado
                 </th>
-                <th class="w-24 px-4 py-2.5">
+                <th
+                  scope="col"
+                  class="w-24"
+                >
                   Acciones
                 </th>
               </tr>
@@ -216,21 +248,21 @@ async function eliminar(parametro: ParametroConfiguracion) {
               <tr
                 v-for="p in filas"
                 :key="p.id"
-                class="border-b border-[var(--color-line)] align-top last:border-0"
+                class="align-top"
               >
-                <td class="px-4 py-3 font-[family-name:var(--font-mono)] text-xs text-[var(--color-ink)]/60">
+                <td class="font-[family-name:var(--font-mono)] text-xs text-[var(--color-muted)]">
                   {{ p.clave }}
                 </td>
-                <td class="px-4 py-3">
+                <td>
                   {{ p.valor }}
                 </td>
-                <td class="px-4 py-3">
+                <td>
                   <StatusToggle
                     :active="p.estado"
                     @toggle="toggleEstado(p)"
                   />
                 </td>
-                <td class="px-4 py-3">
+                <td>
                   <div class="flex items-center gap-2">
                     <IconButton
                       icon="editar"
@@ -258,53 +290,58 @@ async function eliminar(parametro: ParametroConfiguracion) {
     >
       <form
         class="space-y-4"
+        novalidate
         @submit.prevent="guardar"
       >
         <p
           v-if="serverError"
+          role="alert"
           class="text-sm text-[var(--color-danger)]"
         >
           {{ serverError }}
         </p>
-        <label class="block text-sm">
-          Grupo
+        <FormField
+          v-slot="{ id, describedby, invalid }"
+          label="Grupo"
+          :error="errors.grupo"
+        >
           <input
+            :id="id"
             v-model="form.grupo"
             type="text"
-            class="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
-            :class="errors.grupo ? 'border-[var(--color-danger)]' : 'border-[var(--color-line)]'"
+            class="field-input"
+            :aria-describedby="describedby"
+            :aria-invalid="invalid"
           >
-          <span
-            v-if="errors.grupo"
-            class="mt-1 block text-xs text-[var(--color-danger)]"
-          >{{ errors.grupo }}</span>
-        </label>
-        <label class="block text-sm">
-          Clave
+        </FormField>
+        <FormField
+          v-slot="{ id, describedby, invalid }"
+          label="Clave"
+          :error="errors.clave"
+        >
           <input
+            :id="id"
             v-model="form.clave"
             type="text"
-            class="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
-            :class="errors.clave ? 'border-[var(--color-danger)]' : 'border-[var(--color-line)]'"
+            class="field-input"
+            :aria-describedby="describedby"
+            :aria-invalid="invalid"
           >
-          <span
-            v-if="errors.clave"
-            class="mt-1 block text-xs text-[var(--color-danger)]"
-          >{{ errors.clave }}</span>
-        </label>
-        <label class="block text-sm">
-          Valor
+        </FormField>
+        <FormField
+          v-slot="{ id, describedby, invalid }"
+          label="Valor"
+          :error="errors.valor"
+        >
           <textarea
+            :id="id"
             v-model="form.valor"
             rows="3"
-            class="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
-            :class="errors.valor ? 'border-[var(--color-danger)]' : 'border-[var(--color-line)]'"
+            class="field-input"
+            :aria-describedby="describedby"
+            :aria-invalid="invalid"
           />
-          <span
-            v-if="errors.valor"
-            class="mt-1 block text-xs text-[var(--color-danger)]"
-          >{{ errors.valor }}</span>
-        </label>
+        </FormField>
         <label class="flex items-center gap-2 text-sm">
           <input
             v-model="form.estado"
@@ -315,20 +352,18 @@ async function eliminar(parametro: ParametroConfiguracion) {
         </label>
 
         <div class="flex justify-end gap-2 pt-2">
-          <button
-            type="button"
-            class="rounded-lg border border-[var(--color-line)] px-4 py-2 text-sm"
+          <AppButton
+            variant="secondary"
             @click="modalOpen = false"
           >
             Cancelar
-          </button>
-          <button
+          </AppButton>
+          <AppButton
             type="submit"
-            :disabled="guardando"
-            class="rounded-lg bg-[var(--color-ink)] px-4 py-2 text-sm text-[var(--color-parchment)] disabled:opacity-60"
+            :loading="guardando"
           >
             {{ guardando ? 'Guardando…' : 'Guardar' }}
-          </button>
+          </AppButton>
         </div>
       </form>
     </AppModal>

@@ -165,7 +165,7 @@ async function recordar(coacheeId: string) {
     <h1 class="font-[family-name:var(--font-heading)] text-xl font-semibold">
       Planes de desarrollo
     </h1>
-    <p class="mb-4 text-sm text-[var(--color-ink)]/60">
+    <p class="mb-4 text-sm text-[var(--color-muted)]">
       En qué va el plan de cada coachee y quién necesita un empujón.
     </p>
 
@@ -198,7 +198,7 @@ async function recordar(coacheeId: string) {
     <SkeletonBlock v-if="loading" />
     <p
       v-else-if="planesVisibles.length === 0"
-      class="rounded-2xl border border-dashed border-[var(--color-line)] bg-white/60 px-5 py-10 text-center text-sm text-[var(--color-ink)]/60"
+      class="rounded-2xl border border-dashed border-[var(--color-line)] bg-white/60 px-5 py-10 text-center text-sm text-[var(--color-muted)]"
     >
       {{ planes.length === 0 ? 'Aún no hay planes de desarrollo creados.' : 'No hay planes con este filtro.' }}
     </p>
@@ -248,12 +248,12 @@ async function recordar(coacheeId: string) {
                   {{ estadoConfig[p.estado].label }}
                 </span>
               </div>
-              <p class="truncate text-xs text-[var(--color-ink)]/50">
+              <p class="truncate text-xs text-[var(--color-muted)]">
                 {{ contactoLinea(p) }}
               </p>
             </div>
 
-            <span class="hidden shrink-0 text-[11px] text-[var(--color-ink)]/40 sm:block">
+            <span class="hidden shrink-0 text-xs text-[var(--color-muted)] sm:block">
               Actualizado el {{ new Date(p.updatedAt).toLocaleDateString('es-CL') }}
             </span>
           </div>
@@ -312,12 +312,12 @@ async function recordar(coacheeId: string) {
           </p>
           <p
             v-else
-            class="mt-3 text-sm italic text-[var(--color-ink)]/40"
+            class="mt-3 text-sm italic text-[var(--color-muted)]"
           >
             Sin objetivo general definido todavía.
           </p>
 
-          <div class="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-[var(--color-ink)]/60">
+          <div class="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-[var(--color-muted)]">
             <span
               v-if="p.competencia"
               class="inline-flex items-center gap-1.5 font-medium text-[var(--color-saltup)]"
@@ -329,7 +329,7 @@ async function recordar(coacheeId: string) {
               {{ p.competencia.nombre }}
               <span
                 v-if="p.trabajarNiveles && (p.nivelActual != null || p.nivelObjetivo != null)"
-                class="font-normal text-[var(--color-ink)]/50"
+                class="font-normal text-[var(--color-muted)]"
               >
                 · Nivel {{ p.nivelActual ?? '—' }} → {{ p.nivelObjetivo ?? '—' }}
               </span>

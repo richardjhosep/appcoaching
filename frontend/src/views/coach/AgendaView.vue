@@ -5,6 +5,8 @@ import SectionCard from '../../components/SectionCard.vue'
 import WeekCalendar from '../../components/WeekCalendar.vue'
 import EmptyState from '../../components/EmptyState.vue'
 import SkeletonBlock from '../../components/SkeletonBlock.vue'
+import ErrorState from '../../components/ErrorState.vue'
+import AppButton from '../../components/AppButton.vue'
 import ReagendarSesionModal from '../../components/ReagendarSesionModal.vue'
 import AppModal from '../../components/AppModal.vue'
 import { agendarSesion, agendarSerieSesiones, getTodasLasSesiones, type FrecuenciaSerie, type Sesion } from '../../api/sesiones'
@@ -23,10 +25,10 @@ import { listCoachees, type CoacheeListItem } from '../../api/coachees'
 import { ApiError } from '../../api/client'
 import { notifyError, notifySuccess } from '../../lib/notify'
 import { aDatetimeLocal, inicioDeSemana } from '../../lib/dateRange'
+import { useCarga } from '../../lib/useCarga'
 
 const DIAS_LABEL = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
 
-const loading = ref(true)
 const sesiones = ref<Sesion[]>([])
 const bloques = ref<BloqueDisponibilidad[]>([])
 const solicitudes = ref<SolicitudSesion[]>([])
@@ -66,21 +68,23 @@ const sesionesEstaSemana = computed(() => {
 const clientesConSesionAgendada = computed(() => new Set(sesionesFuturas.value.map((s) => s.coacheeId)).size)
 
 async function load() {
-  loading.value = true
+  // Críticas: sesiones y disponibilidad (la grilla). Solicitudes y coachees se toleran:
+  // si fallan se avisa en vez de mostrar "sin solicitudes" como si fuera cierto.
   const [s, b, sol, cc] = await Promise.all([
     getTodasLasSesiones(),
     listBloquesDisponibilidad(),
-    getSolicitudesSesionPendientes(),
-    listCoachees(),
+    tolerar(getSolicitudesSesionPendientes()),
+    tolerar(listCoachees()),
   ])
   sesiones.value = s
   bloques.value = b
-  solicitudes.value = sol
-  coachees.value = cc
-  loading.value = false
+  solicitudes.value = sol ?? []
+  coachees.value = cc ?? []
 }
 
-onMounted(load)
+const { loading, error, fallos, recargar, tolerar } = useCarga(load)
+
+onMounted(recargar)
 
 // --- Solicitudes pendientes ---
 const respondiendoId = ref<string | null>(null)
@@ -241,7 +245,7 @@ async function crearNuevaSesion() {
       class="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3"
     >
       <div class="rounded-2xl border border-[var(--color-line)] bg-white p-4">
-        <p class="text-xs text-[var(--color-ink)]/60">
+        <p class="text-xs text-[var(--color-muted)]">
           Sesiones agendadas
         </p>
         <p class="font-[family-name:var(--font-mono)] text-2xl">
@@ -249,7 +253,7 @@ async function crearNuevaSesion() {
         </p>
       </div>
       <div class="rounded-2xl border border-[var(--color-line)] bg-white p-4">
-        <p class="text-xs text-[var(--color-ink)]/60">
+        <p class="text-xs text-[var(--color-muted)]">
           Esta semana
         </p>
         <p class="font-[family-name:var(--font-mono)] text-2xl">
@@ -257,7 +261,7 @@ async function crearNuevaSesion() {
         </p>
       </div>
       <div class="rounded-2xl border border-[var(--color-line)] bg-white p-4">
-        <p class="text-xs text-[var(--color-ink)]/60">
+        <p class="text-xs text-[var(--color-muted)]">
           Clientes con sesión agendada
         </p>
         <p class="font-[family-name:var(--font-mono)] text-2xl">
@@ -266,11 +270,32 @@ async function crearNuevaSesion() {
       </div>
     </div>
 
-    <SkeletonBlock v-if="loading" />
+    <SkeletonBlock
+      v-if="loading"
+      variant="cards"
+    />
+    <ErrorState
+      v-else-if="error"
+      @retry="recargar"
+    />
     <div
       v-else
       class="space-y-4"
     >
+      <div
+        v-if="fallos > 0"
+        role="status"
+        class="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[var(--color-bronze)]/40 bg-[var(--color-bronze)]/10 px-4 py-3 text-sm"
+      >
+        <span>No pudimos cargar las solicitudes de sesión o la lista de coachees: la agenda puede estar incompleta.</span>
+        <AppButton
+          variant="secondary"
+          size="sm"
+          @click="recargar"
+        >
+          Reintentar
+        </AppButton>
+      </div>
       <SectionCard
         v-if="solicitudes.length > 0"
         title="Solicitudes de sesión pendientes"
@@ -288,7 +313,7 @@ async function crearNuevaSesion() {
             </p>
             <p
               v-if="s.motivo"
-              class="mb-2 text-[var(--color-ink)]/60"
+              class="mb-2 text-[var(--color-muted)]"
             >
               {{ s.motivo }}
             </p>
@@ -296,23 +321,25 @@ async function crearNuevaSesion() {
               v-model="respuestaPorSolicitud[s.id]"
               type="text"
               placeholder="Mensaje para el coachee (opcional)"
-              class="mb-2 w-full rounded-lg border border-[var(--color-line)] px-3 py-1.5 text-xs"
+              aria-label="Mensaje para el coachee"
+              class="field-input mb-2"
             >
             <div class="flex gap-2">
-              <button
-                class="rounded-lg bg-[var(--color-sage)] px-3 py-1.5 text-xs font-medium text-white disabled:opacity-60"
+              <AppButton
+                size="sm"
                 :disabled="respondiendoId === s.id"
                 @click="responder(s, true)"
               >
                 Aprobar
-              </button>
-              <button
-                class="rounded-lg border border-[var(--color-line)] px-3 py-1.5 text-xs disabled:opacity-60"
+              </AppButton>
+              <AppButton
+                variant="secondary"
+                size="sm"
                 :disabled="respondiendoId === s.id"
                 @click="responder(s, false)"
               >
                 Rechazar
-              </button>
+              </AppButton>
             </div>
           </li>
         </ul>
@@ -334,7 +361,7 @@ async function crearNuevaSesion() {
         title="Disponibilidad semanal"
         icon="habito"
       >
-        <p class="mb-3 text-xs text-[var(--color-ink)]/50">
+        <p class="mb-3 text-xs text-[var(--color-muted)]">
           Estos horarios son los que ven tus coachees para pedir una sesión — se repiten todas
           las semanas.
         </p>
@@ -376,7 +403,7 @@ async function crearNuevaSesion() {
             </div>
             <p
               v-else
-              class="rounded-lg border border-dashed border-[var(--color-line)] px-3 py-4 text-center text-xs text-[var(--color-ink)]/40"
+              class="rounded-lg border border-dashed border-[var(--color-line)] px-3 py-4 text-center text-xs text-[var(--color-muted)]"
             >
               Sin disponibilidad
             </p>
@@ -551,7 +578,7 @@ async function crearNuevaSesion() {
             max="52"
             class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
           >
-          <span class="mt-1 block text-xs text-[var(--color-ink)]/50">
+          <span class="mt-1 block text-xs text-[var(--color-muted)]">
             {{ descripcionSerie }}
           </span>
         </label>

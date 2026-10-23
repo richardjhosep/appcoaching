@@ -1,11 +1,17 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import AppShell from '../../components/AppShell.vue'
 import AppModal from '../../components/AppModal.vue'
 import Pagination from '../../components/Pagination.vue'
 import StatusToggle from '../../components/StatusToggle.vue'
 import IconButton from '../../components/IconButton.vue'
 import SkeletonBlock from '../../components/SkeletonBlock.vue'
+import ErrorState from '../../components/ErrorState.vue'
+import EmptyState from '../../components/EmptyState.vue'
+import AppButton from '../../components/AppButton.vue'
+import FormField from '../../components/FormField.vue'
+import SortableTh from '../../components/SortableTh.vue'
 import { createCoachee, deleteCoachee, listCoachees, setCoacheeActivo, updateCoachee, type CoacheeListItem } from '../../api/coachees'
 import { listEmpresas, type Empresa } from '../../api/empresas'
 import { abrirCiclo, actualizarTotalSesiones, getCicloActualDeCoachee, type Ciclo } from '../../api/ciclos'
@@ -14,31 +20,73 @@ import { notifyError, notifySuccess, confirmDialog } from '../../lib/notify'
 import { dentroDeRango } from '../../lib/dateRange'
 import { formatCLP, formatUF, type Moneda } from '../../lib/moneda'
 import TarifaInput from '../../components/TarifaInput.vue'
+import { useCarga } from '../../lib/useCarga'
+import { ordenarPor, useOrden } from '../../lib/ordenar'
+import { armarQuery, leerEntero, leerTexto } from '../../lib/queryParams'
+import { enfocarPrimerInvalido } from '../../lib/enfocarInvalido'
 
 const PAGE_SIZE = 12
 
-const loading = ref(true)
+const route = useRoute()
+const router = useRouter()
+
 const coachees = ref<CoacheeListItem[]>([])
 const empresas = ref<Empresa[]>([])
-const search = ref('')
-const filtroEmpresa = ref('')
-const filtroEstado = ref<'' | 'activos' | 'inactivos'>('')
+// Filtros, búsqueda, página y orden viven en la URL (?q=&empresa=&estado=&desde=&hasta=&page=
+// &orden=&dir=): al volver desde la ficha de un coachee se restauran tal cual los dejó el coach.
+const search = ref(leerTexto(route.query, 'q'))
+const filtroEmpresa = ref(leerTexto(route.query, 'empresa'))
+const filtroEstado = ref<'' | 'activos' | 'inactivos'>(
+  (['activos', 'inactivos'] as const).find((v) => v === leerTexto(route.query, 'estado')) ?? '',
+)
 // Vacío por defecto — un mantenedor debe mostrar todo hasta que el coach acote, nunca ocultar
 // registros existentes solo porque se creó antes del 1° del mes actual.
-const fechaDesde = ref('')
-const fechaHasta = ref('')
-const page = ref(1)
+const fechaDesde = ref(leerTexto(route.query, 'desde'))
+const fechaHasta = ref(leerTexto(route.query, 'hasta'))
+const page = ref(leerEntero(route.query, 'page'))
+const orden = useOrden(leerTexto(route.query, 'orden') || 'creado', leerTexto(route.query, 'dir') === 'asc' ? 'asc' : 'desc')
+
+watch([search, filtroEmpresa, filtroEstado, fechaDesde, fechaHasta, page, orden.clave, orden.dir], () => {
+  void router.replace({
+    query: armarQuery(
+      route.query,
+      {
+        q: search.value,
+        empresa: filtroEmpresa.value,
+        estado: filtroEstado.value,
+        desde: fechaDesde.value,
+        hasta: fechaHasta.value,
+        page: page.value,
+        orden: orden.clave.value,
+        dir: orden.dir.value,
+      },
+      { page: 1, orden: 'creado', dir: 'desc' },
+    ),
+  })
+})
 
 async function load() {
-  loading.value = true
   const [c, e] = await Promise.all([listCoachees(), listEmpresas()])
-  c.sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? ''))
   coachees.value = c
   empresas.value = e
-  loading.value = false
 }
 
-onMounted(load)
+const { loading, error, recargar } = useCarga(load)
+
+// Enlace desde "Crear coachee de esta empresa" (EmpresasView): /coach/coachees?crear=1&empresaId=…
+// abre el formulario de alta con la empresa ya elegida.
+function abrirCrearDesdeQuery() {
+  if (leerTexto(route.query, 'crear') !== '1' || error.value) return
+  const empresaId = leerTexto(route.query, 'empresaId')
+  abrirCrear()
+  if (empresas.value.some((e) => e.id === empresaId)) form.empresaId = empresaId
+  void router.replace({ query: { ...route.query, crear: undefined, empresaId: undefined } })
+}
+
+onMounted(async () => {
+  await recargar()
+  abrirCrearDesdeQuery()
+})
 
 function estaActivo(c: CoacheeListItem): boolean {
   return c.activo !== false
@@ -61,10 +109,35 @@ const filtradas = computed(() => {
   })
 })
 
+const VALOR_ORDEN: Record<string, (c: CoacheeListItem) => string | number | boolean | null | undefined> = {
+  nombre: (c) => c.nombre,
+  email: (c) => c.user?.email,
+  empresa: (c) => c.empresa?.nombre ?? 'Independiente',
+  area: (c) => c.areaGerencia,
+  tarifa: (c) => c.tarifaPropia,
+  estado: (c) => estaActivo(c),
+  creado: (c) => c.createdAt,
+}
+
+const ordenadas = computed(() =>
+  ordenarPor(filtradas.value, VALOR_ORDEN[orden.clave.value] ?? VALOR_ORDEN.creado, orden.dir.value),
+)
+
 const paginadas = computed(() => {
   const start = (page.value - 1) * PAGE_SIZE
-  return filtradas.value.slice(start, start + PAGE_SIZE)
+  return ordenadas.value.slice(start, start + PAGE_SIZE)
 })
+
+// Si la URL trae una página que ya no existe (o los filtros la dejan fuera de rango), se corrige.
+watch(filtradas, (lista) => {
+  const ultima = Math.max(1, Math.ceil(lista.length / PAGE_SIZE))
+  if (!loading.value && page.value > ultima) page.value = ultima
+})
+
+function ordenarPorColumna(clave: string) {
+  orden.alternar(clave)
+  page.value = 1
+}
 
 function limpiarFiltros() {
   search.value = ''
@@ -166,7 +239,9 @@ function validar(): boolean {
     && (form.tarifaPropia <= 0 || (form.tarifaPropiaMoneda === 'clp' && !Number.isInteger(form.tarifaPropia)))
     ? 'La tarifa propia debe ser mayor a 0.'
     : undefined
-  return !errors.nombre && !errors.email && !errors.tarifaPropia && !errors.totalSesiones
+  const valido = !errors.nombre && !errors.email && !errors.tarifaPropia && !errors.totalSesiones
+  if (!valido) void enfocarPrimerInvalido()
+  return valido
 }
 
 async function guardar() {
@@ -187,7 +262,7 @@ async function guardar() {
       })
       await guardarSesionesDelProceso(editando.value.id)
       modalOpen.value = false
-      await load()
+      await recargar()
       await notifySuccess('Coachee actualizado', `Los datos de ${form.nombre} se guardaron correctamente.`)
     } else {
       const resultado = await createCoachee({
@@ -203,7 +278,7 @@ async function guardar() {
       })
       await guardarSesionesDelProceso(resultado.coachee.id)
       modalOpen.value = false
-      await load()
+      await recargar()
       if (resultado.temporaryPassword) {
         await notifySuccess('Coachee creado', `Se envió un correo a ${form.email} con las instrucciones de acceso.`)
       } else {
@@ -212,6 +287,7 @@ async function guardar() {
     }
   } catch (err) {
     serverErrors.value = err instanceof ApiError ? (err.fieldErrors ?? {}) : {}
+    void enfocarPrimerInvalido()
     await notifyError('No se pudo guardar', err instanceof ApiError ? err.message : 'Ocurrió un error inesperado.')
   } finally {
     guardando.value = false
@@ -231,7 +307,7 @@ async function toggleActivo(coachee: CoacheeListItem) {
   if (!confirmado) return
   try {
     await setCoacheeActivo(coachee.id, activar)
-    await load()
+    await recargar()
     await notifySuccess(activar ? 'Coachee activado' : 'Coachee desactivado')
   } catch (err) {
     await notifyError('No se pudo cambiar el estado', err instanceof ApiError ? err.message : 'Ocurrió un error inesperado.')
@@ -248,7 +324,7 @@ async function eliminar(coachee: CoacheeListItem) {
   if (!confirmado) return
   try {
     await deleteCoachee(coachee.id)
-    await load()
+    await recargar()
     await notifySuccess('Coachee eliminado')
   } catch (err) {
     await notifyError('No se pudo eliminar', err instanceof ApiError ? err.message : 'Ocurrió un error inesperado.')
@@ -263,19 +339,43 @@ async function eliminar(coachee: CoacheeListItem) {
         <h1 class="font-[family-name:var(--font-heading)] text-xl font-semibold">
           Mantenedor de Coachees
         </h1>
-        <p class="text-sm text-[var(--color-ink)]/60">
+        <p class="text-sm text-[var(--color-muted)]">
           Gestión y administración de los coachees del sistema.
         </p>
       </div>
-      <button
-        class="rounded-lg bg-[var(--color-ink)] px-4 py-2 text-sm font-medium text-[var(--color-parchment)]"
-        @click="abrirCrear"
-      >
+      <AppButton @click="abrirCrear">
         + Nuevo Coachee
-      </button>
+      </AppButton>
     </div>
 
-    <SkeletonBlock v-if="loading" />
+    <SkeletonBlock
+      v-if="loading"
+      variant="table"
+      :rows="6"
+    />
+    <ErrorState
+      v-else-if="error"
+      @retry="recargar"
+    />
+    <EmptyState
+      v-else-if="coachees.length === 0"
+      icon="coachees"
+      title="Todavía no tienes coachees"
+      description="Crea tu primer coachee para agendar sesiones y armar su plan de desarrollo. Si trabajas con una empresa, créala antes para poder asociarlo."
+    >
+      <div class="flex flex-wrap justify-center gap-2">
+        <AppButton @click="abrirCrear">
+          Crear primer coachee
+        </AppButton>
+        <RouterLink
+          v-if="empresas.length === 0"
+          to="/coach/empresas"
+          class="inline-flex min-h-11 items-center rounded-lg border border-[var(--color-line)] bg-white px-4 text-sm font-medium hover:bg-[var(--color-parchment)]/60 sm:min-h-10"
+        >
+          Crear una empresa primero
+        </RouterLink>
+      </div>
+    </EmptyState>
     <div
       v-else
       class="space-y-3"
@@ -283,7 +383,8 @@ async function eliminar(coachee: CoacheeListItem) {
       <div class="flex flex-wrap items-center gap-2">
         <select
           v-model="filtroEmpresa"
-          class="rounded-lg border border-[var(--color-line)] px-3 py-1.5 text-sm"
+          aria-label="Filtrar por empresa"
+          class="field-input w-auto"
           @change="page = 1"
         >
           <option value="">
@@ -299,7 +400,8 @@ async function eliminar(coachee: CoacheeListItem) {
         </select>
         <select
           v-model="filtroEstado"
-          class="rounded-lg border border-[var(--color-line)] px-3 py-1.5 text-sm"
+          aria-label="Filtrar por estado"
+          class="field-input w-auto"
           @change="page = 1"
         >
           <option value="">
@@ -312,79 +414,99 @@ async function eliminar(coachee: CoacheeListItem) {
             Inactivos
           </option>
         </select>
-        <label class="flex items-center gap-1.5 text-xs text-[var(--color-ink)]/60">
+        <label class="flex items-center gap-1.5 text-xs text-[var(--color-muted)]">
           Desde
           <input
             v-model="fechaDesde"
             type="date"
-            class="rounded-lg border border-[var(--color-line)] px-2 py-1.5 text-sm"
+            class="field-input w-auto"
             @change="page = 1"
           >
         </label>
-        <label class="flex items-center gap-1.5 text-xs text-[var(--color-ink)]/60">
+        <label class="flex items-center gap-1.5 text-xs text-[var(--color-muted)]">
           Hasta
           <input
             v-model="fechaHasta"
             type="date"
-            class="rounded-lg border border-[var(--color-line)] px-2 py-1.5 text-sm"
+            class="field-input w-auto"
             @change="page = 1"
           >
         </label>
-        <button
-          class="rounded-lg border border-[var(--color-line)] px-3 py-1.5 text-xs hover:bg-[var(--color-parchment)]/50"
+        <AppButton
+          variant="secondary"
+          size="sm"
           @click="limpiarFiltros"
         >
           × Limpiar filtros
-        </button>
-        <span class="ml-auto text-xs text-[var(--color-ink)]/50">{{ filtradas.length }} registro(s)</span>
+        </AppButton>
+        <span class="ml-auto text-xs text-[var(--color-muted)]">{{ filtradas.length }} registro(s)</span>
       </div>
 
       <input
         v-model="search"
         type="search"
+        aria-label="Buscar coachees"
         placeholder="Buscar por nombre o email…"
-        class="w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+        class="field-input"
         @input="page = 1"
       >
 
-      <div class="overflow-x-auto rounded-2xl border border-[var(--color-line)] bg-white">
-        <table class="w-full text-left text-sm">
+      <div class="data-table-wrap">
+        <table class="data-table">
           <thead>
-            <tr class="border-b border-[var(--color-line)] bg-[var(--color-parchment)] text-xs text-[var(--color-ink)]/60">
-              <th class="px-4 py-3">
-                Nombre
-              </th>
-              <th class="px-4 py-3">
-                Email
-              </th>
-              <th class="px-4 py-3">
-                Empresa
-              </th>
-              <th class="px-4 py-3">
-                Área/Gerencia
-              </th>
-              <th class="px-4 py-3">
-                Tarifa
-              </th>
-              <th class="px-4 py-3">
-                Estado
-              </th>
-              <th class="px-4 py-3">
-                Creado
-              </th>
-              <th class="px-4 py-3">
+            <tr>
+              <SortableTh
+                label="Nombre"
+                :activo="orden.clave.value === 'nombre'"
+                :dir="orden.dir.value"
+                @ordenar="ordenarPorColumna('nombre')"
+              />
+              <SortableTh
+                label="Email"
+                :activo="orden.clave.value === 'email'"
+                :dir="orden.dir.value"
+                @ordenar="ordenarPorColumna('email')"
+              />
+              <SortableTh
+                label="Empresa"
+                :activo="orden.clave.value === 'empresa'"
+                :dir="orden.dir.value"
+                @ordenar="ordenarPorColumna('empresa')"
+              />
+              <SortableTh
+                label="Área/Gerencia"
+                :activo="orden.clave.value === 'area'"
+                :dir="orden.dir.value"
+                @ordenar="ordenarPorColumna('area')"
+              />
+              <SortableTh
+                label="Tarifa"
+                :activo="orden.clave.value === 'tarifa'"
+                :dir="orden.dir.value"
+                @ordenar="ordenarPorColumna('tarifa')"
+              />
+              <SortableTh
+                label="Estado"
+                :activo="orden.clave.value === 'estado'"
+                :dir="orden.dir.value"
+                @ordenar="ordenarPorColumna('estado')"
+              />
+              <SortableTh
+                label="Creado"
+                :activo="orden.clave.value === 'creado'"
+                :dir="orden.dir.value"
+                @ordenar="ordenarPorColumna('creado')"
+              />
+              <th scope="col">
                 Acciones
               </th>
             </tr>
           </thead>
           <tbody>
-            <tr
-              v-if="paginadas.length === 0"
-              class="border-b border-[var(--color-line)] last:border-0"
-            >
+            <tr v-if="paginadas.length === 0">
               <td
                 colspan="8"
-                class="px-4 py-6 text-center text-sm text-[var(--color-ink)]/50"
+                class="py-6 text-center text-sm text-[var(--color-muted)]"
               >
                 Sin resultados.
               </td>
@@ -392,37 +514,36 @@ async function eliminar(coachee: CoacheeListItem) {
             <tr
               v-for="c in paginadas"
               :key="c.id"
-              class="border-b border-[var(--color-line)] last:border-0"
             >
-              <td class="px-4 py-3 font-medium">
+              <td class="font-medium">
                 {{ c.nombre }}
                 <span
                   v-if="c.cargo"
-                  class="block text-xs font-normal text-[var(--color-ink)]/55"
+                  class="block text-xs font-normal text-[var(--color-muted)]"
                 >{{ c.cargo }}</span>
               </td>
-              <td class="px-4 py-3 text-[var(--color-ink)]/70">
+              <td class="text-[var(--color-muted)]">
                 {{ c.user?.email ?? '—' }}
               </td>
-              <td class="px-4 py-3 text-[var(--color-ink)]/70">
+              <td class="text-[var(--color-muted)]">
                 {{ c.empresa?.nombre ?? 'Independiente' }}
               </td>
-              <td class="px-4 py-3 text-[var(--color-ink)]/70">
+              <td class="text-[var(--color-muted)]">
                 {{ c.areaGerencia ?? '—' }}
               </td>
-              <td class="px-4 py-3 font-[family-name:var(--font-mono)] text-xs">
+              <td class="font-[family-name:var(--font-mono)] text-xs">
                 {{ formatoTarifaPropia(c) }}
               </td>
-              <td class="px-4 py-3">
+              <td>
                 <StatusToggle
                   :active="estaActivo(c)"
                   @toggle="toggleActivo(c)"
                 />
               </td>
-              <td class="px-4 py-3 text-xs text-[var(--color-ink)]/60">
+              <td class="text-xs text-[var(--color-muted)]">
                 {{ c.createdAt ? new Date(c.createdAt).toLocaleDateString('es-CL') : '—' }}
               </td>
-              <td class="px-4 py-3">
+              <td>
                 <div class="flex gap-2">
                   <IconButton
                     icon="ver"
@@ -460,44 +581,48 @@ async function eliminar(coachee: CoacheeListItem) {
     >
       <form
         class="space-y-4"
+        novalidate
         @submit.prevent="guardar"
       >
-        <label class="block text-sm">
-          Nombre
+        <FormField
+          v-slot="{ id, describedby, invalid }"
+          label="Nombre"
+          :error="errors.nombre || serverErrors.nombre"
+        >
           <input
+            :id="id"
             v-model="form.nombre"
             type="text"
-            class="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
-            :class="errors.nombre || serverErrors.nombre ? 'border-[var(--color-danger)]' : 'border-[var(--color-line)]'"
+            class="field-input"
+            :aria-describedby="describedby"
+            :aria-invalid="invalid"
           >
-          <span
-            v-if="errors.nombre || serverErrors.nombre"
-            class="mt-1 block text-xs text-[var(--color-danger)]"
-          >{{ errors.nombre || serverErrors.nombre }}</span>
-        </label>
+        </FormField>
 
-        <label
+        <FormField
           v-if="!editando"
-          class="block text-sm"
+          v-slot="{ id, describedby, invalid }"
+          label="Email"
+          :error="errors.email || serverErrors.email"
         >
-          Email
           <input
+            :id="id"
             v-model="form.email"
             type="email"
-            class="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
-            :class="errors.email || serverErrors.email ? 'border-[var(--color-danger)]' : 'border-[var(--color-line)]'"
+            class="field-input"
+            :aria-describedby="describedby"
+            :aria-invalid="invalid"
           >
-          <span
-            v-if="errors.email || serverErrors.email"
-            class="mt-1 block text-xs text-[var(--color-danger)]"
-          >{{ errors.email || serverErrors.email }}</span>
-        </label>
+        </FormField>
 
-        <label class="block text-sm">
-          Empresa (opcional, independiente si se deja vacío)
+        <FormField
+          v-slot="{ id }"
+          label="Empresa (opcional, independiente si se deja vacío)"
+        >
           <select
+            :id="id"
             v-model="form.empresaId"
-            class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+            class="field-input"
           >
             <option value="">
               Independiente
@@ -510,35 +635,44 @@ async function eliminar(coachee: CoacheeListItem) {
               {{ e.nombre }}
             </option>
           </select>
-        </label>
+        </FormField>
 
-        <label class="block text-sm">
-          Cargo / posición (opcional)
+        <FormField
+          v-slot="{ id }"
+          label="Cargo / posición (opcional)"
+        >
           <input
+            :id="id"
             v-model="form.cargo"
             type="text"
             placeholder="Ej. Jefe de Mantención"
-            class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+            class="field-input"
           >
-        </label>
+        </FormField>
 
-        <label class="block text-sm">
-          Área/gerencia (opcional)
+        <FormField
+          v-slot="{ id }"
+          label="Área/gerencia (opcional)"
+        >
           <input
+            :id="id"
             v-model="form.areaGerencia"
             type="text"
-            class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+            class="field-input"
           >
-        </label>
+        </FormField>
 
-        <label class="block text-sm">
-          Jefe directo (opcional)
+        <FormField
+          v-slot="{ id }"
+          label="Jefe directo (opcional)"
+        >
           <input
+            :id="id"
             v-model="form.jefeDirecto"
             type="text"
-            class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+            class="field-input"
           >
-        </label>
+        </FormField>
 
         <TarifaInput
           v-model="form.tarifaPropia"
@@ -547,51 +681,50 @@ async function eliminar(coachee: CoacheeListItem) {
           :error="errors.tarifaPropia || serverErrors.tarifaPropia"
         />
 
-        <label class="block text-sm">
-          Número de sesiones del proceso
+        <FormField
+          v-slot="{ id, describedby, invalid }"
+          label="Número de sesiones del proceso"
+          :error="errors.totalSesiones"
+          :hint="cicloAbierto ? 'Edita el total del ciclo abierto (también desde la pestaña Ciclo de su ficha).' : 'Abre el ciclo de coaching con este total de sesiones. Si lo dejas vacío, puedes abrirlo después desde la pestaña Ciclo.'"
+        >
           <input
+            :id="id"
             v-model.number="form.totalSesiones"
             type="number"
             min="1"
             step="1"
             placeholder="Ej. 8"
-            class="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
-            :class="errors.totalSesiones ? 'border-[var(--color-danger)]' : 'border-[var(--color-line)]'"
+            class="field-input"
+            :aria-describedby="describedby"
+            :aria-invalid="invalid"
           >
-          <span
-            v-if="errors.totalSesiones"
-            class="mt-1 block text-xs text-[var(--color-danger)]"
-          >{{ errors.totalSesiones }}</span>
-          <span
-            v-else
-            class="mt-1 block text-xs text-[var(--color-ink)]/50"
-          >{{ cicloAbierto ? 'Edita el total del ciclo abierto (también desde la pestaña Ciclo de su ficha).' : 'Abre el ciclo de coaching con este total de sesiones. Si lo dejas vacío, puedes abrirlo después desde la pestaña Ciclo.' }}</span>
-        </label>
+        </FormField>
 
-        <label class="block text-sm">
-          Objetivo del proceso (opcional)
+        <FormField
+          v-slot="{ id }"
+          label="Objetivo del proceso (opcional)"
+        >
           <textarea
+            :id="id"
             v-model="form.objetivoProceso"
             rows="2"
-            class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+            class="field-input"
           />
-        </label>
+        </FormField>
 
         <div class="flex justify-end gap-2 pt-2">
-          <button
-            type="button"
-            class="rounded-lg border border-[var(--color-line)] px-4 py-2 text-sm"
+          <AppButton
+            variant="secondary"
             @click="modalOpen = false"
           >
             Cancelar
-          </button>
-          <button
+          </AppButton>
+          <AppButton
             type="submit"
-            :disabled="guardando"
-            class="rounded-lg bg-[var(--color-ink)] px-4 py-2 text-sm text-[var(--color-parchment)] disabled:opacity-60"
+            :loading="guardando"
           >
             {{ guardando ? 'Guardando…' : 'Guardar' }}
-          </button>
+          </AppButton>
         </div>
       </form>
     </AppModal>

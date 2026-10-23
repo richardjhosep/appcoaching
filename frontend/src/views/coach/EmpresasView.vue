@@ -1,11 +1,16 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import AppShell from '../../components/AppShell.vue'
 import AppModal from '../../components/AppModal.vue'
 import Pagination from '../../components/Pagination.vue'
 import StatusToggle from '../../components/StatusToggle.vue'
 import IconButton from '../../components/IconButton.vue'
 import SkeletonBlock from '../../components/SkeletonBlock.vue'
+import ErrorState from '../../components/ErrorState.vue'
+import AppButton from '../../components/AppButton.vue'
+import FormField from '../../components/FormField.vue'
+import SortableTh from '../../components/SortableTh.vue'
+import StatusBadge from '../../components/StatusBadge.vue'
 import EmptyState from '../../components/EmptyState.vue'
 import {
   createEmpresa,
@@ -25,11 +30,14 @@ import { formatCLP, formatUF, type Moneda } from '../../lib/moneda'
 import TarifaInput from '../../components/TarifaInput.vue'
 import { listUsers, type UserAccount } from '../../api/users'
 import { useAuthStore } from '../../stores/auth'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
+import { useCarga } from '../../lib/useCarga'
+import { ordenarPor, useOrden } from '../../lib/ordenar'
+import { leerTexto } from '../../lib/queryParams'
+import { enfocarPrimerInvalido } from '../../lib/enfocarInvalido'
 
 const PAGE_SIZE = 12
 
-const loading = ref(true)
 const empresas = ref<Empresa[]>([])
 const search = ref('')
 const filtroEstado = ref<'' | 'activas' | 'inactivas'>('')
@@ -46,22 +54,22 @@ const competenciasDeLaEmpresa = computed(() => competenciasDisponibles.value.fil
 const competenciasDelCatalogo = computed(() => competenciasDisponibles.value.filter((c) => !c.empresaId))
 
 async function load() {
-  loading.value = true
   const [data, usuarios] = await Promise.all([
     listEmpresas(),
     // Solo el superadmin necesita saber qué usuario tiene cada empresa (para "Ver como").
     auth.user?.superadmin ? listUsers().catch(() => [] as UserAccount[]) : Promise.resolve([] as UserAccount[]),
   ])
-  data.sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? ''))
   empresas.value = data
   usuariosEmpresa.value = usuarios.filter((u) => u.role === 'empresa')
-  loading.value = false
 }
+
+const { loading, error, recargar } = useCarga(load)
 
 // --- "Ver como" (solo superadmin): entra al portal de la empresa en solo lectura usando una
 // de sus cuentas de usuario (todas ven el mismo portal); se prefiere una activa.
 const auth = useAuthStore()
 const router = useRouter()
+const route = useRoute()
 const usuariosEmpresa = ref<UserAccount[]>([])
 const entrandoVerComo = ref<string | null>(null)
 
@@ -84,7 +92,20 @@ async function verComoEmpresa(empresa: Empresa) {
   }
 }
 
-onMounted(load)
+// Búsqueda global / enlaces: /coach/empresas?id=<empresa> abre el editor de esa empresa.
+async function abrirDesdeQuery() {
+  const id = leerTexto(route.query, 'id')
+  if (!id || loading.value || error.value) return
+  const empresa = empresas.value.find((e) => e.id === id)
+  await router.replace({ query: { ...route.query, id: undefined } })
+  if (empresa) await abrirEditar(empresa)
+}
+
+onMounted(async () => {
+  await recargar()
+  await abrirDesdeQuery()
+})
+watch(() => route.query.id, () => void abrirDesdeQuery())
 
 const filtradas = computed(() => {
   const q = search.value.trim().toLowerCase()
@@ -97,10 +118,29 @@ const filtradas = computed(() => {
   })
 })
 
+const orden = useOrden('creado', 'desc')
+const VALOR_ORDEN: Record<string, (e: Empresa) => string | number | boolean | null | undefined> = {
+  nombre: (e) => e.nombre,
+  tarifa: (e) => e.tarifaHora,
+  horas: (e) => e.horasContratadasEfectivas ?? e.horasContratadas,
+  pagada: (e) => e.pagada,
+  fin: (e) => e.fechaFin,
+  estado: (e) => e.isActive,
+  creado: (e) => e.createdAt,
+}
+const ordenadas = computed(() =>
+  ordenarPor(filtradas.value, VALOR_ORDEN[orden.clave.value] ?? VALOR_ORDEN.creado, orden.dir.value),
+)
+
 const paginadas = computed(() => {
   const start = (page.value - 1) * PAGE_SIZE
-  return filtradas.value.slice(start, start + PAGE_SIZE)
+  return ordenadas.value.slice(start, start + PAGE_SIZE)
 })
+
+function ordenarPorColumna(clave: string) {
+  orden.alternar(clave)
+  page.value = 1
+}
 
 function limpiarFiltros() {
   search.value = ''
@@ -158,6 +198,9 @@ const serverErrors = ref<Record<string, string>>({})
 
 // Competencias prioritarias/contratadas — solo tiene sentido una vez que la empresa ya
 // existe (mismo criterio que horasContratadas/pagada, ocultos al crear).
+// Siguiente paso guiado: tras crear una empresa se ofrece crear su primer coachee.
+const recienCreada = ref<{ id: string; nombre: string } | null>(null)
+
 const competenciasSeleccionadas = ref<string[]>([])
 const horasCalculadas = ref<number | null>(null)
 function toggleCompetencia(competenciaId: string) {
@@ -219,7 +262,9 @@ function validar(): boolean {
     || (form.tarifaHoraMoneda === 'clp' && !Number.isInteger(form.tarifaHora))
     ? 'La tarifa por hora es obligatoria y debe ser mayor a 0.'
     : undefined
-  return !errors.nombre && !errors.tarifaHora
+  const valido = !errors.nombre && !errors.tarifaHora
+  if (!valido) void enfocarPrimerInvalido()
+  return valido
 }
 
 async function guardar() {
@@ -243,10 +288,10 @@ async function guardar() {
         setCompetenciasDeEmpresa(editando.value.id, competenciasSeleccionadas.value),
       ])
       modalOpen.value = false
-      await load()
+      await recargar()
       await notifySuccess('Empresa actualizada', `Los datos de ${form.nombre} se guardaron correctamente.`)
     } else {
-      await createEmpresa(
+      const creada = await createEmpresa(
         form.nombre,
         form.tarifaHora!,
         form.tarifaHoraMoneda,
@@ -254,11 +299,13 @@ async function guardar() {
         form.fechaFin || undefined,
       )
       modalOpen.value = false
-      await load()
+      if (creada) recienCreada.value = { id: creada.id, nombre: creada.nombre }
+      await recargar()
       await notifySuccess('Empresa creada', `${form.nombre} ya está disponible para asignar coachees.`)
     }
   } catch (err) {
     serverErrors.value = err instanceof ApiError ? (err.fieldErrors ?? {}) : {}
+    void enfocarPrimerInvalido()
     await notifyError('No se pudo guardar', err instanceof ApiError ? err.message : 'Ocurrió un error inesperado.')
   } finally {
     guardando.value = false
@@ -278,7 +325,7 @@ async function toggleActivo(empresa: Empresa) {
   if (!confirmado) return
   try {
     await updateEmpresa(empresa.id, { isActive: activar })
-    await load()
+    await recargar()
     await notifySuccess(activar ? 'Empresa activada' : 'Empresa desactivada')
   } catch (err) {
     await notifyError('No se pudo cambiar el estado', err instanceof ApiError ? err.message : 'Ocurrió un error inesperado.')
@@ -295,7 +342,7 @@ async function eliminar(empresa: Empresa) {
   if (!confirmado) return
   try {
     await deleteEmpresa(empresa.id)
-    await load()
+    await recargar()
     await notifySuccess('Empresa eliminada')
   } catch (err) {
     await notifyError('No se pudo eliminar', err instanceof ApiError ? err.message : 'Ocurrió un error inesperado.')
@@ -310,19 +357,47 @@ async function eliminar(empresa: Empresa) {
         <h1 class="font-[family-name:var(--font-heading)] text-xl font-semibold">
           Mantenedor de Empresas
         </h1>
-        <p class="text-sm text-[var(--color-ink)]/60">
+        <p class="text-sm text-[var(--color-muted)]">
           Gestión y administración de las empresas del sistema.
         </p>
       </div>
-      <button
-        class="rounded-lg bg-[var(--color-ink)] px-4 py-2 text-sm font-medium text-[var(--color-parchment)]"
-        @click="abrirCrear"
-      >
+      <AppButton @click="abrirCrear">
         + Nueva Empresa
-      </button>
+      </AppButton>
     </div>
 
-    <SkeletonBlock v-if="loading" />
+    <div
+      v-if="recienCreada"
+      role="status"
+      class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--color-sage)]/40 bg-[var(--color-sage)]/10 px-4 py-3 text-sm"
+    >
+      <span><strong>{{ recienCreada.nombre }}</strong> ya está creada. El siguiente paso es sumar a sus coachees.</span>
+      <span class="flex items-center gap-2">
+        <RouterLink
+          :to="{ path: '/coach/coachees', query: { crear: '1', empresaId: recienCreada.id } }"
+          class="inline-flex min-h-11 items-center rounded-lg bg-[var(--color-ink)] px-4 text-sm font-medium text-[var(--color-parchment)] hover:bg-[var(--color-ink)]/85 sm:min-h-9"
+        >
+          Crear coachee de esta empresa
+        </RouterLink>
+        <AppButton
+          variant="ghost"
+          size="sm"
+          @click="recienCreada = null"
+        >
+          Cerrar
+        </AppButton>
+      </span>
+    </div>
+
+    <SkeletonBlock
+      v-if="loading"
+      variant="table"
+      :rows="6"
+    />
+    <ErrorState
+      v-else-if="error"
+      @retry="recargar"
+    />
     <div
       v-else
       class="space-y-3"
@@ -330,7 +405,8 @@ async function eliminar(empresa: Empresa) {
       <div class="flex flex-wrap items-center gap-2">
         <select
           v-model="filtroEstado"
-          class="rounded-lg border border-[var(--color-line)] px-3 py-1.5 text-sm"
+          aria-label="Filtrar por estado"
+          class="field-input w-auto"
           @change="page = 1"
         >
           <option value="">
@@ -343,79 +419,99 @@ async function eliminar(empresa: Empresa) {
             Inactivas
           </option>
         </select>
-        <label class="flex items-center gap-1.5 text-xs text-[var(--color-ink)]/60">
+        <label class="flex items-center gap-1.5 text-xs text-[var(--color-muted)]">
           Desde
           <input
             v-model="fechaDesde"
             type="date"
-            class="rounded-lg border border-[var(--color-line)] px-2 py-1.5 text-sm"
+            class="field-input w-auto"
             @change="page = 1"
           >
         </label>
-        <label class="flex items-center gap-1.5 text-xs text-[var(--color-ink)]/60">
+        <label class="flex items-center gap-1.5 text-xs text-[var(--color-muted)]">
           Hasta
           <input
             v-model="fechaHasta"
             type="date"
-            class="rounded-lg border border-[var(--color-line)] px-2 py-1.5 text-sm"
+            class="field-input w-auto"
             @change="page = 1"
           >
         </label>
-        <button
-          class="rounded-lg border border-[var(--color-line)] px-3 py-1.5 text-xs hover:bg-[var(--color-parchment)]/50"
+        <AppButton
+          variant="secondary"
+          size="sm"
           @click="limpiarFiltros"
         >
           × Limpiar filtros
-        </button>
-        <span class="ml-auto text-xs text-[var(--color-ink)]/50">{{ filtradas.length }} registro(s)</span>
+        </AppButton>
+        <span class="ml-auto text-xs text-[var(--color-muted)]">{{ filtradas.length }} registro(s)</span>
       </div>
 
       <input
         v-model="search"
         type="search"
+        aria-label="Buscar empresas"
         placeholder="Buscar por nombre…"
-        class="w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+        class="field-input"
         @input="page = 1"
       >
 
-      <div class="overflow-x-auto rounded-2xl border border-[var(--color-line)] bg-white">
-        <table class="w-full text-left text-sm">
+      <div class="data-table-wrap">
+        <table class="data-table">
           <thead>
-            <tr class="border-b border-[var(--color-line)] bg-[var(--color-parchment)] text-xs text-[var(--color-ink)]/60">
-              <th class="px-4 py-3">
-                Nombre
-              </th>
-              <th class="px-4 py-3">
-                Tarifa/hora
-              </th>
-              <th class="px-4 py-3">
-                Horas contratadas
-              </th>
-              <th class="px-4 py-3">
-                Pagada
-              </th>
-              <th class="px-4 py-3">
-                Término contrato
-              </th>
-              <th class="px-4 py-3">
-                Estado
-              </th>
-              <th class="px-4 py-3">
-                Creado
-              </th>
-              <th class="px-4 py-3">
+            <tr>
+              <SortableTh
+                label="Nombre"
+                :activo="orden.clave.value === 'nombre'"
+                :dir="orden.dir.value"
+                @ordenar="ordenarPorColumna('nombre')"
+              />
+              <SortableTh
+                label="Tarifa/hora"
+                :activo="orden.clave.value === 'tarifa'"
+                :dir="orden.dir.value"
+                @ordenar="ordenarPorColumna('tarifa')"
+              />
+              <SortableTh
+                label="Horas contratadas"
+                :activo="orden.clave.value === 'horas'"
+                :dir="orden.dir.value"
+                @ordenar="ordenarPorColumna('horas')"
+              />
+              <SortableTh
+                label="Pagada"
+                :activo="orden.clave.value === 'pagada'"
+                :dir="orden.dir.value"
+                @ordenar="ordenarPorColumna('pagada')"
+              />
+              <SortableTh
+                label="Término contrato"
+                :activo="orden.clave.value === 'fin'"
+                :dir="orden.dir.value"
+                @ordenar="ordenarPorColumna('fin')"
+              />
+              <SortableTh
+                label="Estado"
+                :activo="orden.clave.value === 'estado'"
+                :dir="orden.dir.value"
+                @ordenar="ordenarPorColumna('estado')"
+              />
+              <SortableTh
+                label="Creado"
+                :activo="orden.clave.value === 'creado'"
+                :dir="orden.dir.value"
+                @ordenar="ordenarPorColumna('creado')"
+              />
+              <th scope="col">
                 Acciones
               </th>
             </tr>
           </thead>
           <tbody>
-            <tr
-              v-if="paginadas.length === 0"
-              class="border-b border-[var(--color-line)] last:border-0"
-            >
+            <tr v-if="paginadas.length === 0">
               <td
                 colspan="8"
-                class="px-4 py-6 text-center text-sm text-[var(--color-ink)]/50"
+                class="py-6 text-center text-sm text-[var(--color-muted)]"
               >
                 Sin resultados.
               </td>
@@ -423,40 +519,41 @@ async function eliminar(empresa: Empresa) {
             <tr
               v-for="e in paginadas"
               :key="e.id"
-              class="border-b border-[var(--color-line)] last:border-0"
             >
-              <td class="px-4 py-3 font-medium">
+              <td class="font-medium">
                 {{ e.nombre }}
               </td>
-              <td class="px-4 py-3 font-[family-name:var(--font-mono)] text-xs">
+              <td class="font-[family-name:var(--font-mono)] text-xs">
                 {{ formatoTarifa(e) }}
               </td>
-              <td class="px-4 py-3">
+              <td>
                 {{ e.horasContratadasEfectivas ?? e.horasContratadas ?? '—' }}
                 <span
                   v-if="!e.horasFijas"
-                  class="block text-[10px] text-[var(--color-ink)]/45"
+                  class="block text-xs text-[var(--color-muted)]"
                 >según sesiones</span>
               </td>
-              <td class="px-4 py-3">
-                {{ e.pagada ? 'Sí' : 'No' }}
+              <td>
+                <StatusBadge :tone="e.pagada ? 'sage' : 'bronze'">
+                  {{ e.pagada ? 'Sí' : 'No' }}
+                </StatusBadge>
               </td>
               <td
-                class="px-4 py-3 text-xs"
+                class="text-xs"
                 :class="!e.fechaFin ? 'text-[var(--color-bronze)]' : ''"
               >
                 {{ formatoFechaFin(e.fechaFin) }}
               </td>
-              <td class="px-4 py-3">
+              <td>
                 <StatusToggle
                   :active="e.isActive"
                   @toggle="toggleActivo(e)"
                 />
               </td>
-              <td class="px-4 py-3 text-xs text-[var(--color-ink)]/60">
+              <td class="text-xs text-[var(--color-muted)]">
                 {{ e.createdAt ? new Date(e.createdAt).toLocaleDateString('es-CL') : '—' }}
               </td>
-              <td class="px-4 py-3">
+              <td>
                 <div class="flex items-center gap-2">
                   <button
                     v-if="auth.user?.superadmin"
@@ -521,21 +618,23 @@ async function eliminar(empresa: Empresa) {
     >
       <form
         class="space-y-4"
+        novalidate
         @submit.prevent="guardar"
       >
-        <label class="block text-sm">
-          Nombre
+        <FormField
+          v-slot="{ id, describedby, invalid }"
+          label="Nombre"
+          :error="errors.nombre || serverErrors.nombre"
+        >
           <input
+            :id="id"
             v-model="form.nombre"
             type="text"
-            class="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
-            :class="errors.nombre || serverErrors.nombre ? 'border-[var(--color-danger)]' : 'border-[var(--color-line)]'"
+            class="field-input"
+            :aria-describedby="describedby"
+            :aria-invalid="invalid"
           >
-          <span
-            v-if="errors.nombre || serverErrors.nombre"
-            class="mt-1 block text-xs text-[var(--color-danger)]"
-          >{{ errors.nombre || serverErrors.nombre }}</span>
-        </label>
+        </FormField>
 
         <TarifaInput
           v-model="form.tarifaHora"
@@ -545,22 +644,28 @@ async function eliminar(empresa: Empresa) {
         />
 
         <div class="grid grid-cols-2 gap-3">
-          <label class="block text-sm">
-            Inicio de contrato (opcional)
+          <FormField
+            v-slot="{ id }"
+            label="Inicio de contrato (opcional)"
+          >
             <input
+              :id="id"
               v-model="form.fechaInicio"
               type="date"
-              class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+              class="field-input"
             >
-          </label>
-          <label class="block text-sm">
-            Término de contrato (opcional)
+          </FormField>
+          <FormField
+            v-slot="{ id }"
+            label="Término de contrato (opcional)"
+          >
             <input
+              :id="id"
               v-model="form.fechaFin"
               type="date"
-              class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+              class="field-input"
             >
-          </label>
+          </FormField>
         </div>
 
         <div
@@ -576,7 +681,7 @@ async function eliminar(empresa: Empresa) {
             >
             <span>
               Horas fijas por contrato
-              <span class="block text-[var(--color-ink)]/50">
+              <span class="block text-[var(--color-muted)]">
                 Solo si la empresa contrató un número cerrado de horas. Si no, se calculan solas
                 como la suma de las sesiones de sus coachees y cambian con cada coachee nuevo.
               </span>
@@ -588,13 +693,13 @@ async function eliminar(empresa: Empresa) {
             type="number"
             min="0"
             aria-label="Horas contratadas fijas"
-            class="w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+            class="field-input"
           >
           <p
             v-else
             class="rounded-lg bg-[var(--color-parchment)]/60 px-3 py-2 font-[family-name:var(--font-mono)]"
           >
-            {{ horasCalculadas ?? '—' }} h <span class="font-[family-name:var(--font-body)] text-xs text-[var(--color-ink)]/50">(según sesiones de sus coachees)</span>
+            {{ horasCalculadas ?? '—' }} h <span class="font-[family-name:var(--font-body)] text-xs text-[var(--color-muted)]">(según sesiones de sus coachees)</span>
           </p>
         </div>
 
@@ -614,13 +719,13 @@ async function eliminar(empresa: Empresa) {
           class="text-sm"
         >
           Competencias prioritarias/contratadas
-          <p class="mb-2 mt-1 text-xs text-[var(--color-ink)]/50">
+          <p class="mb-2 mt-1 text-xs text-[var(--color-muted)]">
             Las que marques son las que los coachees de esta empresa podrán asociar a su plan,
             junto con el manual propio de la empresa (si lo cargó).
           </p>
           <div class="max-h-56 space-y-2 overflow-y-auto rounded-lg border border-[var(--color-line)] p-2">
             <div v-if="competenciasDeLaEmpresa.length > 0">
-              <p class="mb-1 text-[11px] font-semibold uppercase tracking-wide text-[var(--color-saltup)]">
+              <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-[var(--color-saltup)]">
                 Manual de la empresa
               </p>
               <div class="grid gap-1 sm:grid-cols-2">
@@ -641,7 +746,7 @@ async function eliminar(empresa: Empresa) {
             <div>
               <p
                 v-if="competenciasDeLaEmpresa.length > 0"
-                class="mb-1 text-[11px] font-semibold uppercase tracking-wide text-[var(--color-ink)]/50"
+                class="mb-1 text-xs font-semibold uppercase tracking-wide text-[var(--color-muted)]"
               >
                 Mi catálogo
               </p>
@@ -664,20 +769,18 @@ async function eliminar(empresa: Empresa) {
         </div>
 
         <div class="flex justify-end gap-2 pt-2">
-          <button
-            type="button"
-            class="rounded-lg border border-[var(--color-line)] px-4 py-2 text-sm"
+          <AppButton
+            variant="secondary"
             @click="modalOpen = false"
           >
             Cancelar
-          </button>
-          <button
+          </AppButton>
+          <AppButton
             type="submit"
-            :disabled="guardando"
-            class="rounded-lg bg-[var(--color-ink)] px-4 py-2 text-sm text-[var(--color-parchment)] disabled:opacity-60"
+            :loading="guardando"
           >
             {{ guardando ? 'Guardando…' : 'Guardar' }}
-          </button>
+          </AppButton>
         </div>
       </form>
     </AppModal>
@@ -696,7 +799,7 @@ async function eliminar(empresa: Empresa) {
       <template v-else-if="kpisSatisfaccion">
         <div class="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
           <div class="rounded-xl border border-[var(--color-line)] p-3">
-            <p class="mb-1 text-xs text-[var(--color-ink)]/50">
+            <p class="mb-1 text-xs text-[var(--color-muted)]">
               Satisfacción promedio
             </p>
             <p class="font-[family-name:var(--font-mono)] text-xl">
@@ -704,7 +807,7 @@ async function eliminar(empresa: Empresa) {
             </p>
           </div>
           <div class="rounded-xl border border-[var(--color-line)] p-3">
-            <p class="mb-1 text-xs text-[var(--color-ink)]/50">
+            <p class="mb-1 text-xs text-[var(--color-muted)]">
               Tasa de asistencia
             </p>
             <p class="font-[family-name:var(--font-mono)] text-xl">
@@ -712,7 +815,7 @@ async function eliminar(empresa: Empresa) {
             </p>
           </div>
           <div class="rounded-xl border border-[var(--color-line)] p-3">
-            <p class="mb-1 text-xs text-[var(--color-ink)]/50">
+            <p class="mb-1 text-xs text-[var(--color-muted)]">
               Procesos terminados
             </p>
             <p class="font-[family-name:var(--font-mono)] text-xl">
@@ -720,7 +823,7 @@ async function eliminar(empresa: Empresa) {
             </p>
           </div>
           <div class="rounded-xl border border-[var(--color-line)] p-3">
-            <p class="mb-1 text-xs text-[var(--color-ink)]/50">
+            <p class="mb-1 text-xs text-[var(--color-muted)]">
               Procesos en curso
             </p>
             <p class="font-[family-name:var(--font-mono)] text-xl">
@@ -730,7 +833,7 @@ async function eliminar(empresa: Empresa) {
         </div>
 
         <div class="border-t border-[var(--color-line)] pt-4">
-          <p class="mb-2 text-xs font-medium uppercase tracking-wide text-[var(--color-ink)]/50">
+          <p class="mb-2 text-xs font-medium uppercase tracking-wide text-[var(--color-muted)]">
             Encuestas respondidas
           </p>
           <EmptyState
@@ -757,10 +860,10 @@ async function eliminar(empresa: Empresa) {
                     <span
                       v-for="n in 5"
                       :key="n"
-                      :class="n <= enc.calificacion ? 'text-[var(--color-bronze)]' : 'text-[var(--color-ink)]/20'"
+                      :class="n <= enc.calificacion ? 'text-[var(--color-bronze)]' : 'text-[var(--color-muted)]'"
                     >★</span>
                   </span>
-                  <span class="text-xs text-[var(--color-ink)]/50">{{ new Date(enc.createdAt).toLocaleDateString('es-CL') }}</span>
+                  <span class="text-xs text-[var(--color-muted)]">{{ new Date(enc.createdAt).toLocaleDateString('es-CL') }}</span>
                 </span>
               </div>
               <ul

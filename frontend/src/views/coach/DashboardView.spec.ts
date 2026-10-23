@@ -144,6 +144,12 @@ const router = createRouter({
   ],
 })
 
+// Texto normalizado de una pestaña del TabBar ("Etiqueta N").
+function tabTexto(wrapper: ReturnType<typeof mount>, etiqueta: string): string {
+  const tab = wrapper.findAll('[role="tab"]').find((t) => t.text().startsWith(etiqueta))
+  return (tab?.text() ?? '').replace(/\s+/g, ' ')
+}
+
 describe('DashboardView', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
@@ -166,11 +172,48 @@ describe('DashboardView', () => {
     vi.mocked(enviarRecordatorioLogro).mockResolvedValue({ success: true })
   })
 
+  it('muestra ErrorState con Reintentar si falla una carga crítica y se recupera al reintentar', async () => {
+    vi.mocked(getResumenNegocio).mockRejectedValueOnce(new Error('boom'))
+    const wrapper = mount(DashboardView, { global: { plugins: [router] } })
+    await flushPromises()
+
+    expect(wrapper.find('[role="alert"]').exists()).toBe(true)
+    const reintentar = wrapper.findAll('button').find((b) => b.text() === 'Reintentar')!
+    await reintentar.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.find('[role="alert"]').exists()).toBe(false)
+    expect(wrapper.text()).toContain('Atención inmediata')
+  })
+
+  it('tolera una llamada no crítica caída y avisa que los datos pueden estar incompletos', async () => {
+    vi.mocked(getAtencionInmediata).mockRejectedValue(new Error('boom'))
+    const wrapper = mount(DashboardView, { global: { plugins: [router] } })
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('No pudimos cargar una sección')
+    expect(wrapper.text()).toContain('Esta semana')
+  })
+
+  it('muestra Primeros pasos según los datos reales y se puede ocultar', async () => {
+    localStorage.removeItem('coachnexus:primeros-pasos-ocultos')
+    const wrapper = mount(DashboardView, { global: { plugins: [router] } })
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Primeros pasos')
+    expect(wrapper.text()).toContain('1 de 5 completados')
+
+    await wrapper.findAll('button').find((b) => b.text() === 'Ocultar')!.trigger('click')
+    expect(wrapper.text()).not.toContain('Primeros pasos')
+    expect(localStorage.getItem('coachnexus:primeros-pasos-ocultos')).toBe('1')
+    localStorage.removeItem('coachnexus:primeros-pasos-ocultos')
+  })
+
   it('shows "Todo al día" in the Coachees tab when nothing needs attention', async () => {
     const wrapper = mount(DashboardView, { global: { plugins: [router] } })
     await flushPromises()
 
-    expect(wrapper.text()).toContain('Coachees (0)')
+    expect(tabTexto(wrapper, 'Coachees')).toBe('Coachees 0')
     expect(wrapper.text()).toContain('Todo al día')
   })
 
@@ -205,7 +248,7 @@ describe('DashboardView', () => {
     const wrapper = mount(DashboardView, { global: { plugins: [router] } })
     await flushPromises()
 
-    expect(wrapper.text()).toContain('Coachees (1)')
+    expect(tabTexto(wrapper, 'Coachees')).toBe('Coachees 1')
     const rows = wrapper.findAll('li')
     const fila = rows.find((r) => r.text().includes('Rodrigo Peña'))!
     expect(fila.text()).toContain('Plan sin enviar')
@@ -300,8 +343,8 @@ describe('DashboardView', () => {
     const wrapper = mount(DashboardView, { global: { plugins: [router] } })
     await flushPromises()
 
-    const empresasTabBtn = wrapper.findAll('button').find((b) => b.text().startsWith('Empresas ('))
-    expect(empresasTabBtn!.text()).toContain('Empresas (1)')
+    const empresasTabBtn = wrapper.findAll('button').find((b) => b.text().startsWith('Empresas'))
+    expect(empresasTabBtn!.text().replace(/\s+/g, ' ')).toBe('Empresas 1')
 
     await empresasTabBtn!.trigger('click')
     await flushPromises()
@@ -320,7 +363,7 @@ describe('DashboardView', () => {
     const wrapper = mount(DashboardView, { global: { plugins: [router] } })
     await flushPromises()
 
-    const solicitudesTabBtn = wrapper.findAll('button').find((b) => b.text().startsWith('Solicitudes comerciales ('))
+    const solicitudesTabBtn = wrapper.findAll('button').find((b) => b.text().startsWith('Solicitudes comerciales'))
     await solicitudesTabBtn!.trigger('click')
     await flushPromises()
 

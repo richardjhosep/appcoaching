@@ -4,6 +4,10 @@ import { useRouter } from 'vue-router'
 import AppShell from '../../components/AppShell.vue'
 import NavIcon from '../../components/NavIcon.vue'
 import SkeletonBlock from '../../components/SkeletonBlock.vue'
+import ErrorState from '../../components/ErrorState.vue'
+import TabBar from '../../components/TabBar.vue'
+import StatusBadge from '../../components/StatusBadge.vue'
+import AppButton from '../../components/AppButton.vue'
 import GestionModal from '../../components/GestionModal.vue'
 import ProyeccionIngresosChart from '../../components/ProyeccionIngresosChart.vue'
 import {
@@ -42,9 +46,9 @@ import { semaforoCartera, type Semaforo } from '../../lib/semaforoCartera'
 import { inicioDeSemana, aFechaLocal } from '../../lib/dateRange'
 import { ApiError } from '../../api/client'
 import { notifySuccess, notifyError } from '../../lib/notify'
+import { useCarga } from '../../lib/useCarga'
 
 const router = useRouter()
-const loading = ref(true)
 const resumen = ref<ResumenNegocio | null>(null)
 const alertas = ref<Alertas | null>(null)
 const planesSinEnviar = ref<PlanDesarrollo[]>([])
@@ -60,6 +64,8 @@ const proyeccionMensual = ref<ProyeccionMes[]>([])
 const atencion = ref<AtencionInmediata | null>(null)
 const comparativo = ref<ComparativoYCapacidad | null>(null)
 const prospectosLista = ref<Prospecto[]>([])
+// null = no se pudo determinar (la llamada falló): el checklist no lo da por pendiente.
+const hayPlanes = ref<boolean | null>(null)
 
 type Tab = 'coachees' | 'empresas' | 'solicitudes' | 'prospectos'
 const tab = ref<Tab>('coachees')
@@ -67,18 +73,19 @@ const tab = ref<Tab>('coachees')
 const formatoCLP = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 })
 
 async function load() {
-  loading.value = true
   const lunes = inicioDeSemana()
   const finSemana = new Date(lunes)
   finSemana.setDate(finSemana.getDate() + 7)
 
+  // Críticas (sin ellas el panorama no tiene sentido): resumen, alertas y coachees.
+  // El resto se tolera: si falla, el panel avisa en vez de mostrar un "todo al día" falso.
   const [
     r,
     a,
+    coachees,
     sinEnviar,
     conCambiosSolicitados,
     solicitudes,
-    coachees,
     legal,
     carteraData,
     semana,
@@ -87,41 +94,45 @@ async function load() {
     atencionData,
     comparativoData,
     prospectos,
+    todosLosPlanes,
   ] = await Promise.all([
     getResumenNegocio(),
     getAlertas(),
-    listPlanes('sin_enviar'),
-    listPlanes('cambios_solicitados'),
-    getSolicitudes('pendiente'),
     listCoachees(),
-    getResumenLegal(),
-    getCarteraEmpresas(),
-    getSesionesSemana(aFechaLocal(lunes), aFechaLocal(finSemana)),
-    getResumenComercial('mes'),
-    getProyeccionMensual(),
-    getAtencionInmediata(),
-    getComparativo(),
-    listProspectos(),
+    tolerar(listPlanes('sin_enviar')),
+    tolerar(listPlanes('cambios_solicitados')),
+    tolerar(getSolicitudes('pendiente')),
+    tolerar(getResumenLegal()),
+    tolerar(getCarteraEmpresas()),
+    tolerar(getSesionesSemana(aFechaLocal(lunes), aFechaLocal(finSemana))),
+    tolerar(getResumenComercial('mes')),
+    tolerar(getProyeccionMensual()),
+    tolerar(getAtencionInmediata()),
+    tolerar(getComparativo()),
+    tolerar(listProspectos()),
+    tolerar(listPlanes()),
   ])
   resumen.value = r
   alertas.value = a
-  planesSinEnviar.value = sinEnviar
-  planesConCambiosSolicitados.value = conCambiosSolicitados
-  solicitudesPendientes.value = solicitudes
-  resumenLegal.value = legal
+  planesSinEnviar.value = sinEnviar ?? []
+  planesConCambiosSolicitados.value = conCambiosSolicitados ?? []
+  solicitudesPendientes.value = solicitudes ?? []
+  resumenLegal.value = legal ?? { empresas: [], independientes: [] }
   coacheesLista.value = coachees
   sinCoacheesAun.value = coachees.length === 0
-  cartera.value = carteraData
-  sesionesSemana.value = semana
-  comercialMes.value = comercial
-  proyeccionMensual.value = proyeccion
-  atencion.value = atencionData
-  comparativo.value = comparativoData
-  prospectosLista.value = prospectos
-  loading.value = false
+  cartera.value = carteraData ?? null
+  sesionesSemana.value = semana ?? []
+  comercialMes.value = comercial ?? null
+  proyeccionMensual.value = proyeccion ?? []
+  atencion.value = atencionData ?? null
+  comparativo.value = comparativoData ?? null
+  prospectosLista.value = prospectos ?? []
+  hayPlanes.value = todosLosPlanes === undefined ? null : todosLosPlanes.length > 0
 }
 
-onMounted(load)
+const { loading, error, fallos, recargar, tolerar } = useCarga(load)
+
+onMounted(recargar)
 
 function verPerfil(coacheeId: string) {
   void router.push({ name: 'coach-coachee-detail', params: { coacheeId } })
@@ -187,12 +198,12 @@ const estadoCarteraLabel: Record<EstadoCartera, string> = {
   vigente: 'Vigente',
 }
 
-const estadoCarteraColor: Record<EstadoCartera, string> = {
-  vencido: 'text-[var(--color-danger)]',
-  vence_este_mes: 'text-[var(--color-danger)]',
-  vence_este_semestre: 'text-[var(--color-bronze)]',
-  sin_fecha: 'text-[var(--color-bronze)]',
-  vigente: 'text-[var(--color-sage)]',
+const estadoCarteraTono: Record<EstadoCartera, 'danger' | 'bronze' | 'sage'> = {
+  vencido: 'danger',
+  vence_este_mes: 'danger',
+  vence_este_semestre: 'bronze',
+  sin_fecha: 'bronze',
+  vigente: 'sage',
 }
 
 const empresasOrdenadas = computed(() =>
@@ -480,6 +491,61 @@ const filasAtencion = computed<FilaAtencion[]>(() =>
     }
   }),
 )
+
+const tabsAtencion = computed(() => [
+  { key: 'coachees' as Tab, label: 'Coachees', badge: coacheesAtencion.value.length },
+  { key: 'empresas' as Tab, label: 'Empresas', badge: empresasLegalPendientes.value.length },
+  { key: 'solicitudes' as Tab, label: 'Solicitudes comerciales', badge: solicitudesPendientes.value.length },
+  { key: 'prospectos' as Tab, label: 'Prospectos por seguir', badge: prospectosPorSeguir.value.length },
+])
+
+// --- Primeros pasos: empresa → coachee → ciclo → plan → sesión, calculado con datos reales.
+// Un paso cuya fuente falló (null) no se da por pendiente, para no mostrar un falso "te falta". ---
+
+const CLAVE_PASOS_OCULTOS = 'coachnexus:primeros-pasos-ocultos'
+
+function leerPasosOcultos(): boolean {
+  try {
+    return localStorage.getItem(CLAVE_PASOS_OCULTOS) === '1'
+  } catch {
+    return false
+  }
+}
+
+const pasosOcultos = ref(leerPasosOcultos())
+
+function descartarPrimerosPasos() {
+  pasosOcultos.value = true
+  try {
+    localStorage.setItem(CLAVE_PASOS_OCULTOS, '1')
+  } catch {
+    // sin almacenamiento: se oculta solo en esta visita
+  }
+}
+
+const pasosIniciales = computed(() => [
+  { key: 'empresa', label: 'Crear una empresa', to: '/coach/empresas', hecho: cartera.value === null ? null : cartera.value.empresas.length > 0 },
+  { key: 'coachee', label: 'Crear un coachee', to: '/coach/coachees', hecho: coacheesLista.value.length > 0 },
+  {
+    key: 'ciclo',
+    label: 'Definir un ciclo de sesiones',
+    to: '/coach/coachees',
+    hecho: resumen.value ? resumen.value.carteraCoachees.some((c) => c.totalSesiones !== null) : null,
+  },
+  { key: 'plan', label: 'Crear un plan de desarrollo', to: '/coach/coachees', hecho: hayPlanes.value },
+  {
+    key: 'sesion',
+    label: 'Agendar una sesión',
+    to: '/coach/agenda',
+    hecho: resumen.value
+      ? sesionesSemana.value.length > 0 || resumen.value.carteraCoachees.some((c) => c.sesionesRealizadas > 0)
+      : null,
+  },
+])
+const pasosHechos = computed(() => pasosIniciales.value.filter((p) => p.hecho).length)
+const mostrarPrimerosPasos = computed(
+  () => !pasosOcultos.value && pasosIniciales.value.some((p) => p.hecho === false),
+)
 </script>
 
 <template>
@@ -489,13 +555,13 @@ const filasAtencion = computed<FilaAtencion[]>(() =>
         <h1 class="font-[family-name:var(--font-heading)] text-xl font-semibold">
           Panorama
         </h1>
-        <p class="text-sm text-[var(--color-ink)]/60">
+        <p class="text-sm text-[var(--color-muted)]">
           Tu semana, tu cartera y tu proyección — de un vistazo.
         </p>
       </div>
 
       <div class="relative w-full sm:w-72">
-        <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-ink)]/40">
+        <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-muted)]">
           <NavIcon
             name="buscar"
             :size="16"
@@ -515,7 +581,7 @@ const filasAtencion = computed<FilaAtencion[]>(() =>
         >
           <p
             v-if="resultadosBusqueda.length === 0"
-            class="px-2 py-2 text-xs text-[var(--color-ink)]/50"
+            class="px-2 py-2 text-xs text-[var(--color-muted)]"
           >
             Sin coincidencias para "{{ buscarTexto }}".
           </p>
@@ -527,7 +593,7 @@ const filasAtencion = computed<FilaAtencion[]>(() =>
             @mousedown.prevent="irACoacheeDesdeBusqueda(c.id)"
           >
             <div
-              class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--color-ink)] text-[10px] font-semibold text-[var(--color-parchment)]"
+              class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--color-ink)] text-xs font-semibold text-[var(--color-parchment)]"
               aria-hidden="true"
             >
               {{ iniciales(c.nombre) }}
@@ -536,7 +602,7 @@ const filasAtencion = computed<FilaAtencion[]>(() =>
               <p class="truncate text-sm">
                 {{ c.nombre }}
               </p>
-              <p class="truncate text-xs text-[var(--color-ink)]/50">
+              <p class="truncate text-xs text-[var(--color-muted)]">
                 {{ c.empresa?.nombre ?? 'Independiente' }}
               </p>
             </div>
@@ -545,7 +611,84 @@ const filasAtencion = computed<FilaAtencion[]>(() =>
       </div>
     </div>
 
-    <SkeletonBlock v-if="loading" />
+    <template v-if="!loading && !error">
+      <div
+        v-if="fallos > 0"
+        role="status"
+        class="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[var(--color-bronze)]/40 bg-[var(--color-bronze)]/10 px-4 py-3 text-sm"
+      >
+        <span>
+          No pudimos cargar {{ fallos === 1 ? 'una sección' : `${fallos} secciones` }} del panorama: lo que ves puede estar incompleto.
+        </span>
+        <AppButton
+          variant="secondary"
+          size="sm"
+          @click="recargar"
+        >
+          Reintentar
+        </AppButton>
+      </div>
+
+      <!-- Primeros pasos: derivado de datos reales, solo mientras falte algo. -->
+      <section
+        v-if="mostrarPrimerosPasos"
+        aria-labelledby="primeros-pasos-titulo"
+        class="mb-5 rounded-2xl border border-[var(--color-sage)]/40 bg-[var(--color-sage)]/5 p-4"
+      >
+        <div class="mb-2 flex items-start justify-between gap-3">
+          <div>
+            <h2
+              id="primeros-pasos-titulo"
+              class="text-sm font-medium"
+            >
+              Primeros pasos
+            </h2>
+            <p class="text-xs text-[var(--color-muted)]">
+              {{ pasosHechos }} de {{ pasosIniciales.length }} completados.
+            </p>
+          </div>
+          <AppButton
+            variant="ghost"
+            size="sm"
+            @click="descartarPrimerosPasos"
+          >
+            Ocultar
+          </AppButton>
+        </div>
+        <ol class="grid gap-1.5 text-sm sm:grid-cols-2 lg:grid-cols-5">
+          <li
+            v-for="paso in pasosIniciales"
+            :key="paso.key"
+            class="flex items-center gap-2"
+          >
+            <span
+              class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs"
+              :class="paso.hecho ? 'bg-[var(--color-sage)] text-white' : 'border border-[var(--color-line)] bg-white text-[var(--color-muted)]'"
+              aria-hidden="true"
+            >{{ paso.hecho ? '✓' : '' }}</span>
+            <span v-if="paso.hecho">
+              <span class="sr-only">Hecho: </span>{{ paso.label }}
+            </span>
+            <RouterLink
+              v-else
+              :to="paso.to"
+              class="font-medium text-[var(--color-sage)] hover:underline"
+            >
+              {{ paso.label }}
+            </RouterLink>
+          </li>
+        </ol>
+      </section>
+    </template>
+
+    <SkeletonBlock
+      v-if="loading"
+      variant="cards"
+    />
+    <ErrorState
+      v-else-if="error"
+      @retry="recargar"
+    />
     <div
       v-else-if="sinCoacheesAun"
       class="rounded-2xl border border-[var(--color-sage)] bg-[var(--color-sage)]/10 p-4 text-sm"
@@ -579,581 +722,551 @@ const filasAtencion = computed<FilaAtencion[]>(() =>
         <div class="rounded-2xl border border-[var(--color-line)] bg-white p-4">
           <h2 class="mb-3 text-sm font-medium">
             Atención inmediata
-        </h2>
-        <p
-          v-if="nadaUrgente"
-          class="text-sm text-[var(--color-sage)]"
-        >
-          ✓ Nada urgente ahora mismo.
-        </p>
-        <div
-          v-else-if="atencion"
-          class="space-y-4"
-        >
-          <div v-if="atencion.sesionesSinConfirmar.length > 0">
-            <p class="mb-1 text-xs font-medium uppercase tracking-wide text-[var(--color-ink)]/50">
-              Sesiones sin confirmar (hoy/mañana)
-            </p>
-            <ul class="divide-y divide-[var(--color-line)] text-sm">
-              <li
-                v-for="s in atencion.sesionesSinConfirmar"
-                :key="s.sesionId"
-                class="flex flex-wrap items-center justify-between gap-2 py-2 first:pt-0 last:pb-0"
-              >
-                <span>
-                  {{ s.nombre }}
-                  <span class="text-[var(--color-ink)]/50">— {{ formatoHora(s.fechaHora) }}</span>
-                </span>
-                <button
-                  type="button"
-                  class="rounded-full border border-[var(--color-line)] px-2 py-0.5 text-xs text-[var(--color-ink)]/70 hover:bg-[var(--color-parchment)]"
-                  @click="verPerfil(s.coacheeId)"
-                >
-                  Ver coachee
-                </button>
-              </li>
-            </ul>
-          </div>
-
-          <div v-if="atencion.contratosUrgentes.length > 0">
-            <p class="mb-1 text-xs font-medium uppercase tracking-wide text-[var(--color-ink)]/50">
-              Contratos por vencer sin gestión
-            </p>
-            <ul class="divide-y divide-[var(--color-line)] text-sm">
-              <li
-                v-for="e in atencion.contratosUrgentes"
-                :key="e.empresaId"
-                class="flex flex-wrap items-center justify-between gap-2 py-2 first:pt-0 last:pb-0"
-              >
-                <span>
-                  {{ e.nombre }}
-                  <span class="text-[var(--color-danger)]">— {{ textoVencimiento(e.diasParaVencer) }}</span>
-                </span>
-                <button
-                  type="button"
-                  class="rounded-full border border-[var(--color-line)] px-2 py-0.5 text-xs text-[var(--color-ink)]/70 hover:bg-[var(--color-parchment)]"
-                  @click="abrirGestion(e.empresaId, e.nombre)"
-                >
-                  Gestionar
-                </button>
-              </li>
-            </ul>
-          </div>
-
-          <div v-if="atencion.pagosPendientes.length > 0">
-            <p class="mb-1 text-xs font-medium uppercase tracking-wide text-[var(--color-ink)]/50">
-              Pagos pendientes
-            </p>
-            <ul class="divide-y divide-[var(--color-line)] text-sm">
-              <li
-                v-for="e in atencion.pagosPendientes"
-                :key="e.empresaId"
-                class="flex flex-wrap items-center justify-between gap-2 py-2 first:pt-0 last:pb-0"
-              >
-                <span>
-                  {{ e.nombre }}
-                  <span class="text-[var(--color-danger)]">— {{ formatoCLP.format(e.gastoDelPeriodo) }}</span>
-                </span>
-                <button
-                  type="button"
-                  class="rounded-full border border-[var(--color-line)] px-2 py-0.5 text-xs text-[var(--color-ink)]/70 hover:bg-[var(--color-parchment)]"
-                  @click="irAEditarEmpresa"
-                >
-                  Ver empresa
-                </button>
-              </li>
-            </ul>
-          </div>
-        </div>
-      </div>
-
-      <!-- Proyección económica -->
-      <div class="rounded-2xl border border-[var(--color-line)] bg-white p-4">
-        <div class="mb-3 flex items-center justify-between">
-          <h2 class="text-sm font-medium">
-            Proyección económica
           </h2>
-          <RouterLink
-            to="/coach/negocio"
-            class="text-xs text-[var(--color-sage)] hover:underline"
+          <p
+            v-if="nadaUrgente"
+            class="text-sm text-[var(--color-sage)]"
           >
-            Ver detalle completo →
-          </RouterLink>
+            ✓ Nada urgente ahora mismo.
+          </p>
+          <div
+            v-else-if="atencion"
+            class="space-y-4"
+          >
+            <div v-if="atencion.sesionesSinConfirmar.length > 0">
+              <p class="mb-1 text-xs font-medium uppercase tracking-wide text-[var(--color-muted)]">
+                Sesiones sin confirmar (hoy/mañana)
+              </p>
+              <ul class="divide-y divide-[var(--color-line)] text-sm">
+                <li
+                  v-for="s in atencion.sesionesSinConfirmar"
+                  :key="s.sesionId"
+                  class="flex flex-wrap items-center justify-between gap-2 py-2 first:pt-0 last:pb-0"
+                >
+                  <span>
+                    {{ s.nombre }}
+                    <span class="text-[var(--color-muted)]">— {{ formatoHora(s.fechaHora) }}</span>
+                  </span>
+                  <AppButton
+                    variant="secondary"
+                    size="sm"
+                    @click="verPerfil(s.coacheeId)"
+                  >
+                    Ver coachee
+                  </AppButton>
+                </li>
+              </ul>
+            </div>
+
+            <div v-if="atencion.contratosUrgentes.length > 0">
+              <p class="mb-1 text-xs font-medium uppercase tracking-wide text-[var(--color-muted)]">
+                Contratos por vencer sin gestión
+              </p>
+              <ul class="divide-y divide-[var(--color-line)] text-sm">
+                <li
+                  v-for="e in atencion.contratosUrgentes"
+                  :key="e.empresaId"
+                  class="flex flex-wrap items-center justify-between gap-2 py-2 first:pt-0 last:pb-0"
+                >
+                  <span>
+                    {{ e.nombre }}
+                    <span class="text-[var(--color-danger)]">— {{ textoVencimiento(e.diasParaVencer) }}</span>
+                  </span>
+                  <AppButton
+                    variant="secondary"
+                    size="sm"
+                    @click="abrirGestion(e.empresaId, e.nombre)"
+                  >
+                    Gestionar
+                  </AppButton>
+                </li>
+              </ul>
+            </div>
+
+            <div v-if="atencion.pagosPendientes.length > 0">
+              <p class="mb-1 text-xs font-medium uppercase tracking-wide text-[var(--color-muted)]">
+                Pagos pendientes
+              </p>
+              <ul class="divide-y divide-[var(--color-line)] text-sm">
+                <li
+                  v-for="e in atencion.pagosPendientes"
+                  :key="e.empresaId"
+                  class="flex flex-wrap items-center justify-between gap-2 py-2 first:pt-0 last:pb-0"
+                >
+                  <span>
+                    {{ e.nombre }}
+                    <span class="text-[var(--color-danger)]">— {{ formatoCLP.format(e.gastoDelPeriodo) }}</span>
+                  </span>
+                  <AppButton
+                    variant="secondary"
+                    size="sm"
+                    @click="irAEditarEmpresa"
+                  >
+                    Ver empresa
+                  </AppButton>
+                </li>
+              </ul>
+            </div>
+          </div>
         </div>
-        <div
-          v-if="comercialMes"
-          class="mb-4 grid grid-cols-3 gap-3"
-        >
-          <div>
-            <p class="text-xs text-[var(--color-ink)]/60">
-              Ingreso del mes
-            </p>
-            <p class="font-[family-name:var(--font-mono)] text-lg text-[var(--color-sage)]">
-              {{ formatoCLP.format(comercialMes.ingresoDelPeriodo) }}
-            </p>
-            <p
-              v-if="comparativo && comparativo.variacionIngresoPct !== null"
-              class="text-xs font-medium"
-              :class="comparativo.variacionIngresoPct >= 0 ? 'text-[var(--color-sage)]' : 'text-[var(--color-bronze)]'"
+
+        <!-- Proyección económica -->
+        <div class="rounded-2xl border border-[var(--color-line)] bg-white p-4">
+          <div class="mb-3 flex items-center justify-between">
+            <h2 class="text-sm font-medium">
+              Proyección económica
+            </h2>
+            <RouterLink
+              to="/coach/negocio"
+              class="text-xs text-[var(--color-sage)] hover:underline"
             >
-              {{ comparativo.variacionIngresoPct >= 0 ? '↑' : '↓' }} {{ Math.abs(comparativo.variacionIngresoPct) }}% vs. mes anterior
-            </p>
+              Ver detalle completo →
+            </RouterLink>
           </div>
-          <div>
-            <p class="text-xs text-[var(--color-ink)]/60">
-              Proyectado
-            </p>
-            <p class="font-[family-name:var(--font-mono)] text-lg text-[var(--color-bronze)]">
-              {{ formatoCLP.format(comercialMes.ingresoProyectado) }}
-            </p>
+          <div
+            v-if="comercialMes"
+            class="mb-4 grid grid-cols-3 gap-3"
+          >
+            <div>
+              <p class="text-xs text-[var(--color-muted)]">
+                Ingreso del mes
+              </p>
+              <p class="font-[family-name:var(--font-mono)] text-lg text-[var(--color-sage)]">
+                {{ formatoCLP.format(comercialMes.ingresoDelPeriodo) }}
+              </p>
+              <p
+                v-if="comparativo && comparativo.variacionIngresoPct !== null"
+                class="text-xs font-medium"
+                :class="comparativo.variacionIngresoPct >= 0 ? 'text-[var(--color-sage)]' : 'text-[var(--color-bronze)]'"
+              >
+                {{ comparativo.variacionIngresoPct >= 0 ? '↑' : '↓' }} {{ Math.abs(comparativo.variacionIngresoPct) }}% vs. mes anterior
+              </p>
+            </div>
+            <div>
+              <p class="text-xs text-[var(--color-muted)]">
+                Proyectado
+              </p>
+              <p class="font-[family-name:var(--font-mono)] text-lg text-[var(--color-bronze)]">
+                {{ formatoCLP.format(comercialMes.ingresoProyectado) }}
+              </p>
+            </div>
+            <div>
+              <p class="text-xs text-[var(--color-muted)]">
+                Horas realizadas
+              </p>
+              <p class="font-[family-name:var(--font-mono)] text-lg">
+                {{ comercialMes.horasRealizadas }}
+              </p>
+            </div>
           </div>
-          <div>
-            <p class="text-xs text-[var(--color-ink)]/60">
-              Horas realizadas
-            </p>
-            <p class="font-[family-name:var(--font-mono)] text-lg">
-              {{ comercialMes.horasRealizadas }}
-            </p>
-          </div>
+          <ProyeccionIngresosChart :meses="proyeccionMensual" />
         </div>
-        <ProyeccionIngresosChart :meses="proyeccionMensual" />
-      </div>
       </aside>
 
       <!-- Columna izquierda: KPIs, esta semana, cartera de empresas y coachees/empresas que
            necesitan seguimiento. -->
       <main class="min-w-0 space-y-5 lg:order-1 lg:flex-1">
-      <!-- KPIs: responden directo "¿qué tengo esta semana, qué se me vence, cuánto voy a
+        <!-- KPIs: responden directo "¿qué tengo esta semana, qué se me vence, cuánto voy a
            facturar, qué me falta completar?" -->
-      <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <div class="rounded-2xl border border-[var(--color-line)] bg-white p-4">
-          <p class="text-xs text-[var(--color-ink)]/60">
-            Horas esta semana
-          </p>
-          <p class="font-[family-name:var(--font-mono)] text-2xl">
-            {{ comparativo ? `${comparativo.horasComprometidasSemana}/${comparativo.horasDisponiblesSemana}` : sesionesSemana.length }} <span class="text-sm font-normal text-[var(--color-ink)]/50">hrs</span>
-          </p>
-        </div>
-        <div class="rounded-2xl border border-[var(--color-line)] bg-white p-4">
-          <p class="text-xs text-[var(--color-ink)]/60">
-            Empresas por renovar este mes
-          </p>
-          <p
-            class="font-[family-name:var(--font-mono)] text-2xl"
-            :class="empresasPorAccion > 0 ? 'text-[var(--color-danger)]' : 'text-[var(--color-sage)]'"
-          >
-            {{ empresasPorAccion }}
-          </p>
-        </div>
-        <div class="rounded-2xl border border-[var(--color-line)] bg-white p-4">
-          <p class="text-xs text-[var(--color-ink)]/60">
-            Ingreso esperado este mes
-          </p>
-          <p class="font-[family-name:var(--font-mono)] text-2xl">
-            {{ formatoCLP.format(ingresoEsperadoMes) }}
-          </p>
-        </div>
-        <div class="rounded-2xl border border-[var(--color-line)] bg-white p-4">
-          <p class="text-xs text-[var(--color-ink)]/60">
-            Empresas sin fecha de contrato
-          </p>
-          <p
-            class="font-[family-name:var(--font-mono)] text-2xl"
-            :class="empresasSinFecha > 0 ? 'text-[var(--color-bronze)]' : 'text-[var(--color-sage)]'"
-          >
-            {{ empresasSinFecha }}
-          </p>
-        </div>
-      </div>
-
-      <!-- Esta semana -->
-      <div class="rounded-2xl border border-[var(--color-line)] bg-white p-4">
-        <div class="mb-3 flex items-center justify-between">
-          <h2 class="text-sm font-medium">
-            Esta semana
-          </h2>
-          <RouterLink
-            to="/coach/agenda"
-            class="text-xs text-[var(--color-sage)] hover:underline"
-          >
-            Ver mi agenda completa →
-          </RouterLink>
-        </div>
-        <p
-          v-if="diasSemana.length === 0"
-          class="text-sm text-[var(--color-ink)]/60"
-        >
-          No tienes sesiones agendadas esta semana.
-        </p>
-        <div
-          v-else
-          class="space-y-3"
-        >
-          <div
-            v-for="dia in diasSemana"
-            :key="dia.fecha"
-          >
-            <p class="mb-1.5 text-xs font-medium uppercase tracking-wide text-[var(--color-ink)]/50">
-              {{ formatoDia(dia.fecha) }}
+        <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div class="rounded-2xl border border-[var(--color-line)] bg-white p-4">
+            <p class="text-xs text-[var(--color-muted)]">
+              Horas esta semana
             </p>
-            <ul class="space-y-1.5">
-              <li
-                v-for="sesion in dia.sesiones"
-                :key="sesion.id"
-              >
-                <button
-                  type="button"
-                  class="flex w-full items-center gap-3 rounded-lg border border-[var(--color-line)]/60 px-3 py-2 text-left text-sm hover:border-[var(--color-sage)] hover:bg-[var(--color-parchment)]/30"
-                  @click="verPerfil(sesion.coacheeId)"
-                >
-                  <span class="shrink-0 font-[family-name:var(--font-mono)] text-xs text-[var(--color-ink)]/60">
-                    {{ formatoHora(sesion.fechaHora) }}
-                  </span>
-                  <span class="min-w-0 flex-1 truncate">
-                    {{ sesion.coachee?.nombre ?? 'Coachee' }}
-                    <span class="text-[var(--color-ink)]/50">
-                      — {{ sesion.coachee?.empresa?.nombre ?? 'Independiente' }}
-                    </span>
-                  </span>
-                  <span
-                    v-if="!sesion.confirmada"
-                    class="shrink-0 rounded-full bg-[var(--color-bronze)]/15 px-2 py-0.5 text-[10px] font-medium text-[var(--color-bronze)]"
-                  >
-                    Sin confirmar
-                  </span>
-                </button>
-              </li>
-            </ul>
+            <p class="font-[family-name:var(--font-mono)] text-2xl">
+              {{ comparativo ? `${comparativo.horasComprometidasSemana}/${comparativo.horasDisponiblesSemana}` : sesionesSemana.length }} <span class="text-sm font-normal text-[var(--color-muted)]">hrs</span>
+            </p>
+          </div>
+          <div class="rounded-2xl border border-[var(--color-line)] bg-white p-4">
+            <p class="text-xs text-[var(--color-muted)]">
+              Empresas por renovar este mes
+            </p>
+            <p
+              class="font-[family-name:var(--font-mono)] text-2xl"
+              :class="empresasPorAccion > 0 ? 'text-[var(--color-danger)]' : 'text-[var(--color-sage)]'"
+            >
+              {{ empresasPorAccion }}
+            </p>
+          </div>
+          <div class="rounded-2xl border border-[var(--color-line)] bg-white p-4">
+            <p class="text-xs text-[var(--color-muted)]">
+              Ingreso esperado este mes
+            </p>
+            <p class="font-[family-name:var(--font-mono)] text-2xl">
+              {{ formatoCLP.format(ingresoEsperadoMes) }}
+            </p>
+          </div>
+          <div class="rounded-2xl border border-[var(--color-line)] bg-white p-4">
+            <p class="text-xs text-[var(--color-muted)]">
+              Empresas sin fecha de contrato
+            </p>
+            <p
+              class="font-[family-name:var(--font-mono)] text-2xl"
+              :class="empresasSinFecha > 0 ? 'text-[var(--color-bronze)]' : 'text-[var(--color-sage)]'"
+            >
+              {{ empresasSinFecha }}
+            </p>
           </div>
         </div>
-      </div>
 
-      <!-- Cartera de empresas -->
-      <div class="rounded-2xl border border-[var(--color-line)] bg-white p-4">
-        <h2 class="mb-3 text-sm font-medium">
-          Cartera de empresas
-        </h2>
-        <p
-          v-if="empresasOrdenadas.length === 0"
-          class="text-sm text-[var(--color-ink)]/60"
-        >
-          Todavía no tienes ninguna empresa activa.
-        </p>
-        <ul
-          v-else
-          class="space-y-1.5 text-sm"
-        >
-          <li
-            v-for="empresa in empresasOrdenadas"
-            :key="empresa.empresaId"
-            class="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[var(--color-line)]/60 px-3 py-2"
-          >
-            <span class="flex min-w-0 items-center gap-2 font-medium">
-              <span
-                class="inline-block h-2 w-2 shrink-0 rounded-full"
-                :class="semaforoColor[semaforoCartera(empresa)]"
-                aria-hidden="true"
-              />
-              {{ empresa.nombre }}
-            </span>
-            <span class="flex items-center gap-3 text-xs">
-              <span class="text-[var(--color-ink)]/50">{{ formatoFechaFin(empresa.fechaFin) }}</span>
-              <span
-                class="font-semibold"
-                :class="estadoCarteraColor[empresa.estado]"
-              >{{ estadoCarteraLabel[empresa.estado] }}</span>
-              <button
-                v-if="empresa.estado === 'sin_fecha'"
-                type="button"
-                class="rounded-full border border-[var(--color-line)] px-2 py-0.5 text-[var(--color-ink)]/70 hover:bg-[var(--color-parchment)]"
-                @click="irAEditarEmpresa"
-              >
-                Completar fecha
-              </button>
-              <button
-                v-else
-                type="button"
-                class="rounded-full border border-[var(--color-line)] px-2 py-0.5 text-[var(--color-ink)]/70 hover:bg-[var(--color-parchment)]"
-                @click="abrirGestion(empresa.empresaId, empresa.nombre)"
-              >
-                Gestionar
-              </button>
-            </span>
-          </li>
-        </ul>
-
-        <template v-if="cartera && cartera.independientesPorVencer.length > 0">
-          <p class="mb-1.5 mt-4 text-xs font-medium uppercase tracking-wide text-[var(--color-ink)]/50">
-            Independientes con el ciclo por terminar
-          </p>
-          <ul class="space-y-1.5 text-sm">
-            <li
-              v-for="ind in cartera.independientesPorVencer"
-              :key="ind.coacheeId"
+        <!-- Esta semana -->
+        <div class="rounded-2xl border border-[var(--color-line)] bg-white p-4">
+          <div class="mb-3 flex items-center justify-between">
+            <h2 class="text-sm font-medium">
+              Esta semana
+            </h2>
+            <RouterLink
+              to="/coach/agenda"
+              class="text-xs text-[var(--color-sage)] hover:underline"
             >
-              <button
-                type="button"
-                class="flex w-full items-center justify-between rounded-lg border border-[var(--color-line)]/60 px-3 py-2 text-left hover:border-[var(--color-sage)] hover:bg-[var(--color-parchment)]/30"
-                @click="verPerfil(ind.coacheeId)"
-              >
-                <span>{{ ind.nombre }}</span>
-                <span class="text-xs font-semibold text-[var(--color-bronze)]">{{ ind.sesionesRestantes }} sesiones restantes</span>
-              </button>
-            </li>
-          </ul>
-        </template>
-      </div>
-
-      <!-- Coachees que necesitan atención (operativo día a día — nivel distinto al resto) -->
-      <div class="rounded-2xl border border-[var(--color-line)] bg-white p-4">
-        <div class="mb-3 flex gap-1 border-b border-[var(--color-line)]">
-          <button
-            class="border-b-2 px-3 py-2 text-sm"
-            :class="tab === 'coachees' ? 'border-[var(--color-sage)] font-medium text-[var(--color-sage)]' : 'border-transparent text-[var(--color-ink)]/60'"
-            @click="tab = 'coachees'"
-          >
-            Coachees ({{ coacheesAtencion.length }})
-          </button>
-          <button
-            class="border-b-2 px-3 py-2 text-sm"
-            :class="tab === 'empresas' ? 'border-[var(--color-sage)] font-medium text-[var(--color-sage)]' : 'border-transparent text-[var(--color-ink)]/60'"
-            @click="tab = 'empresas'"
-          >
-            Empresas ({{ empresasLegalPendientes.length }})
-          </button>
-          <button
-            class="border-b-2 px-3 py-2 text-sm"
-            :class="tab === 'solicitudes' ? 'border-[var(--color-sage)] font-medium text-[var(--color-sage)]' : 'border-transparent text-[var(--color-ink)]/60'"
-            @click="tab = 'solicitudes'"
-          >
-            Solicitudes comerciales ({{ solicitudesPendientes.length }})
-          </button>
-          <button
-            class="border-b-2 px-3 py-2 text-sm"
-            :class="tab === 'prospectos' ? 'border-[var(--color-sage)] font-medium text-[var(--color-sage)]' : 'border-transparent text-[var(--color-ink)]/60'"
-            @click="tab = 'prospectos'"
-          >
-            Prospectos por seguir ({{ prospectosPorSeguir.length }})
-          </button>
-        </div>
-
-        <div v-if="tab === 'coachees'">
+              Ver mi agenda completa →
+            </RouterLink>
+          </div>
           <p
-            v-if="coacheesAtencion.length === 0"
-            class="text-sm text-[var(--color-sage)]"
+            v-if="diasSemana.length === 0"
+            class="text-sm text-[var(--color-muted)]"
           >
-            ✓ Todo al día — ningún coachee necesita algo de ti ahora mismo.
+            No tienes sesiones agendadas esta semana.
           </p>
-          <!-- Lista plana (sin tarjeta por coachee ni chips con fondo): cada fila es avatar +
-               nombre + banderas como texto con un punto de color, y una sola acción como enlace.
-               Pedido del usuario 2026-10-10: "se ve mal con tantas cajas". -->
-          <ul
+          <div
             v-else
-            class="grid text-sm md:grid-cols-2 md:gap-x-8 2xl:grid-cols-3"
+            class="space-y-3"
           >
-            <li
-              v-for="fila in filasAtencion"
-              :key="fila.coachee.coacheeId"
-              class="flex items-start gap-3 border-b border-[var(--color-line)]/70 py-3"
+            <div
+              v-for="dia in diasSemana"
+              :key="dia.fecha"
             >
-              <div
-                class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--color-ink)] text-[11px] font-semibold text-[var(--color-parchment)]"
-                aria-hidden="true"
-              >
-                {{ iniciales(fila.coachee.nombre) }}
-              </div>
-              <div class="min-w-0 flex-1">
-                <div class="flex items-baseline justify-between gap-2">
-                  <button
-                    type="button"
-                    class="truncate text-left font-medium transition-colors hover:text-[var(--color-sage)] hover:underline"
-                    @click="verPerfil(fila.coachee.coacheeId)"
-                  >
-                    {{ fila.coachee.nombre }}
-                  </button>
-                  <button
-                    v-if="fila.primario?.accion"
-                    type="button"
-                    class="group inline-flex shrink-0 items-center gap-1 text-xs font-medium text-[var(--color-sage)] hover:underline"
-                    @click="fila.primario.accion"
-                  >
-                    {{ fila.primario.accionLabel?.replace(' →', '') }}
-                    <span
-                      aria-hidden="true"
-                      class="transition-transform group-hover:translate-x-0.5"
-                    >→</span>
-                  </button>
-                </div>
-                <p class="truncate text-xs text-[var(--color-ink)]/50">
-                  {{ fila.empresaNombre ?? 'Independiente' }}
-                  <template v-if="fila.cobro">
-                    ·
-                    <span
-                      :class="{
-                        'text-[var(--color-danger)]': fila.cobro.severidad === 'danger',
-                        'text-[var(--color-sage)]': fila.cobro.severidad === 'sage',
-                      }"
-                    >{{ fila.cobro.texto }}</span>
-                  </template>
-                </p>
-                <ul
-                  v-if="fila.primario"
-                  class="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-xs"
+              <p class="mb-1.5 text-xs font-medium uppercase tracking-wide text-[var(--color-muted)]">
+                {{ formatoDia(dia.fecha) }}
+              </p>
+              <ul class="space-y-1.5">
+                <li
+                  v-for="sesion in dia.sesiones"
+                  :key="sesion.id"
                 >
-                  <li
-                    v-for="item in [fila.primario, ...fila.secundarios]"
-                    :key="item.id"
-                    class="inline-flex items-center gap-1.5"
-                    :class="textoSeveridad[item.severidad]"
+                  <button
+                    type="button"
+                    class="flex w-full items-center gap-3 rounded-lg border border-[var(--color-line)]/60 px-3 py-2 text-left text-sm hover:border-[var(--color-sage)] hover:bg-[var(--color-parchment)]/30"
+                    @click="verPerfil(sesion.coacheeId)"
                   >
-                    <span
-                      class="h-1.5 w-1.5 shrink-0 rounded-full"
-                      :class="puntoSeveridad[item.severidad]"
-                      aria-hidden="true"
-                    />
-                    <button
-                      v-if="item !== fila.primario && item.accion"
-                      type="button"
-                      class="hover:underline"
-                      :title="item.accionLabel"
-                      @click="item.accion"
+                    <span class="shrink-0 font-[family-name:var(--font-mono)] text-xs text-[var(--color-muted)]">
+                      {{ formatoHora(sesion.fechaHora) }}
+                    </span>
+                    <span class="min-w-0 flex-1 truncate">
+                      {{ sesion.coachee?.nombre ?? 'Coachee' }}
+                      <span class="text-[var(--color-muted)]">
+                        — {{ sesion.coachee?.empresa?.nombre ?? 'Independiente' }}
+                      </span>
+                    </span>
+                    <StatusBadge
+                      v-if="!sesion.confirmada"
+                      tone="bronze"
+                      class="shrink-0"
                     >
-                      {{ item.label }}
-                    </button>
-                    <span v-else>{{ item.label }}</span>
-                  </li>
-                </ul>
-              </div>
-            </li>
-          </ul>
+                      Sin confirmar
+                    </StatusBadge>
+                  </button>
+                </li>
+              </ul>
+            </div>
+          </div>
         </div>
 
-        <div v-else-if="tab === 'empresas'">
+        <!-- Cartera de empresas -->
+        <div class="rounded-2xl border border-[var(--color-line)] bg-white p-4">
+          <h2 class="mb-3 text-sm font-medium">
+            Cartera de empresas
+          </h2>
           <p
-            v-if="empresasLegalPendientes.length === 0"
-            class="text-sm text-[var(--color-sage)]"
+            v-if="empresasOrdenadas.length === 0"
+            class="text-sm text-[var(--color-muted)]"
           >
-            ✓ Todo al día — sin contratos ni NDA pendientes.
-          </p>
-          <!-- Mismo lenguaje visual que la lista de coachees: fila plana con ícono, el estado de
-               cada documento como texto + punto de color, y la acción como enlace. -->
-          <ul
-            v-else
-            class="grid text-sm md:grid-cols-2 md:gap-x-8 2xl:grid-cols-3"
-          >
-            <li
-              v-for="e in empresasLegalPendientes"
-              :key="e.empresaId"
-              class="flex items-start gap-3 border-b border-[var(--color-line)]/70 py-3"
-            >
-              <div
-                class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--color-sage)]/12 text-[var(--color-sage)]"
-                aria-hidden="true"
-              >
-                <NavIcon
-                  name="empresas"
-                  :size="15"
-                />
-              </div>
-              <div class="min-w-0 flex-1">
-                <div class="flex items-baseline justify-between gap-2">
-                  <RouterLink
-                    to="/coach/legal"
-                    class="truncate font-medium transition-colors hover:text-[var(--color-sage)] hover:underline"
-                  >
-                    {{ e.nombre }}
-                  </RouterLink>
-                  <RouterLink
-                    to="/coach/legal"
-                    class="group inline-flex shrink-0 items-center gap-1 text-xs font-medium text-[var(--color-sage)] hover:underline"
-                  >
-                    Revisar
-                    <span
-                      aria-hidden="true"
-                      class="transition-transform group-hover:translate-x-0.5"
-                    >→</span>
-                  </RouterLink>
-                </div>
-                <ul class="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-xs">
-                  <li
-                    v-for="d in [{ label: 'Contrato', doc: e.contrato }, { label: 'NDA', doc: e.nda }]"
-                    :key="d.label"
-                    class="inline-flex items-center gap-1.5"
-                    :class="textoEstadoLegal[estadoVisual(d.doc)]"
-                  >
-                    <span
-                      v-if="estadoVisual(d.doc) === 'firmado'"
-                      aria-hidden="true"
-                    >✓</span>
-                    <span
-                      v-else
-                      class="h-1.5 w-1.5 shrink-0 rounded-full"
-                      :class="puntoEstadoLegal[estadoVisual(d.doc)]"
-                      aria-hidden="true"
-                    />
-                    {{ d.label }} {{ ESTADO_VISUAL_LABEL[estadoVisual(d.doc)].toLowerCase() }}
-                  </li>
-                </ul>
-              </div>
-            </li>
-          </ul>
-        </div>
-
-        <div v-else-if="tab === 'solicitudes'">
-          <p
-            v-if="solicitudesPendientes.length === 0"
-            class="text-sm text-[var(--color-ink)]/60"
-          >
-            No hay solicitudes de nuevos procesos pendientes.
-          </p>
-          <ul
-            v-else
-            class="space-y-1 text-sm"
-          >
-            <li
-              v-for="s in solicitudesPendientes"
-              :key="s.id"
-            >
-              {{ s.nombreSugerido }}
-              <span
-                v-if="s.empresa"
-                class="text-[var(--color-ink)]/60"
-              >— {{ s.empresa.nombre }}</span>
-            </li>
-          </ul>
-        </div>
-
-        <div v-else>
-          <p
-            v-if="prospectosPorSeguir.length === 0"
-            class="text-sm text-[var(--color-sage)]"
-          >
-            ✓ Ningún prospecto necesita seguimiento ahora mismo.
+            Todavía no tienes ninguna empresa activa.
           </p>
           <ul
             v-else
             class="space-y-1.5 text-sm"
           >
             <li
-              v-for="p in prospectosPorSeguir"
-              :key="p.id"
+              v-for="empresa in empresasOrdenadas"
+              :key="empresa.empresaId"
               class="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[var(--color-line)]/60 px-3 py-2"
             >
-              <span>
-                {{ p.nombre }}
-                <span class="text-[var(--color-danger)]">— {{ textoVencimiento(diasHastaSeguimiento(p.proximoSeguimiento!)) }}</span>
+              <span class="flex min-w-0 items-center gap-2 font-medium">
+                <span
+                  class="inline-block h-2 w-2 shrink-0 rounded-full"
+                  :class="semaforoColor[semaforoCartera(empresa)]"
+                  aria-hidden="true"
+                />
+                {{ empresa.nombre }}
               </span>
-              <button
-                type="button"
-                class="rounded-full border border-[var(--color-line)] px-2 py-0.5 text-xs text-[var(--color-ink)]/70 hover:bg-[var(--color-parchment)]"
-                @click="irAProspectos"
-              >
-                Ver prospectos
-              </button>
+              <span class="flex items-center gap-3 text-xs">
+                <span class="text-[var(--color-muted)]">{{ formatoFechaFin(empresa.fechaFin) }}</span>
+                <StatusBadge :tone="estadoCarteraTono[empresa.estado]">{{ estadoCarteraLabel[empresa.estado] }}</StatusBadge>
+                <AppButton
+                  v-if="empresa.estado === 'sin_fecha'"
+                  variant="secondary"
+                  size="sm"
+                  @click="irAEditarEmpresa"
+                >Completar fecha</AppButton>
+                <AppButton
+                  v-else
+                  variant="secondary"
+                  size="sm"
+                  @click="abrirGestion(empresa.empresaId, empresa.nombre)"
+                >Gestionar</AppButton>
+              </span>
             </li>
           </ul>
+
+          <template v-if="cartera && cartera.independientesPorVencer.length > 0">
+            <p class="mb-1.5 mt-4 text-xs font-medium uppercase tracking-wide text-[var(--color-muted)]">
+              Independientes con el ciclo por terminar
+            </p>
+            <ul class="space-y-1.5 text-sm">
+              <li
+                v-for="ind in cartera.independientesPorVencer"
+                :key="ind.coacheeId"
+              >
+                <button
+                  type="button"
+                  class="flex w-full items-center justify-between rounded-lg border border-[var(--color-line)]/60 px-3 py-2 text-left hover:border-[var(--color-sage)] hover:bg-[var(--color-parchment)]/30"
+                  @click="verPerfil(ind.coacheeId)"
+                >
+                  <span>{{ ind.nombre }}</span>
+                  <span class="text-xs font-semibold text-[var(--color-bronze)]">{{ ind.sesionesRestantes }} sesiones restantes</span>
+                </button>
+              </li>
+            </ul>
+          </template>
         </div>
-      </div>
+
+        <!-- Coachees que necesitan atención (operativo día a día — nivel distinto al resto) -->
+        <div class="rounded-2xl border border-[var(--color-line)] bg-white p-4">
+          <div class="mb-3 overflow-x-auto">
+            <TabBar
+              v-model="tab"
+              :tabs="tabsAtencion"
+            />
+          </div>
+
+          <div v-if="tab === 'coachees'">
+            <p
+              v-if="coacheesAtencion.length === 0"
+              class="text-sm text-[var(--color-sage)]"
+            >
+              ✓ Todo al día — ningún coachee necesita algo de ti ahora mismo.
+            </p>
+            <!-- Lista plana (sin tarjeta por coachee ni chips con fondo): cada fila es avatar +
+               nombre + banderas como texto con un punto de color, y una sola acción como enlace.
+               Pedido del usuario 2026-10-10: "se ve mal con tantas cajas". -->
+            <ul
+              v-else
+              class="grid text-sm md:grid-cols-2 md:gap-x-8 2xl:grid-cols-3"
+            >
+              <li
+                v-for="fila in filasAtencion"
+                :key="fila.coachee.coacheeId"
+                class="flex items-start gap-3 border-b border-[var(--color-line)]/70 py-3"
+              >
+                <div
+                  class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--color-ink)] text-xs font-semibold text-[var(--color-parchment)]"
+                  aria-hidden="true"
+                >
+                  {{ iniciales(fila.coachee.nombre) }}
+                </div>
+                <div class="min-w-0 flex-1">
+                  <div class="flex items-baseline justify-between gap-2">
+                    <button
+                      type="button"
+                      class="truncate text-left font-medium transition-colors hover:text-[var(--color-sage)] hover:underline"
+                      @click="verPerfil(fila.coachee.coacheeId)"
+                    >
+                      {{ fila.coachee.nombre }}
+                    </button>
+                    <button
+                      v-if="fila.primario?.accion"
+                      type="button"
+                      class="group inline-flex shrink-0 items-center gap-1 text-xs font-medium text-[var(--color-sage)] hover:underline"
+                      @click="fila.primario.accion"
+                    >
+                      {{ fila.primario.accionLabel?.replace(' →', '') }}
+                      <span
+                        aria-hidden="true"
+                        class="transition-transform group-hover:translate-x-0.5"
+                      >→</span>
+                    </button>
+                  </div>
+                  <p class="truncate text-xs text-[var(--color-muted)]">
+                    {{ fila.empresaNombre ?? 'Independiente' }}
+                    <template v-if="fila.cobro">
+                      ·
+                      <span
+                        :class="{
+                          'text-[var(--color-danger)]': fila.cobro.severidad === 'danger',
+                          'text-[var(--color-sage)]': fila.cobro.severidad === 'sage',
+                        }"
+                      >{{ fila.cobro.texto }}</span>
+                    </template>
+                  </p>
+                  <ul
+                    v-if="fila.primario"
+                    class="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-xs"
+                  >
+                    <li
+                      v-for="item in [fila.primario, ...fila.secundarios]"
+                      :key="item.id"
+                      class="inline-flex items-center gap-1.5"
+                      :class="textoSeveridad[item.severidad]"
+                    >
+                      <span
+                        class="h-1.5 w-1.5 shrink-0 rounded-full"
+                        :class="puntoSeveridad[item.severidad]"
+                        aria-hidden="true"
+                      />
+                      <button
+                        v-if="item !== fila.primario && item.accion"
+                        type="button"
+                        class="hover:underline"
+                        :title="item.accionLabel"
+                        @click="item.accion"
+                      >
+                        {{ item.label }}
+                      </button>
+                      <span v-else>{{ item.label }}</span>
+                    </li>
+                  </ul>
+                </div>
+              </li>
+            </ul>
+          </div>
+
+          <div v-else-if="tab === 'empresas'">
+            <p
+              v-if="empresasLegalPendientes.length === 0"
+              class="text-sm text-[var(--color-sage)]"
+            >
+              ✓ Todo al día — sin contratos ni NDA pendientes.
+            </p>
+            <!-- Mismo lenguaje visual que la lista de coachees: fila plana con ícono, el estado de
+               cada documento como texto + punto de color, y la acción como enlace. -->
+            <ul
+              v-else
+              class="grid text-sm md:grid-cols-2 md:gap-x-8 2xl:grid-cols-3"
+            >
+              <li
+                v-for="e in empresasLegalPendientes"
+                :key="e.empresaId"
+                class="flex items-start gap-3 border-b border-[var(--color-line)]/70 py-3"
+              >
+                <div
+                  class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--color-sage)]/12 text-[var(--color-sage)]"
+                  aria-hidden="true"
+                >
+                  <NavIcon
+                    name="empresas"
+                    :size="15"
+                  />
+                </div>
+                <div class="min-w-0 flex-1">
+                  <div class="flex items-baseline justify-between gap-2">
+                    <RouterLink
+                      to="/coach/legal"
+                      class="truncate font-medium transition-colors hover:text-[var(--color-sage)] hover:underline"
+                    >
+                      {{ e.nombre }}
+                    </RouterLink>
+                    <RouterLink
+                      to="/coach/legal"
+                      class="group inline-flex shrink-0 items-center gap-1 text-xs font-medium text-[var(--color-sage)] hover:underline"
+                    >
+                      Revisar
+                      <span
+                        aria-hidden="true"
+                        class="transition-transform group-hover:translate-x-0.5"
+                      >→</span>
+                    </RouterLink>
+                  </div>
+                  <ul class="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-xs">
+                    <li
+                      v-for="d in [{ label: 'Contrato', doc: e.contrato }, { label: 'NDA', doc: e.nda }]"
+                      :key="d.label"
+                      class="inline-flex items-center gap-1.5"
+                      :class="textoEstadoLegal[estadoVisual(d.doc)]"
+                    >
+                      <span
+                        v-if="estadoVisual(d.doc) === 'firmado'"
+                        aria-hidden="true"
+                      >✓</span>
+                      <span
+                        v-else
+                        class="h-1.5 w-1.5 shrink-0 rounded-full"
+                        :class="puntoEstadoLegal[estadoVisual(d.doc)]"
+                        aria-hidden="true"
+                      />
+                      {{ d.label }} {{ ESTADO_VISUAL_LABEL[estadoVisual(d.doc)].toLowerCase() }}
+                    </li>
+                  </ul>
+                </div>
+              </li>
+            </ul>
+          </div>
+
+          <div v-else-if="tab === 'solicitudes'">
+            <p
+              v-if="solicitudesPendientes.length === 0"
+              class="text-sm text-[var(--color-muted)]"
+            >
+              No hay solicitudes de nuevos procesos pendientes.
+            </p>
+            <ul
+              v-else
+              class="space-y-1 text-sm"
+            >
+              <li
+                v-for="s in solicitudesPendientes"
+                :key="s.id"
+              >
+                {{ s.nombreSugerido }}
+                <span
+                  v-if="s.empresa"
+                  class="text-[var(--color-muted)]"
+                >— {{ s.empresa.nombre }}</span>
+              </li>
+            </ul>
+          </div>
+
+          <div v-else>
+            <p
+              v-if="prospectosPorSeguir.length === 0"
+              class="text-sm text-[var(--color-sage)]"
+            >
+              ✓ Ningún prospecto necesita seguimiento ahora mismo.
+            </p>
+            <ul
+              v-else
+              class="space-y-1.5 text-sm"
+            >
+              <li
+                v-for="p in prospectosPorSeguir"
+                :key="p.id"
+                class="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[var(--color-line)]/60 px-3 py-2"
+              >
+                <span>
+                  {{ p.nombre }}
+                  <span class="text-[var(--color-danger)]">— {{ textoVencimiento(diasHastaSeguimiento(p.proximoSeguimiento!)) }}</span>
+                </span>
+                <AppButton
+                  variant="secondary"
+                  size="sm"
+                  @click="irAProspectos"
+                >
+                  Ver prospectos
+                </AppButton>
+              </li>
+            </ul>
+          </div>
+        </div>
       </main>
     </div>
 

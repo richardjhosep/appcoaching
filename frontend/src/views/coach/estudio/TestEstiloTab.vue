@@ -233,7 +233,7 @@ async function borrarPregunta(preguntaId: string) {
       >
         <span
           class="rounded-full px-2 py-0.5 text-xs font-semibold"
-          :class="test.activo ? 'bg-[var(--color-sage)]/15 text-[var(--color-sage)]' : 'bg-[var(--color-ink)]/5 text-[var(--color-ink)]/50'"
+          :class="test.activo ? 'bg-[var(--color-sage)]/15 text-[var(--color-sage)]' : 'bg-[var(--color-ink)]/5 text-[var(--color-muted)]'"
         >
           {{ test.activo ? 'Activo' : 'Inactivo' }}
         </span>
@@ -242,7 +242,7 @@ async function borrarPregunta(preguntaId: string) {
         </p>
         <p
           v-if="test.competencia"
-          class="text-xs text-[var(--color-ink)]/50"
+          class="text-xs text-[var(--color-muted)]"
         >
           {{ test.competencia.nombre }}
         </p>
@@ -258,7 +258,7 @@ async function borrarPregunta(preguntaId: string) {
 
   <template v-else>
     <button
-      class="mb-4 text-sm text-[var(--color-ink)]/60 hover:text-[var(--color-ink)] hover:underline"
+      class="mb-4 text-sm text-[var(--color-muted)] hover:text-[var(--color-ink)] hover:underline"
       @click="volverALista"
     >
       ← Volver a Test de Estilo
@@ -271,7 +271,7 @@ async function borrarPregunta(preguntaId: string) {
         </h1>
         <p
           v-if="testSeleccionado.competencia"
-          class="text-sm text-[var(--color-ink)]/60"
+          class="text-sm text-[var(--color-muted)]"
         >
           {{ testSeleccionado.competencia.nombre }}
         </p>
@@ -314,8 +314,8 @@ async function borrarPregunta(preguntaId: string) {
           >
             <div class="mb-1 flex items-start justify-between gap-2">
               <div class="space-y-1">
-                <p><span class="font-semibold text-[var(--color-ink)]/50">A —</span> {{ pregunta.opcionA }} <span class="text-xs text-[var(--color-ink)]/40">({{ pregunta.categoriaA }})</span></p>
-                <p><span class="font-semibold text-[var(--color-ink)]/50">B —</span> {{ pregunta.opcionB }} <span class="text-xs text-[var(--color-ink)]/40">({{ pregunta.categoriaB }})</span></p>
+                <p><span class="font-semibold text-[var(--color-muted)]">A —</span> {{ pregunta.opcionA }} <span class="text-xs text-[var(--color-muted)]">({{ pregunta.categoriaA }})</span></p>
+                <p><span class="font-semibold text-[var(--color-muted)]">B —</span> {{ pregunta.opcionB }} <span class="text-xs text-[var(--color-muted)]">({{ pregunta.categoriaB }})</span></p>
               </div>
               <button
                 class="shrink-0 text-xs text-[var(--color-bronze)] hover:underline"
@@ -372,7 +372,7 @@ async function borrarPregunta(preguntaId: string) {
       >
         <p
           v-if="intentos.length === 0"
-          class="text-sm text-[var(--color-ink)]/50"
+          class="text-sm text-[var(--color-muted)]"
         >
           Todavía ningún coachee ha respondido este test.
         </p>
@@ -387,7 +387,7 @@ async function borrarPregunta(preguntaId: string) {
           >
             <p class="mb-2 font-medium">
               {{ intento.coachee?.nombre ?? 'Coachee' }}
-              <span class="font-normal text-[var(--color-ink)]/50">— {{ intento.categoriaDominante }}</span>
+              <span class="font-normal text-[var(--color-muted)]">— {{ intento.categoriaDominante }}</span>
             </p>
             <div class="space-y-1">
               <div
@@ -395,14 +395,14 @@ async function borrarPregunta(preguntaId: string) {
                 :key="fila.categoria"
                 class="flex items-center gap-2 text-xs"
               >
-                <span class="w-28 shrink-0 truncate text-[var(--color-ink)]/60">{{ fila.categoria }}</span>
+                <span class="w-28 shrink-0 truncate text-[var(--color-muted)]">{{ fila.categoria }}</span>
                 <div class="h-2 flex-1 overflow-hidden rounded-full bg-[var(--color-parchment)]">
                   <div
                     class="h-full rounded-full bg-[var(--color-sage)]"
                     :style="{ width: `${(fila.conteo / fila.max) * 100}%` }"
                   />
                 </div>
-                <span class="w-4 shrink-0 text-right font-[family-name:var(--font-mono)] text-[var(--color-ink)]/60">{{ fila.conteo }}</span>
+                <span class="w-4 shrink-0 text-right font-[family-name:var(--font-mono)] text-[var(--color-muted)]">{{ fila.conteo }}</span>
               </div>
             </div>
           </li>

@@ -99,10 +99,36 @@ describe('UsuariosView', () => {
     const wrapper = mount(UsuariosView)
     await flushPromises()
 
-    await wrapper.find('button[type="button"]').trigger('click')
+    await wrapper.find('tbody button[type="button"]').trigger('click')
     await flushPromises()
 
     expect(confirmDialog).toHaveBeenCalled()
     expect(setUserActivo).toHaveBeenCalledWith('u1', false)
+  })
+
+  it('muestra ErrorState con Reintentar si falla la carga', async () => {
+    vi.mocked(listUsers).mockRejectedValueOnce(new Error('boom'))
+    const wrapper = mount(UsuariosView)
+    await flushPromises()
+    expect(wrapper.find('[role="alert"]').exists()).toBe(true)
+
+    await wrapper.findAll('button').find((b) => b.text() === 'Reintentar')!.trigger('click')
+    await flushPromises()
+    expect(wrapper.text()).toContain('coach@example.com')
+  })
+
+  it('usa th con scope="col" y marca aria-invalid en el alta inválida', async () => {
+    const wrapper = mount(UsuariosView, { attachTo: document.body })
+    await flushPromises()
+    expect(wrapper.findAll('thead th').every((th) => th.attributes('scope') === 'col')).toBe(true)
+
+    await wrapper.findAll('button').find((b) => b.text() === '+ Nuevo Usuario')!.trigger('click')
+    await flushPromises()
+    const modal = new DOMWrapper(document.body)
+    await modal.find('form').trigger('submit')
+    await flushPromises()
+    expect(modal.find('input[type="email"]').attributes('aria-invalid')).toBe('true')
+    expect(document.activeElement).toBe(modal.find('input[type="email"]').element)
+    wrapper.unmount()
   })
 })

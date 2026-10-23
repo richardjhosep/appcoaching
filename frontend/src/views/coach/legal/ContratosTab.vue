@@ -166,9 +166,9 @@ async function enviarSolicitudConsentimiento(coacheeId: string, nombre: string) 
       {{ error }}
     </p>
 
-    <div class="flex items-start gap-2.5 text-sm text-[var(--color-ink)]/60">
+    <div class="flex items-start gap-2.5 text-sm text-[var(--color-muted)]">
       <span
-        class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[var(--color-ink)]/5 text-[11px] font-semibold text-[var(--color-ink)]/50"
+        class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[var(--color-ink)]/5 text-xs font-semibold text-[var(--color-muted)]"
         aria-hidden="true"
       >i</span>
       <p class="max-w-3xl">
@@ -191,11 +191,11 @@ async function enviarSolicitudConsentimiento(coacheeId: string, nombre: string) 
       >
         <p
           class="font-[family-name:var(--font-mono)] text-2xl font-semibold"
-          :class="a.valor === 0 ? 'text-[var(--color-ink)]/25' : a.color"
+          :class="a.valor === 0 ? 'text-[var(--color-subtle)]' : a.color"
         >
           {{ a.valor }}
         </p>
-        <p class="text-xs text-[var(--color-ink)]/60">
+        <p class="text-xs text-[var(--color-muted)]">
           {{ a.valor === 1 ? a.singular : a.etiqueta }}
         </p>
       </div>
@@ -209,7 +209,7 @@ async function enviarSolicitudConsentimiento(coacheeId: string, nombre: string) 
 
     <p
       v-if="itemsOrdenados.length === 0"
-      class="text-sm text-[var(--color-ink)]/60"
+      class="text-sm text-[var(--color-muted)]"
     >
       Todavía no hay empresas ni coachees registrados.
     </p>
@@ -234,7 +234,7 @@ async function enviarSolicitudConsentimiento(coacheeId: string, nombre: string) 
             <h2 class="font-[family-name:var(--font-heading)] font-semibold">
               {{ item.nombre }}
             </h2>
-            <p class="text-xs text-[var(--color-ink)]/45">
+            <p class="text-xs text-[var(--color-muted)]">
               Empresa
             </p>
           </div>
@@ -276,7 +276,7 @@ async function enviarSolicitudConsentimiento(coacheeId: string, nombre: string) 
           <NavIcon
             name="coachees"
             :size="16"
-            class="shrink-0 text-[var(--color-ink)]/50"
+            class="shrink-0 text-[var(--color-muted)]"
           />
           <span class="flex-1">
             <span class="font-medium">{{ item.coacheesConConsentimiento }} de {{ item.coacheesTotal }} coachees con consentimiento informado firmado</span>
@@ -290,7 +290,7 @@ async function enviarSolicitudConsentimiento(coacheeId: string, nombre: string) 
           <NavIcon
             name="chevron"
             :size="16"
-            class="shrink-0 text-[var(--color-ink)]/40 transition-transform"
+            class="shrink-0 text-[var(--color-muted)] transition-transform"
             :class="expandidos.has(item.empresaId) ? '-rotate-90' : 'rotate-90'"
           />
         </button>
@@ -305,7 +305,7 @@ async function enviarSolicitudConsentimiento(coacheeId: string, nombre: string) 
           >
             <button
               type="button"
-              class="flex h-4 w-4 items-center justify-center rounded-full text-[10px]"
+              class="flex h-4 w-4 items-center justify-center rounded-full text-xs"
               :class="c.consentimientoInformado
                 ? 'bg-[var(--color-sage)] text-white'
                 : 'border border-[var(--color-line)] text-transparent'"
@@ -349,7 +349,7 @@ async function enviarSolicitudConsentimiento(coacheeId: string, nombre: string) 
             <h3 class="font-[family-name:var(--font-heading)] font-semibold">
               {{ item.nombre }}
             </h3>
-            <p class="text-xs text-[var(--color-ink)]/45">
+            <p class="text-xs text-[var(--color-muted)]">
               Independiente
             </p>
           </div>

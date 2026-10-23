@@ -7,6 +7,11 @@ import GestionModal from '../../components/GestionModal.vue'
 import Pagination from '../../components/Pagination.vue'
 import IconButton from '../../components/IconButton.vue'
 import SkeletonBlock from '../../components/SkeletonBlock.vue'
+import ErrorState from '../../components/ErrorState.vue'
+import EmptyState from '../../components/EmptyState.vue'
+import AppButton from '../../components/AppButton.vue'
+import FormField from '../../components/FormField.vue'
+import StatusBadge from '../../components/StatusBadge.vue'
 import {
   createProspecto,
   updateProspecto,
@@ -25,13 +30,14 @@ import {
 import { listarParametros } from '../../api/configuracion'
 import { ApiError } from '../../api/client'
 import { notifyError, notifySuccess, confirmDialog } from '../../lib/notify'
-import { etapaColor, etapaEsCerrada, etapaLabel } from '../../lib/etapaProspecto'
+import { etapaEsCerrada, etapaLabel } from '../../lib/etapaProspecto'
+import { useCarga } from '../../lib/useCarga'
+import { enfocarPrimerInvalido } from '../../lib/enfocarInvalido'
 
 const router = useRouter()
 
 const PAGE_SIZE = 12
 
-const loading = ref(true)
 const prospectos = ref<Prospecto[]>([])
 const fuentes = ref<string[]>([])
 const search = ref('')
@@ -40,17 +46,26 @@ const filtroFuente = ref('')
 const page = ref(1)
 
 async function load() {
-  loading.value = true
+  // Los prospectos son críticos; el catálogo de fuentes solo alimenta filtros y un select.
   const [p, f] = await Promise.all([
     listProspectos(),
-    listarParametros('FUENTES_PROSPECTO'),
+    tolerar(listarParametros('FUENTES_PROSPECTO')),
   ])
   prospectos.value = p
-  fuentes.value = f.filter((param) => param.estado).map((param) => param.valor)
-  loading.value = false
+  fuentes.value = (f ?? []).filter((param) => param.estado).map((param) => param.valor)
 }
 
-onMounted(load)
+const { loading, error, fallos, recargar, tolerar } = useCarga(load)
+
+onMounted(recargar)
+
+const tonoEtapa: Record<EtapaProspecto, 'neutral' | 'bronze' | 'sage' | 'danger'> = {
+  contactado: 'neutral',
+  propuesta_enviada: 'bronze',
+  negociacion: 'bronze',
+  ganado: 'sage',
+  perdido: 'danger',
+}
 
 const formatoCLP = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 })
 
@@ -134,6 +149,7 @@ function abrirEditar(prospecto: Prospecto) {
 
 function validar(): boolean {
   errors.nombre = form.nombre.trim().length < 2 ? 'El nombre debe tener al menos 2 caracteres.' : undefined
+  if (errors.nombre) void enfocarPrimerInvalido()
   return !errors.nombre
 }
 
@@ -160,9 +176,10 @@ async function guardar() {
       await notifySuccess('Prospecto creado')
     }
     modalOpen.value = false
-    await load()
+    await recargar()
   } catch (err) {
     serverErrors.value = err instanceof ApiError ? (err.fieldErrors ?? {}) : {}
+    void enfocarPrimerInvalido()
     await notifyError('No se pudo guardar', err instanceof ApiError ? err.message : 'Ocurrió un error inesperado.')
   } finally {
     guardando.value = false
@@ -179,7 +196,7 @@ async function eliminar(prospecto: Prospecto) {
   if (!confirmado) return
   try {
     await deleteProspecto(prospecto.id)
-    await load()
+    await recargar()
     await notifySuccess('Prospecto eliminado')
   } catch (err) {
     await notifyError('No se pudo eliminar', err instanceof ApiError ? err.message : 'Ocurrió un error inesperado.')
@@ -219,7 +236,7 @@ async function guardarGestion(nota: string, proximoSeguimiento: string | undefin
     await crearGestionProspecto(prospectoGestion.value.id, nota, proximoSeguimiento)
     await notifySuccess('Gestión registrada')
     gestionHistorial.value = await getGestionDeProspecto(prospectoGestion.value.id)
-    await load()
+    await recargar()
   } catch (err) {
     await notifyError('No se pudo guardar', err instanceof ApiError ? err.message : 'Ocurrió un error inesperado.')
   } finally {
@@ -238,7 +255,7 @@ async function perder(prospecto: Prospecto) {
   if (!confirmado) return
   try {
     await marcarPerdido(prospecto.id)
-    await load()
+    await recargar()
     await notifySuccess('Prospecto marcado como perdido')
   } catch (err) {
     await notifyError('No se pudo actualizar', err instanceof ApiError ? err.message : 'Ocurrió un error inesperado.')
@@ -292,8 +309,9 @@ async function confirmarConvertir() {
       })
       await notifySuccess('Prospecto ganado', `${empresa.nombre} ya está disponible como empresa.`)
       cerrarConvertir()
-      await load()
-      void router.push('/coach/empresas')
+      await recargar()
+      // Lleva a la empresa recién creada (el mantenedor abre su editor con ?id=).
+      void router.push({ path: '/coach/empresas', query: { id: empresa.id } })
     } else {
       if (!formConvertir.email) throw new Error('Ingresa el email.')
       const resultado = await convertirACoachee(prospectoConvertir.value.id, {
@@ -305,7 +323,7 @@ async function confirmarConvertir() {
       })
       await notifySuccess('Prospecto ganado', `${resultado.coachee.nombre} ya está disponible como coachee.`)
       cerrarConvertir()
-      await load()
+      await recargar()
       void router.push({ name: 'coach-coachee-detail', params: { coacheeId: resultado.coachee.id } })
     }
   } catch (err) {
@@ -323,27 +341,50 @@ async function confirmarConvertir() {
         <h1 class="font-[family-name:var(--font-heading)] text-xl font-semibold">
           Prospectos
         </h1>
-        <p class="text-sm text-[var(--color-ink)]/60">
+        <p class="text-sm text-[var(--color-muted)]">
           Negocio en conversación, todavía sin firmar — antes de convertirse en Coachee o Empresa.
         </p>
       </div>
-      <button
-        class="rounded-lg bg-[var(--color-ink)] px-4 py-2 text-sm font-medium text-[var(--color-parchment)]"
-        @click="abrirCrear"
-      >
+      <AppButton @click="abrirCrear">
         + Nuevo Prospecto
-      </button>
+      </AppButton>
     </div>
 
-    <SkeletonBlock v-if="loading" />
+    <SkeletonBlock
+      v-if="loading"
+      variant="table"
+      :rows="6"
+    />
+    <ErrorState
+      v-else-if="error"
+      @retry="recargar"
+    />
+    <EmptyState
+      v-else-if="prospectos.length === 0"
+      icon="prospectos"
+      title="Todavía no tienes prospectos"
+      description="Registra el negocio en conversación para darle seguimiento hasta que se convierta en empresa o coachee."
+    >
+      <AppButton @click="abrirCrear">
+        Crear primer prospecto
+      </AppButton>
+    </EmptyState>
     <div
       v-else
       class="space-y-3"
     >
+      <div
+        v-if="fallos > 0"
+        role="status"
+        class="rounded-xl border border-[var(--color-bronze)]/40 bg-[var(--color-bronze)]/10 px-4 py-3 text-sm"
+      >
+        No pudimos cargar el catálogo de fuentes: los filtros por fuente pueden estar incompletos.
+      </div>
       <div class="flex flex-wrap items-center gap-2">
         <select
           v-model="filtroEtapa"
-          class="rounded-lg border border-[var(--color-line)] px-3 py-1.5 text-sm"
+          aria-label="Filtrar por etapa"
+          class="field-input w-auto"
           @change="page = 1"
         >
           <option value="">
@@ -359,7 +400,8 @@ async function confirmarConvertir() {
         </select>
         <select
           v-model="filtroFuente"
-          class="rounded-lg border border-[var(--color-line)] px-3 py-1.5 text-sm"
+          aria-label="Filtrar por fuente"
+          class="field-input w-auto"
           @change="page = 1"
         >
           <option value="">
@@ -373,58 +415,57 @@ async function confirmarConvertir() {
             {{ f }}
           </option>
         </select>
-        <button
-          class="rounded-lg border border-[var(--color-line)] px-3 py-1.5 text-xs hover:bg-[var(--color-parchment)]/50"
+        <AppButton
+          variant="secondary"
+          size="sm"
           @click="limpiarFiltros"
         >
           × Limpiar filtros
-        </button>
-        <span class="ml-auto text-xs text-[var(--color-ink)]/50">{{ filtrados.length }} registro(s)</span>
+        </AppButton>
+        <span class="ml-auto text-xs text-[var(--color-muted)]">{{ filtrados.length }} registro(s)</span>
       </div>
 
       <input
         v-model="search"
         type="search"
+        aria-label="Buscar prospectos"
         placeholder="Buscar por nombre…"
-        class="w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+        class="field-input"
         @input="page = 1"
       >
 
-      <div class="overflow-x-auto rounded-2xl border border-[var(--color-line)] bg-white">
-        <table class="w-full text-left text-sm">
+      <div class="data-table-wrap">
+        <table class="data-table">
           <thead>
-            <tr class="border-b border-[var(--color-line)] bg-[var(--color-parchment)] text-xs text-[var(--color-ink)]/60">
-              <th class="px-4 py-3">
+            <tr>
+              <th scope="col">
                 Nombre
               </th>
-              <th class="px-4 py-3">
+              <th scope="col">
                 Contacto
               </th>
-              <th class="px-4 py-3">
+              <th scope="col">
                 Fuente
               </th>
-              <th class="px-4 py-3">
+              <th scope="col">
                 Etapa
               </th>
-              <th class="px-4 py-3">
+              <th scope="col">
                 Valor estimado
               </th>
-              <th class="px-4 py-3">
+              <th scope="col">
                 Próximo seguimiento
               </th>
-              <th class="px-4 py-3">
+              <th scope="col">
                 Acciones
               </th>
             </tr>
           </thead>
           <tbody>
-            <tr
-              v-if="paginados.length === 0"
-              class="border-b border-[var(--color-line)] last:border-0"
-            >
+            <tr v-if="paginados.length === 0">
               <td
                 colspan="7"
-                class="px-4 py-6 text-center text-sm text-[var(--color-ink)]/50"
+                class="py-6 text-center text-sm text-[var(--color-muted)]"
               >
                 Sin resultados.
               </td>
@@ -432,58 +473,54 @@ async function confirmarConvertir() {
             <tr
               v-for="p in paginados"
               :key="p.id"
-              class="border-b border-[var(--color-line)] last:border-0"
             >
-              <td class="px-4 py-3 font-medium">
+              <td class="font-medium">
                 {{ p.nombre }}
-                <span class="block text-xs font-normal text-[var(--color-ink)]/50">
+                <span class="block text-xs font-normal text-[var(--color-muted)]">
                   {{ p.tipo === 'empresa' ? 'Empresa' : 'Persona' }}
                 </span>
               </td>
-              <td class="px-4 py-3 text-[var(--color-ink)]/70">
+              <td class="text-[var(--color-muted)]">
                 {{ p.contactoNombre || p.email || p.telefono || '—' }}
               </td>
-              <td class="px-4 py-3 text-[var(--color-ink)]/70">
+              <td class="text-[var(--color-muted)]">
                 {{ p.fuente ?? '—' }}
               </td>
-              <td class="px-4 py-3">
-                <span
-                  class="rounded-full px-2 py-0.5 text-xs font-medium"
-                  :style="{ color: etapaColor[p.etapa], backgroundColor: `color-mix(in srgb, ${etapaColor[p.etapa]} 15%, transparent)` }"
-                >
+              <td>
+                <StatusBadge :tone="tonoEtapa[p.etapa]">
                   {{ etapaLabel[p.etapa] }}
-                </span>
+                </StatusBadge>
               </td>
-              <td class="px-4 py-3 font-[family-name:var(--font-mono)] text-xs">
+              <td class="font-[family-name:var(--font-mono)] text-xs">
                 {{ p.valorEstimado ? formatoCLP.format(p.valorEstimado) : '—' }}
               </td>
-              <td class="px-4 py-3 text-xs text-[var(--color-ink)]/60">
+              <td class="text-xs text-[var(--color-muted)]">
                 {{ p.proximoSeguimiento ? new Date(`${p.proximoSeguimiento}T00:00:00`).toLocaleDateString('es-CL') : '—' }}
               </td>
-              <td class="px-4 py-3">
+              <td>
                 <div class="flex flex-wrap gap-1.5">
                   <template v-if="!etapaEsCerrada(p.etapa)">
-                    <button
-                      type="button"
-                      class="rounded-full border border-[var(--color-line)] px-2 py-1 text-xs hover:bg-[var(--color-parchment)]/60"
+                    <AppButton
+                      variant="secondary"
+                      size="sm"
                       @click="abrirGestion(p)"
                     >
                       Gestionar
-                    </button>
-                    <button
-                      type="button"
-                      class="rounded-full border border-[var(--color-sage)] px-2 py-1 text-xs text-[var(--color-sage)] hover:bg-[var(--color-sage)]/10"
+                    </AppButton>
+                    <AppButton
+                      variant="secondary"
+                      size="sm"
                       @click="abrirConvertir(p)"
                     >
                       Ganado
-                    </button>
-                    <button
-                      type="button"
-                      class="rounded-full border border-[var(--color-danger)] px-2 py-1 text-xs text-[var(--color-danger)] hover:bg-[var(--color-danger)]/10"
+                    </AppButton>
+                    <AppButton
+                      variant="secondary"
+                      size="sm"
                       @click="perder(p)"
                     >
                       Perdido
-                    </button>
+                    </AppButton>
                     <IconButton
                       icon="editar"
                       title="Editar"
@@ -516,21 +553,23 @@ async function confirmarConvertir() {
     >
       <form
         class="space-y-4"
+        novalidate
         @submit.prevent="guardar"
       >
-        <label class="block text-sm">
-          Nombre {{ form.tipo === 'empresa' ? '(razón social)' : '' }}
+        <FormField
+          v-slot="{ id, describedby, invalid }"
+          :label="`Nombre ${form.tipo === 'empresa' ? '(razón social)' : ''}`.trim()"
+          :error="errors.nombre || serverErrors.nombre"
+        >
           <input
+            :id="id"
             v-model="form.nombre"
             type="text"
-            class="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
-            :class="errors.nombre || serverErrors.nombre ? 'border-[var(--color-danger)]' : 'border-[var(--color-line)]'"
+            class="field-input"
+            :aria-describedby="describedby"
+            :aria-invalid="invalid"
           >
-          <span
-            v-if="errors.nombre || serverErrors.nombre"
-            class="mt-1 block text-xs text-[var(--color-danger)]"
-          >{{ errors.nombre || serverErrors.nombre }}</span>
-        </label>
+        </FormField>
 
         <div class="flex gap-4 text-sm">
           <label class="flex items-center gap-1.5">
@@ -557,7 +596,7 @@ async function confirmarConvertir() {
           <input
             v-model="form.contactoNombre"
             type="text"
-            class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+            class="field-input mt-1"
           >
         </label>
 
@@ -566,7 +605,7 @@ async function confirmarConvertir() {
           <input
             v-model="form.email"
             type="email"
-            class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+            class="field-input mt-1"
           >
         </label>
 
@@ -575,7 +614,7 @@ async function confirmarConvertir() {
           <input
             v-model="form.telefono"
             type="text"
-            class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+            class="field-input mt-1"
           >
         </label>
 
@@ -583,7 +622,7 @@ async function confirmarConvertir() {
           Fuente (opcional)
           <select
             v-model="form.fuente"
-            class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+            class="field-input mt-1"
           >
             <option value="">
               Sin especificar
@@ -604,7 +643,7 @@ async function confirmarConvertir() {
             v-model="valorEstimadoDisplay"
             type="text"
             inputmode="numeric"
-            class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+            class="field-input mt-1"
           >
         </label>
 
@@ -613,25 +652,23 @@ async function confirmarConvertir() {
           <textarea
             v-model="form.notas"
             rows="2"
-            class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+            class="field-input mt-1"
           />
         </label>
 
         <div class="flex justify-end gap-2 pt-2">
-          <button
-            type="button"
-            class="rounded-lg border border-[var(--color-line)] px-4 py-2 text-sm"
+          <AppButton
+            variant="secondary"
             @click="modalOpen = false"
           >
             Cancelar
-          </button>
-          <button
+          </AppButton>
+          <AppButton
             type="submit"
-            :disabled="guardando"
-            class="rounded-lg bg-[var(--color-ink)] px-4 py-2 text-sm text-[var(--color-parchment)] disabled:opacity-60"
+            :loading="guardando"
           >
             {{ guardando ? 'Guardando…' : 'Guardar' }}
-          </button>
+          </AppButton>
         </div>
       </form>
     </AppModal>
@@ -655,7 +692,7 @@ async function confirmarConvertir() {
         class="space-y-4"
         @submit.prevent="confirmarConvertir"
       >
-        <p class="text-sm text-[var(--color-ink)]/60">
+        <p class="text-sm text-[var(--color-muted)]">
           {{ prospectoConvertir.tipo === 'empresa' ? 'Se creará una Empresa con estos datos.' : 'Se creará un Coachee independiente con estos datos.' }}
         </p>
 
@@ -664,7 +701,7 @@ async function confirmarConvertir() {
           <input
             v-model="formConvertir.nombre"
             type="text"
-            class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+            class="field-input mt-1"
           >
         </label>
 
@@ -675,7 +712,7 @@ async function confirmarConvertir() {
               v-model.number="formConvertir.tarifaHora"
               type="number"
               min="1"
-              class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+              class="field-input mt-1"
             >
           </label>
           <label class="block text-sm">
@@ -683,7 +720,7 @@ async function confirmarConvertir() {
             <input
               v-model="formConvertir.fechaInicio"
               type="date"
-              class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+              class="field-input mt-1"
             >
           </label>
           <label class="block text-sm">
@@ -691,7 +728,7 @@ async function confirmarConvertir() {
             <input
               v-model="formConvertir.fechaFin"
               type="date"
-              class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+              class="field-input mt-1"
             >
           </label>
         </template>
@@ -701,7 +738,7 @@ async function confirmarConvertir() {
             <input
               v-model="formConvertir.email"
               type="email"
-              class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+              class="field-input mt-1"
             >
           </label>
           <label class="block text-sm">
@@ -709,7 +746,7 @@ async function confirmarConvertir() {
             <input
               v-model="formConvertir.jefeDirecto"
               type="text"
-              class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+              class="field-input mt-1"
             >
           </label>
           <label class="block text-sm">
@@ -717,7 +754,7 @@ async function confirmarConvertir() {
             <textarea
               v-model="formConvertir.objetivoProceso"
               rows="2"
-              class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+              class="field-input mt-1"
             />
           </label>
           <label class="block text-sm">
@@ -726,26 +763,24 @@ async function confirmarConvertir() {
               v-model.number="formConvertir.tarifaPropia"
               type="number"
               min="1"
-              class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+              class="field-input mt-1"
             >
           </label>
         </template>
 
         <div class="flex justify-end gap-2 pt-2">
-          <button
-            type="button"
-            class="rounded-lg border border-[var(--color-line)] px-4 py-2 text-sm"
+          <AppButton
+            variant="secondary"
             @click="cerrarConvertir"
           >
             Cancelar
-          </button>
-          <button
+          </AppButton>
+          <AppButton
             type="submit"
-            :disabled="convirtiendo"
-            class="rounded-lg bg-[var(--color-sage)] px-4 py-2 text-sm text-white disabled:opacity-60"
+            :loading="convirtiendo"
           >
             {{ convirtiendo ? 'Convirtiendo…' : 'Confirmar' }}
-          </button>
+          </AppButton>
         </div>
       </form>
     </AppModal>

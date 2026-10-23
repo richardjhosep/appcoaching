@@ -59,18 +59,18 @@ function formatoFechaSolo(iso: string): string {
   >
     <div class="space-y-4">
       <div>
-        <p class="mb-1.5 text-xs font-medium uppercase tracking-wide text-[var(--color-ink)]/50">
+        <p class="mb-1.5 text-xs font-medium uppercase tracking-wide text-[var(--color-muted)]">
           Historial
         </p>
         <p
           v-if="cargando"
-          class="text-sm text-[var(--color-ink)]/60"
+          class="text-sm text-[var(--color-muted)]"
         >
           Cargando…
         </p>
         <p
           v-else-if="historial.length === 0"
-          class="text-sm text-[var(--color-ink)]/60"
+          class="text-sm text-[var(--color-muted)]"
         >
           Todavía no hay gestión registrada.
         </p>
@@ -83,7 +83,7 @@ function formatoFechaSolo(iso: string): string {
             :key="g.id"
             class="rounded-lg border border-[var(--color-line)]/60 px-3 py-2"
           >
-            <p class="text-xs text-[var(--color-ink)]/50">
+            <p class="text-xs text-[var(--color-muted)]">
               {{ formatoFechaHora(g.createdAt) }}
               <template v-if="g.proximoSeguimiento">
                 · Próximo seguimiento: {{ formatoFechaSolo(g.proximoSeguimiento) }}
@@ -95,7 +95,7 @@ function formatoFechaSolo(iso: string): string {
       </div>
 
       <div class="border-t border-[var(--color-line)] pt-4">
-        <p class="mb-1.5 text-xs font-medium uppercase tracking-wide text-[var(--color-ink)]/50">
+        <p class="mb-1.5 text-xs font-medium uppercase tracking-wide text-[var(--color-muted)]">
           Nueva gestión
         </p>
         <textarea
@@ -104,7 +104,7 @@ function formatoFechaSolo(iso: string): string {
           placeholder="¿Qué se conversó? ¿En qué quedó?"
           class="mb-2 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm focus:border-[var(--color-sage)] focus:outline-none focus:ring-2 focus:ring-[var(--color-sage)]/30"
         />
-        <label class="mb-3 block text-xs text-[var(--color-ink)]/60">
+        <label class="mb-3 block text-xs text-[var(--color-muted)]">
           Próximo seguimiento (opcional)
           <input
             v-model="proximoSeguimientoForm"

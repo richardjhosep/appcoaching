@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import HistorialCiclos from '../../../components/HistorialCiclos.vue'
+import StatusBadge from '../../../components/StatusBadge.vue'
 import SkeletonBlock from '../../../components/SkeletonBlock.vue'
 import {
   abrirCiclo,
@@ -274,12 +275,12 @@ async function cerrar() {
               {{ guardandoTotalSesiones ? 'Guardando…' : 'Guardar' }}
             </button>
           </div>
-          <span
+          <StatusBadge
             v-if="cicloActual.alertaPorVencer"
-            class="rounded-full bg-[var(--color-bronze)]/20 px-2 py-0.5 text-xs text-[var(--color-bronze)]"
+            tone="bronze"
           >
             Ciclo por vencer
-          </span>
+          </StatusBadge>
         </div>
 
         <label class="mb-3 block text-sm">
@@ -332,7 +333,7 @@ async function cerrar() {
             class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
           />
         </label>
-        <p class="mb-2 text-xs text-[var(--color-ink)]/50">
+        <p class="mb-2 text-xs text-[var(--color-muted)]">
           Aparte del informe: esto es lo que la empresa ve destacado en su panel como el
           resultado concreto del proceso para el negocio.
         </p>
@@ -363,7 +364,7 @@ async function cerrar() {
           </button>
           <span
             v-if="cicloActual.informePdfNombre"
-            class="ml-2 text-xs text-[var(--color-ink)]/60"
+            class="ml-2 text-xs text-[var(--color-muted)]"
           >{{ cicloActual.informePdfNombre }}</span>
         </div>
 
@@ -418,7 +419,7 @@ async function cerrar() {
         :key="c.id"
         class="mb-4 space-y-2 border-b border-[var(--color-line)]/60 pb-4 text-sm last:mb-0 last:border-b-0 last:pb-0"
       >
-        <p class="text-xs text-[var(--color-ink)]/50">
+        <p class="text-xs text-[var(--color-muted)]">
           Ciclo cerrado el {{ new Date(c.fechaCierre!).toLocaleDateString('es-CL') }} — promedio
           general
           <strong>{{ promedioGeneral(retroPorCiclo.get(c.id)!.respuestas) }}/5</strong>

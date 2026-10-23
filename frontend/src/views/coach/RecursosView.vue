@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
 import AppShell from '../../components/AppShell.vue'
+import StatusBadge from '../../components/StatusBadge.vue'
 import AppModal from '../../components/AppModal.vue'
 import CarpetaArbol from '../../components/CarpetaArbol.vue'
 import RecursoIcono from '../../components/RecursoIcono.vue'
 import SkeletonBlock from '../../components/SkeletonBlock.vue'
+import ErrorState from '../../components/ErrorState.vue'
+import AppButton from '../../components/AppButton.vue'
 import FechaLimiteEditor from '../../components/FechaLimiteEditor.vue'
 import {
   crearCarpeta,
@@ -33,8 +36,8 @@ import { listCompetencias, type Competencia } from '../../api/competencias'
 import { ApiError } from '../../api/client'
 import { notifyError, notifySuccess, confirmDialog, promptDialog } from '../../lib/notify'
 import { buildArbol, breadcrumbDe, idsHastaRaiz } from '../../lib/carpetaArbol'
+import { useCarga } from '../../lib/useCarga'
 
-const loading = ref(true)
 const carpetas = ref<Carpeta[]>([])
 const coachees = ref<CoacheeListItem[]>([])
 const competencias = ref<Competencia[]>([])
@@ -72,13 +75,18 @@ const recursosFiltrados = computed(() =>
   recursos.value.filter((r) => !categoriaFiltro.value || r.categoria === categoriaFiltro.value),
 )
 
-onMounted(async () => {
-  const [cs, cc, comps] = await Promise.all([listCarpetas(), listCoachees(), listCompetencias()])
+async function load() {
+  // Las carpetas son críticas; coachees y competencias solo alimentan los selectores de
+  // asignación y de competencia: si fallan, se avisa en vez de mostrar listas vacías.
+  const [cs, cc, comps] = await Promise.all([listCarpetas(), tolerar(listCoachees()), tolerar(listCompetencias())])
   carpetas.value = cs
-  coachees.value = cc
-  competencias.value = comps
-  loading.value = false
-})
+  coachees.value = cc ?? []
+  competencias.value = comps ?? []
+}
+
+const { loading, error, fallos, recargar, tolerar } = useCarga(load)
+
+onMounted(recargar)
 
 watch(seleccionadaId, loadRecursos)
 
@@ -395,254 +403,269 @@ async function alternarPublica() {
       Biblioteca de recursos
     </h1>
 
-    <SkeletonBlock v-if="loading" />
+    <SkeletonBlock
+      v-if="loading"
+      variant="cards"
+    />
+    <ErrorState
+      v-else-if="error"
+      @retry="recargar"
+    />
 
-    <div
-      v-else
-      class="flex flex-col gap-5 lg:flex-row"
-    >
-      <aside class="rounded-2xl border border-[var(--color-line)] bg-white p-3 lg:w-64 lg:shrink-0">
-        <div class="mb-2 flex items-center justify-between px-1">
-          <span class="text-xs font-medium uppercase tracking-wide text-[var(--color-ink)]/45">Carpetas</span>
-          <button
-            class="text-xs text-[var(--color-sage)] hover:underline"
-            @click="crearRaiz"
-          >
-            + Nueva
-          </button>
-        </div>
-        <button
-          class="mb-1 w-full rounded-lg px-2 py-1.5 text-left text-sm transition-colors"
-          :class="seleccionadaId === null ? 'bg-[var(--color-ink)] text-[var(--color-parchment)]' : 'hover:bg-[var(--color-parchment)]/70'"
-          @click="seleccionar(null)"
+    <template v-else>
+      <div
+        v-if="fallos > 0"
+        role="status"
+        class="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[var(--color-bronze)]/40 bg-[var(--color-bronze)]/10 px-4 py-3 text-sm"
+      >
+        <span>No pudimos cargar la lista de coachees o de competencias: al asignar recursos podrían faltar opciones.</span>
+        <AppButton
+          variant="secondary"
+          size="sm"
+          @click="recargar"
         >
-          Todas las carpetas
-        </button>
-        <p
-          v-if="arbol.length === 0"
-          class="px-2 py-1 text-xs text-[var(--color-ink)]/50"
-        >
-          Aún no hay carpetas.
-        </p>
-        <CarpetaArbol
-          v-else
-          v-model:expandidas="expandidas"
-          :nodos="arbol"
-          :seleccionada-id="seleccionadaId"
-          @select="seleccionar"
-        />
-      </aside>
-
-      <div class="min-w-0 flex-1">
-        <div
-          v-if="!carpetaActual"
-          class="flex flex-col items-center justify-center gap-1 rounded-2xl border border-dashed border-[var(--color-line)] py-16 text-center text-sm text-[var(--color-ink)]/50"
-        >
-          <p>Selecciona una carpeta para ver su contenido,</p>
-          <p>o crea la primera desde el panel de la izquierda.</p>
-        </div>
-
-        <template v-else>
-          <nav class="mb-3 flex flex-wrap items-center gap-1 text-sm text-[var(--color-ink)]/60">
-            <button
-              class="hover:text-[var(--color-ink)] hover:underline"
-              @click="seleccionar(null)"
-            >
-              Todas las carpetas
-            </button>
-            <template
-              v-for="(m, i) in migas"
-              :key="m.id"
-            >
-              <span class="opacity-40">/</span>
-              <button
-                class="hover:underline"
-                :class="i === migas.length - 1 ? 'font-medium text-[var(--color-ink)]' : 'hover:text-[var(--color-ink)]'"
-                @click="seleccionar(m.id)"
-              >
-                {{ m.nombre }}
-              </button>
-            </template>
-          </nav>
-
-          <div class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[var(--color-line)] bg-white p-4">
-            <div class="flex items-center gap-2">
-              <h2 class="font-[family-name:var(--font-heading)] text-lg font-semibold">
-                {{ carpetaActual.nombre }}
-              </h2>
-              <span
-                class="rounded-full px-2 py-0.5 text-[11px] font-medium"
-                :class="carpetaActual.publica
-                  ? 'bg-[color-mix(in_srgb,var(--color-sage)_15%,white)] text-[var(--color-sage)]'
-                  : 'bg-[color-mix(in_srgb,var(--color-bronze)_15%,white)] text-[var(--color-bronze)]'"
-              >
-                {{ carpetaActual.publica ? 'Pública' : 'Privada' }}
-              </span>
-            </div>
-            <div class="flex flex-wrap items-center gap-2 text-xs">
-              <button
-                class="rounded-lg bg-[var(--color-ink)] px-3 py-1.5 text-[var(--color-parchment)]"
-                @click="abrirSubirModal"
-              >
-                + Archivo
-              </button>
-              <button
-                class="rounded-lg border border-[var(--color-line)] px-3 py-1.5 hover:bg-[var(--color-parchment)]/50"
-                @click="crearSub"
-              >
-                + Subcarpeta
-              </button>
-              <button
-                class="rounded-lg border border-[var(--color-line)] px-3 py-1.5 hover:bg-[var(--color-parchment)]/50"
-                @click="renombrar"
-              >
-                Renombrar
-              </button>
-              <button
-                class="rounded-lg border border-[var(--color-line)] px-3 py-1.5 hover:bg-[var(--color-parchment)]/50"
-                @click="abrirAccesoCarpeta"
-              >
-                Gestionar acceso
-              </button>
-              <button
-                class="rounded-lg border border-[var(--color-line)] px-3 py-1.5 text-[var(--color-danger)] hover:bg-red-50"
-                @click="borrarCarpeta"
-              >
-                Eliminar
-              </button>
-            </div>
-          </div>
-
-          <div
-            v-if="subcarpetas.length"
-            class="mb-4"
-          >
-            <p class="mb-2 text-xs font-medium uppercase tracking-wide text-[var(--color-ink)]/45">
-              Subcarpetas
-            </p>
-            <div class="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
-              <button
-                v-for="s in subcarpetas"
-                :key="s.id"
-                class="flex items-center gap-2 rounded-xl border border-[var(--color-line)] bg-white px-3 py-2.5 text-left text-sm transition-all hover:-translate-y-0.5 hover:border-[var(--color-sage)] hover:shadow-sm"
-                @click="seleccionar(s.id)"
-              >
-                <svg
-                  width="15"
-                  height="15"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.8"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  class="shrink-0 opacity-60"
-                ><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /></svg>
-                <span class="min-w-0 flex-1 truncate">{{ s.nombre }}</span>
-                <svg
-                  v-if="!s.publica"
-                  width="12"
-                  height="12"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  class="shrink-0 opacity-40"
-                ><rect
-                  x="5"
-                  y="11"
-                  width="14"
-                  height="9"
-                  rx="2"
-                /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></svg>
-              </button>
-            </div>
-          </div>
-
-          <div class="mb-2 flex items-center justify-between gap-2">
-            <p class="text-xs font-medium uppercase tracking-wide text-[var(--color-ink)]/45">
-              Archivos
-            </p>
-            <div
-              v-if="recursos.length"
-              class="flex flex-wrap gap-1"
-            >
-              <button
-                v-for="f in FILTROS_CATEGORIA"
-                :key="f.label"
-                class="rounded-full border px-2.5 py-0.5 text-[11px]"
-                :class="categoriaFiltro === f.value
-                  ? 'border-[var(--color-ink)] bg-[var(--color-ink)] text-[var(--color-parchment)]'
-                  : 'border-[var(--color-line)] hover:bg-[var(--color-parchment)]/50'"
-                @click="categoriaFiltro = f.value"
-              >
-                {{ f.label }}
-              </button>
-            </div>
-          </div>
-          <p
-            v-if="recursos.length === 0"
-            class="text-sm text-[var(--color-ink)]/50"
-          >
-            Esta carpeta todavía no tiene archivos.
-          </p>
-          <p
-            v-else-if="recursosFiltrados.length === 0"
-            class="text-sm text-[var(--color-ink)]/50"
-          >
-            Ningún archivo de esta carpeta calza con el filtro elegido.
-          </p>
-          <div
-            v-else
-            class="space-y-2"
-          >
-            <div
-              v-for="r in recursosFiltrados"
-              :key="r.id"
-              class="flex items-center gap-3 rounded-2xl border border-[var(--color-line)] bg-white p-3"
-            >
-              <RecursoIcono
-                :recurso="r"
-                size="sm"
-              />
-              <div class="min-w-0 flex-1">
-                <p class="truncate text-sm font-medium">
-                  {{ r.titulo }}
-                </p>
-                <p class="truncate text-xs text-[var(--color-ink)]/50">
-                  {{ r.tipo === 'link' ? r.url : r.archivoNombre }}
-                </p>
-                <FechaLimiteEditor
-                  :fecha-limite="r.fechaLimite"
-                  :guardando="guardandoFechaLimiteId === r.id"
-                  @guardar="(f) => guardarFechaLimite(r, f)"
-                />
-              </div>
-              <button
-                class="shrink-0 text-xs text-[var(--color-sage)] hover:underline"
-                @click="abrirAccesoRecurso(r)"
-              >
-                Compartir
-              </button>
-              <button
-                class="shrink-0 text-xs text-[var(--color-ink)]/70 hover:underline"
-                @click="renombrarRecurso(r)"
-              >
-                Renombrar
-              </button>
-              <button
-                class="shrink-0 text-xs text-[var(--color-danger)] hover:underline"
-                @click="borrarRecurso(r)"
-              >
-                Eliminar
-              </button>
-            </div>
-          </div>
-        </template>
+          Reintentar
+        </AppButton>
       </div>
-    </div>
+      <div class="flex flex-col gap-5 lg:flex-row">
+        <aside class="rounded-2xl border border-[var(--color-line)] bg-white p-3 lg:w-64 lg:shrink-0">
+          <div class="mb-2 flex items-center justify-between px-1">
+            <span class="text-xs font-medium uppercase tracking-wide text-[var(--color-muted)]">Carpetas</span>
+            <button
+              class="text-xs text-[var(--color-sage)] hover:underline"
+              @click="crearRaiz"
+            >
+              + Nueva
+            </button>
+          </div>
+          <button
+            class="mb-1 w-full rounded-lg px-2 py-1.5 text-left text-sm transition-colors"
+            :class="seleccionadaId === null ? 'bg-[var(--color-ink)] text-[var(--color-parchment)]' : 'hover:bg-[var(--color-parchment)]/70'"
+            @click="seleccionar(null)"
+          >
+            Todas las carpetas
+          </button>
+          <p
+            v-if="arbol.length === 0"
+            class="px-2 py-1 text-xs text-[var(--color-muted)]"
+          >
+            Aún no hay carpetas.
+          </p>
+          <CarpetaArbol
+            v-else
+            v-model:expandidas="expandidas"
+            :nodos="arbol"
+            :seleccionada-id="seleccionadaId"
+            @select="seleccionar"
+          />
+        </aside>
+
+        <div class="min-w-0 flex-1">
+          <div
+            v-if="!carpetaActual"
+            class="flex flex-col items-center justify-center gap-1 rounded-2xl border border-dashed border-[var(--color-line)] py-16 text-center text-sm text-[var(--color-muted)]"
+          >
+            <p>Selecciona una carpeta para ver su contenido,</p>
+            <p>o crea la primera desde el panel de la izquierda.</p>
+          </div>
+
+          <template v-else>
+            <nav class="mb-3 flex flex-wrap items-center gap-1 text-sm text-[var(--color-muted)]">
+              <button
+                class="hover:text-[var(--color-ink)] hover:underline"
+                @click="seleccionar(null)"
+              >
+                Todas las carpetas
+              </button>
+              <template
+                v-for="(m, i) in migas"
+                :key="m.id"
+              >
+                <span class="opacity-40">/</span>
+                <button
+                  class="hover:underline"
+                  :class="i === migas.length - 1 ? 'font-medium text-[var(--color-ink)]' : 'hover:text-[var(--color-ink)]'"
+                  @click="seleccionar(m.id)"
+                >
+                  {{ m.nombre }}
+                </button>
+              </template>
+            </nav>
+
+            <div class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[var(--color-line)] bg-white p-4">
+              <div class="flex items-center gap-2">
+                <h2 class="font-[family-name:var(--font-heading)] text-lg font-semibold">
+                  {{ carpetaActual.nombre }}
+                </h2>
+                <StatusBadge :tone="carpetaActual.publica ? 'sage' : 'bronze'">
+                  {{ carpetaActual.publica ? 'Pública' : 'Privada' }}
+                </StatusBadge>
+              </div>
+              <div class="flex flex-wrap items-center gap-2 text-xs">
+                <button
+                  class="rounded-lg bg-[var(--color-ink)] px-3 py-1.5 text-[var(--color-parchment)]"
+                  @click="abrirSubirModal"
+                >
+                  + Archivo
+                </button>
+                <button
+                  class="rounded-lg border border-[var(--color-line)] px-3 py-1.5 hover:bg-[var(--color-parchment)]/50"
+                  @click="crearSub"
+                >
+                  + Subcarpeta
+                </button>
+                <button
+                  class="rounded-lg border border-[var(--color-line)] px-3 py-1.5 hover:bg-[var(--color-parchment)]/50"
+                  @click="renombrar"
+                >
+                  Renombrar
+                </button>
+                <button
+                  class="rounded-lg border border-[var(--color-line)] px-3 py-1.5 hover:bg-[var(--color-parchment)]/50"
+                  @click="abrirAccesoCarpeta"
+                >
+                  Gestionar acceso
+                </button>
+                <button
+                  class="rounded-lg border border-[var(--color-line)] px-3 py-1.5 text-[var(--color-danger)] hover:bg-[var(--color-danger)]/10"
+                  @click="borrarCarpeta"
+                >
+                  Eliminar
+                </button>
+              </div>
+            </div>
+
+            <div
+              v-if="subcarpetas.length"
+              class="mb-4"
+            >
+              <p class="mb-2 text-xs font-medium uppercase tracking-wide text-[var(--color-muted)]">
+                Subcarpetas
+              </p>
+              <div class="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+                <button
+                  v-for="s in subcarpetas"
+                  :key="s.id"
+                  class="flex items-center gap-2 rounded-xl border border-[var(--color-line)] bg-white px-3 py-2.5 text-left text-sm transition-all hover:-translate-y-0.5 hover:border-[var(--color-sage)] hover:shadow-sm"
+                  @click="seleccionar(s.id)"
+                >
+                  <svg
+                    width="15"
+                    height="15"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    class="shrink-0 opacity-60"
+                  ><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /></svg>
+                  <span class="min-w-0 flex-1 truncate">{{ s.nombre }}</span>
+                  <svg
+                    v-if="!s.publica"
+                    width="12"
+                    height="12"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    class="shrink-0 opacity-40"
+                  ><rect
+                    x="5"
+                    y="11"
+                    width="14"
+                    height="9"
+                    rx="2"
+                  /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></svg>
+                </button>
+              </div>
+            </div>
+
+            <div class="mb-2 flex items-center justify-between gap-2">
+              <p class="text-xs font-medium uppercase tracking-wide text-[var(--color-muted)]">
+                Archivos
+              </p>
+              <div
+                v-if="recursos.length"
+                class="flex flex-wrap gap-1"
+              >
+                <button
+                  v-for="f in FILTROS_CATEGORIA"
+                  :key="f.label"
+                  class="rounded-full border px-2.5 py-0.5 text-xs"
+                  :class="categoriaFiltro === f.value
+                    ? 'border-[var(--color-ink)] bg-[var(--color-ink)] text-[var(--color-parchment)]'
+                    : 'border-[var(--color-line)] hover:bg-[var(--color-parchment)]/50'"
+                  @click="categoriaFiltro = f.value"
+                >
+                  {{ f.label }}
+                </button>
+              </div>
+            </div>
+            <p
+              v-if="recursos.length === 0"
+              class="text-sm text-[var(--color-muted)]"
+            >
+              Esta carpeta todavía no tiene archivos.
+            </p>
+            <p
+              v-else-if="recursosFiltrados.length === 0"
+              class="text-sm text-[var(--color-muted)]"
+            >
+              Ningún archivo de esta carpeta calza con el filtro elegido.
+            </p>
+            <div
+              v-else
+              class="space-y-2"
+            >
+              <div
+                v-for="r in recursosFiltrados"
+                :key="r.id"
+                class="flex items-center gap-3 rounded-2xl border border-[var(--color-line)] bg-white p-3"
+              >
+                <RecursoIcono
+                  :recurso="r"
+                  size="sm"
+                />
+                <div class="min-w-0 flex-1">
+                  <p class="truncate text-sm font-medium">
+                    {{ r.titulo }}
+                  </p>
+                  <p class="truncate text-xs text-[var(--color-muted)]">
+                    {{ r.tipo === 'link' ? r.url : r.archivoNombre }}
+                  </p>
+                  <FechaLimiteEditor
+                    :fecha-limite="r.fechaLimite"
+                    :guardando="guardandoFechaLimiteId === r.id"
+                    @guardar="(f) => guardarFechaLimite(r, f)"
+                  />
+                </div>
+                <button
+                  class="shrink-0 text-xs text-[var(--color-sage)] hover:underline"
+                  @click="abrirAccesoRecurso(r)"
+                >
+                  Compartir
+                </button>
+                <button
+                  class="shrink-0 text-xs text-[var(--color-ink)]/70 hover:underline"
+                  @click="renombrarRecurso(r)"
+                >
+                  Renombrar
+                </button>
+                <button
+                  class="shrink-0 text-xs text-[var(--color-danger)] hover:underline"
+                  @click="borrarRecurso(r)"
+                >
+                  Eliminar
+                </button>
+              </div>
+            </div>
+          </template>
+        </div>
+      </div>
+    </template>
 
     <AppModal
       v-if="mostrarSubirModal && carpetaActual"
@@ -714,7 +737,7 @@ async function alternarPublica() {
             >{{ archivoSeleccionado.name }}</span>
             <span
               v-else
-              class="text-xs text-[var(--color-ink)]/40"
+              class="text-xs text-[var(--color-muted)]"
             >Ningún archivo seleccionado</span>
             <button
               v-if="archivoSeleccionado"
@@ -783,7 +806,7 @@ async function alternarPublica() {
           <p class="text-sm font-medium">
             {{ accesoAbierto.carpeta.publica ? 'Carpeta pública' : 'Carpeta privada' }}
           </p>
-          <p class="text-xs text-[var(--color-ink)]/55">
+          <p class="text-xs text-[var(--color-muted)]">
             {{ accesoAbierto.carpeta.publica
               ? 'Visible para todos tus coachees.'
               : 'Solo ven esta carpeta las personas con acceso otorgado abajo.' }}
@@ -803,17 +826,17 @@ async function alternarPublica() {
       </div>
       <p
         v-else
-        class="mb-4 text-xs text-[var(--color-ink)]/55"
+        class="mb-4 text-xs text-[var(--color-muted)]"
       >
         Comparte este archivo puntualmente, aunque su carpeta sea privada.
       </p>
 
-      <p class="mb-2 text-xs font-medium uppercase tracking-wide text-[var(--color-ink)]/45">
+      <p class="mb-2 text-xs font-medium uppercase tracking-wide text-[var(--color-muted)]">
         Personas con acceso
       </p>
       <p
         v-if="coacheesConAcceso.length === 0"
-        class="mb-4 text-sm text-[var(--color-ink)]/50"
+        class="mb-4 text-sm text-[var(--color-muted)]"
       >
         Todavía nadie tiene acceso otorgado.
       </p>
@@ -830,7 +853,7 @@ async function alternarPublica() {
             <p class="truncate font-medium">
               {{ coachee.nombre }}
             </p>
-            <p class="truncate text-xs text-[var(--color-ink)]/50">
+            <p class="truncate text-xs text-[var(--color-muted)]">
               {{ coachee.user?.email }}
             </p>
           </div>
@@ -884,7 +907,7 @@ async function alternarPublica() {
               <p class="truncate font-medium">
                 {{ c.nombre }}
               </p>
-              <p class="truncate text-xs text-[var(--color-ink)]/50">
+              <p class="truncate text-xs text-[var(--color-muted)]">
                 {{ c.user?.email }}
               </p>
             </div>
@@ -906,7 +929,7 @@ async function alternarPublica() {
         </ul>
         <p
           v-if="personaBusqueda.trim() && coacheesFiltrados.length === 0"
-          class="py-2 text-center text-sm text-[var(--color-ink)]/50"
+          class="py-2 text-center text-sm text-[var(--color-muted)]"
         >
           No se encontraron coachees.
         </p>

@@ -29,7 +29,7 @@ onMounted(async () => {
           {{ activas }} de {{ medidas.length }}
         </p>
       </div>
-      <p class="mt-1 text-xs text-[var(--color-ink)]/60">
+      <p class="mt-1 text-xs text-[var(--color-muted)]">
         Medidas de protección de datos personales activas hoy.
       </p>
     </div>

@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount, flushPromises, DOMWrapper, type VueWrapper } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
+import { createRouter, createWebHistory } from 'vue-router'
 import EmpresasView from './EmpresasView.vue'
 import type { Empresa } from '../../api/empresas'
 
@@ -51,6 +52,14 @@ const empresas: Empresa[] = [
   { id: 'e2', nombre: 'Empresa Inactiva', tarifaHora: 20000, tarifaHoraMoneda: 'clp', isActive: false, pagada: false, horasContratadas: null, horasFijas: false, fechaInicio: null, fechaFin: null, createdAt: hoyIso },
 ]
 
+const router = createRouter({
+  history: createWebHistory(),
+  routes: [
+    { path: '/coach/empresas', name: 'coach-empresas', component: { template: '<div />' } },
+    { path: '/coach/coachees', component: { template: '<div />' } },
+  ],
+})
+
 describe('EmpresasView', () => {
   let wrapper: VueWrapper
 
@@ -61,7 +70,8 @@ describe('EmpresasView', () => {
     wrapper?.unmount()
   })
 
-  beforeEach(() => {
+  beforeEach(async () => {
+    await router.push('/coach/empresas')
     setActivePinia(createPinia())
     vi.mocked(listEmpresas).mockResolvedValue(empresas)
     vi.mocked(listCompetenciasDeEmpresaParaCoach).mockResolvedValue([])
@@ -70,7 +80,7 @@ describe('EmpresasView', () => {
   })
 
   it('shows the list of empresas with their estado', async () => {
-    wrapper = mount(EmpresasView)
+    wrapper = mount(EmpresasView, { global: { plugins: [router] } })
     await flushPromises()
 
     expect(wrapper.text()).toContain('Empresa Activa')
@@ -84,7 +94,7 @@ describe('EmpresasView', () => {
       { id: 'e2', nombre: 'Sin Fecha', tarifaHora: 10000, tarifaHoraMoneda: 'clp', isActive: true, pagada: true, horasContratadas: null, horasFijas: false, fechaInicio: null, fechaFin: null, createdAt: hoyIso },
     ])
 
-    wrapper = mount(EmpresasView)
+    wrapper = mount(EmpresasView, { global: { plugins: [router] } })
     await flushPromises()
 
     const filaConFecha = wrapper.findAll('tr').find((tr) => tr.text().includes('Con Fecha'))!
@@ -99,7 +109,7 @@ describe('EmpresasView', () => {
       { id: 'e3', nombre: 'Empresa Antigua', tarifaHora: 15000, tarifaHoraMoneda: 'clp', isActive: true, pagada: true, horasContratadas: null, horasFijas: false, fechaInicio: null, fechaFin: null, createdAt: '2020-01-01T00:00:00.000Z' },
     ])
 
-    wrapper = mount(EmpresasView)
+    wrapper = mount(EmpresasView, { global: { plugins: [router] } })
     await flushPromises()
 
     expect(wrapper.text()).toContain('Empresa Antigua')
@@ -107,7 +117,7 @@ describe('EmpresasView', () => {
   })
 
   it('filters by search text', async () => {
-    wrapper = mount(EmpresasView)
+    wrapper = mount(EmpresasView, { global: { plugins: [router] } })
     await flushPromises()
 
     await wrapper.find('input[type="search"]').setValue('Inactiva')
@@ -118,7 +128,7 @@ describe('EmpresasView', () => {
   })
 
   it('shows validation errors instead of submitting an invalid empresa', async () => {
-    wrapper = mount(EmpresasView)
+    wrapper = mount(EmpresasView, { global: { plugins: [router] } })
     await flushPromises()
 
     const nuevaBtn = wrapper.findAll('button').find((b) => b.text() === '+ Nueva Empresa')
@@ -134,7 +144,7 @@ describe('EmpresasView', () => {
 
   it('creates an empresa when the form is valid', async () => {
     vi.mocked(createEmpresa).mockResolvedValue(empresas[0])
-    wrapper = mount(EmpresasView)
+    wrapper = mount(EmpresasView, { global: { plugins: [router] } })
     await flushPromises()
 
     const nuevaBtn = wrapper.findAll('button').find((b) => b.text() === '+ Nueva Empresa')
@@ -159,7 +169,7 @@ describe('EmpresasView', () => {
       { id: 'comp-2', nombre: 'Comunicación', definicion: 'def', niveles: [], empresaId: null },
     ])
     vi.mocked(updateEmpresa).mockResolvedValue(empresas[0])
-    wrapper = mount(EmpresasView)
+    wrapper = mount(EmpresasView, { global: { plugins: [router] } })
     await flushPromises()
 
     const editarBtn = wrapper.find('button[title="Editar"]')
@@ -186,7 +196,7 @@ describe('EmpresasView', () => {
       { id: 'comp-1', nombre: 'Liderazgo', definicion: 'def', niveles: [], empresaId: null },
       { id: 'comp-e', nombre: 'Seguridad operacional', definicion: 'def', niveles: [], empresaId: 'e1' },
     ])
-    wrapper = mount(EmpresasView)
+    wrapper = mount(EmpresasView, { global: { plugins: [router] } })
     await flushPromises()
 
     await wrapper.find('button[title="Editar"]').trigger('click')
@@ -201,10 +211,10 @@ describe('EmpresasView', () => {
 
   it('toggles estado after confirmation', async () => {
     vi.mocked(updateEmpresa).mockResolvedValue({ ...empresas[0], isActive: false })
-    wrapper = mount(EmpresasView)
+    wrapper = mount(EmpresasView, { global: { plugins: [router] } })
     await flushPromises()
 
-    await wrapper.find('button[type="button"]').trigger('click')
+    await wrapper.find('tbody button[type="button"]').trigger('click')
     await flushPromises()
 
     expect(confirmDialog).toHaveBeenCalled()
@@ -233,7 +243,7 @@ describe('EmpresasView', () => {
     vi.mocked(getKpisDeEmpresa).mockResolvedValue(kpis)
     vi.mocked(getEncuestasDeEmpresa).mockResolvedValue(encuestas)
 
-    wrapper = mount(EmpresasView)
+    wrapper = mount(EmpresasView, { global: { plugins: [router] } })
     await flushPromises()
 
     const verBtn = wrapper.find('button[title="Ver satisfacción"]')
@@ -256,7 +266,7 @@ describe('EmpresasView', () => {
     vi.mocked(listCompetenciasDeEmpresaParaCoach).mockResolvedValue([])
     vi.mocked(updateEmpresa).mockResolvedValue(empresas[0])
     vi.mocked(listEmpresas).mockResolvedValue([{ ...empresas[0], horasFijas: false, horasContratadasEfectivas: 14 }])
-    wrapper = mount(EmpresasView)
+    wrapper = mount(EmpresasView, { global: { plugins: [router] } })
     await flushPromises()
 
     expect(wrapper.text()).toContain('según sesiones')
@@ -271,5 +281,57 @@ describe('EmpresasView', () => {
     const body = vi.mocked(updateEmpresa).mock.calls.at(-1)![1]
     expect(body.horasFijas).toBe(false)
     expect('horasContratadas' in body).toBe(false)
+  })
+
+  it('ofrece "Crear coachee de esta empresa" tras crear una empresa', async () => {
+    vi.mocked(createEmpresa).mockResolvedValue({ ...empresas[0], id: 'nueva', nombre: 'Empresa Nueva' })
+    wrapper = mount(EmpresasView, { global: { plugins: [router] } })
+    await flushPromises()
+
+    await wrapper.findAll('button').find((b) => b.text() === '+ Nueva Empresa')!.trigger('click')
+    await flushPromises()
+    const modal = new DOMWrapper(document.body)
+    await modal.find('input[type="text"]').setValue('Empresa Nueva')
+    await modal.find('input[type="number"]').setValue(30000)
+    await modal.find('form').trigger('submit')
+    await flushPromises()
+
+    const enlace = wrapper.findAll('a').find((a) => a.text() === 'Crear coachee de esta empresa')!
+    expect(enlace.attributes('href')).toContain('empresaId=nueva')
+    expect(enlace.attributes('href')).toContain('crear=1')
+  })
+
+  it('abre el editor de la empresa indicada en ?id= (búsqueda global)', async () => {
+    await router.push('/coach/empresas?id=e2')
+    wrapper = mount(EmpresasView, { global: { plugins: [router] } })
+    await flushPromises()
+
+    const modal = new DOMWrapper(document.body)
+    expect(modal.text()).toContain('Editar empresa')
+    expect((modal.find('input[type="text"]').element as HTMLInputElement).value).toBe('Empresa Inactiva')
+    expect(router.currentRoute.value.query.id).toBeUndefined()
+  })
+
+  it('ordena por columna con aria-sort y scope="col"', async () => {
+    wrapper = mount(EmpresasView, { global: { plugins: [router] } })
+    await flushPromises()
+
+    expect(wrapper.findAll('thead th').every((th) => th.attributes('scope') === 'col')).toBe(true)
+    const th = wrapper.findAll('thead th').find((t) => t.text().includes('Nombre'))!
+    await th.find('button').trigger('click')
+    expect(th.attributes('aria-sort')).toBe('ascending')
+    expect(wrapper.findAll('tbody tr')[0].text()).toContain('Empresa Activa')
+    await th.find('button').trigger('click')
+    expect(wrapper.findAll('tbody tr')[0].text()).toContain('Empresa Inactiva')
+  })
+
+  it('muestra ErrorState con Reintentar si falla la carga', async () => {
+    vi.mocked(listEmpresas).mockRejectedValueOnce(new Error('boom'))
+    wrapper = mount(EmpresasView, { global: { plugins: [router] } })
+    await flushPromises()
+    expect(wrapper.find('[role="alert"]').exists()).toBe(true)
+    await wrapper.findAll('button').find((b) => b.text() === 'Reintentar')!.trigger('click')
+    await flushPromises()
+    expect(wrapper.text()).toContain('Empresa Activa')
   })
 })

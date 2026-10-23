@@ -48,7 +48,7 @@ function onConsentimientoActualizado(actualizado: { consentimientoInformado: boo
       </h2>
 
       <div class="mb-5 border-l-4 border-[var(--color-saltup)] py-1.5 pl-4">
-        <p class="mb-1 font-[family-name:var(--font-mono)] text-[11px] font-semibold uppercase text-[var(--color-ink)]/60">
+        <p class="mb-1 font-[family-name:var(--font-mono)] text-xs font-semibold uppercase text-[var(--color-muted)]">
           Objetivo del proceso
         </p>
         <p class="text-base font-semibold text-[var(--color-ink)]">
@@ -58,7 +58,7 @@ function onConsentimientoActualizado(actualizado: { consentimientoInformado: boo
 
       <dl class="grid grid-cols-2 gap-4 border-y border-[var(--color-line)] py-4 md:grid-cols-4">
         <div>
-          <dt class="font-[family-name:var(--font-mono)] text-[11px] font-semibold uppercase text-[var(--color-ink)]/60">
+          <dt class="font-[family-name:var(--font-mono)] text-xs font-semibold uppercase text-[var(--color-muted)]">
             Empresa
           </dt>
           <dd class="text-sm font-semibold text-[var(--color-ink)]">
@@ -66,7 +66,7 @@ function onConsentimientoActualizado(actualizado: { consentimientoInformado: boo
           </dd>
         </div>
         <div>
-          <dt class="font-[family-name:var(--font-mono)] text-[11px] font-semibold uppercase text-[var(--color-ink)]/60">
+          <dt class="font-[family-name:var(--font-mono)] text-xs font-semibold uppercase text-[var(--color-muted)]">
             Cargo
           </dt>
           <dd class="text-sm font-semibold text-[var(--color-ink)]">
@@ -74,7 +74,7 @@ function onConsentimientoActualizado(actualizado: { consentimientoInformado: boo
           </dd>
         </div>
         <div>
-          <dt class="font-[family-name:var(--font-mono)] text-[11px] font-semibold uppercase text-[var(--color-ink)]/60">
+          <dt class="font-[family-name:var(--font-mono)] text-xs font-semibold uppercase text-[var(--color-muted)]">
             Área / gerencia
           </dt>
           <dd class="text-sm font-semibold text-[var(--color-ink)]">
@@ -82,7 +82,7 @@ function onConsentimientoActualizado(actualizado: { consentimientoInformado: boo
           </dd>
         </div>
         <div>
-          <dt class="font-[family-name:var(--font-mono)] text-[11px] font-semibold uppercase text-[var(--color-ink)]/60">
+          <dt class="font-[family-name:var(--font-mono)] text-xs font-semibold uppercase text-[var(--color-muted)]">
             Jefe directo
           </dt>
           <dd class="text-sm font-semibold text-[var(--color-ink)]">
@@ -90,7 +90,7 @@ function onConsentimientoActualizado(actualizado: { consentimientoInformado: boo
           </dd>
         </div>
         <div>
-          <dt class="font-[family-name:var(--font-mono)] text-[11px] font-semibold uppercase text-[var(--color-ink)]/60">
+          <dt class="font-[family-name:var(--font-mono)] text-xs font-semibold uppercase text-[var(--color-muted)]">
             Tarifa acordada
           </dt>
           <dd class="font-[family-name:var(--font-mono)] text-sm font-semibold text-[var(--color-sage)]">
@@ -125,7 +125,7 @@ function onConsentimientoActualizado(actualizado: { consentimientoInformado: boo
             </p>
             <p
               v-else
-              class="flex-1 italic text-[var(--color-ink)]/50"
+              class="flex-1 italic text-[var(--color-muted)]"
             >
               {{ coachee.nombre.split(' ')[0] }} todavía no escribió una presentación.
             </p>
@@ -133,7 +133,7 @@ function onConsentimientoActualizado(actualizado: { consentimientoInformado: boo
         </template>
         <p
           v-else
-          class="italic text-[var(--color-ink)]/50"
+          class="italic text-[var(--color-muted)]"
         >
           Este coachee no ha compartido su perfil personal contigo.
         </p>
@@ -143,7 +143,7 @@ function onConsentimientoActualizado(actualizado: { consentimientoInformado: boo
         <h2 class="mb-1 font-[family-name:var(--font-heading)] text-base font-semibold text-[var(--color-ink)]">
           Documentos del proceso
         </h2>
-        <p class="mb-3 text-xs text-[var(--color-ink)]/55">
+        <p class="mb-3 text-xs text-[var(--color-muted)]">
           Compartidos con el coachee y su empresa: lo que cualquiera de los tres suba, lo ven todos.
         </p>
         <DocumentosCoacheePanel :coachee-id="coachee.id" />
@@ -177,7 +177,7 @@ function onConsentimientoActualizado(actualizado: { consentimientoInformado: boo
         </h2>
         <dl class="space-y-3 text-sm">
           <div>
-            <dt class="font-[family-name:var(--font-mono)] text-[11px] font-semibold uppercase text-[var(--color-ink)]/60">
+            <dt class="font-[family-name:var(--font-mono)] text-xs font-semibold uppercase text-[var(--color-muted)]">
               Correo principal
             </dt>
             <dd class="font-[family-name:var(--font-mono)] font-semibold text-[var(--color-ink)]">
@@ -185,18 +185,18 @@ function onConsentimientoActualizado(actualizado: { consentimientoInformado: boo
             </dd>
           </div>
           <div>
-            <dt class="font-[family-name:var(--font-mono)] text-[11px] font-semibold uppercase text-[var(--color-ink)]/60">
+            <dt class="font-[family-name:var(--font-mono)] text-xs font-semibold uppercase text-[var(--color-muted)]">
               Teléfono / SMS
             </dt>
             <dd
               class="text-[var(--color-ink)]"
-              :class="coachee.telefono ? 'font-semibold' : 'italic text-[var(--color-ink)]/50'"
+              :class="coachee.telefono ? 'font-semibold' : 'italic text-[var(--color-muted)]'"
             >
               {{ coachee.telefono ?? 'No registrado por el coachee' }}
             </dd>
           </div>
         </dl>
-        <p class="mt-4 border-t border-[var(--color-line)] pt-3 text-xs text-[var(--color-ink)]/50">
+        <p class="mt-4 border-t border-[var(--color-line)] pt-3 text-xs text-[var(--color-muted)]">
           Datos sincronizados desde la cuenta del coachee (solo lectura).
         </p>
       </div>

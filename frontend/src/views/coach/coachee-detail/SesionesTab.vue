@@ -252,7 +252,7 @@ async function onSesionEliminada() {
           </h2>
           <p
             v-if="avance === null"
-            class="text-sm text-[var(--color-ink)]/60"
+            class="text-sm text-[var(--color-muted)]"
           >
             El coachee aún no se ha autoevaluado en ningún post-sesión.
           </p>
@@ -317,7 +317,7 @@ async function onSesionEliminada() {
           <h2 class="text-sm font-medium">
             Sesiones pasadas — registro de la sesión
           </h2>
-          <p class="text-xs text-[var(--color-ink)]/50">
+          <p class="text-xs text-[var(--color-muted)]">
             Todo lo de abajo es visible para el coachee, salvo las notas privadas.
           </p>
           <p
@@ -328,7 +328,7 @@ async function onSesionEliminada() {
           </p>
           <p
             v-if="sesionesPasadas.length === 0"
-            class="text-sm text-[var(--color-ink)]/60"
+            class="text-sm text-[var(--color-muted)]"
           >
             Todavía no hay sesiones pasadas.
           </p>
@@ -344,7 +344,7 @@ async function onSesionEliminada() {
               :class="highlightedId === s.id ? 'rounded-xl ring-2 ring-[var(--color-sage)]' : ''"
             >
               <div class="mb-2 flex items-center justify-between gap-3">
-                <span class="font-[family-name:var(--font-mono)] text-[var(--color-ink)]/60">
+                <span class="font-[family-name:var(--font-mono)] text-[var(--color-muted)]">
                   {{ new Date(s.fechaHora).toLocaleDateString('es-CL') }}
                 </span>
                 <select
@@ -423,7 +423,7 @@ async function onSesionEliminada() {
                   />
                 </label>
                 <label class="block text-xs sm:col-span-2">
-                  Notas privadas <span class="text-[var(--color-ink)]/40">(nunca visibles para el coachee ni la empresa)</span>
+                  Notas privadas <span class="text-[var(--color-muted)]">(nunca visibles para el coachee ni la empresa)</span>
                   <textarea
                     v-model="registroEdit[s.id]!.notasPrivadas"
                     rows="2"
@@ -464,7 +464,7 @@ async function onSesionEliminada() {
               </p>
               <p
                 v-if="s.motivo"
-                class="text-[var(--color-ink)]/60"
+                class="text-[var(--color-muted)]"
               >
                 {{ s.motivo }}
               </p>
@@ -490,11 +490,11 @@ async function onSesionEliminada() {
               v-for="logro in logros"
               :key="logro.id"
             >
-              <span class="font-[family-name:var(--font-mono)] text-[var(--color-ink)]/50">{{ logro.fecha }}</span>
+              <span class="font-[family-name:var(--font-mono)] text-[var(--color-muted)]">{{ logro.fecha }}</span>
               — {{ logro.descripcion }}
               <span
                 v-if="logro.situacion"
-                class="block text-xs text-[var(--color-ink)]/50"
+                class="block text-xs text-[var(--color-muted)]"
               >
                 Situación: {{ logro.situacion }}
               </span>
@@ -502,7 +502,7 @@ async function onSesionEliminada() {
           </ul>
           <p
             v-else
-            class="text-sm text-[var(--color-ink)]/60"
+            class="text-sm text-[var(--color-muted)]"
           >
             Sin logros registrados todavía.
           </p>
@@ -581,12 +581,12 @@ async function onSesionEliminada() {
           v-if="solicitudSeleccionada"
           class="rounded-lg bg-[var(--color-parchment)]/50 p-3 text-sm"
         >
-          <p class="text-[var(--color-ink)]/60">
+          <p class="text-[var(--color-muted)]">
             Sesión actual: {{ solicitudSeleccionada.sesion ? new Date(solicitudSeleccionada.sesion.fechaHora).toLocaleString('es-CL') : '—' }}
           </p>
           <p
             v-if="solicitudSeleccionada.motivo"
-            class="text-[var(--color-ink)]/60"
+            class="text-[var(--color-muted)]"
           >
             Motivo: {{ solicitudSeleccionada.motivo }}
           </p>

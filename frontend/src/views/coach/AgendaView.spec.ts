@@ -306,4 +306,24 @@ describe('AgendaView', () => {
       expect(wrapper.text()).not.toContain('18:00–20:00')
     })
   })
+
+  it('muestra ErrorState con Reintentar si falla la carga crítica', async () => {
+    vi.mocked(getTodasLasSesiones).mockRejectedValueOnce(new Error('boom'))
+    wrapper = mount(AgendaView)
+    await flushPromises()
+    expect(wrapper.find('[role="alert"]').exists()).toBe(true)
+
+    await wrapper.findAll('button').find((b) => b.text() === 'Reintentar')!.trigger('click')
+    await flushPromises()
+    expect(wrapper.find('[role="alert"]').exists()).toBe(false)
+    expect(wrapper.text()).toContain('Disponibilidad semanal')
+  })
+
+  it('tolera que fallen las solicitudes pendientes y avisa', async () => {
+    vi.mocked(getSolicitudesSesionPendientes).mockRejectedValue(new Error('boom'))
+    wrapper = mount(AgendaView)
+    await flushPromises()
+    expect(wrapper.text()).toContain('la agenda puede estar incompleta')
+    expect(wrapper.text()).toContain('Disponibilidad semanal')
+  })
 })

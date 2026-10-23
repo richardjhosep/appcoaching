@@ -123,7 +123,7 @@ function abrirNuevoProceso(coacheeId: string) {
 <template>
   <div
     v-if="loadingProyeccion"
-    class="mb-4 text-sm text-[var(--color-ink)]/60"
+    class="mb-4 text-sm text-[var(--color-muted)]"
   >
     Cargando proyección…
   </div>
@@ -142,7 +142,7 @@ function abrirNuevoProceso(coacheeId: string) {
 
   <div
     v-if="loadingResumen"
-    class="mb-6 text-sm text-[var(--color-ink)]/60"
+    class="mb-6 text-sm text-[var(--color-muted)]"
   >
     Cargando resumen…
   </div>
@@ -152,7 +152,7 @@ function abrirNuevoProceso(coacheeId: string) {
   >
     <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
       <div class="rounded-2xl border border-[var(--color-line)] bg-white p-4">
-        <p class="text-xs text-[var(--color-ink)]/60">
+        <p class="text-xs text-[var(--color-muted)]">
           Ingreso del período
         </p>
         <p class="font-[family-name:var(--font-mono)] text-2xl text-[var(--color-sage)]">
@@ -160,7 +160,7 @@ function abrirNuevoProceso(coacheeId: string) {
         </p>
       </div>
       <div class="rounded-2xl border border-[var(--color-line)] bg-white p-4">
-        <p class="text-xs text-[var(--color-ink)]/60">
+        <p class="text-xs text-[var(--color-muted)]">
           Ingreso proyectado
         </p>
         <p class="font-[family-name:var(--font-mono)] text-2xl text-[var(--color-bronze)]">
@@ -168,7 +168,7 @@ function abrirNuevoProceso(coacheeId: string) {
         </p>
       </div>
       <div class="rounded-2xl border border-[var(--color-line)] bg-white p-4">
-        <p class="text-xs text-[var(--color-ink)]/60">
+        <p class="text-xs text-[var(--color-muted)]">
           Horas realizadas
         </p>
         <p class="font-[family-name:var(--font-mono)] text-2xl">
@@ -176,18 +176,18 @@ function abrirNuevoProceso(coacheeId: string) {
         </p>
       </div>
       <div class="rounded-2xl border border-[var(--color-line)] bg-white p-4">
-        <p class="text-xs text-[var(--color-ink)]/60">
+        <p class="text-xs text-[var(--color-muted)]">
           Solicitudes nuevas
         </p>
         <p class="font-[family-name:var(--font-mono)] text-2xl">
           {{ resumen.solicitudesNuevas }}
         </p>
-        <p class="text-xs text-[var(--color-ink)]/50">
+        <p class="text-xs text-[var(--color-muted)]">
           {{ resumen.solicitudesAtendidas }} atendidas · {{ resumen.solicitudesPendientes }} pendientes
         </p>
       </div>
       <div class="rounded-2xl border border-[var(--color-line)] bg-white p-4">
-        <p class="text-xs text-[var(--color-ink)]/60">
+        <p class="text-xs text-[var(--color-muted)]">
           Procesos iniciados
         </p>
         <p class="font-[family-name:var(--font-mono)] text-2xl">
@@ -195,7 +195,7 @@ function abrirNuevoProceso(coacheeId: string) {
         </p>
       </div>
       <div class="rounded-2xl border border-[var(--color-line)] bg-white p-4">
-        <p class="text-xs text-[var(--color-ink)]/60">
+        <p class="text-xs text-[var(--color-muted)]">
           Procesos cerrados
         </p>
         <p class="font-[family-name:var(--font-mono)] text-2xl">
@@ -203,13 +203,13 @@ function abrirNuevoProceso(coacheeId: string) {
         </p>
       </div>
       <div class="rounded-2xl border border-[var(--color-line)] bg-white p-4">
-        <p class="text-xs text-[var(--color-ink)]/60">
+        <p class="text-xs text-[var(--color-muted)]">
           Pipeline ponderado
         </p>
         <p class="font-[family-name:var(--font-mono)] text-2xl text-[var(--color-bronze)]">
           {{ pipelinePonderado !== null ? formatoCLP.format(pipelinePonderado) : '—' }}
         </p>
-        <p class="text-xs text-[var(--color-ink)]/50">
+        <p class="text-xs text-[var(--color-muted)]">
           Negocio probable, aún sin firmar
         </p>
       </div>
@@ -221,7 +221,7 @@ function abrirNuevoProceso(coacheeId: string) {
       </h2>
       <p
         v-if="resumen.procesosCerrados === 0"
-        class="text-sm text-[var(--color-ink)]/60"
+        class="text-sm text-[var(--color-muted)]"
       >
         Ningún proceso se cerró en este período.
       </p>
@@ -284,38 +284,38 @@ function abrirNuevoProceso(coacheeId: string) {
       <h2 class="mb-1 text-sm font-medium">
         Proyección por coachee
       </h2>
-      <p class="mb-3 text-xs text-[var(--color-ink)]/50">
+      <p class="mb-3 text-xs text-[var(--color-muted)]">
         Quién aporta más este período, y cuánto de eso todavía depende de sesiones ya agendadas.
       </p>
       <p
         v-if="resumen.porCoachee.length === 0"
-        class="text-sm text-[var(--color-ink)]/60"
+        class="text-sm text-[var(--color-muted)]"
       >
         Sin actividad de coachees en este período.
       </p>
       <div
         v-else
-        class="overflow-x-auto"
+        class="data-table-wrap"
       >
-        <table class="w-full text-left text-sm">
+        <table class="data-table">
           <thead>
-            <tr class="text-xs text-[var(--color-ink)]/60">
-              <th class="py-1">
+            <tr>
+              <th scope="col">
                 Coachee
               </th>
-              <th class="py-1">
+              <th scope="col">
                 Empresa
               </th>
-              <th class="py-1">
+              <th scope="col">
                 Horas
               </th>
-              <th class="py-1">
+              <th scope="col">
                 Confirmado
               </th>
-              <th class="py-1">
+              <th scope="col">
                 Proyectado
               </th>
-              <th class="py-1">
+              <th scope="col">
                 Total estimado
               </th>
             </tr>
@@ -324,12 +324,11 @@ function abrirNuevoProceso(coacheeId: string) {
             <tr
               v-for="c in resumen.porCoachee"
               :key="c.coacheeId"
-              class="border-t border-[var(--color-line)]"
             >
               <td class="py-2">
                 {{ c.nombre }}
               </td>
-              <td class="py-2 text-[var(--color-ink)]/60">
+              <td class="py-2 text-[var(--color-muted)]">
                 {{ c.empresaNombre ?? 'Independiente' }}
               </td>
               <td class="py-2">
@@ -369,7 +368,7 @@ function abrirNuevoProceso(coacheeId: string) {
       </h2>
       <p
         v-if="solicitudesPendientes.length === 0"
-        class="text-sm text-[var(--color-ink)]/60"
+        class="text-sm text-[var(--color-muted)]"
       >
         No hay solicitudes pendientes.
       </p>
@@ -387,12 +386,12 @@ function abrirNuevoProceso(coacheeId: string) {
               {{ s.nombreSugerido }}
               <span
                 v-if="s.empresa"
-                class="text-[var(--color-ink)]/60"
+                class="text-[var(--color-muted)]"
               >— {{ s.empresa.nombre }}</span>
             </p>
             <p
               v-if="s.mensaje"
-              class="text-[var(--color-ink)]/60"
+              class="text-[var(--color-muted)]"
             >
               {{ s.mensaje }}
             </p>
@@ -414,7 +413,7 @@ function abrirNuevoProceso(coacheeId: string) {
       </h2>
       <p
         v-if="ciclosCerrados.length === 0"
-        class="text-sm text-[var(--color-ink)]/60"
+        class="text-sm text-[var(--color-muted)]"
       >
         Todavía no hay procesos cerrados.
       </p>
@@ -431,7 +430,7 @@ function abrirNuevoProceso(coacheeId: string) {
             <p class="font-medium">
               {{ c.coachee.nombre }}
             </p>
-            <p class="text-[var(--color-ink)]/60">
+            <p class="text-[var(--color-muted)]">
               Cerrado el {{ c.fechaCierre ? new Date(c.fechaCierre).toLocaleDateString('es-CL') : '—' }}
               <span v-if="c.resultado"> · {{ c.resultado.replace(/_/g, ' ') }}</span>
             </p>

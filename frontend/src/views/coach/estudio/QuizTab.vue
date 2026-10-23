@@ -240,7 +240,7 @@ async function borrarPregunta(preguntaId: string) {
       >
         <span
           class="rounded-full px-2 py-0.5 text-xs font-semibold"
-          :class="quiz.activo ? 'bg-[var(--color-sage)]/15 text-[var(--color-sage)]' : 'bg-[var(--color-ink)]/5 text-[var(--color-ink)]/50'"
+          :class="quiz.activo ? 'bg-[var(--color-sage)]/15 text-[var(--color-sage)]' : 'bg-[var(--color-ink)]/5 text-[var(--color-muted)]'"
         >
           {{ quiz.activo ? 'Activo' : 'Inactivo' }}
         </span>
@@ -249,7 +249,7 @@ async function borrarPregunta(preguntaId: string) {
         </p>
         <p
           v-if="quiz.competencia"
-          class="text-xs text-[var(--color-ink)]/50"
+          class="text-xs text-[var(--color-muted)]"
         >
           {{ quiz.competencia.nombre }}
         </p>
@@ -265,7 +265,7 @@ async function borrarPregunta(preguntaId: string) {
 
   <template v-else>
     <button
-      class="mb-4 text-sm text-[var(--color-ink)]/60 hover:text-[var(--color-ink)] hover:underline"
+      class="mb-4 text-sm text-[var(--color-muted)] hover:text-[var(--color-ink)] hover:underline"
       @click="volverALista"
     >
       ← Volver a Quiz
@@ -278,7 +278,7 @@ async function borrarPregunta(preguntaId: string) {
         </h1>
         <p
           v-if="quizSeleccionado.competencia"
-          class="text-sm text-[var(--color-ink)]/60"
+          class="text-sm text-[var(--color-muted)]"
         >
           {{ quizSeleccionado.competencia.nombre }}
         </p>
@@ -377,7 +377,7 @@ async function borrarPregunta(preguntaId: string) {
           <div class="flex items-center justify-between pt-1">
             <button
               v-if="nuevaPregunta.opciones.length < 6"
-              class="text-xs text-[var(--color-ink)]/60 hover:underline"
+              class="text-xs text-[var(--color-muted)] hover:underline"
               @click="agregarOpcion"
             >
               + Agregar opción
@@ -399,7 +399,7 @@ async function borrarPregunta(preguntaId: string) {
       >
         <p
           v-if="ranking.length === 0"
-          class="text-sm text-[var(--color-ink)]/50"
+          class="text-sm text-[var(--color-muted)]"
         >
           Todavía ningún coachee ha respondido este quiz.
         </p>
@@ -421,7 +421,7 @@ async function borrarPregunta(preguntaId: string) {
                   ? 'bg-[var(--color-ink)]/10 text-[var(--color-ink)]/70'
                   : i === 2
                     ? 'bg-[var(--color-bronze)]/15 text-[var(--color-bronze)]'
-                    : 'bg-[var(--color-parchment)] text-[var(--color-ink)]/40'"
+                    : 'bg-[var(--color-parchment)] text-[var(--color-muted)]'"
             >
               {{ i + 1 }}
             </span>
@@ -434,7 +434,7 @@ async function borrarPregunta(preguntaId: string) {
             <span class="flex-1">{{ fila.nombre }}</span>
             <span
               v-if="fila.totalIntentos > 1"
-              class="text-xs text-[var(--color-ink)]/40"
+              class="text-xs text-[var(--color-muted)]"
             >{{ fila.totalIntentos }} intentos</span>
             <span class="font-[family-name:var(--font-mono)] font-semibold text-[var(--color-ink)]/80">
               {{ fila.mejorPuntaje }}/{{ fila.totalPreguntas }}

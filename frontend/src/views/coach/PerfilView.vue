@@ -302,7 +302,7 @@ async function eliminarExp(id: string) {
     <h1 class="mb-1 font-[family-name:var(--font-heading)] text-xl font-semibold">
       Mi perfil
     </h1>
-    <p class="mb-4 text-sm text-[var(--color-ink)]/60">
+    <p class="mb-4 text-sm text-[var(--color-muted)]">
       Esto es lo que verán tus coachees y las empresas cliente en "Mi Coach".
     </p>
 
@@ -508,7 +508,7 @@ async function eliminarExp(id: string) {
               <p class="truncate font-medium">
                 {{ exp.cargo ? `${exp.cargo} · ${exp.empresa}` : exp.empresa }}
               </p>
-              <p class="text-xs text-[var(--color-ink)]/60">
+              <p class="text-xs text-[var(--color-muted)]">
                 {{ formatoPeriodo(exp.fechaInicio, exp.fechaFin) }}
               </p>
               <p
@@ -538,7 +538,7 @@ async function eliminarExp(id: string) {
         </ul>
         <p
           v-else
-          class="mb-3 text-sm text-[var(--color-ink)]/50"
+          class="mb-3 text-sm text-[var(--color-muted)]"
         >
           Sin experiencia registrada todavía.
         </p>
@@ -620,7 +620,7 @@ async function eliminarExp(id: string) {
             <button
               v-if="editandoExpId"
               type="button"
-              class="text-xs text-[var(--color-ink)]/60 hover:underline"
+              class="text-xs text-[var(--color-muted)] hover:underline"
               @click="limpiarFormExp"
             >
               Cancelar
@@ -648,7 +648,7 @@ async function eliminarExp(id: string) {
               </p>
               <p
                 v-if="cert.entidadEmisora"
-                class="truncate text-xs text-[var(--color-ink)]/60"
+                class="truncate text-xs text-[var(--color-muted)]"
               >
                 {{ cert.entidadEmisora }}
               </p>
@@ -681,7 +681,7 @@ async function eliminarExp(id: string) {
         </ul>
         <p
           v-else
-          class="mb-3 text-sm text-[var(--color-ink)]/50"
+          class="mb-3 text-sm text-[var(--color-muted)]"
         >
           Sin certificaciones registradas todavía.
         </p>
@@ -746,7 +746,7 @@ async function eliminarExp(id: string) {
             <button
               v-if="editandoCertId"
               type="button"
-              class="text-xs text-[var(--color-ink)]/60 hover:underline"
+              class="text-xs text-[var(--color-muted)] hover:underline"
               @click="limpiarFormCert"
             >
               Cancelar

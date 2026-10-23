@@ -44,7 +44,10 @@ const coachees: CoacheeListItem[] = [
   { id: 'c2', nombre: 'Beto Ruiz', empresaId: null, user: { id: 'u2', email: 'beto@example.com' }, activo: false, consentimientoInformado: false, consentimientoFecha: null, createdAt: hoyIso },
 ]
 
-const router = createRouter({ history: createWebHistory(), routes: [{ path: '/coach/coachees/:id', component: { template: '<div />' } }] })
+const router = createRouter({ history: createWebHistory(), routes: [
+    { path: '/coach/coachees', component: { template: '<div />' } },
+    { path: '/coach/coachees/:id', component: { template: '<div />' } },
+  ], })
 
 describe('CoacheesView', () => {
   let wrapper: VueWrapper
@@ -56,7 +59,9 @@ describe('CoacheesView', () => {
     wrapper?.unmount()
   })
 
-  beforeEach(() => {
+  beforeEach(async () => {
+    await router.push('/coach/coachees')
+    await router.replace({ query: {} })
     vi.clearAllMocks()
     setActivePinia(createPinia())
     vi.mocked(listCoachees).mockResolvedValue(coachees)
@@ -216,10 +221,97 @@ describe('CoacheesView', () => {
     wrapper = mount(CoacheesView, { global: { plugins: [router] } })
     await flushPromises()
 
-    await wrapper.find('button[type="button"]').trigger('click')
+    await wrapper.find('tbody button[type="button"]').trigger('click')
     await flushPromises()
 
     expect(confirmDialog).toHaveBeenCalled()
     expect(setCoacheeActivo).toHaveBeenCalledWith('c1', false)
+  })
+
+  it('lista las columnas con scope="col" y ordena por Nombre con aria-sort', async () => {
+    wrapper = mount(CoacheesView, { global: { plugins: [router] } })
+    await flushPromises()
+
+    const ths = wrapper.findAll('thead th')
+    expect(ths.every((th) => th.attributes('scope') === 'col')).toBe(true)
+    const thNombre = ths.find((th) => th.text().includes('Nombre'))!
+    expect(thNombre.attributes('aria-sort')).toBe('none')
+
+    await thNombre.find('button').trigger('click')
+    expect(thNombre.attributes('aria-sort')).toBe('ascending')
+    expect(wrapper.findAll('tbody tr')[0].text()).toContain('Ana Soto')
+
+    await thNombre.find('button').trigger('click')
+    expect(thNombre.attributes('aria-sort')).toBe('descending')
+    expect(wrapper.findAll('tbody tr')[0].text()).toContain('Beto Ruiz')
+  })
+
+  it('refleja búsqueda y orden en la URL y los restaura al montar de nuevo', async () => {
+    wrapper = mount(CoacheesView, { global: { plugins: [router] } })
+    await flushPromises()
+    await wrapper.find('input[aria-label="Buscar coachees"]').setValue('Beto')
+    await flushPromises()
+    expect(router.currentRoute.value.query.q).toBe('Beto')
+    const urlConFiltros = router.currentRoute.value.fullPath
+    wrapper.unmount()
+
+    // Volver desde la ficha del coachee: la misma URL reabre la lista con el filtro puesto.
+    await router.push('/coach/coachees/c1')
+    await router.push(urlConFiltros)
+    wrapper = mount(CoacheesView, { global: { plugins: [router] } })
+    await flushPromises()
+    expect((wrapper.find('input[aria-label="Buscar coachees"]').element as HTMLInputElement).value).toBe('Beto')
+    expect(wrapper.text()).not.toContain('Ana Soto')
+    await router.replace({ query: {} })
+  })
+
+  it('muestra EmptyState con CTA "Crear primer coachee" cuando no hay ninguno', async () => {
+    vi.mocked(listCoachees).mockResolvedValue([])
+    wrapper = mount(CoacheesView, { global: { plugins: [router] } })
+    await flushPromises()
+
+    const cta = wrapper.findAll('button').find((b) => b.text() === 'Crear primer coachee')!
+    expect(cta).toBeTruthy()
+    await cta.trigger('click')
+    await flushPromises()
+    expect(new DOMWrapper(document.body).find('form').exists()).toBe(true)
+  })
+
+  it('muestra ErrorState y reintenta si falla la carga', async () => {
+    vi.mocked(listCoachees).mockRejectedValueOnce(new Error('boom'))
+    wrapper = mount(CoacheesView, { global: { plugins: [router] } })
+    await flushPromises()
+    expect(wrapper.find('[role="alert"]').exists()).toBe(true)
+
+    await wrapper.findAll('button').find((b) => b.text() === 'Reintentar')!.trigger('click')
+    await flushPromises()
+    expect(wrapper.text()).toContain('Ana Soto')
+  })
+
+  it('marca aria-invalid en el campo con error y le da el foco', async () => {
+    wrapper = mount(CoacheesView, { global: { plugins: [router] }, attachTo: document.body })
+    await flushPromises()
+
+    await wrapper.findAll('button').find((b) => b.text() === '+ Nuevo Coachee')!.trigger('click')
+    await flushPromises()
+    const modal = new DOMWrapper(document.body)
+    await modal.find('form').trigger('submit')
+    await flushPromises()
+
+    const nombre = modal.find('input[type="text"]')
+    expect(nombre.attributes('aria-invalid')).toBe('true')
+    expect(document.activeElement).toBe(nombre.element)
+  })
+
+  it('abre el alta con la empresa preseleccionada desde ?crear=1&empresaId=', async () => {
+    await router.push('/coach/coachees?crear=1&empresaId=e1')
+    wrapper = mount(CoacheesView, { global: { plugins: [router] } })
+    await flushPromises()
+
+    const modal = new DOMWrapper(document.body)
+    expect(modal.text()).toContain('Nuevo Coachee')
+    const select = modal.findAll('select').find((sel) => sel.text().includes('Independiente'))!
+    expect((select.element as HTMLSelectElement).value).toBe('e1')
+    expect(router.currentRoute.value.query.crear).toBeUndefined()
   })
 })

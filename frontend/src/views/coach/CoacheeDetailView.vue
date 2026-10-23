@@ -127,7 +127,7 @@ const planEstadoClase: Record<EstadoPlan, string> = {
               <h1 class="font-[family-name:var(--font-heading)] text-xl font-semibold">
                 {{ coachee.nombre }}
               </h1>
-              <p class="text-sm text-[var(--color-ink)]/60">
+              <p class="text-sm text-[var(--color-muted)]">
                 {{ coachee.empresa?.nombre ?? 'Independiente' }}
               </p>
               <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-[var(--color-ink)]/70">

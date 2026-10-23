@@ -196,7 +196,8 @@ describe('ProspectosView', () => {
       fechaInicio: null,
       fechaFin: null,
     })
-    const wrapper = mount(ProspectosView, { global: { plugins: [crearRouter()] } })
+    const router = crearRouter()
+    const wrapper = mount(ProspectosView, { global: { plugins: [router] } })
     await flushPromises()
 
     const ganadoBtn = wrapper.findAll('button').find((b) => b.text() === 'Ganado')
@@ -208,6 +209,8 @@ describe('ProspectosView', () => {
     await flushPromises()
 
     expect(convertirAEmpresa).toHaveBeenCalledWith('p1', expect.objectContaining({ nombre: 'Minera Andes', tarifaHora: 45000 }))
+    // Lleva a la empresa creada, no a la lista genérica.
+    expect(router.currentRoute.value.fullPath).toBe('/coach/empresas?id=e1')
   })
 
   it('converts a persona-type prospecto with the entered email', async () => {
@@ -237,5 +240,29 @@ describe('ProspectosView', () => {
 
     expect(wrapper.text()).toContain('Juan Pérez')
     expect(wrapper.text()).not.toContain('Minera Andes')
+  })
+
+  it('muestra ErrorState con Reintentar si falla la carga', async () => {
+    vi.mocked(listProspectos).mockRejectedValueOnce(new Error('boom'))
+    const wrapper = mount(ProspectosView, { global: { plugins: [crearRouter()] } })
+    await flushPromises()
+    expect(wrapper.find('[role="alert"]').exists()).toBe(true)
+
+    await wrapper.findAll('button').find((b) => b.text() === 'Reintentar')!.trigger('click')
+    await flushPromises()
+    expect(wrapper.text()).toContain('Minera Andes')
+  })
+
+  it('ofrece crear el primer prospecto cuando no hay ninguno', async () => {
+    vi.mocked(listProspectos).mockResolvedValue([])
+    const wrapper = mount(ProspectosView, { global: { plugins: [crearRouter()] } })
+    await flushPromises()
+    expect(wrapper.findAll('button').some((b) => b.text() === 'Crear primer prospecto')).toBe(true)
+  })
+
+  it('usa th con scope="col" en la tabla', async () => {
+    const wrapper = mount(ProspectosView, { global: { plugins: [crearRouter()] } })
+    await flushPromises()
+    expect(wrapper.findAll('thead th').every((th) => th.attributes('scope') === 'col')).toBe(true)
   })
 })

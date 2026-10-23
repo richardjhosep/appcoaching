@@ -293,4 +293,15 @@ describe('RecursosView', () => {
     await flushPromises()
     expect(updateRecurso).not.toHaveBeenCalled()
   })
+
+  it('muestra ErrorState con Reintentar si falla la carga de carpetas', async () => {
+    vi.mocked(listCarpetas).mockRejectedValueOnce(new Error('boom'))
+    wrapper = mount(RecursosView)
+    await flushPromises()
+    expect(wrapper.find('[role="alert"]').exists()).toBe(true)
+
+    await wrapper.findAll('button').find((b) => b.text() === 'Reintentar')!.trigger('click')
+    await flushPromises()
+    expect(wrapper.find('[role="alert"]').exists()).toBe(false)
+  })
 })

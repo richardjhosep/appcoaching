@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import SkeletonBlock from '../../../components/SkeletonBlock.vue'
+import StatusBadge from '../../../components/StatusBadge.vue'
 import { onMounted, ref, watch } from 'vue'
 import { getAuditLog, type AuditLog } from '../../../api/audit'
 import { verboAuditoria } from '../../../lib/auditFormat'
@@ -56,7 +57,7 @@ function fechaHora(iso: string): { fecha: string; hora: string } {
 <template>
   <div>
     <div class="mb-4 flex flex-wrap items-end gap-3">
-      <label class="text-xs text-[var(--color-ink)]/60">
+      <label class="text-xs text-[var(--color-muted)]">
         Empresa o coachee
         <select
           v-model="targetId"
@@ -85,7 +86,7 @@ function fechaHora(iso: string): { fecha: string; hora: string } {
           </optgroup>
         </select>
       </label>
-      <label class="text-xs text-[var(--color-ink)]/60">
+      <label class="text-xs text-[var(--color-muted)]">
         Desde
         <input
           v-model="desde"
@@ -93,7 +94,7 @@ function fechaHora(iso: string): { fecha: string; hora: string } {
           class="mt-0.5 block rounded-lg border border-[var(--color-line)] px-2 py-1.5 text-sm"
         >
       </label>
-      <label class="text-xs text-[var(--color-ink)]/60">
+      <label class="text-xs text-[var(--color-muted)]">
         Hasta
         <input
           v-model="hasta"
@@ -115,7 +116,7 @@ function fechaHora(iso: string): { fecha: string; hora: string } {
     <div v-else>
       <p
         v-if="logs.length === 0"
-        class="text-sm text-[var(--color-ink)]/60"
+        class="text-sm text-[var(--color-muted)]"
       >
         Todavía no hay actividad registrada con estos filtros.
       </p>
@@ -128,26 +129,26 @@ function fechaHora(iso: string): { fecha: string; hora: string } {
           :key="log.id"
           class="rounded-xl border border-[var(--color-line)] bg-white px-4 py-2.5 text-sm"
         >
-          <span class="font-[family-name:var(--font-mono)] text-xs text-[var(--color-ink)]/50">
+          <span class="font-[family-name:var(--font-mono)] text-xs text-[var(--color-muted)]">
             {{ fechaHora(log.createdAt).fecha }} · {{ fechaHora(log.createdAt).hora }}
           </span>
-          <span class="text-[var(--color-ink)]/40"> — </span>
+          <span class="text-[var(--color-muted)]"> — </span>
           <span class="font-medium">{{ log.actorLabel ?? 'Actor no disponible' }}</span>
-          <span class="text-[var(--color-ink)]/40"> — </span>
+          <span class="text-[var(--color-muted)]"> — </span>
           <span class="text-[var(--color-ink)]/80">{{ verboAuditoria(log) }}</span>
-          <span
+          <StatusBadge
             v-if="!log.actorLabel"
-            class="ml-1.5 rounded-full bg-[var(--color-parchment)] px-2 py-0.5 text-[10px] text-[var(--color-ink)]/50"
+            class="ml-1.5"
             title="Este registro es de antes de que la auditoría guardara quién hizo cada acción — no es una acción automática del sistema, sólo falta ese dato."
           >
             registro antiguo
-          </span>
+          </StatusBadge>
         </li>
       </ul>
 
       <button
         type="button"
-        class="mt-3 text-xs text-[var(--color-ink)]/50 hover:underline"
+        class="mt-3 text-xs text-[var(--color-muted)] hover:underline"
         @click="mostrandoTodo = !mostrandoTodo"
       >
         {{ mostrandoTodo

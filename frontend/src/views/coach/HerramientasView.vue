@@ -75,7 +75,7 @@ onMounted(async () => {
     <h1 class="mb-1 font-[family-name:var(--font-heading)] text-xl font-semibold">
       Herramientas
     </h1>
-    <p class="mb-4 text-sm text-[var(--color-ink)]/60">
+    <p class="mb-4 text-sm text-[var(--color-muted)]">
       El contenido de práctica que le compartes a tus coachees — cada tarjeta es un tipo distinto.
     </p>
 
@@ -93,7 +93,7 @@ onMounted(async () => {
         <NavIcon
           :name="t.icon"
           :size="20"
-          :class="activeTab === t.key ? 'text-[var(--color-sage)]' : 'text-[var(--color-ink)]/60'"
+          :class="activeTab === t.key ? 'text-[var(--color-sage)]' : 'text-[var(--color-muted)]'"
         />
         <span class="text-sm font-medium">
           {{ t.label }} ({{ conteos[t.key] ?? '…' }})

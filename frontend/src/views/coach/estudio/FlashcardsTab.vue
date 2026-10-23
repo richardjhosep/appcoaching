@@ -156,12 +156,12 @@ async function eliminar(flashcard: Flashcard) {
         <p class="text-sm font-medium">
           {{ flashcard.anverso }}
         </p>
-        <p class="text-xs text-[var(--color-ink)]/60">
+        <p class="text-xs text-[var(--color-muted)]">
           {{ flashcard.reverso }}
         </p>
         <p
           v-if="flashcard.competencia"
-          class="text-xs text-[var(--color-ink)]/40"
+          class="text-xs text-[var(--color-muted)]"
         >
           {{ flashcard.competencia.nombre }}
         </p>

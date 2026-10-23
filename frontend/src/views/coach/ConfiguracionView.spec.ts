@@ -115,7 +115,7 @@ describe('ConfiguracionView', () => {
     const wrapper = mount(ConfiguracionView)
     await flushPromises()
 
-    await wrapper.find('button[type="button"]').trigger('click')
+    await wrapper.find('tbody button[type="button"]').trigger('click')
     await flushPromises()
 
     expect(actualizarParametro).toHaveBeenCalledWith('p1', { estado: false })
@@ -131,5 +131,31 @@ describe('ConfiguracionView', () => {
 
     expect(confirmDialog).toHaveBeenCalled()
     expect(eliminarParametro).toHaveBeenCalledWith('p1')
+  })
+
+  it('muestra ErrorState con Reintentar si falla la carga', async () => {
+    vi.mocked(listarParametros).mockRejectedValueOnce(new Error('boom'))
+    const wrapper = mount(ConfiguracionView)
+    await flushPromises()
+    expect(wrapper.find('[role="alert"]').exists()).toBe(true)
+
+    await wrapper.findAll('button').find((b) => b.text() === 'Reintentar')!.trigger('click')
+    await flushPromises()
+    expect(wrapper.find('[role="alert"]').exists()).toBe(false)
+    expect(wrapper.find('table').exists()).toBe(true)
+  })
+
+  it('usa th con scope="col" y marca aria-invalid en el campo vacío', async () => {
+    const wrapper = mount(ConfiguracionView, { attachTo: document.body })
+    await flushPromises()
+    expect(wrapper.findAll('thead th').every((th) => th.attributes('scope') === 'col')).toBe(true)
+
+    await wrapper.findAll('button').find((b) => b.text() === '+ Nuevo parámetro')!.trigger('click')
+    await flushPromises()
+    const modal = new DOMWrapper(document.body)
+    await modal.find('form').trigger('submit')
+    await flushPromises()
+    expect(modal.find('input[type="text"]').attributes('aria-invalid')).toBe('true')
+    wrapper.unmount()
   })
 })

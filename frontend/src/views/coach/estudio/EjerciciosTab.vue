@@ -206,7 +206,7 @@ async function guardarFeedback(version: VersionEjercicio) {
       >
         <span
           class="rounded-full px-2 py-0.5 text-xs font-semibold"
-          :class="ejercicio.activo ? 'bg-[var(--color-sage)]/15 text-[var(--color-sage)]' : 'bg-[var(--color-ink)]/5 text-[var(--color-ink)]/50'"
+          :class="ejercicio.activo ? 'bg-[var(--color-sage)]/15 text-[var(--color-sage)]' : 'bg-[var(--color-ink)]/5 text-[var(--color-muted)]'"
         >
           {{ ejercicio.activo ? 'Activo' : 'Inactivo' }}
         </span>
@@ -215,7 +215,7 @@ async function guardarFeedback(version: VersionEjercicio) {
         </p>
         <p
           v-if="ejercicio.competencia"
-          class="text-xs text-[var(--color-ink)]/50"
+          class="text-xs text-[var(--color-muted)]"
         >
           {{ ejercicio.competencia.nombre }}
         </p>
@@ -231,7 +231,7 @@ async function guardarFeedback(version: VersionEjercicio) {
 
   <template v-else>
     <button
-      class="mb-4 text-sm text-[var(--color-ink)]/60 hover:text-[var(--color-ink)] hover:underline"
+      class="mb-4 text-sm text-[var(--color-muted)] hover:text-[var(--color-ink)] hover:underline"
       @click="volverALista"
     >
       ← Volver a Ejercicios
@@ -244,7 +244,7 @@ async function guardarFeedback(version: VersionEjercicio) {
         </h1>
         <p
           v-if="ejercicioSeleccionado.competencia"
-          class="text-sm text-[var(--color-ink)]/60"
+          class="text-sm text-[var(--color-muted)]"
         >
           {{ ejercicioSeleccionado.competencia.nombre }}
         </p>
@@ -290,7 +290,7 @@ async function guardarFeedback(version: VersionEjercicio) {
       >
         <p
           v-if="versiones.length === 0"
-          class="text-sm text-[var(--color-ink)]/50"
+          class="text-sm text-[var(--color-muted)]"
         >
           Todavía ningún coachee ha enviado una versión.
         </p>

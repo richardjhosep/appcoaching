@@ -8,15 +8,20 @@ import IconButton from '../../components/IconButton.vue'
 import { useAuthStore } from '../../stores/auth'
 import { useRouter } from 'vue-router'
 import SkeletonBlock from '../../components/SkeletonBlock.vue'
+import ErrorState from '../../components/ErrorState.vue'
+import AppButton from '../../components/AppButton.vue'
+import FormField from '../../components/FormField.vue'
+import StatusBadge from '../../components/StatusBadge.vue'
 import { createEmpresaUser, deleteUser, listUsers, resetPassword, setUserActivo, type UserAccount } from '../../api/users'
 import { listEmpresas, type Empresa } from '../../api/empresas'
 import { ApiError } from '../../api/client'
 import { notifyError, notifySuccess, confirmDialog } from '../../lib/notify'
 import { dentroDeRango } from '../../lib/dateRange'
+import { useCarga } from '../../lib/useCarga'
+import { enfocarPrimerInvalido } from '../../lib/enfocarInvalido'
 
 const PAGE_SIZE = 12
 
-const loading = ref(true)
 const usuarios = ref<UserAccount[]>([])
 const empresas = ref<Empresa[]>([])
 const search = ref('')
@@ -29,15 +34,16 @@ const fechaHasta = ref('')
 const page = ref(1)
 
 async function load() {
-  loading.value = true
-  const [u, e] = await Promise.all([listUsers(), listEmpresas()])
+  // Las empresas solo alimentan el selector del alta: si fallan, la lista sigue siendo útil.
+  const [u, e] = await Promise.all([listUsers(), tolerar(listEmpresas())])
   u.sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? ''))
   usuarios.value = u
-  empresas.value = e
-  loading.value = false
+  empresas.value = e ?? []
 }
 
-onMounted(load)
+const { loading, error, fallos, recargar, tolerar } = useCarga(load)
+
+onMounted(recargar)
 
 const rolLabels: Record<UserAccount['role'], string> = {
   coach: 'Coach',
@@ -90,7 +96,9 @@ function abrirCrear() {
 function validar(): boolean {
   errors.email = /.+@.+\..+/.test(form.email.trim()) ? undefined : 'Ingresa un email válido.'
   errors.empresaId = form.empresaId ? undefined : 'Selecciona una empresa.'
-  return !errors.email && !errors.empresaId
+  const valido = !errors.email && !errors.empresaId
+  if (!valido) void enfocarPrimerInvalido()
+  return valido
 }
 
 async function guardar() {
@@ -100,10 +108,11 @@ async function guardar() {
   try {
     const resultado = await createEmpresaUser(form.email, form.empresaId)
     modalOpen.value = false
-    await load()
+    await recargar()
     await notifySuccess('Cuenta creada', `Se envió un correo a ${resultado.email} con las instrucciones de acceso.`)
   } catch (err) {
     serverErrors.value = err instanceof ApiError ? (err.fieldErrors ?? {}) : {}
+    void enfocarPrimerInvalido()
     await notifyError('No se pudo crear la cuenta', err instanceof ApiError ? err.message : 'Ocurrió un error inesperado.')
   } finally {
     guardando.value = false
@@ -123,7 +132,7 @@ async function toggleActivo(usuario: UserAccount) {
   if (!confirmado) return
   try {
     await setUserActivo(usuario.id, activar)
-    await load()
+    await recargar()
     await notifySuccess(activar ? 'Cuenta activada' : 'Cuenta desactivada')
   } catch (err) {
     await notifyError('No se pudo cambiar el estado', err instanceof ApiError ? err.message : 'Ocurrió un error inesperado.')
@@ -176,7 +185,7 @@ async function eliminar(usuario: UserAccount) {
   if (!confirmado) return
   try {
     await deleteUser(usuario.id)
-    await load()
+    await recargar()
     await notifySuccess('Cuenta eliminada')
   } catch (err) {
     await notifyError('No se pudo eliminar', err instanceof ApiError ? err.message : 'Ocurrió un error inesperado.')
@@ -191,27 +200,40 @@ async function eliminar(usuario: UserAccount) {
         <h1 class="font-[family-name:var(--font-heading)] text-xl font-semibold">
           Mantenedor de Usuarios
         </h1>
-        <p class="text-sm text-[var(--color-ink)]/60">
+        <p class="text-sm text-[var(--color-muted)]">
           Gestión y administración de las cuentas del sistema.
         </p>
       </div>
-      <button
-        class="rounded-lg bg-[var(--color-ink)] px-4 py-2 text-sm font-medium text-[var(--color-parchment)]"
-        @click="abrirCrear"
-      >
+      <AppButton @click="abrirCrear">
         + Nuevo Usuario
-      </button>
+      </AppButton>
     </div>
 
-    <SkeletonBlock v-if="loading" />
+    <SkeletonBlock
+      v-if="loading"
+      variant="table"
+      :rows="6"
+    />
+    <ErrorState
+      v-else-if="error"
+      @retry="recargar"
+    />
     <div
       v-else
       class="space-y-3"
     >
+      <div
+        v-if="fallos > 0"
+        role="status"
+        class="rounded-xl border border-[var(--color-bronze)]/40 bg-[var(--color-bronze)]/10 px-4 py-3 text-sm"
+      >
+        No pudimos cargar la lista de empresas: no podrás crear cuentas de empresa hasta que cargue (recarga la página).
+      </div>
       <div class="flex flex-wrap items-center gap-2">
         <select
           v-model="filtroRol"
-          class="rounded-lg border border-[var(--color-line)] px-3 py-1.5 text-sm"
+          aria-label="Filtrar por rol"
+          class="field-input w-auto"
           @change="page = 1"
         >
           <option value="">
@@ -229,7 +251,8 @@ async function eliminar(usuario: UserAccount) {
         </select>
         <select
           v-model="filtroEstado"
-          class="rounded-lg border border-[var(--color-line)] px-3 py-1.5 text-sm"
+          aria-label="Filtrar por estado"
+          class="field-input w-auto"
           @change="page = 1"
         >
           <option value="">
@@ -242,73 +265,72 @@ async function eliminar(usuario: UserAccount) {
             Inactivos
           </option>
         </select>
-        <label class="flex items-center gap-1.5 text-xs text-[var(--color-ink)]/60">
+        <label class="flex items-center gap-1.5 text-xs text-[var(--color-muted)]">
           Desde
           <input
             v-model="fechaDesde"
             type="date"
-            class="rounded-lg border border-[var(--color-line)] px-2 py-1.5 text-sm"
+            class="field-input w-auto"
             @change="page = 1"
           >
         </label>
-        <label class="flex items-center gap-1.5 text-xs text-[var(--color-ink)]/60">
+        <label class="flex items-center gap-1.5 text-xs text-[var(--color-muted)]">
           Hasta
           <input
             v-model="fechaHasta"
             type="date"
-            class="rounded-lg border border-[var(--color-line)] px-2 py-1.5 text-sm"
+            class="field-input w-auto"
             @change="page = 1"
           >
         </label>
-        <button
-          class="rounded-lg border border-[var(--color-line)] px-3 py-1.5 text-xs hover:bg-[var(--color-parchment)]/50"
+        <AppButton
+          variant="secondary"
+          size="sm"
           @click="limpiarFiltros"
         >
           × Limpiar filtros
-        </button>
-        <span class="ml-auto text-xs text-[var(--color-ink)]/50">{{ filtradas.length }} registro(s)</span>
+        </AppButton>
+        <span class="ml-auto text-xs text-[var(--color-muted)]">{{ filtradas.length }} registro(s)</span>
       </div>
 
       <input
         v-model="search"
         type="search"
+        aria-label="Buscar usuarios"
         placeholder="Buscar por email…"
-        class="w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+        class="field-input"
         @input="page = 1"
       >
 
-      <div class="overflow-x-auto rounded-2xl border border-[var(--color-line)] bg-white">
-        <table class="w-full text-left text-sm">
+      <div class="data-table-wrap">
+        <table class="data-table">
           <thead>
-            <tr class="border-b border-[var(--color-line)] bg-[var(--color-parchment)] text-xs text-[var(--color-ink)]/60">
-              <th class="px-4 py-3">
+            <tr>
+              <th scope="col">
                 Email
               </th>
-              <th class="px-4 py-3">
+              <th scope="col">
                 Rol
               </th>
-              <th class="px-4 py-3">
+              <th scope="col">
                 Empresa
               </th>
-              <th class="px-4 py-3">
+              <th scope="col">
                 Estado
               </th>
-              <th class="px-4 py-3">
+              <th scope="col">
                 Creado
               </th>
-              <th class="px-4 py-3">
+              <th scope="col">
                 Acciones
               </th>
             </tr>
           </thead>
           <tbody>
-            <tr
-              v-if="paginadas.length === 0"
-              class="border-b border-[var(--color-line)] last:border-0"
-            >
+            <tr v-if="paginadas.length === 0">
               <td
                 colspan="6"
-                class="px-4 py-6 text-center text-sm text-[var(--color-ink)]/50"
+                class="py-6 text-center text-sm text-[var(--color-muted)]"
               >
                 Sin resultados.
               </td>
@@ -316,27 +338,28 @@ async function eliminar(usuario: UserAccount) {
             <tr
               v-for="u in paginadas"
               :key="u.id"
-              class="border-b border-[var(--color-line)] last:border-0"
             >
-              <td class="px-4 py-3 font-medium">
+              <td class="font-medium">
                 {{ u.email }}
               </td>
-              <td class="px-4 py-3">
-                {{ rolLabels[u.role] }}
+              <td>
+                <StatusBadge :tone="u.role === 'coach' ? 'sage' : u.role === 'empresa' ? 'bronze' : 'neutral'">
+                  {{ rolLabels[u.role] }}
+                </StatusBadge>
               </td>
-              <td class="px-4 py-3 text-[var(--color-ink)]/70">
+              <td class="text-[var(--color-muted)]">
                 {{ u.empresa?.nombre ?? '—' }}
               </td>
-              <td class="px-4 py-3">
+              <td>
                 <StatusToggle
                   :active="u.isActive"
                   @toggle="toggleActivo(u)"
                 />
               </td>
-              <td class="px-4 py-3 text-xs text-[var(--color-ink)]/60">
+              <td class="text-xs text-[var(--color-muted)]">
                 {{ u.createdAt ? new Date(u.createdAt).toLocaleDateString('es-CL') : '—' }}
               </td>
-              <td class="px-4 py-3">
+              <td>
                 <div class="flex items-center gap-2">
                   <IconButton
                     v-if="auth.user?.superadmin && u.role !== 'coach'"
@@ -384,28 +407,35 @@ async function eliminar(usuario: UserAccount) {
     >
       <form
         class="space-y-4"
+        novalidate
         @submit.prevent="guardar"
       >
-        <label class="block text-sm">
-          Email
+        <FormField
+          v-slot="{ id, describedby, invalid }"
+          label="Email"
+          :error="errors.email || serverErrors.email"
+        >
           <input
+            :id="id"
             v-model="form.email"
             type="email"
-            class="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
-            :class="errors.email || serverErrors.email ? 'border-[var(--color-danger)]' : 'border-[var(--color-line)]'"
+            class="field-input"
+            :aria-describedby="describedby"
+            :aria-invalid="invalid"
           >
-          <span
-            v-if="errors.email || serverErrors.email"
-            class="mt-1 block text-xs text-[var(--color-danger)]"
-          >{{ errors.email || serverErrors.email }}</span>
-        </label>
+        </FormField>
 
-        <label class="block text-sm">
-          Empresa
+        <FormField
+          v-slot="{ id, describedby, invalid }"
+          label="Empresa"
+          :error="errors.empresaId || serverErrors.empresaId"
+        >
           <select
+            :id="id"
             v-model="form.empresaId"
-            class="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
-            :class="errors.empresaId || serverErrors.empresaId ? 'border-[var(--color-danger)]' : 'border-[var(--color-line)]'"
+            class="field-input"
+            :aria-describedby="describedby"
+            :aria-invalid="invalid"
           >
             <option value="">
               Selecciona…
@@ -418,27 +448,21 @@ async function eliminar(usuario: UserAccount) {
               {{ e.nombre }}
             </option>
           </select>
-          <span
-            v-if="errors.empresaId || serverErrors.empresaId"
-            class="mt-1 block text-xs text-[var(--color-danger)]"
-          >{{ errors.empresaId || serverErrors.empresaId }}</span>
-        </label>
+        </FormField>
 
         <div class="flex justify-end gap-2 pt-2">
-          <button
-            type="button"
-            class="rounded-lg border border-[var(--color-line)] px-4 py-2 text-sm"
+          <AppButton
+            variant="secondary"
             @click="modalOpen = false"
           >
             Cancelar
-          </button>
-          <button
+          </AppButton>
+          <AppButton
             type="submit"
-            :disabled="guardando"
-            class="rounded-lg bg-[var(--color-ink)] px-4 py-2 text-sm text-[var(--color-parchment)] disabled:opacity-60"
+            :loading="guardando"
           >
             {{ guardando ? 'Guardando…' : 'Guardar' }}
-          </button>
+          </AppButton>
         </div>
       </form>
     </AppModal>
