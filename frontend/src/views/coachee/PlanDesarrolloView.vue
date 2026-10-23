@@ -21,11 +21,11 @@ const competenciasPrioritarias = ref<EmpresaCompetencia[]>([])
 const cicloActual = ref<Ciclo | null>(null)
 const tab = ref<'definicion' | 'habito' | 'formacion'>('definicion')
 
-const tabs = [
+const tabs: Array<{ key: 'definicion' | 'habito' | 'formacion'; label: string }> = [
   { key: 'definicion', label: 'Definición' },
   { key: 'habito', label: 'Hábito y ejecución' },
   { key: 'formacion', label: 'Formación' },
-] as const
+]
 
 const { loading, error, recargar } = useCarga(async () => {
   const [p, c, ciclo, cp] = await Promise.all([
