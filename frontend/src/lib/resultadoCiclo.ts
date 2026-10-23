@@ -13,3 +13,10 @@ export const resultadoColor: Record<ResultadoCiclo, string> = {
   medianamente_logrado: 'var(--color-bronze)',
   no_logrado: 'var(--color-danger)',
 }
+
+/** Tono de StatusBadge para el resultado de un ciclo (mismo criterio que resultadoColor). */
+export const resultadoTono: Record<ResultadoCiclo, 'sage' | 'bronze' | 'danger'> = {
+  logrado: 'sage',
+  medianamente_logrado: 'bronze',
+  no_logrado: 'danger',
+}

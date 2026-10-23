@@ -32,4 +32,18 @@ describe('CertificadoContenido', () => {
 
     expect(wrapper.text()).toContain('Medianamente logrado')
   })
+
+  it('muestra la marca CoachNexus en la cabecera', () => {
+    const wrapper = mount(CertificadoContenido, {
+      props: {
+        nombreCoachee: 'Alguien',
+        objetivo: 'Algo',
+        resultado: 'logrado',
+        fechaApertura: '2026-01-01T00:00:00.000Z',
+        fechaCierre: '2026-03-01T00:00:00.000Z',
+      },
+    })
+
+    expect(wrapper.text()).toContain('CoachNexus')
+  })
 })

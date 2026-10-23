@@ -100,7 +100,7 @@ describe('InformeEjecutivoView', () => {
   it('shows the KPI cards, tendencia, retorno de la inversión and finanzas sections', async () => {
     const wrapper = await mountView()
 
-    expect(wrapper.text()).toContain('4.5 ★')
+    expect(wrapper.text()).toContain('4.5/5')
     expect(wrapper.text()).toContain('Tendencia')
     expect(wrapper.text()).toContain('Retorno de la inversión')
     expect(wrapper.text()).toContain('$200.000')
@@ -121,14 +121,40 @@ describe('InformeEjecutivoView', () => {
     expect(wrapper.text()).not.toContain('Impactos en el negocio')
   })
 
-  it('triggers window.print when "Descargar / Imprimir" is clicked', async () => {
+  it('triggers window.print when "Imprimir / Guardar como PDF" is clicked', async () => {
     window.print = vi.fn()
     const printSpy = window.print
 
     const wrapper = await mountView()
-    const boton = wrapper.findAll('button').find((b) => b.text().includes('Descargar / Imprimir'))
+    const boton = wrapper.findAll('button').find((b) => b.text().includes('Imprimir / Guardar como PDF'))
     await boton!.trigger('click')
 
     expect(printSpy).toHaveBeenCalled()
+  })
+
+  it('incluye la cabecera de reporte con marca, empresa y fecha de emisión (sin selector de período)', async () => {
+    const wrapper = await mountView()
+
+    expect(wrapper.text()).toContain('CoachNexus')
+    expect(wrapper.text()).toMatch(/QA Empresa Verify · Emitido el /)
+  })
+
+  it('indica que el estado de pago lo registra el coach', async () => {
+    const wrapper = await mountView()
+
+    expect(wrapper.text()).toContain('Registrado por tu coach')
+  })
+
+  it('muestra ErrorState con Reintentar en vez de un informe parcial si falla una fuente', async () => {
+    vi.mocked(getMiRetornoInversion).mockRejectedValueOnce(new Error('sin conexión'))
+    const wrapper = await mountView()
+
+    expect(wrapper.find('[role="alert"]').exists()).toBe(true)
+    expect(wrapper.text()).not.toContain('Resumen financiero del período')
+
+    await wrapper.find('[role="alert"] button').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Resumen financiero del período')
   })
 })

@@ -228,11 +228,12 @@ describe('CoacheesView (empresa)', () => {
     expect(modal.text()).toContain('Historial de ciclos')
   })
 
-  it('opens the certificado modal with a working preview and download link', async () => {
+  it('opens the certificado modal with a working preview and print button that navigates to the certificate', async () => {
     vi.mocked(listCoachees).mockResolvedValue([coacheeCerrado])
     vi.mocked(getCiclosDeCoachee).mockResolvedValue([cicloCerrado])
 
-    const wrapper = await mountView()
+    const router = makeRouter()
+    const wrapper = await mountView(router)
     const tabCerrados = wrapper.findAll('button').find((b) => b.text().includes('Procesos cerrados'))
     await tabCerrados!.trigger('click')
 
@@ -249,8 +250,10 @@ describe('CoacheesView (empresa)', () => {
 
     modal = new DOMWrapper(document.body)
     expect(modal.text()).toContain('QA Coachee B')
-    const descargarLink = modal.findAll('a').find((a) => a.text().includes('Descargar'))
-    expect(descargarLink?.attributes('href')).toBe('/empresa/coachees/coachee-2/ciclos/c2/certificado')
+    const imprimir = modal.findAll('button').find((b) => b.text().includes('Imprimir / Guardar como PDF'))
+    await imprimir!.trigger('click')
+    await flushPromises()
+    expect(router.currentRoute.value.fullPath).toBe('/empresa/coachees/coachee-2/ciclos/c2/certificado')
   })
 
   it('opens the feedback modal with the coachee retroalimentación de cierre', async () => {
@@ -308,5 +311,80 @@ describe('CoacheesView (empresa)', () => {
 
     const modal = new DOMWrapper(document.body)
     expect(modal.text()).toContain('QA Paleta Verify')
+  })
+
+  it('filtra por nombre y muestra un estado vacío con opción de limpiar', async () => {
+    const otro: CoacheeListItem = { ...coacheeActivo, id: 'coachee-3', nombre: 'Ana Pérez' }
+    vi.mocked(listCoachees).mockResolvedValue([coacheeActivo, otro])
+    vi.mocked(getCiclosDeCoachee).mockResolvedValue([cicloAbierto])
+
+    const wrapper = await mountView()
+    const buscador = wrapper.find('input[type="search"]')
+    await buscador.setValue('ana')
+
+    expect(wrapper.text()).toContain('Ana Pérez')
+    expect(wrapper.text()).not.toContain('QA Paleta Verify')
+
+    await buscador.setValue('zzz')
+    expect(wrapper.text()).toContain('Sin resultados')
+
+    await wrapper.findAll('button').find((b) => b.text() === 'Limpiar filtros')!.trigger('click')
+    expect(wrapper.text()).toContain('QA Paleta Verify')
+    expect(wrapper.text()).toContain('Ana Pérez')
+  })
+
+  it('el filtro "Solo con alertas" deja solo a quienes tienen sesión sin agendar o ciclo por vencer', async () => {
+    const otro: CoacheeListItem = { ...coacheeActivo, id: 'coachee-3', nombre: 'Ana Pérez' }
+    vi.mocked(listCoachees).mockResolvedValue([coacheeActivo, otro])
+    vi.mocked(getCiclosDeCoachee).mockResolvedValue([cicloAbierto])
+    vi.mocked(getProximaSesionDeCoachee).mockImplementation((id: string) =>
+      Promise.resolve(
+        id === 'coachee-3'
+          ? { id: 's1', coacheeId: id, fechaHora: '2026-09-10T10:00:00.000Z', linkVideollamada: null, resumenCompartido: null, confirmada: false, postSesion: null }
+          : null,
+      ),
+    )
+
+    const wrapper = await mountView()
+    await wrapper.find('input[type="checkbox"]').setValue(true)
+
+    expect(wrapper.text()).toContain('QA Paleta Verify')
+    expect(wrapper.text()).not.toContain('Ana Pérez')
+  })
+
+  it('avisa los datos incompletos y no marca "Sin sesión agendada" si falló la consulta de la próxima sesión', async () => {
+    vi.mocked(listCoachees).mockResolvedValue([coacheeActivo])
+    vi.mocked(getCiclosDeCoachee).mockResolvedValue([cicloAbierto])
+    vi.mocked(getProximaSesionDeCoachee).mockRejectedValue(new Error('falla transitoria'))
+
+    const wrapper = await mountView()
+
+    expect(wrapper.text()).toContain('No pudimos cargar datos de 1 persona')
+    expect(wrapper.text()).toContain('Datos incompletos')
+    expect(wrapper.text()).not.toContain('Sin sesión agendada')
+  })
+
+  it('explica qué ve y qué no ve la empresa', async () => {
+    vi.mocked(listCoachees).mockResolvedValue([coacheeActivo])
+    vi.mocked(getCiclosDeCoachee).mockResolvedValue([cicloAbierto])
+
+    const wrapper = await mountView()
+
+    expect(wrapper.text()).toContain('Qué ve tu empresa y qué no')
+    expect(wrapper.text()).toContain('notas privadas de tu coach')
+  })
+
+  it('muestra ErrorState con Reintentar si falla el listado', async () => {
+    vi.mocked(listCoachees).mockRejectedValueOnce(new Error('sin conexión'))
+    const wrapper = await mountView()
+
+    expect(wrapper.find('[role="alert"]').exists()).toBe(true)
+
+    vi.mocked(listCoachees).mockResolvedValue([coacheeActivo])
+    vi.mocked(getCiclosDeCoachee).mockResolvedValue([cicloAbierto])
+    await wrapper.find('[role="alert"] button').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('QA Paleta Verify')
   })
 })

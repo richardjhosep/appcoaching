@@ -54,4 +54,17 @@ describe('PerfilCoachView (empresa)', () => {
     expect(wrapper.text()).toContain('Integro 20 años liderando equipos.')
     expect(wrapper.text()).toContain('fernando@saltup.cl')
   })
+
+  it('muestra ErrorState con Reintentar si falla la carga y se recupera al reintentar', async () => {
+    vi.mocked(getPerfilCoach).mockRejectedValueOnce(new Error('sin conexión'))
+    const wrapper = mount(PerfilCoachView)
+    await flushPromises()
+
+    expect(wrapper.find('[role="alert"]').exists()).toBe(true)
+
+    await wrapper.find('[role="alert"] button').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Fernando Ramos')
+  })
 })

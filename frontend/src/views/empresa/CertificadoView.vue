@@ -7,26 +7,31 @@ import { getCiclosDeCoachee, type Ciclo } from '../../api/ciclos'
 import BackLink from '../../components/BackLink.vue'
 import CertificadoContenido from '../../components/CertificadoContenido.vue'
 import SkeletonBlock from '../../components/SkeletonBlock.vue'
+import ErrorState from '../../components/ErrorState.vue'
+import AppButton from '../../components/AppButton.vue'
+import { sin404 } from '../../lib/cargaPorCoachee'
+import { useCarga } from '../../lib/useCarga'
 
 const props = defineProps<{ coacheeId: string; cicloId: string }>()
 const router = useRouter()
 
-const loading = ref(true)
 const coachee = ref<Coachee | null>(null)
 const plan = ref<PlanDesarrollo | null>(null)
 const ciclo = ref<Ciclo | null>(null)
 
-onMounted(async () => {
+const { loading, error, recargar } = useCarga(async () => {
   const [c, p, ciclos] = await Promise.all([
     getCoachee(props.coacheeId),
-    getPlanByCoachee(props.coacheeId).catch(() => null),
+    // Sin plan (404) el certificado igual se emite con el texto genérico; otro error sí es fallo.
+    getPlanByCoachee(props.coacheeId).then((v) => v ?? null, sin404(null)),
     getCiclosDeCoachee(props.coacheeId),
   ])
   coachee.value = c
   plan.value = p
   ciclo.value = ciclos.find((x) => x.id === props.cicloId) ?? null
-  loading.value = false
 })
+
+onMounted(recargar)
 
 function imprimir() {
   window.print()
@@ -36,11 +41,17 @@ function imprimir() {
 <template>
   <div class="min-h-screen bg-[var(--color-ivory)] px-4 py-10 text-[var(--color-ink)] print:bg-white print:p-0">
     <SkeletonBlock v-if="loading" />
+    <ErrorState
+      v-else-if="error"
+      class="mx-auto max-w-lg"
+      :description="error"
+      @retry="recargar"
+    />
     <div
       v-else-if="!ciclo || !ciclo.fechaCierre || !ciclo.resultado"
       class="mx-auto max-w-lg rounded-2xl border border-[var(--color-line)] bg-white p-6 text-center"
     >
-      <p class="mb-4 text-sm text-[var(--color-ink)]/70">
+      <p class="mb-4 text-sm text-[var(--color-muted)]">
         Este certificado todavía no está disponible: el ciclo debe estar cerrado con un resultado.
       </p>
       <BackLink
@@ -57,12 +68,9 @@ function imprimir() {
           label="Volver"
           @click="router.push({ name: 'empresa-coachees' })"
         />
-        <button
-          class="rounded-lg bg-[var(--color-ink)] px-4 py-2 text-sm text-[var(--color-parchment)]"
-          @click="imprimir"
-        >
-          Descargar / Imprimir
-        </button>
+        <AppButton @click="imprimir">
+          Imprimir / Guardar como PDF
+        </AppButton>
       </div>
 
       <CertificadoContenido

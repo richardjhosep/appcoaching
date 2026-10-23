@@ -137,4 +137,27 @@ describe('SatisfaccionView', () => {
       undefined,
     )
   })
+
+  it('avisa si no pudo revisar los procesos de alguna persona, sin afirmar que no hay pendientes', async () => {
+    await mountView()
+    vi.mocked(getCiclosDeCoachee).mockRejectedValue(new Error('falla transitoria'))
+    const wrapper = mount(SatisfaccionView)
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('No pudimos revisar los procesos de 1 persona')
+  })
+
+  it('muestra ErrorState con Reintentar si falla la carga principal', async () => {
+    await mountView()
+    vi.mocked(getMisEncuestas).mockRejectedValueOnce(new Error('sin conexión'))
+    const wrapper = mount(SatisfaccionView)
+    await flushPromises()
+
+    expect(wrapper.find('[role="alert"]').exists()).toBe(true)
+
+    await wrapper.find('[role="alert"] button').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Nuevo Coachee')
+  })
 })

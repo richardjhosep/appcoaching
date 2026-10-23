@@ -8,7 +8,6 @@ const props = defineProps<{ puntos: PuntoTendencia[] }>()
 
 interface Fila {
   label: string
-  colorVar: string
   escala: number
   sufijo: string
   valores: Array<{ etiqueta: string; valor: number }>
@@ -25,14 +24,22 @@ function serie(metrica: Metrica): Array<{ etiqueta: string; valor: number }> {
 }
 
 const filas = computed<Fila[]>(() => [
-  { label: 'Satisfacción', colorVar: '--color-spark', escala: 5, sufijo: '/5', valores: serie('satisfaccionPromedio') },
-  { label: 'Procesos logrados', colorVar: '--color-sage', escala: 100, sufijo: '%', valores: serie('pctLogrado') },
-  { label: 'Asistencia', colorVar: '--color-bronze', escala: 100, sufijo: '%', valores: serie('tasaAsistencia') },
+  { label: 'Satisfacción', escala: 5, sufijo: '/5', valores: serie('satisfaccionPromedio') },
+  { label: 'Procesos logrados', escala: 100, sufijo: '%', valores: serie('pctLogrado') },
+  { label: 'Asistencia', escala: 100, sufijo: '%', valores: serie('tasaAsistencia') },
 ])
 
+// Resumen para lectores de pantalla (el SVG del gráfico no les sirve).
+function resumenAria(fila: Fila): string {
+  return `${fila.label}: ${fila.valores.map((v) => `${v.etiqueta} ${v.valor}${fila.sufijo}`).join(', ')}`
+}
+
 function optionDe(fila: Fila) {
-  const color = resolveColor(fila.colorVar)
+  // Un mismo neutro (ink) para las 3 series: cada tarjeta ya se identifica por su título, y
+  // sage/bronze/spark significan "bien/atención/logro" en el resto de la app — usarlos acá
+  // como color de serie sugeriría un estado que el dato no tiene.
   const ink = resolveColor('--color-ink')
+  const color = `color-mix(in srgb, ${ink} 78%, white)`
   return {
     ...baseOption(),
     xAxis: {
@@ -40,6 +47,7 @@ function optionDe(fila: Fila) {
       data: fila.valores.map((v) => v.etiqueta),
       axisLine: { show: false },
       axisTick: { show: false },
+      axisLabel: { fontSize: 12, color: ink },
     },
     yAxis: { type: 'value', max: fila.escala, show: false },
     series: [
@@ -52,6 +60,7 @@ function optionDe(fila: Fila) {
           show: true,
           position: 'top',
           color: ink,
+          fontSize: 12,
           formatter: (p: { value: number }) => `${p.value}${fila.sufijo}`,
         },
       },
@@ -67,12 +76,12 @@ function optionDe(fila: Fila) {
       :key="fila.label"
       class="rounded-xl border border-[var(--color-line)] bg-white p-3"
     >
-      <p class="mb-1 text-xs text-[var(--color-ink)]/60">
+      <p class="mb-1 text-xs text-[var(--color-muted)]">
         {{ fila.label }}
       </p>
       <p
         v-if="fila.valores.length === 0"
-        class="flex h-28 items-center justify-center text-sm text-[var(--color-ink)]/40"
+        class="flex h-28 items-center justify-center text-sm text-[var(--color-subtle)]"
       >
         Sin datos todavía
       </p>
@@ -82,6 +91,8 @@ function optionDe(fila: Fila) {
            en el propio VChart (que solo recibe h-full/w-full, igual de todas formas). -->
       <div
         v-else
+        role="img"
+        :aria-label="resumenAria(fila)"
         class="h-28 w-full"
       >
         <VChart

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { ResultadoCiclo } from '../api/ciclos'
 import { resultadoLabel } from '../lib/resultadoCiclo'
+import AppLogo from './AppLogo.vue'
 
 defineProps<{
   nombreCoachee: string
@@ -13,6 +14,10 @@ defineProps<{
 
 <template>
   <div class="rounded-2xl border-4 border-double border-[var(--color-bronze)] bg-white p-10 text-center print:rounded-none print:border-2">
+    <AppLogo
+      class="mb-4 justify-center"
+      :size="32"
+    />
     <p class="mb-1 font-[family-name:var(--font-heading)] text-xs uppercase tracking-widest text-[var(--color-spark)]">
       Coach Fernando Ramos
     </p>
@@ -37,7 +42,7 @@ defineProps<{
     <p class="mb-6 font-[family-name:var(--font-heading)] text-lg font-semibold text-[var(--color-sage)]">
       {{ resultadoLabel[resultado] }}
     </p>
-    <p class="font-[family-name:var(--font-mono)] text-xs text-[var(--color-ink)]/60">
+    <p class="font-[family-name:var(--font-mono)] text-xs text-[var(--color-muted)]">
       {{ new Date(fechaApertura).toLocaleDateString('es-CL') }}
       —
       {{ new Date(fechaCierre).toLocaleDateString('es-CL') }}

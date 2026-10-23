@@ -5,6 +5,12 @@ import SectionCard from '../../components/SectionCard.vue'
 import EmptyState from '../../components/EmptyState.vue'
 import AppModal from '../../components/AppModal.vue'
 import SkeletonBlock from '../../components/SkeletonBlock.vue'
+import ErrorState from '../../components/ErrorState.vue'
+import AppButton from '../../components/AppButton.vue'
+import FormField from '../../components/FormField.vue'
+import StatusBadge from '../../components/StatusBadge.vue'
+import NavIcon from '../../components/NavIcon.vue'
+import { useCarga } from '../../lib/useCarga'
 import {
   crearEncuesta,
   crearSolicitud,
@@ -23,12 +29,12 @@ interface CicloPendiente {
   ciclo: Ciclo
 }
 
-const loading = ref(true)
 const encuestas = ref<Encuesta[]>([])
 const solicitudes = ref<SolicitudProceso[]>([])
 const categorias = ref<string[]>([])
 const pendientes = ref<CicloPendiente[]>([])
-const error = ref<string | null>(null)
+const errorSolicitud = ref<string | null>(null)
+const personasSinRevisar = ref(0)
 
 const nombreSugerido = ref('')
 const mensajeSolicitud = ref('')
@@ -37,29 +43,30 @@ const enviandoSolicitud = ref(false)
 const formatoFecha = (fecha: string) =>
   new Date(fecha).toLocaleDateString('es-CL', { day: 'numeric', month: 'short', year: 'numeric' })
 
-async function load() {
-  loading.value = true
+const { loading, error, recargar, tolerar } = useCarga(async () => {
   const [enc, sol, cats, coachees] = await Promise.all([
     getMisEncuestas(),
     getMisSolicitudes(),
     getCategoriasSatisfaccion(),
     listCoachees(),
   ])
-  const ciclosPorCoachee = await Promise.all(coachees.map((c) => getCiclosDeCoachee(c.id)))
+  // Los ciclos de cada persona se toleran por separado: si uno falla se avisa en vez de
+  // tumbar la pantalla, pero tampoco se afirma que "no hay nada pendiente" para esa persona.
+  const ciclosPorCoachee = await Promise.all(coachees.map((c) => tolerar(getCiclosDeCoachee(c.id))))
+  personasSinRevisar.value = ciclosPorCoachee.filter((c) => c === undefined).length
   const cicloIdsConEncuesta = new Set(enc.map((e) => e.cicloId).filter((id): id is string => !!id))
 
   encuestas.value = enc
   solicitudes.value = sol
   categorias.value = cats
   pendientes.value = coachees.flatMap((coachee, i) =>
-    ciclosPorCoachee[i]
+    (ciclosPorCoachee[i] ?? [])
       .filter((ciclo) => ciclo.fechaCierre && !cicloIdsConEncuesta.has(ciclo.id))
       .map((ciclo) => ({ coachee, ciclo })),
   )
-  loading.value = false
-}
+})
 
-onMounted(load)
+onMounted(recargar)
 
 // --- Modal de encuesta por ciclo ---
 const modalCiclo = ref<CicloPendiente | null>(null)
@@ -106,7 +113,7 @@ const promedioRespuestas = (enc: Encuesta) =>
 
 async function enviarSolicitud() {
   if (!nombreSugerido.value.trim()) return
-  error.value = null
+  errorSolicitud.value = null
   enviandoSolicitud.value = true
   try {
     await crearSolicitud(nombreSugerido.value, mensajeSolicitud.value || undefined)
@@ -114,7 +121,7 @@ async function enviarSolicitud() {
     mensajeSolicitud.value = ''
     solicitudes.value = await getMisSolicitudes()
   } catch (err) {
-    error.value = err instanceof ApiError ? err.message : 'No se pudo enviar la solicitud.'
+    errorSolicitud.value = err instanceof ApiError ? err.message : 'No se pudo enviar la solicitud.'
   } finally {
     enviandoSolicitud.value = false
   }
@@ -127,29 +134,40 @@ async function enviarSolicitud() {
       Satisfacción y procesos
     </h1>
 
-    <SkeletonBlock v-if="loading" />
+    <SkeletonBlock
+      v-if="loading"
+      variant="cards"
+      :rows="2"
+    />
+    <ErrorState
+      v-else-if="error"
+      :description="error"
+      @retry="recargar"
+    />
     <div
       v-else
       class="space-y-4"
     >
       <p
-        v-if="error"
-        class="text-sm text-[var(--color-danger)]"
+        v-if="personasSinRevisar > 0"
+        role="status"
+        class="rounded-2xl border border-[var(--color-bronze)]/40 bg-[var(--color-bronze)]/10 p-3 text-sm"
       >
-        {{ error }}
+        No pudimos revisar los procesos de {{ personasSinRevisar }}
+        {{ personasSinRevisar === 1 ? 'persona' : 'personas' }}; puede haber encuestas pendientes que no aparecen aquí.
       </p>
 
       <SectionCard
         title="Encuesta de satisfacción"
         icon="satisfaccion"
       >
-        <p class="mb-4 text-xs text-[var(--color-ink)]/60">
+        <p class="mb-4 text-xs text-[var(--color-muted)]">
           Evalúa cada proceso de coaching una vez cerrado — mide tu satisfacción como empresa
           con ese proceso puntual. Es distinta de la retroalimentación que llena el propio
           coachee sobre su experiencia personal.
         </p>
 
-        <p class="mb-2 text-xs font-medium uppercase tracking-wide text-[var(--color-ink)]/50">
+        <p class="mb-2 text-xs font-medium uppercase tracking-wide text-[var(--color-subtle)]">
           Pendientes de evaluar
         </p>
         <EmptyState
@@ -171,21 +189,23 @@ async function enviarSolicitud() {
               <span class="font-medium">{{ p.coachee.nombre }}</span>
               — proceso cerrado el {{ formatoFecha(p.ciclo.fechaCierre!) }}
             </span>
-            <button
-              class="shrink-0 rounded-lg border border-[var(--color-line)] px-3 py-1.5 text-xs hover:bg-[var(--color-parchment)]/50"
+            <AppButton
+              variant="secondary"
+              size="sm"
+              class="shrink-0"
               @click="abrirEncuesta(p)"
             >
               Completar encuesta
-            </button>
+            </AppButton>
           </li>
         </ul>
 
-        <p class="mb-2 text-xs font-medium uppercase tracking-wide text-[var(--color-ink)]/50">
+        <p class="mb-2 text-xs font-medium uppercase tracking-wide text-[var(--color-subtle)]">
           Respondidas
         </p>
         <p
           v-if="encuestas.length === 0"
-          class="text-sm text-[var(--color-ink)]/60"
+          class="text-sm text-[var(--color-muted)]"
         >
           Todavía no has respondido ninguna encuesta.
         </p>
@@ -202,13 +222,21 @@ async function enviarSolicitud() {
               <span class="font-medium">
                 {{ e.ciclo?.coachee?.nombre ?? 'Encuesta general (sin ciclo asociado)' }}
               </span>
-              <span class="font-[family-name:var(--font-mono)] text-xs text-[var(--color-ink)]/50">
-                {{ new Date(e.createdAt).toLocaleDateString('es-CL') }} — {{ promedioRespuestas(e) }} ★
+              <span class="font-[family-name:var(--font-mono)] text-xs text-[var(--color-subtle)]">
+                <span class="inline-flex items-center gap-1">
+                  {{ new Date(e.createdAt).toLocaleDateString('es-CL') }} — {{ promedioRespuestas(e) }}
+                  <NavIcon
+                    name="satisfaccion"
+                    :size="12"
+                    aria-hidden="true"
+                  />
+                  <span class="sr-only">de 5</span>
+                </span>
               </span>
             </div>
             <ul
               v-if="e.respuestas"
-              class="mb-1 space-y-0.5 text-xs text-[var(--color-ink)]/70"
+              class="mb-1 space-y-0.5 text-xs text-[var(--color-muted)]"
             >
               <li
                 v-for="r in e.respuestas"
@@ -229,38 +257,51 @@ async function enviarSolicitud() {
         icon="contacto"
       >
         <form
-          class="mb-4 space-y-2"
+          class="mb-4 space-y-3"
           @submit.prevent="enviarSolicitud"
         >
-          <label class="block text-xs text-[var(--color-ink)]/60">
-            Nombre de la persona sugerida
+          <p
+            v-if="errorSolicitud"
+            role="alert"
+            class="text-sm text-[var(--color-danger)]"
+          >
+            {{ errorSolicitud }}
+          </p>
+          <FormField
+            v-slot="{ id }"
+            label="Nombre de la persona sugerida"
+          >
             <input
+              :id="id"
               v-model="nombreSugerido"
               type="text"
               required
-              class="mt-1 block w-full rounded border border-[var(--color-line)] px-2 py-1 text-sm"
+              class="field-input"
             >
-          </label>
-          <label class="block text-xs text-[var(--color-ink)]/60">
-            Mensaje (opcional)
+          </FormField>
+          <FormField
+            v-slot="{ id }"
+            label="Mensaje (opcional)"
+          >
             <textarea
+              :id="id"
               v-model="mensajeSolicitud"
               rows="2"
-              class="mt-1 block w-full rounded border border-[var(--color-line)] px-2 py-1 text-sm"
+              class="field-input"
             />
-          </label>
-          <button
+          </FormField>
+          <AppButton
             type="submit"
-            :disabled="enviandoSolicitud"
-            class="rounded-lg bg-[var(--color-ink)] px-3 py-2 text-xs text-[var(--color-parchment)] disabled:opacity-50"
+            size="sm"
+            :loading="enviandoSolicitud"
           >
             Enviar solicitud
-          </button>
+          </AppButton>
         </form>
 
         <p
           v-if="solicitudes.length === 0"
-          class="text-sm text-[var(--color-ink)]/60"
+          class="text-sm text-[var(--color-muted)]"
         >
           Todavía no has solicitado ningún proceso nuevo.
         </p>
@@ -272,14 +313,11 @@ async function enviarSolicitud() {
             v-for="s in solicitudes"
             :key="s.id"
           >
-            <span class="font-[family-name:var(--font-mono)] text-[var(--color-ink)]/50">{{ new Date(s.createdAt).toLocaleDateString('es-CL') }}</span>
+            <span class="font-[family-name:var(--font-mono)] text-[var(--color-subtle)]">{{ new Date(s.createdAt).toLocaleDateString('es-CL') }}</span>
             — {{ s.nombreSugerido }}
-            <span
-              class="rounded-full px-2 py-0.5 text-xs"
-              :class="s.estado === 'atendida' ? 'bg-[var(--color-sage)]/20 text-[var(--color-sage)]' : 'bg-[var(--color-bronze)]/20 text-[var(--color-bronze)]'"
-            >
+            <StatusBadge :tone="s.estado === 'atendida' ? 'sage' : 'bronze'">
               {{ s.estado === 'atendida' ? 'Atendida' : 'Pendiente' }}
-            </span>
+            </StatusBadge>
           </li>
         </ul>
       </SectionCard>
@@ -300,7 +338,7 @@ async function enviarSolicitud() {
         >
           {{ errorEncuesta }}
         </p>
-        <p class="text-xs text-[var(--color-ink)]/60">
+        <p class="text-xs text-[var(--color-muted)]">
           {{ modalCiclo.coachee.nombre }} — proceso cerrado el
           {{ formatoFecha(modalCiclo.ciclo.fechaCierre!) }}. Evalúa de 1 (nada de acuerdo) a 5
           (totalmente de acuerdo).
@@ -316,7 +354,9 @@ async function enviarSolicitud() {
               v-for="valor in [1, 2, 3, 4, 5]"
               :key="valor"
               type="button"
-              class="h-7 w-7 shrink-0 rounded-full border text-xs"
+              :aria-label="`${categoria}: ${valor} de 5`"
+              :aria-pressed="respuestasEncuesta[categoria] === valor"
+              class="h-9 w-9 shrink-0 rounded-full border text-xs"
               :class="respuestasEncuesta[categoria] === valor
                 ? 'border-[var(--color-ink)] bg-[var(--color-ink)] text-[var(--color-parchment)]'
                 : 'border-[var(--color-line)]'"
@@ -327,30 +367,31 @@ async function enviarSolicitud() {
           </div>
         </div>
 
-        <label class="block text-sm">
-          Comentario (opcional)
+        <FormField
+          v-slot="{ id }"
+          label="Comentario (opcional)"
+        >
           <textarea
+            :id="id"
             v-model="comentarioEncuesta"
             rows="2"
-            class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+            class="field-input"
           />
-        </label>
+        </FormField>
 
         <div class="flex justify-end gap-2 pt-2">
-          <button
-            type="button"
-            class="rounded-lg border border-[var(--color-line)] px-4 py-2 text-sm"
+          <AppButton
+            variant="secondary"
             @click="modalCiclo = null"
           >
             Cancelar
-          </button>
-          <button
+          </AppButton>
+          <AppButton
             type="submit"
-            :disabled="enviandoEncuesta"
-            class="rounded-lg bg-[var(--color-ink)] px-4 py-2 text-sm text-[var(--color-parchment)] disabled:opacity-60"
+            :loading="enviandoEncuesta"
           >
             {{ enviandoEncuesta ? 'Enviando…' : 'Enviar encuesta' }}
-          </button>
+          </AppButton>
         </div>
       </form>
     </AppModal>

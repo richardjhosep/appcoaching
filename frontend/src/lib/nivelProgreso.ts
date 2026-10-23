@@ -28,3 +28,11 @@ export const coloresNivel: Record<NivelProgreso, { fuerte: string; suave: string
     texto: 'text-[var(--color-danger)]',
   },
 }
+
+export type TonoNivel = 'sage' | 'bronze' | 'danger' | 'neutral'
+
+/** Tono de KpiCard/StatusBadge para un porcentaje 0-100 (neutral si no hay dato). */
+export function tonoDeNivel(porcentaje: number | null | undefined): TonoNivel {
+  if (porcentaje == null) return 'neutral'
+  return { alto: 'sage', medio: 'bronze', bajo: 'danger' }[nivelProgreso(porcentaje)] as TonoNivel
+}

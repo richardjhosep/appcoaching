@@ -3,15 +3,17 @@ import { onMounted, ref } from 'vue'
 import AppShell from '../../components/AppShell.vue'
 import PerfilCoachContenido from '../../components/PerfilCoachContenido.vue'
 import SkeletonBlock from '../../components/SkeletonBlock.vue'
+import ErrorState from '../../components/ErrorState.vue'
+import { useCarga } from '../../lib/useCarga'
 import { getPerfilCoach, type PerfilCoach } from '../../api/perfilCoach'
 
-const loading = ref(true)
 const perfil = ref<PerfilCoach | null>(null)
 
-onMounted(async () => {
+const { loading, error, recargar } = useCarga(async () => {
   perfil.value = await getPerfilCoach()
-  loading.value = false
 })
+
+onMounted(recargar)
 </script>
 
 <template>
@@ -19,11 +21,16 @@ onMounted(async () => {
     <h1 class="mb-1 font-[family-name:var(--font-heading)] text-xl font-semibold">
       Mi Coach
     </h1>
-    <p class="mb-4 text-sm text-[var(--color-ink)]/60">
+    <p class="mb-4 text-sm text-[var(--color-muted)]">
       Conoce a la persona que acompaña el desarrollo de tu equipo.
     </p>
 
     <SkeletonBlock v-if="loading" />
+    <ErrorState
+      v-else-if="error"
+      :description="error"
+      @retry="recargar"
+    />
     <PerfilCoachContenido
       v-else-if="perfil"
       :perfil="perfil"

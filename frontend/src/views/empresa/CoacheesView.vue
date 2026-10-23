@@ -4,6 +4,11 @@ import { useRoute, useRouter } from 'vue-router'
 import AppShell from '../../components/AppShell.vue'
 import EmptyState from '../../components/EmptyState.vue'
 import SkeletonBlock from '../../components/SkeletonBlock.vue'
+import ErrorState from '../../components/ErrorState.vue'
+import AppButton from '../../components/AppButton.vue'
+import StatusBadge from '../../components/StatusBadge.vue'
+import NotaConfidencialidadEmpresa from '../../components/NotaConfidencialidadEmpresa.vue'
+import GlosarioEmpresa from '../../components/GlosarioEmpresa.vue'
 import TabBar from '../../components/TabBar.vue'
 import AppModal from '../../components/AppModal.vue'
 import HistorialCiclos from '../../components/HistorialCiclos.vue'
@@ -19,7 +24,9 @@ import { getProximaSesionDeCoachee } from '../../api/sesiones'
 import { getRetroalimentacionesDeCoachee, type RetroalimentacionCierre } from '../../api/retroalimentacion'
 import { resumirCoachee, type ResumenCoacheeEmpresa } from '../../lib/resumenCoacheeEmpresa'
 import { nivelProgreso, coloresNivel } from '../../lib/nivelProgreso'
-import { resultadoLabel, resultadoColor } from '../../lib/resultadoCiclo'
+import { resultadoLabel, resultadoTono } from '../../lib/resultadoCiclo'
+import { sin404 } from '../../lib/cargaPorCoachee'
+import { useCarga } from '../../lib/useCarga'
 import { promedioPorBloque, promedioGeneral } from '../../lib/retroalimentacionResumen'
 import { iniciales } from '../../lib/avatar'
 
@@ -30,12 +37,13 @@ interface FilaCoachee {
   ciclos: Ciclo[]
   cicloActual: Ciclo | null
   retroalimentaciones: RetroalimentacionCierre[]
+  // true si alguna llamada del coachee falló: sus alertas no son confiables.
+  incompleto: boolean
 }
 
 const route = useRoute()
 const router = useRouter()
 
-const loading = ref(true)
 const filas = ref<FilaCoachee[]>([])
 
 type VistaLista = 'activos' | 'cerrados'
@@ -52,29 +60,49 @@ const formatoFecha = (fecha: string) =>
   new Date(fecha).toLocaleDateString('es-CL', { day: 'numeric', month: 'short', year: 'numeric' })
 
 async function cargarFila(coachee: CoacheeListItem): Promise<FilaCoachee> {
-  // Cada llamada va protegida con su propio fallback: sin el .catch, un solo coachee con
-  // un error puntual en cualquiera de estas 5 llamadas hacía rechazar TODO el
-  // Promise.all de onMounted y dejaba la lista pegada en el skeleton para siempre.
+  // Cada llamada se tolera por separado: un error puntual en una no tumba la lista. `undefined`
+  // = falló de verdad (un 404 de "sin plan" se resuelve a null y no cuenta como fallo).
   const [plan, ciclos, avanceRes, proximaSesion, retroalimentaciones] = await Promise.all([
-    getPlanByCoachee(coachee.id).catch(() => null),
-    getCiclosDeCoachee(coachee.id).catch(() => []),
-    getAvanceDeCoachee(coachee.id).catch(() => ({ avance: null })),
-    getProximaSesionDeCoachee(coachee.id).catch(() => null),
-    getRetroalimentacionesDeCoachee(coachee.id).catch(() => []),
+    tolerar(getPlanByCoachee(coachee.id).then((v) => v ?? null, sin404(null))),
+    tolerar(getCiclosDeCoachee(coachee.id).then((v) => v ?? [])),
+    tolerar(getAvanceDeCoachee(coachee.id).then((v) => v ?? { avance: null })),
+    tolerar(getProximaSesionDeCoachee(coachee.id).then((v) => v ?? null)),
+    tolerar(getRetroalimentacionesDeCoachee(coachee.id).then((v) => v ?? [])),
   ])
-  const cicloActual = ciclos.find((c) => !c.fechaCierre) ?? null
-  const resumen = resumirCoachee({ plan, cicloActual, ciclos, avance: avanceRes.avance, proximaSesion })
-  return { coachee, resumen, objetivoGeneral: plan?.objetivoGeneral ?? null, ciclos, cicloActual, retroalimentaciones }
+  const incompleto = [plan, ciclos, avanceRes, proximaSesion, retroalimentaciones].some((v) => v === undefined)
+  const ciclosOk = ciclos ?? []
+  const cicloActual = ciclosOk.find((c) => !c.fechaCierre) ?? null
+  const resumen = resumirCoachee({
+    plan: plan ?? null,
+    cicloActual,
+    ciclos: ciclosOk,
+    avance: avanceRes?.avance ?? null,
+    proximaSesion: proximaSesion ?? null,
+  })
+  // Sin poder consultar la próxima sesión, "sin sesión agendada" sería un falso positivo.
+  if (proximaSesion === undefined) resumen.sinProximaSesion = false
+  return {
+    coachee,
+    resumen,
+    objetivoGeneral: plan?.objetivoGeneral ?? null,
+    ciclos: ciclosOk,
+    cicloActual,
+    retroalimentaciones: retroalimentaciones ?? [],
+    incompleto,
+  }
 }
 
-onMounted(async () => {
-  loading.value = true
+const { loading, error, recargar, tolerar } = useCarga(async () => {
   const coachees = await listCoachees()
   filas.value = await Promise.all(coachees.map(cargarFila))
-  loading.value = false
+})
 
-  // Llega desde "Necesita tu atención" en el Resumen — antes navegaba a una página aparte
-  // por coachee, ahora abre directo el modal de progreso sobre la lista.
+onMounted(async () => {
+  await recargar()
+  if (error.value) return
+
+  // Llega desde "Necesita tu atención" en el Resumen — abre directo el modal de progreso
+  // sobre la lista.
   const coacheeId = route.query.coacheeId
   if (typeof coacheeId === 'string') {
     const fila = filas.value.find((f) => f.coachee.id === coacheeId)
@@ -86,12 +114,31 @@ onMounted(async () => {
   }
 })
 
-const activos = computed(() => filas.value.filter((f) => f.resumen.estado !== 'completado'))
-const cerrados = computed(() => filas.value.filter((f) => f.resumen.estado === 'completado'))
+const incompletos = computed(() => filas.value.filter((f) => f.incompleto).length)
+
+// Buscador por nombre + filtro simple "solo con alertas" (aplican a ambas pestañas).
+const busqueda = ref('')
+const soloConAlertas = ref(false)
+const coincide = (f: FilaCoachee) => {
+  const q = busqueda.value.trim().toLowerCase()
+  if (q && !f.coachee.nombre.toLowerCase().includes(q)) return false
+  if (soloConAlertas.value && !(f.resumen.sinProximaSesion || f.resumen.alertaPorVencer)) return false
+  return true
+}
+const hayFiltro = computed(() => busqueda.value.trim() !== '' || soloConAlertas.value)
+function limpiarFiltros() {
+  busqueda.value = ''
+  soloConAlertas.value = false
+}
+
+const activosTodos = computed(() => filas.value.filter((f) => f.resumen.estado !== 'completado'))
+const cerradosTodos = computed(() => filas.value.filter((f) => f.resumen.estado === 'completado'))
+const activos = computed(() => activosTodos.value.filter(coincide))
+const cerrados = computed(() => cerradosTodos.value.filter(coincide))
 
 const TABS = computed(() => [
-  { key: 'activos' as const, label: 'Activos', icon: 'coachees', badge: activos.value.length },
-  { key: 'cerrados' as const, label: 'Procesos cerrados', icon: 'certificado', badge: cerrados.value.length },
+  { key: 'activos' as const, label: 'Activos', icon: 'coachees', badge: activosTodos.value.length },
+  { key: 'cerrados' as const, label: 'Procesos cerrados', icon: 'certificado', badge: cerradosTodos.value.length },
 ])
 
 function ultimoCicloCerrado(fila: FilaCoachee): Ciclo | null {
@@ -133,10 +180,19 @@ function cerrarModalCertificados() {
     <h1 class="mb-1 font-[family-name:var(--font-heading)] text-xl font-semibold">
       Mis coachees
     </h1>
-    <p class="mb-4 text-sm text-[var(--color-ink)]/60">
+    <p class="mb-4 text-sm text-[var(--color-muted)]">
       El estado y el resultado de cada proceso de coaching de tu equipo.
     </p>
-    <SkeletonBlock v-if="loading" />
+    <SkeletonBlock
+      v-if="loading"
+      variant="list"
+      :rows="4"
+    />
+    <ErrorState
+      v-else-if="error"
+      :description="error"
+      @retry="recargar"
+    />
     <EmptyState
       v-else-if="filas.length === 0"
       icon="coachees"
@@ -144,15 +200,63 @@ function cerrarModalCertificados() {
       description="Cuando tu coach los agregue, van a aparecer acá."
     />
     <div v-else>
-      <TabBar
-        class="mb-4"
-        :tabs="TABS"
-        :model-value="vista"
-        @update:model-value="vista = $event"
-      />
+      <NotaConfidencialidadEmpresa class="mb-4" />
+      <GlosarioEmpresa />
+
+      <p
+        v-if="incompletos > 0"
+        role="status"
+        class="mb-4 rounded-2xl border border-[var(--color-bronze)]/40 bg-[var(--color-bronze)]/10 p-3 text-sm"
+      >
+        No pudimos cargar datos de {{ incompletos }} {{ incompletos === 1 ? 'persona' : 'personas' }};
+        los indicadores pueden estar incompletos.
+      </p>
+
+      <div class="mb-4 flex flex-wrap items-center gap-3">
+        <TabBar
+          :tabs="TABS"
+          :model-value="vista"
+          @update:model-value="vista = $event"
+        />
+        <div class="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-3">
+          <label
+            class="sr-only"
+            for="buscar-coachee"
+          >Buscar por nombre</label>
+          <input
+            id="buscar-coachee"
+            v-model="busqueda"
+            type="search"
+            placeholder="Buscar por nombre…"
+            class="field-input max-w-xs"
+          >
+          <label class="flex items-center gap-2 text-sm">
+            <input
+              v-model="soloConAlertas"
+              type="checkbox"
+              class="h-4 w-4"
+            >
+            Solo con alertas
+          </label>
+        </div>
+      </div>
 
       <EmptyState
-        v-if="vista === 'activos' && activos.length === 0"
+        v-if="hayFiltro && (vista === 'activos' ? activos : cerrados).length === 0"
+        icon="buscar"
+        title="Sin resultados"
+        description="Ningún coachee coincide con la búsqueda o el filtro."
+      >
+        <AppButton
+          variant="secondary"
+          size="sm"
+          @click="limpiarFiltros"
+        >
+          Limpiar filtros
+        </AppButton>
+      </EmptyState>
+      <EmptyState
+        v-else-if="vista === 'activos' && activos.length === 0"
         icon="coachees"
         title="Sin coachees activos"
         description="Todos los procesos de tu equipo están cerrados por ahora."
@@ -167,7 +271,7 @@ function cerrarModalCertificados() {
           class="rounded-2xl border border-[var(--color-line)] bg-white p-4 transition-shadow hover:shadow-md"
         >
           <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div class="flex min-w-0 items-center gap-3">
+            <div class="flex min-w-0 flex-wrap items-center gap-3">
               <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[var(--color-ink)] text-sm font-semibold text-[var(--color-parchment)]">
                 {{ iniciales(fila.coachee.nombre) }}
               </div>
@@ -177,31 +281,34 @@ function cerrarModalCertificados() {
                 </p>
                 <p
                   v-if="fila.coachee.cargo"
-                  class="truncate text-xs text-[var(--color-ink)]/70"
+                  class="truncate text-xs text-[var(--color-muted)]"
                 >
                   {{ fila.coachee.cargo }}
                 </p>
-                <p class="truncate text-xs text-[var(--color-ink)]/50">
+                <p class="truncate text-xs text-[var(--color-subtle)]">
                   {{ fila.resumen.competenciaNombre ?? 'Sin competencia definida' }}
                 </p>
               </div>
-              <span
+              <StatusBadge
                 v-if="fila.resumen.sinProximaSesion"
-                class="shrink-0 rounded-full bg-[var(--color-danger)]/15 px-2.5 py-1 text-xs font-medium text-[var(--color-danger)]"
+                tone="danger"
               >
                 Sin sesión agendada
-              </span>
-              <span
+              </StatusBadge>
+              <StatusBadge
                 v-if="fila.resumen.alertaPorVencer"
-                class="shrink-0 rounded-full bg-[var(--color-bronze)]/15 px-2.5 py-1 text-xs font-medium text-[var(--color-bronze)]"
+                tone="bronze"
               >
                 Ciclo por vencer
-              </span>
+              </StatusBadge>
+              <StatusBadge v-if="fila.incompleto">
+                Datos incompletos
+              </StatusBadge>
             </div>
 
             <div class="flex flex-wrap items-center gap-x-7 gap-y-3 text-sm">
               <div class="min-w-[130px]">
-                <p class="mb-1 text-xs text-[var(--color-ink)]/50">
+                <p class="mb-1 text-xs text-[var(--color-subtle)]">
                   Avance
                 </p>
                 <div
@@ -210,6 +317,11 @@ function cerrarModalCertificados() {
                 >
                   <div
                     class="h-1.5 w-20 overflow-hidden rounded-full"
+                    role="progressbar"
+                    aria-label="Avance"
+                    aria-valuemin="0"
+                    aria-valuemax="100"
+                    :aria-valuenow="fila.resumen.avance"
                     :style="{ backgroundColor: coloresNivel[nivelProgreso(fila.resumen.avance)].suave }"
                   >
                     <div
@@ -224,12 +336,12 @@ function cerrarModalCertificados() {
                 </div>
                 <span
                   v-else
-                  class="text-[var(--color-ink)]/40"
+                  class="text-[var(--color-subtle)]"
                 >—</span>
               </div>
 
               <div>
-                <p class="mb-1 text-xs text-[var(--color-ink)]/50">
+                <p class="mb-1 text-xs text-[var(--color-subtle)]">
                   Sesiones
                 </p>
                 <p class="font-medium">
@@ -238,7 +350,7 @@ function cerrarModalCertificados() {
               </div>
 
               <div>
-                <p class="mb-1 text-xs text-[var(--color-ink)]/50">
+                <p class="mb-1 text-xs text-[var(--color-subtle)]">
                   Próxima sesión
                 </p>
                 <p class="font-medium">
@@ -246,9 +358,9 @@ function cerrarModalCertificados() {
                 </p>
               </div>
 
-              <button
-                type="button"
-                class="flex items-center gap-1.5 rounded-full border border-[var(--color-line)] px-3.5 py-2 text-xs font-medium hover:bg-[var(--color-parchment)]/60"
+              <AppButton
+                variant="secondary"
+                size="sm"
                 @click="modalProgreso = fila"
               >
                 <NavIcon
@@ -256,10 +368,10 @@ function cerrarModalCertificados() {
                   :size="14"
                 />
                 Ver progreso
-              </button>
-              <button
-                type="button"
-                class="flex items-center gap-1.5 rounded-full border border-[var(--color-line)] px-3.5 py-2 text-xs font-medium hover:bg-[var(--color-parchment)]/60"
+              </AppButton>
+              <AppButton
+                variant="secondary"
+                size="sm"
                 @click="modalDocumentos = fila"
               >
                 <NavIcon
@@ -267,20 +379,20 @@ function cerrarModalCertificados() {
                   :size="14"
                 />
                 Documentos
-              </button>
+              </AppButton>
             </div>
           </div>
         </div>
       </div>
 
       <EmptyState
-        v-if="vista === 'cerrados' && cerrados.length === 0"
+        v-if="!hayFiltro && vista === 'cerrados' && cerrados.length === 0"
         icon="certificado"
         title="Todavía no hay procesos cerrados"
         description="Cuando tu coach cierre un ciclo, va a aparecer acá con su resultado."
       />
       <div
-        v-else-if="vista === 'cerrados'"
+        v-else-if="vista === 'cerrados' && cerrados.length > 0"
         class="space-y-3"
       >
         <div
@@ -297,35 +409,34 @@ function cerrarModalCertificados() {
                 <p class="truncate font-medium">
                   {{ fila.coachee.nombre }}
                 </p>
-                <p class="truncate text-xs text-[var(--color-ink)]/50">
+                <p class="truncate text-xs text-[var(--color-subtle)]">
                   {{ fila.resumen.competenciaNombre ?? 'Sin competencia definida' }}
                 </p>
               </div>
+              <StatusBadge v-if="fila.incompleto">
+                Datos incompletos
+              </StatusBadge>
             </div>
 
             <div class="flex flex-wrap items-center gap-x-7 gap-y-3 text-sm">
               <div>
-                <p class="mb-1 text-xs text-[var(--color-ink)]/50">
+                <p class="mb-1 text-xs text-[var(--color-subtle)]">
                   Resultado
                 </p>
-                <span
+                <StatusBadge
                   v-if="ultimoCicloCerrado(fila)?.resultado"
-                  class="rounded-full px-2.5 py-1 text-xs font-medium"
-                  :style="{
-                    backgroundColor: `color-mix(in srgb, ${resultadoColor[ultimoCicloCerrado(fila)!.resultado!]} 15%, white)`,
-                    color: resultadoColor[ultimoCicloCerrado(fila)!.resultado!],
-                  }"
+                  :tone="resultadoTono[ultimoCicloCerrado(fila)!.resultado!]"
                 >
                   {{ resultadoLabel[ultimoCicloCerrado(fila)!.resultado!] }}
-                </span>
+                </StatusBadge>
                 <span
                   v-else
-                  class="text-[var(--color-ink)]/40"
+                  class="text-[var(--color-subtle)]"
                 >—</span>
               </div>
 
               <div>
-                <p class="mb-1 text-xs text-[var(--color-ink)]/50">
+                <p class="mb-1 text-xs text-[var(--color-subtle)]">
                   Inicio
                 </p>
                 <p class="font-medium">
@@ -334,7 +445,7 @@ function cerrarModalCertificados() {
               </div>
 
               <div>
-                <p class="mb-1 text-xs text-[var(--color-ink)]/50">
+                <p class="mb-1 text-xs text-[var(--color-subtle)]">
                   Cierre
                 </p>
                 <p class="font-medium">
@@ -342,10 +453,10 @@ function cerrarModalCertificados() {
                 </p>
               </div>
 
-              <div class="flex gap-2">
-                <button
-                  type="button"
-                  class="flex items-center gap-1.5 rounded-full border border-[var(--color-line)] px-3.5 py-2 text-xs font-medium hover:bg-[var(--color-parchment)]/60"
+              <div class="flex flex-wrap gap-2">
+                <AppButton
+                  variant="secondary"
+                  size="sm"
                   @click="abrirHistorial(fila)"
                 >
                   <NavIcon
@@ -353,11 +464,11 @@ function cerrarModalCertificados() {
                     :size="14"
                   />
                   Historial
-                </button>
-                <button
+                </AppButton>
+                <AppButton
                   v-if="certificadosDe(fila).length > 0"
-                  type="button"
-                  class="flex items-center gap-1.5 rounded-full border border-[var(--color-line)] px-3.5 py-2 text-xs font-medium hover:bg-[var(--color-parchment)]/60"
+                  variant="secondary"
+                  size="sm"
                   @click="abrirCertificados(fila)"
                 >
                   <NavIcon
@@ -365,11 +476,11 @@ function cerrarModalCertificados() {
                     :size="14"
                   />
                   Certificado
-                </button>
-                <button
+                </AppButton>
+                <AppButton
                   v-if="fila.retroalimentaciones.length > 0"
-                  type="button"
-                  class="flex items-center gap-1.5 rounded-full border border-[var(--color-line)] px-3.5 py-2 text-xs font-medium hover:bg-[var(--color-parchment)]/60"
+                  variant="secondary"
+                  size="sm"
                   @click="abrirFeedback(fila)"
                 >
                   <NavIcon
@@ -377,7 +488,7 @@ function cerrarModalCertificados() {
                     :size="14"
                   />
                   Feedback
-                </button>
+                </AppButton>
               </div>
             </div>
           </div>
@@ -404,7 +515,7 @@ function cerrarModalCertificados() {
           <p class="truncate text-sm font-medium">
             {{ modalProgreso.coachee.nombre }}
           </p>
-          <p class="truncate text-xs text-[var(--color-ink)]/50">
+          <p class="truncate text-xs text-[var(--color-muted)]">
             {{ modalProgreso.resumen.competenciaNombre ?? 'Sin competencia definida' }}
           </p>
         </div>
@@ -414,9 +525,9 @@ function cerrarModalCertificados() {
         <NavIcon
           name="progreso"
           :size="14"
-          class="text-[var(--color-ink)]/50"
+          class="text-[var(--color-muted)]"
         />
-        <p class="text-xs font-medium uppercase tracking-wide text-[var(--color-ink)]/50">
+        <p class="text-xs font-medium uppercase tracking-wide text-[var(--color-muted)]">
           Avance general
         </p>
       </div>
@@ -452,9 +563,9 @@ function cerrarModalCertificados() {
           <NavIcon
             name="sesiones"
             :size="14"
-            class="text-[var(--color-ink)]/50"
+            class="text-[var(--color-muted)]"
           />
-          <p class="text-xs font-medium uppercase tracking-wide text-[var(--color-ink)]/50">
+          <p class="text-xs font-medium uppercase tracking-wide text-[var(--color-muted)]">
             Ciclo en curso
           </p>
         </div>
@@ -462,7 +573,7 @@ function cerrarModalCertificados() {
           Sesiones: <strong>{{ modalProgreso.cicloActual.sesionesRealizadas }}</strong> de {{ modalProgreso.cicloActual.totalSesiones }}
         </p>
         <div class="rounded-lg bg-[var(--color-parchment)]/40 p-3 text-sm">
-          <p class="mb-1 text-xs font-medium uppercase tracking-wide text-[var(--color-ink)]/50">
+          <p class="mb-1 text-xs font-medium uppercase tracking-wide text-[var(--color-muted)]">
             Resumen de reunión inicial
           </p>
           {{ modalProgreso.cicloActual.resumenReunionInicial ?? 'Aún no redactado por el coach.' }}
@@ -480,7 +591,7 @@ function cerrarModalCertificados() {
       <p class="mb-1 text-sm font-medium">
         {{ modalDocumentos.coachee.nombre }}
       </p>
-      <p class="mb-4 text-xs text-[var(--color-ink)]/55">
+      <p class="mb-4 text-xs text-[var(--color-muted)]">
         Lo que subas aquí lo ven el coach y el coachee; si el coachee ya lo subió, aparece en la lista.
       </p>
       <DocumentosCoacheePanel :coachee-id="modalDocumentos.coachee.id" />
@@ -515,17 +626,20 @@ function cerrarModalCertificados() {
           :fecha-cierre="certificadoPreview.fechaCierre!"
         />
         <div class="mt-4 flex justify-end gap-2">
-          <button
-            class="rounded-lg border border-[var(--color-line)] px-4 py-2 text-sm"
+          <AppButton
+            variant="secondary"
             @click="certificadoPreview = null"
           >
             ← Volver
-          </button>
+          </AppButton>
           <RouterLink
+            v-slot="{ navigate }"
+            custom
             :to="{ name: 'empresa-certificado', params: { coacheeId: modalCertificados.coachee.id, cicloId: certificadoPreview.id } }"
-            class="rounded-lg bg-[var(--color-ink)] px-4 py-2 text-sm text-[var(--color-parchment)]"
           >
-            Descargar / Imprimir
+            <AppButton @click="navigate">
+              Imprimir / Guardar como PDF
+            </AppButton>
           </RouterLink>
         </div>
       </template>
@@ -542,17 +656,21 @@ function cerrarModalCertificados() {
             <p class="text-sm font-medium">
               Certificado de finalización
             </p>
-            <p class="flex flex-wrap items-center gap-2 text-xs text-[var(--color-ink)]/60">
+            <p class="flex flex-wrap items-center gap-2 text-xs text-[var(--color-muted)]">
               <span>Ciclo cerrado el {{ formatoFecha(c.fechaCierre!) }}</span>
-              <span class="rounded-full bg-[var(--color-parchment)] px-2 py-0.5">{{ resultadoLabel[c.resultado!] }}</span>
+              <StatusBadge :tone="resultadoTono[c.resultado!]">
+                {{ resultadoLabel[c.resultado!] }}
+              </StatusBadge>
             </p>
           </div>
-          <button
-            class="shrink-0 rounded-lg border border-[var(--color-line)] px-3 py-1.5 text-xs hover:bg-[var(--color-parchment)]/50"
+          <AppButton
+            variant="secondary"
+            size="sm"
+            class="shrink-0"
             @click="certificadoPreview = c"
           >
             Vista previa
-          </button>
+          </AppButton>
         </div>
       </div>
     </AppModal>
@@ -573,7 +691,7 @@ function cerrarModalCertificados() {
           :key="retro.id"
           class="rounded-xl border border-[var(--color-line)] p-3 text-sm"
         >
-          <p class="mb-2 text-xs text-[var(--color-ink)]/50">
+          <p class="mb-2 text-xs text-[var(--color-muted)]">
             <template v-if="cicloDeRetro(modalFeedback, retro)?.fechaCierre">
               Ciclo cerrado el {{ formatoFecha(cicloDeRetro(modalFeedback, retro)!.fechaCierre!) }} ·
             </template>

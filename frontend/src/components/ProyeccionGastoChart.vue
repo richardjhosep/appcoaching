@@ -48,7 +48,7 @@ function onClick(params: { dataIndex: number }) {
 
 <template>
   <div>
-    <p class="mb-3 text-xs text-[var(--color-ink)]/50">
+    <p class="mb-3 text-xs text-[var(--color-muted)]">
       Toca un mes para ver el detalle por coachee
     </p>
 
@@ -77,7 +77,7 @@ function onClick(params: { dataIndex: number }) {
       </div>
       <p
         v-if="mesActivo.porCoachee.length === 0"
-        class="mt-1 text-xs text-[var(--color-ink)]/50"
+        class="mt-1 text-xs text-[var(--color-muted)]"
       >
         Sin actividad este mes.
       </p>

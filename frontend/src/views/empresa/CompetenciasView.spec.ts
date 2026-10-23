@@ -187,4 +187,17 @@ describe('CompetenciasView (empresa)', () => {
     expect(deleteCompetenciaEmpresa).not.toHaveBeenCalled()
     expect(wrapper.text()).toContain('Seguridad Integral')
   })
+
+  it('muestra ErrorState con Reintentar si falla la carga y se recupera al reintentar', async () => {
+    vi.mocked(listMisCompetenciasEmpresa).mockRejectedValueOnce(new Error('sin conexión'))
+    wrapper = mount(CompetenciasView)
+    await flushPromises()
+
+    expect(wrapper.find('[role="alert"]').exists()).toBe(true)
+
+    await wrapper.find('[role="alert"] button').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Seguridad Integral')
+  })
 })

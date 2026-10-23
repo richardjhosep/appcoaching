@@ -47,7 +47,7 @@ const option = computed(() => {
       data: props.meses.map((m) => m.etiqueta),
       axisLine: { show: false },
       axisTick: { show: false },
-      axisLabel: { fontSize: 10 },
+      axisLabel: { fontSize: 12 },
     },
     yAxis: { type: 'value', show: false },
     series: [
@@ -76,7 +76,7 @@ function onClick(params: { dataIndex: number }) {
         <h2 class="text-sm font-medium">
           Ingresos proyectados — 12 meses
         </h2>
-        <p class="text-xs text-[var(--color-ink)]/50">
+        <p class="text-xs text-[var(--color-muted)]">
           Toca un mes para ver el monto exacto
         </p>
       </div>
@@ -119,7 +119,7 @@ function onClick(params: { dataIndex: number }) {
       </div>
       <p
         v-if="desgloseActivo.length === 0"
-        class="mt-1 text-xs text-[var(--color-ink)]/50"
+        class="mt-1 text-xs text-[var(--color-muted)]"
       >
         Sin actividad {{ vista === 'coachee' ? 'de coachees' : 'de empresas' }} este mes.
       </p>

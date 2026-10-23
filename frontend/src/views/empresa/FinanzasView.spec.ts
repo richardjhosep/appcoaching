@@ -188,7 +188,7 @@ describe('FinanzasView (empresa)', () => {
 
     expect(wrapper.text()).toContain('QA Empresa Verify')
 
-    const botonImprimir = wrapper.findAll('button').find((b) => b.text().includes('Descargar / Imprimir'))
+    const botonImprimir = wrapper.findAll('button').find((b) => b.text().includes('Imprimir / Guardar como PDF'))
     await botonImprimir!.trigger('click')
     expect(printSpy).toHaveBeenCalled()
   })

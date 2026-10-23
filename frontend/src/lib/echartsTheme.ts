@@ -14,6 +14,7 @@ export function baseOption() {
   return {
     textStyle: {
       fontFamily: 'inherit',
+      fontSize: 12,
       color: ink,
     },
     grid: {
@@ -25,8 +26,24 @@ export function baseOption() {
     },
     tooltip: {
       trigger: 'item' as const,
+      backgroundColor: '#ffffff',
       borderColor: line,
-      textStyle: { color: ink },
+      borderWidth: 1,
+      padding: [8, 12],
+      textStyle: { color: ink, fontSize: 12 },
     },
   }
+}
+
+// Paleta cíclica de la marca para categorías arbitrarias (departamentos, etc.). Pasadas las 4
+// primeras no se repite el mismo color: se reutilizan los mismos tonos más claros (55 % y
+// 30 % mezclados con blanco), de modo que 5-12 segmentos nunca coinciden con otro. Aun así la
+// leyenda siempre lleva etiqueta + conteo + %, así que el color nunca es el único portador de
+// información.
+const PALETA_BASE = ['var(--color-sage)', 'var(--color-bronze)', 'var(--color-saltup)', 'var(--color-spark)']
+export function colorCategoria(indice: number): string {
+  const base = PALETA_BASE[indice % PALETA_BASE.length]
+  const vuelta = Math.floor(indice / PALETA_BASE.length)
+  if (vuelta === 0) return base
+  return `color-mix(in srgb, ${base} ${vuelta === 1 ? 55 : 30}%, white)`
 }

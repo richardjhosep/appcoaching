@@ -5,6 +5,10 @@ import SectionCard from '../../components/SectionCard.vue'
 import EmptyState from '../../components/EmptyState.vue'
 import AppModal from '../../components/AppModal.vue'
 import SkeletonBlock from '../../components/SkeletonBlock.vue'
+import ErrorState from '../../components/ErrorState.vue'
+import AppButton from '../../components/AppButton.vue'
+import FormField from '../../components/FormField.vue'
+import { useCarga } from '../../lib/useCarga'
 import {
   createCompetenciaEmpresa,
   deleteCompetenciaEmpresa,
@@ -16,16 +20,13 @@ import {
 import { ApiError } from '../../api/client'
 import { confirmDialog, notifyError, notifySuccess } from '../../lib/notify'
 
-const loading = ref(true)
 const competencias = ref<Competencia[]>([])
 
-async function load() {
-  loading.value = true
+const { loading, error: errorCarga, recargar } = useCarga(async () => {
   competencias.value = await listMisCompetenciasEmpresa()
-  loading.value = false
-}
+})
 
-onMounted(load)
+onMounted(recargar)
 
 // --- Modal de crear/editar ---
 const modalAbierto = ref(false)
@@ -129,23 +130,28 @@ async function eliminar(competencia: Competencia) {
     <h1 class="mb-1 font-[family-name:var(--font-heading)] text-xl font-semibold">
       Competencias
     </h1>
-    <p class="mb-4 text-sm text-[var(--color-ink)]/60">
+    <p class="mb-4 text-sm text-[var(--color-muted)]">
       Define las competencias propias de tu empresa — tu coach las va a ver y elegir cuál le
       corresponde desarrollar a cada coachee.
     </p>
 
     <SkeletonBlock v-if="loading" />
+    <ErrorState
+      v-else-if="errorCarga"
+      :description="errorCarga"
+      @retry="recargar"
+    />
     <SectionCard v-else>
       <div class="mb-4 flex items-center justify-between">
         <p class="text-sm font-medium">
           {{ competencias.length }} competencia{{ competencias.length === 1 ? '' : 's' }}
         </p>
-        <button
-          class="rounded-lg bg-[var(--color-ink)] px-3 py-2 text-xs font-medium text-[var(--color-parchment)]"
+        <AppButton
+          size="sm"
           @click="abrirCrear"
         >
           + Nueva competencia
-        </button>
+        </AppButton>
       </div>
 
       <EmptyState
@@ -168,23 +174,25 @@ async function eliminar(competencia: Competencia) {
               <p class="font-[family-name:var(--font-heading)] text-sm font-semibold">
                 {{ c.nombre }}
               </p>
-              <p class="mt-1 text-sm text-[var(--color-ink)]/70">
+              <p class="mt-1 text-sm text-[var(--color-muted)]">
                 {{ c.definicion }}
               </p>
             </div>
             <div class="flex shrink-0 gap-2">
-              <button
-                class="rounded-lg border border-[var(--color-line)] px-3 py-1.5 text-xs hover:bg-[var(--color-parchment)]/50"
+              <AppButton
+                variant="secondary"
+                size="sm"
                 @click="abrirEditar(c)"
               >
                 Editar
-              </button>
-              <button
-                class="rounded-lg border border-[var(--color-danger)]/30 px-3 py-1.5 text-xs text-[var(--color-danger)] hover:bg-[var(--color-danger)]/5"
+              </AppButton>
+              <AppButton
+                variant="danger"
+                size="sm"
                 @click="eliminar(c)"
               >
                 Eliminar
-              </button>
+              </AppButton>
             </div>
           </div>
           <ul class="mt-3 space-y-1.5 border-t border-[var(--color-line)] pt-3 text-xs">
@@ -193,10 +201,10 @@ async function eliminar(competencia: Competencia) {
               :key="n.nivel"
               class="flex gap-2"
             >
-              <span class="shrink-0 font-[family-name:var(--font-mono)] font-semibold text-[var(--color-ink)]/60">
+              <span class="shrink-0 font-[family-name:var(--font-mono)] font-semibold text-[var(--color-muted)]">
                 Nivel {{ n.nivel }}
               </span>
-              <span class="text-[var(--color-ink)]/70">{{ n.descripcion }}</span>
+              <span class="text-[var(--color-muted)]">{{ n.descripcion }}</span>
             </li>
           </ul>
         </li>
@@ -220,27 +228,33 @@ async function eliminar(competencia: Competencia) {
           {{ error }}
         </p>
 
-        <label class="block text-sm">
-          Nombre de la competencia
+        <FormField
+          v-slot="{ id }"
+          label="Nombre de la competencia"
+        >
           <input
+            :id="id"
             v-model="form.nombre"
             type="text"
             required
             placeholder="ej. Seguridad Integral"
-            class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+            class="field-input"
           >
-        </label>
+        </FormField>
 
-        <label class="block text-sm">
-          Descripción general
+        <FormField
+          v-slot="{ id }"
+          label="Descripción general"
+        >
           <textarea
+            :id="id"
             v-model="form.definicion"
             rows="3"
             required
             placeholder="Qué significa esta competencia en tu empresa…"
-            class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
+            class="field-input"
           />
-        </label>
+        </FormField>
 
         <div>
           <div class="mb-2 flex items-center justify-between">
@@ -265,13 +279,15 @@ async function eliminar(competencia: Competencia) {
                 v-model.number="nivel.nivel"
                 type="number"
                 min="1"
-                class="h-fit w-16 shrink-0 rounded border border-[var(--color-line)] px-2 py-1 text-sm"
+                :aria-label="`Número del nivel ${i + 1}`"
+                class="field-input h-fit w-16 shrink-0 px-2 py-1"
               >
               <textarea
                 v-model="nivel.descripcion"
                 rows="2"
                 placeholder="Descripción del comportamiento esperado en este nivel…"
-                class="flex-1 rounded border border-[var(--color-line)] px-2 py-1 text-sm"
+                :aria-label="`Descripción del nivel ${nivel.nivel}`"
+                class="field-input flex-1 px-2 py-1"
               />
               <button
                 type="button"
@@ -285,20 +301,18 @@ async function eliminar(competencia: Competencia) {
         </div>
 
         <div class="flex justify-end gap-2 pt-2">
-          <button
-            type="button"
-            class="rounded-lg border border-[var(--color-line)] px-4 py-2 text-sm"
+          <AppButton
+            variant="secondary"
             @click="modalAbierto = false"
           >
             Cancelar
-          </button>
-          <button
+          </AppButton>
+          <AppButton
             type="submit"
-            :disabled="guardando"
-            class="rounded-lg bg-[var(--color-ink)] px-4 py-2 text-sm text-[var(--color-parchment)] disabled:opacity-60"
+            :loading="guardando"
           >
             {{ guardando ? 'Guardando…' : 'Guardar' }}
-          </button>
+          </AppButton>
         </div>
       </form>
     </AppModal>

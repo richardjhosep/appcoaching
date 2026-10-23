@@ -16,6 +16,12 @@ const props = defineProps<{
   centerLabel: string
 }>()
 
+// Resumen textual para lectores de pantalla: el SVG de la dona no es legible para ellos.
+const resumenAria = computed(() => {
+  const detalle = props.segments.map((s) => `${s.label} ${s.count} (${s.pct}%)`).join(', ')
+  return `Gráfico de dona, ${props.centerValue} ${props.centerLabel}. ${detalle}`
+})
+
 const option = computed(() => ({
   ...baseOption(),
   tooltip: { ...baseOption().tooltip, formatter: (p: { name: string; value: number; percent: number }) => `${p.name}: ${p.value} · ${p.percent}%` },
@@ -26,15 +32,25 @@ const option = computed(() => ({
       avoidLabelOverlap: false,
       label: { show: false },
       emphasis: { scale: false },
-      data: props.segments.map((s) => ({ name: s.label, value: s.count, itemStyle: { color: s.color } })),
+      // Borde blanco entre segmentos: separa visualmente tonos parecidos (más de 4 segmentos).
+      data: props.segments.map((s) => ({
+        name: s.label,
+        value: s.count,
+        itemStyle: { color: s.color, borderColor: '#ffffff', borderWidth: 2 },
+      })),
     },
   ],
 }))
 </script>
 
 <template>
-  <div class="flex items-center gap-6">
-    <div class="relative h-[120px] w-[120px] shrink-0">
+  <div class="flex flex-col items-center gap-4 sm:flex-row sm:gap-6">
+    <!-- El tamaño va en este div contenedor, nunca en <VChart> (ver TendenciaChart.vue). -->
+    <div
+      role="img"
+      :aria-label="resumenAria"
+      class="relative h-36 w-36 shrink-0 sm:h-40 sm:w-40"
+    >
       <VChart
         class="h-full w-full"
         :option="option"
@@ -44,11 +60,11 @@ const option = computed(() => ({
       <!-- Texto central superpuesto — ECharts no tiene forma nativa limpia de centrar texto
            enriquecido (dos tamaños/pesos distintos) dentro de una dona. -->
       <div class="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-        <span class="text-xl font-semibold text-[var(--color-ink)]">{{ centerValue }}</span>
-        <span class="text-[9px] text-[var(--color-ink)]/60">{{ centerLabel }}</span>
+        <span class="text-2xl font-semibold text-[var(--color-ink)]">{{ centerValue }}</span>
+        <span class="text-xs text-[var(--color-muted)]">{{ centerLabel }}</span>
       </div>
     </div>
-    <ul class="min-w-0 flex-1 space-y-1.5 text-sm">
+    <ul class="w-full min-w-0 flex-1 space-y-1.5 text-sm">
       <li
         v-for="s in segments"
         :key="s.label"
@@ -59,8 +75,11 @@ const option = computed(() => ({
           :style="{ backgroundColor: s.color }"
           aria-hidden="true"
         />
-        <span class="truncate">{{ s.label }}</span>
-        <span class="ml-auto shrink-0 font-[family-name:var(--font-mono)] text-xs text-[var(--color-ink)]/60">
+        <span
+          class="truncate"
+          :title="s.label"
+        >{{ s.label }}</span>
+        <span class="ml-auto shrink-0 font-[family-name:var(--font-mono)] text-xs text-[var(--color-muted)]">
           {{ s.count }} · {{ s.pct }}%
         </span>
       </li>

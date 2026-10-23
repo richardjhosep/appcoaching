@@ -60,4 +60,24 @@ describe('TendenciaChart', () => {
     expect(wrapper.findAllComponents(VChart)).toHaveLength(1)
     expect(wrapper.text()).toContain('Sin datos todavía')
   })
+
+  it('describe cada gráfico con un aria-label que resume sus valores', () => {
+    const wrapper = mount(TendenciaChart, { props: { puntos } })
+
+    const etiquetas = wrapper.findAll('[role="img"]').map((e) => e.attributes('aria-label'))
+    expect(etiquetas).toEqual([
+      "Satisfacción: Jul '26 4/5, Ago '26 4.5/5",
+      "Procesos logrados: Jul '26 80%, Ago '26 100%",
+      "Asistencia: Jul '26 90%, Ago '26 95%",
+    ])
+  })
+
+  it('usa el mismo color neutro en las 3 series y tamaños de texto explícitos', () => {
+    const opciones = mount(TendenciaChart, { props: { puntos } })
+      .findAllComponents(VChart)
+      .map((c) => c.props('option') as { series: [{ itemStyle: { color: string }; label: { fontSize: number } }] })
+
+    expect(new Set(opciones.map((o) => o.series[0].itemStyle.color)).size).toBe(1)
+    expect(opciones.every((o) => o.series[0].label.fontSize >= 12)).toBe(true)
+  })
 })

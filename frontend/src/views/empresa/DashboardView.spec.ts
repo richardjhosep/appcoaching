@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { createRouter, createMemoryHistory } from 'vue-router'
+import { ApiError } from '../../api/client'
 import DashboardView from './DashboardView.vue'
 import type { CoacheeListItem } from '../../api/coachees'
 import type { Ciclo } from '../../api/ciclos'
@@ -172,7 +173,7 @@ describe('DashboardView (empresa)', () => {
     const wrapper = await mountView()
 
     expect(wrapper.text()).toContain('80%')
-    expect(wrapper.text()).toContain('4.5 ★')
+    expect(wrapper.text()).toContain('4.5/5')
     expect(wrapper.text()).toContain('40')
     expect(wrapper.text()).toContain('Pendiente')
     expect(wrapper.text()).toContain('Sin fecha registrada')
@@ -327,5 +328,87 @@ describe('DashboardView (empresa)', () => {
     // seguiría mostrando el SkeletonBlock en vez del contenido real.
     expect(wrapper.text()).toContain('QA Paleta Verify')
     expect(wrapper.text()).toContain('Redujo el tiempo de entrega del área en 20%.')
+  })
+
+  it('avisa cuántas personas no se pudieron cargar y no afirma "Todo al día" ni "Sin sesión agendada" por ellas', async () => {
+    const coacheeRoto: CoacheeListItem = { ...coachee, id: 'coachee-roto', nombre: 'Coachee Roto' }
+    vi.mocked(listCoachees).mockResolvedValue([coacheeRoto])
+    vi.mocked(getCiclosDeCoachee).mockResolvedValue([{ ...cicloPorVencer, alertaPorVencer: false, sesionesRestantes: 5 }])
+    vi.mocked(getProximaSesionDeCoachee).mockRejectedValue(new Error('falla transitoria'))
+
+    const wrapper = await mountView()
+
+    expect(wrapper.text()).toContain('No pudimos cargar datos de 1 persona; los indicadores pueden estar incompletos')
+    expect(wrapper.text()).not.toContain('Todo al día')
+    expect(wrapper.text()).not.toContain('Sin sesión agendada')
+    expect(wrapper.text()).toContain('Datos incompletos')
+  })
+
+  it('un 404 de "sin plan" no cuenta como fallo de carga', async () => {
+    vi.mocked(listCoachees).mockResolvedValue([coachee])
+    vi.mocked(getPlanByCoachee).mockRejectedValue(new ApiError(404, 'Plan de desarrollo no encontrado.'))
+    vi.mocked(getCiclosDeCoachee).mockResolvedValue([])
+
+    const wrapper = await mountView()
+
+    expect(wrapper.text()).not.toContain('No pudimos cargar datos')
+    expect(wrapper.text()).toContain('Todo al día')
+  })
+
+  it('muestra ErrorState con Reintentar si falla la carga principal y recarga al reintentar', async () => {
+    vi.mocked(listCoachees).mockResolvedValue([])
+    vi.mocked(getMisKpis).mockRejectedValueOnce(new Error('sin conexión'))
+
+    const wrapper = await mountView()
+    expect(wrapper.find('[role="alert"]').exists()).toBe(true)
+
+    await wrapper.find('[role="alert"] button').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.find('[role="alert"]').exists()).toBe(false)
+    expect(wrapper.text()).toContain('80%')
+  })
+
+  it('la alerta es un enlace operable por teclado que dice a dónde lleva', async () => {
+    vi.mocked(listCoachees).mockResolvedValue([coachee])
+    vi.mocked(getCiclosDeCoachee).mockResolvedValue([cicloPorVencer])
+
+    const wrapper = await mountView()
+
+    const enlace = wrapper.findAll('a').find((a) => a.text().includes('QA Paleta Verify'))
+    expect(enlace).toBeDefined()
+    expect(enlace!.text()).toContain('Ver progreso')
+    expect(enlace!.attributes('href')).toContain('coacheeId=coachee-1')
+  })
+
+  it('muestra la nota de confidencialidad y el glosario', async () => {
+    vi.mocked(listCoachees).mockResolvedValue([])
+
+    const wrapper = await mountView()
+
+    expect(wrapper.text()).toContain('Qué ve tu empresa y qué no')
+    expect(wrapper.text()).toContain('notas privadas de tu coach')
+    expect(wrapper.text()).toContain('Glosario')
+  })
+
+  it('las barras de competencias son progressbar con valores y la fila se expande desde el botón', async () => {
+    vi.mocked(listCoachees).mockResolvedValue([coachee])
+    vi.mocked(getPlanByCoachee).mockResolvedValue({
+      competenciaId: 'comp-1',
+      competencia: { id: 'comp-1', nombre: 'Liderazgo' },
+    } as never)
+
+    const wrapper = await mountView()
+
+    const barra = wrapper.find('[role="progressbar"]')
+    expect(barra.attributes('aria-valuenow')).toBe('1')
+    expect(barra.attributes('aria-valuemax')).toBe('1')
+    expect(barra.attributes('aria-label')).toContain('Liderazgo')
+
+    const boton = wrapper.findAll('button').find((b) => b.attributes('aria-expanded') !== undefined)!
+    expect(boton.attributes('aria-expanded')).toBe('false')
+    await boton.trigger('click')
+    expect(boton.attributes('aria-expanded')).toBe('true')
+    expect(wrapper.text()).toContain('QA Paleta Verify')
   })
 })

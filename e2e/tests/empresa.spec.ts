@@ -10,7 +10,7 @@ test('empresa logs in and submits a satisfaction survey', async ({ page }) => {
   await page.getByLabel('Contraseña').fill(empresaPassword)
   await page.getByRole('button', { name: 'Ingresar' }).click()
 
-  await page.waitForURL('**/empresa/coachees')
+  await page.waitForURL('**/empresa/dashboard')
 
   await page.goto('/empresa/satisfaccion')
   await expect(page.getByRole('heading', { name: 'Satisfacción y procesos' })).toBeVisible()

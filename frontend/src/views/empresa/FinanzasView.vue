@@ -6,6 +6,9 @@ import EmptyState from '../../components/EmptyState.vue'
 import ProyeccionGastoChart from '../../components/ProyeccionGastoChart.vue'
 import TabBar from '../../components/TabBar.vue'
 import SkeletonBlock from '../../components/SkeletonBlock.vue'
+import ErrorState from '../../components/ErrorState.vue'
+import StatusBadge from '../../components/StatusBadge.vue'
+import ReporteCabecera from '../../components/ReporteCabecera.vue'
 import ImpactoNegocioCallout from '../../components/ImpactoNegocioCallout.vue'
 import DonutChart from '../../components/DonutChart.vue'
 import { getMyEmpresa, type Empresa } from '../../api/empresas'
@@ -20,12 +23,12 @@ import {
   type RetornoInversionEmpresa,
 } from '../../api/negocio'
 import { getUfHoy } from '../../api/indicadores'
-import { resultadoLabel, resultadoColor } from '../../lib/resultadoCiclo'
+import { resultadoLabel, resultadoColor, resultadoTono } from '../../lib/resultadoCiclo'
+import { useCarga } from '../../lib/useCarga'
 import { distribucionResultadosSegments } from '../../lib/distribucionResultados'
 import { formatMonto, type Moneda } from '../../lib/moneda'
 import MonedaToggle from '../../components/MonedaToggle.vue'
 
-const loading = ref(true)
 const empresa = ref<Empresa | null>(null)
 const resumen = ref<ResumenFinanzasEmpresa | null>(null)
 const proyeccion = ref<ProyeccionMesEmpresa[]>([])
@@ -53,8 +56,6 @@ const segmentosResultado = computed(() => {
   }))
 })
 
-const fechaEmision = new Date().toLocaleDateString('es-CL', { day: 'numeric', month: 'long', year: 'numeric' })
-
 const etiquetaSemestre = computed(() => {
   if (!acumulado.value) return ''
   const { semestre, anio } = acumulado.value
@@ -73,8 +74,7 @@ const VISTAS: Array<{ key: VistaProyeccion; label: string; icon: string }> = [
 ]
 const vista = ref<VistaProyeccion>('mensual')
 
-onMounted(async () => {
-  loading.value = true
+const { loading, error, recargar } = useCarga(async () => {
   const [e, r, p, a, ret] = await Promise.all([
     getMyEmpresa(),
     getMiResumenFinanciero(),
@@ -87,8 +87,10 @@ onMounted(async () => {
   proyeccion.value = p
   acumulado.value = a
   retorno.value = ret
-  loading.value = false
+})
 
+// El valor UF solo habilita el selector de moneda: si falla, la vista sigue en CLP.
+async function cargarUf() {
   await getUfHoy()
     .then((v) => {
       valorUf.value = v.valorUf
@@ -98,35 +100,20 @@ onMounted(async () => {
     .catch(() => {
       errorUf.value = 'No se pudo obtener el valor UF — el selector de moneda queda solo en CLP.'
     })
-})
-
-function imprimir() {
-  window.print()
 }
+
+onMounted(() => {
+  void recargar()
+  void cargarUf()
+})
 </script>
 
 <template>
   <AppShell>
-    <div class="mb-4 flex items-start justify-between print:mb-6">
-      <div>
-        <h1 class="font-[family-name:var(--font-heading)] text-xl font-semibold">
-          Finanzas
-        </h1>
-        <p
-          v-if="empresa"
-          class="text-xs text-[var(--color-ink)]/50 print:text-sm"
-        >
-          {{ empresa.nombre }} · Emitido el {{ fechaEmision }}
-        </p>
-      </div>
-      <button
-        type="button"
-        class="shrink-0 rounded-lg bg-[var(--color-ink)] px-3 py-2 text-xs text-[var(--color-parchment)] print:hidden"
-        @click="imprimir"
-      >
-        Descargar / Imprimir
-      </button>
-    </div>
+    <ReporteCabecera
+      titulo="Finanzas"
+      :empresa="empresa?.nombre"
+    />
     <MonedaToggle
       v-if="!errorUf"
       v-model="moneda"
@@ -135,7 +122,16 @@ function imprimir() {
       :desactualizado="ufDesactualizada"
       class="mb-4 print:hidden"
     />
-    <SkeletonBlock v-if="loading" />
+    <SkeletonBlock
+      v-if="loading"
+      variant="cards"
+      :rows="3"
+    />
+    <ErrorState
+      v-else-if="error"
+      :description="error"
+      @retry="recargar"
+    />
     <div
       v-else-if="resumen"
       class="space-y-4"
@@ -146,7 +142,7 @@ function imprimir() {
       >
         <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <div>
-            <p class="text-xs text-[var(--color-ink)]/60">
+            <p class="text-xs text-[var(--color-muted)]">
               Gasto del período
             </p>
             <p class="font-[family-name:var(--font-mono)] text-2xl">
@@ -154,7 +150,7 @@ function imprimir() {
             </p>
           </div>
           <div>
-            <p class="text-xs text-[var(--color-ink)]/60">
+            <p class="text-xs text-[var(--color-muted)]">
               Horas consumidas / contratadas
             </p>
             <p class="font-[family-name:var(--font-mono)] text-2xl">
@@ -162,7 +158,7 @@ function imprimir() {
             </p>
           </div>
           <div>
-            <p class="text-xs text-[var(--color-ink)]/60">
+            <p class="text-xs text-[var(--color-muted)]">
               Estado de pago
             </p>
             <p
@@ -171,9 +167,12 @@ function imprimir() {
             >
               {{ resumen.pagada ? 'Al día' : 'Pendiente' }}
             </p>
+            <p class="text-xs text-[var(--color-subtle)]">
+              Registrado por tu coach
+            </p>
           </div>
           <div>
-            <p class="text-xs text-[var(--color-ink)]/60">
+            <p class="text-xs text-[var(--color-muted)]">
               Monto pendiente
             </p>
             <p
@@ -184,7 +183,7 @@ function imprimir() {
             </p>
           </div>
         </div>
-        <p class="mt-3 text-xs text-[var(--color-ink)]/50">
+        <p class="mt-3 text-xs text-[var(--color-subtle)]">
           El estado de pago refleja la conciliación de tu coach — no es un historial de
           transacciones, es el gasto real del mes actual mientras no se marque como pagado.
         </p>
@@ -206,17 +205,29 @@ function imprimir() {
         >
           <table class="w-full text-left text-sm">
             <thead>
-              <tr class="text-xs text-[var(--color-ink)]/60">
-                <th class="py-1">
+              <tr class="text-xs text-[var(--color-muted)]">
+                <th
+                  scope="col"
+                  class="py-1"
+                >
                   Coachee
                 </th>
-                <th class="py-1">
+                <th
+                  scope="col"
+                  class="py-1"
+                >
                   Horas realizadas
                 </th>
-                <th class="py-1">
+                <th
+                  scope="col"
+                  class="py-1"
+                >
                   Gasto del período
                 </th>
-                <th class="py-1">
+                <th
+                  scope="col"
+                  class="py-1"
+                >
                   Agendado
                 </th>
               </tr>
@@ -243,7 +254,7 @@ function imprimir() {
             </tbody>
           </table>
         </div>
-        <p class="mt-3 text-xs text-[var(--color-ink)]/50">
+        <p class="mt-3 text-xs text-[var(--color-subtle)]">
           "Agendado" son sesiones ya programadas que todavía no ocurren — no una proyección
           estimada, es lo que hoy está en la agenda de cada coachee.
         </p>
@@ -267,28 +278,28 @@ function imprimir() {
 
         <template v-else-if="acumulado">
           <div v-if="vista === 'semestral'">
-            <p class="text-xs text-[var(--color-ink)]/60">
+            <p class="text-xs text-[var(--color-muted)]">
               {{ etiquetaSemestre }}
             </p>
             <p class="font-[family-name:var(--font-mono)] text-2xl">
               {{ monto(acumulado.gastoEjecutadoSemestre + acumulado.gastoAgendadoSemestre) }}
             </p>
-            <p class="text-xs text-[var(--color-ink)]/50">
+            <p class="text-xs text-[var(--color-subtle)]">
               Ejecutado {{ monto(acumulado.gastoEjecutadoSemestre) }} · Agendado {{ monto(acumulado.gastoAgendadoSemestre) }}
             </p>
           </div>
           <div v-else-if="vista === 'anual'">
-            <p class="text-xs text-[var(--color-ink)]/60">
+            <p class="text-xs text-[var(--color-muted)]">
               Año {{ acumulado.anio }}
             </p>
             <p class="font-[family-name:var(--font-mono)] text-2xl">
               {{ monto(acumulado.gastoEjecutadoAnio + acumulado.gastoAgendadoAnio) }}
             </p>
-            <p class="text-xs text-[var(--color-ink)]/50">
+            <p class="text-xs text-[var(--color-subtle)]">
               Ejecutado {{ monto(acumulado.gastoEjecutadoAnio) }} · Agendado {{ monto(acumulado.gastoAgendadoAnio) }}
             </p>
           </div>
-          <p class="mt-3 text-xs text-[var(--color-ink)]/50">
+          <p class="mt-3 text-xs text-[var(--color-subtle)]">
             "Ejecutado" son sesiones ya realizadas; "Agendado" son sesiones ya programadas que
             todavía no ocurren — a diferencia de la vista Mensual, esto no especula sobre meses
             futuros sin sesiones agendadas todavía.
@@ -310,7 +321,7 @@ function imprimir() {
         <template v-else>
           <div class="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
-              <p class="text-xs text-[var(--color-ink)]/60">
+              <p class="text-xs text-[var(--color-muted)]">
                 Invertido en procesos cerrados
               </p>
               <p class="font-[family-name:var(--font-mono)] text-2xl">
@@ -318,7 +329,7 @@ function imprimir() {
               </p>
             </div>
             <div>
-              <p class="text-xs text-[var(--color-ink)]/60">
+              <p class="text-xs text-[var(--color-muted)]">
                 Costo promedio por proceso
               </p>
               <p class="font-[family-name:var(--font-mono)] text-2xl">
@@ -327,7 +338,7 @@ function imprimir() {
             </div>
           </div>
           <div class="mb-4 border-t border-[var(--color-line)] pt-4">
-            <p class="mb-2 text-xs text-[var(--color-ink)]/60">
+            <p class="mb-2 text-xs text-[var(--color-muted)]">
               Distribución de resultados
             </p>
             <DonutChart
@@ -336,7 +347,7 @@ function imprimir() {
               center-label="procesos"
             />
           </div>
-          <p class="mb-3 text-xs text-[var(--color-ink)]/50">
+          <p class="mb-3 text-xs text-[var(--color-subtle)]">
             Cruza lo que costó cada proceso (sesiones ya realizadas × tarifa) con el resultado
             que tuvo — incluye todos los procesos cerrados hasta hoy, no solo los del período
             financiero seleccionado arriba.
@@ -349,16 +360,12 @@ function imprimir() {
             >
               <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
                 <span class="text-sm font-medium">{{ p.coacheeNombre }}</span>
-                <span class="flex items-center gap-2 text-xs text-[var(--color-ink)]/50">
+                <span class="flex items-center gap-2 text-xs text-[var(--color-subtle)]">
                   <span>{{ new Date(p.fechaCierre).toLocaleDateString('es-CL') }}</span>
                   <span class="font-[family-name:var(--font-mono)] text-sm text-[var(--color-ink)]">{{ monto(p.costo) }}</span>
-                  <span
-                    class="rounded-full px-2 py-0.5"
-                    :style="{
-                      backgroundColor: `color-mix(in srgb, ${resultadoColor[p.resultado]} 15%, white)`,
-                      color: resultadoColor[p.resultado],
-                    }"
-                  >{{ resultadoLabel[p.resultado] }}</span>
+                  <StatusBadge :tone="resultadoTono[p.resultado]">
+                    {{ resultadoLabel[p.resultado] }}
+                  </StatusBadge>
                 </span>
               </div>
               <ImpactoNegocioCallout
