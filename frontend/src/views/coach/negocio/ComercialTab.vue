@@ -155,7 +155,7 @@ function abrirNuevoProceso(coacheeId: string) {
         <p class="text-xs text-[var(--color-muted)]">
           Ingreso del período
         </p>
-        <p class="font-[family-name:var(--font-mono)] text-2xl text-[var(--color-sage)]">
+        <p class="cifra text-2xl text-[var(--color-sage)]">
           {{ formatoCLP.format(resumen.ingresoDelPeriodo) }}
         </p>
       </div>
@@ -163,7 +163,7 @@ function abrirNuevoProceso(coacheeId: string) {
         <p class="text-xs text-[var(--color-muted)]">
           Ingreso proyectado
         </p>
-        <p class="font-[family-name:var(--font-mono)] text-2xl text-[var(--color-bronze)]">
+        <p class="cifra text-2xl text-[var(--color-bronze)]">
           {{ formatoCLP.format(resumen.ingresoProyectado) }}
         </p>
       </div>
@@ -171,7 +171,7 @@ function abrirNuevoProceso(coacheeId: string) {
         <p class="text-xs text-[var(--color-muted)]">
           Horas realizadas
         </p>
-        <p class="font-[family-name:var(--font-mono)] text-2xl">
+        <p class="cifra text-2xl font-semibold">
           {{ resumen.horasRealizadas }}
         </p>
       </div>
@@ -179,7 +179,7 @@ function abrirNuevoProceso(coacheeId: string) {
         <p class="text-xs text-[var(--color-muted)]">
           Solicitudes nuevas
         </p>
-        <p class="font-[family-name:var(--font-mono)] text-2xl">
+        <p class="cifra text-2xl font-semibold">
           {{ resumen.solicitudesNuevas }}
         </p>
         <p class="text-xs text-[var(--color-muted)]">
@@ -190,7 +190,7 @@ function abrirNuevoProceso(coacheeId: string) {
         <p class="text-xs text-[var(--color-muted)]">
           Procesos iniciados
         </p>
-        <p class="font-[family-name:var(--font-mono)] text-2xl">
+        <p class="cifra text-2xl font-semibold">
           {{ resumen.procesosIniciados }}
         </p>
       </div>
@@ -198,7 +198,7 @@ function abrirNuevoProceso(coacheeId: string) {
         <p class="text-xs text-[var(--color-muted)]">
           Procesos cerrados
         </p>
-        <p class="font-[family-name:var(--font-mono)] text-2xl">
+        <p class="cifra text-2xl font-semibold">
           {{ resumen.procesosCerrados }}
         </p>
       </div>
@@ -206,7 +206,7 @@ function abrirNuevoProceso(coacheeId: string) {
         <p class="text-xs text-[var(--color-muted)]">
           Pipeline ponderado
         </p>
-        <p class="font-[family-name:var(--font-mono)] text-2xl text-[var(--color-bronze)]">
+        <p class="cifra text-2xl text-[var(--color-bronze)]">
           {{ pipelinePonderado !== null ? formatoCLP.format(pipelinePonderado) : '—' }}
         </p>
         <p class="text-xs text-[var(--color-muted)]">

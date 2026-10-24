@@ -47,6 +47,13 @@ function descartarPasos() {
 
 const pasosPendientes = computed(() => pasos.value.filter((p) => !p.hecho))
 const mostrarPasos = computed(() => !pasosDescartados.value && pasosPendientes.value.length > 0)
+// Saludo según la hora, con el primer nombre del coachee (si aún no carga, solo el saludo).
+const saludo = computed(() => {
+  const h = new Date().getHours()
+  const base = h < 12 ? 'Buenos días' : h < 20 ? 'Buenas tardes' : 'Buenas noches'
+  const nombre = coachee.value?.nombre?.trim().split(/\s+/)[0]
+  return nombre ? `${base}, ${nombre}` : base
+})
 const consentimientoPendiente = computed(() => coachee.value !== null && !coachee.value.consentimientoInformado)
 
 const { loading, error, fallos, recargar, tolerar } = useCarga(async () => {
@@ -111,9 +118,14 @@ function formatFecha(fecha: string): string {
 <template>
   <AppShell>
     <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-      <h1 class="font-[family-name:var(--font-heading)] text-xl font-semibold">
-        Mi Aprendizaje
-      </h1>
+      <div>
+        <p class="text-xs font-semibold uppercase tracking-[0.08em] text-[var(--color-muted)]">
+          Mi Aprendizaje
+        </p>
+        <h1 class="font-[family-name:var(--font-display)] text-2xl font-medium">
+          {{ saludo }}
+        </h1>
+      </div>
       <RouterLink
         to="/coachee/resumen"
         class="rounded-full border border-[var(--color-line)] px-3 py-1.5 text-xs hover:bg-[var(--color-parchment)]/60"

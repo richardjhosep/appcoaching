@@ -201,7 +201,7 @@ async function eliminar(competencia: Competencia) {
               :key="n.nivel"
               class="flex gap-2"
             >
-              <span class="shrink-0 font-[family-name:var(--font-mono)] font-semibold text-[var(--color-muted)]">
+              <span class="shrink-0 cifra font-semibold text-[var(--color-muted)]">
                 Nivel {{ n.nivel }}
               </span>
               <span class="text-[var(--color-muted)]">{{ n.descripcion }}</span>

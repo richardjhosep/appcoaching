@@ -491,7 +491,7 @@ async function confirmarConvertir() {
                   {{ etapaLabel[p.etapa] }}
                 </StatusBadge>
               </td>
-              <td class="font-[family-name:var(--font-mono)] text-xs">
+              <td class="cifra text-xs">
                 {{ p.valorEstimado ? formatoCLP.format(p.valorEstimado) : '—' }}
               </td>
               <td class="text-xs text-[var(--color-muted)]">

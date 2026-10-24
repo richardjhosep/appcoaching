@@ -71,7 +71,7 @@ function onClick(params: { dataIndex: number }) {
         <p class="text-sm font-medium">
           {{ mesActivo.etiqueta }}
         </p>
-        <p class="font-[family-name:var(--font-mono)] text-xl text-[var(--color-sage)]">
+        <p class="cifra text-xl text-[var(--color-sage)]">
           {{ formatoCLP.format(mesActivo.total) }}
         </p>
       </div>
@@ -91,7 +91,7 @@ function onClick(params: { dataIndex: number }) {
           class="flex items-center justify-between gap-3"
         >
           <span class="text-[var(--color-ink)]/70">{{ c.nombre }}</span>
-          <span class="font-[family-name:var(--font-mono)]">{{ formatoCLP.format(c.monto) }}</span>
+          <span class="cifra">{{ formatoCLP.format(c.monto) }}</span>
         </li>
       </ul>
     </div>

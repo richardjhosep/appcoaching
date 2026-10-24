@@ -523,7 +523,7 @@ async function eliminar(empresa: Empresa) {
               <td class="font-medium">
                 {{ e.nombre }}
               </td>
-              <td class="font-[family-name:var(--font-mono)] text-xs">
+              <td class="cifra text-xs">
                 {{ formatoTarifa(e) }}
               </td>
               <td>
@@ -697,7 +697,7 @@ async function eliminar(empresa: Empresa) {
           >
           <p
             v-else
-            class="rounded-lg bg-[var(--color-parchment)]/60 px-3 py-2 font-[family-name:var(--font-mono)]"
+            class="rounded-lg bg-[var(--color-parchment)]/60 px-3 py-2 cifra"
           >
             {{ horasCalculadas ?? '—' }} h <span class="font-[family-name:var(--font-body)] text-xs text-[var(--color-muted)]">(según sesiones de sus coachees)</span>
           </p>
@@ -802,7 +802,7 @@ async function eliminar(empresa: Empresa) {
             <p class="mb-1 text-xs text-[var(--color-muted)]">
               Satisfacción promedio
             </p>
-            <p class="font-[family-name:var(--font-mono)] text-xl">
+            <p class="cifra text-xl font-semibold">
               {{ kpisSatisfaccion.satisfaccionPromedio !== null ? `${kpisSatisfaccion.satisfaccionPromedio} ★` : '—' }}
             </p>
           </div>
@@ -810,7 +810,7 @@ async function eliminar(empresa: Empresa) {
             <p class="mb-1 text-xs text-[var(--color-muted)]">
               Tasa de asistencia
             </p>
-            <p class="font-[family-name:var(--font-mono)] text-xl">
+            <p class="cifra text-xl font-semibold">
               {{ kpisSatisfaccion.tasaAsistencia !== null ? `${kpisSatisfaccion.tasaAsistencia}%` : '—' }}
             </p>
           </div>
@@ -818,7 +818,7 @@ async function eliminar(empresa: Empresa) {
             <p class="mb-1 text-xs text-[var(--color-muted)]">
               Procesos terminados
             </p>
-            <p class="font-[family-name:var(--font-mono)] text-xl">
+            <p class="cifra text-xl font-semibold">
               {{ kpisSatisfaccion.procesosTerminados }}
             </p>
           </div>
@@ -826,7 +826,7 @@ async function eliminar(empresa: Empresa) {
             <p class="mb-1 text-xs text-[var(--color-muted)]">
               Procesos en curso
             </p>
-            <p class="font-[family-name:var(--font-mono)] text-xl">
+            <p class="cifra text-xl font-semibold">
               {{ kpisSatisfaccion.procesosEnCurso }}
             </p>
           </div>

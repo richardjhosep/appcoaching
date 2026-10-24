@@ -242,7 +242,7 @@ function objetivoDescripcion(objetivoId: string): string {
           <div class="flex flex-wrap items-start justify-between gap-2">
             <p>{{ a.actividad }}</p>
             <span
-              class="shrink-0 rounded-full px-2.5 py-0.5 font-[family-name:var(--font-mono)] text-xs font-semibold"
+              class="shrink-0 rounded-full px-2.5 py-0.5 cifra text-xs font-semibold"
               :class="rangoFechas(a.fechaInicio, a.fechaFin)
                 ? 'bg-[var(--color-sage)]/15 text-[var(--color-sage)]'
                 : 'bg-[var(--color-ink)]/5 text-[var(--color-muted)]'"

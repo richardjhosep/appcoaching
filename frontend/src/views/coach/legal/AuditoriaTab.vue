@@ -129,7 +129,7 @@ function fechaHora(iso: string): { fecha: string; hora: string } {
           :key="log.id"
           class="rounded-xl border border-[var(--color-line)] bg-white px-4 py-2.5 text-sm"
         >
-          <span class="font-[family-name:var(--font-mono)] text-xs text-[var(--color-muted)]">
+          <span class="cifra text-xs text-[var(--color-muted)]">
             {{ fechaHora(log.createdAt).fecha }} · {{ fechaHora(log.createdAt).hora }}
           </span>
           <span class="text-[var(--color-muted)]"> — </span>

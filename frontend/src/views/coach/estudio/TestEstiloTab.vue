@@ -402,7 +402,7 @@ async function borrarPregunta(preguntaId: string) {
                     :style="{ width: `${(fila.conteo / fila.max) * 100}%` }"
                   />
                 </div>
-                <span class="w-4 shrink-0 text-right font-[family-name:var(--font-mono)] text-[var(--color-muted)]">{{ fila.conteo }}</span>
+                <span class="w-4 shrink-0 text-right cifra text-[var(--color-muted)]">{{ fila.conteo }}</span>
               </div>
             </div>
           </li>

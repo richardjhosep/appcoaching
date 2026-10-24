@@ -311,7 +311,7 @@ async function enviar() {
           :key="o.id"
           class="flex items-center gap-2 text-sm"
         >
-          <span class="font-[family-name:var(--font-mono)] text-[var(--color-muted)]">{{ o.orden }}.</span>
+          <span class="cifra text-[var(--color-muted)]">{{ o.orden }}.</span>
           <input
             :value="o.descripcion"
             class="flex-1 rounded-lg border border-[var(--color-line)] px-2 py-1 text-sm disabled:bg-[var(--color-parchment)]/50"

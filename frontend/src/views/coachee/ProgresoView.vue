@@ -346,7 +346,7 @@ async function guardarRetro() {
                 class="mt-0.5 shrink-0 text-[var(--color-spark)]"
               />
               <span>
-                <span class="font-[family-name:var(--font-mono)] text-[var(--color-muted)]">{{ logro.fecha }}</span>
+                <span class="cifra text-[var(--color-muted)]">{{ logro.fecha }}</span>
                 — {{ logro.descripcion }}
                 <span
                   v-if="logro.situacion"
@@ -420,7 +420,7 @@ async function guardarRetro() {
             :key="entrada.id"
             class="rounded-xl border border-[var(--color-line)]/60 bg-[var(--color-parchment)]/40 p-3 text-sm"
           >
-            <p class="mb-1 font-[family-name:var(--font-mono)] text-xs text-[var(--color-muted)]">
+            <p class="mb-1 cifra text-xs text-[var(--color-muted)]">
               {{ new Date(entrada.createdAt).toLocaleString('es-CL', { dateStyle: 'medium', timeStyle: 'short' }) }}
             </p>
             <p class="whitespace-pre-wrap">

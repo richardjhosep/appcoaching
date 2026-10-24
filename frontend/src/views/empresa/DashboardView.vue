@@ -317,7 +317,7 @@ function motivoAlerta(fila: FilaDashboard): string {
               <p class="text-xs text-[var(--color-muted)]">
                 Horas contratadas
               </p>
-              <p class="font-[family-name:var(--font-mono)] text-lg">
+              <p class="cifra text-lg font-semibold">
                 {{ empresa.horasContratadasEfectivas ?? empresa.horasContratadas ?? '—' }}
               </p>
             </div>
@@ -325,7 +325,7 @@ function motivoAlerta(fila: FilaDashboard): string {
               <p class="text-xs text-[var(--color-muted)]">
                 Tarifa por hora
               </p>
-              <p class="font-[family-name:var(--font-mono)] text-lg">
+              <p class="cifra text-lg font-semibold">
                 {{ formatoCLP.format(empresa.tarifaHora) }}
               </p>
             </div>
@@ -364,7 +364,7 @@ function motivoAlerta(fila: FilaDashboard): string {
               <p class="text-xs text-[var(--color-muted)]">
                 Este mes
               </p>
-              <p class="font-[family-name:var(--font-mono)] text-2xl">
+              <p class="cifra text-2xl font-semibold">
                 {{ formatoCLP.format(finanzasMes.gastoDelPeriodo + finanzasMes.gastoProyectado) }}
               </p>
               <p class="text-xs text-[var(--color-subtle)]">
@@ -375,7 +375,7 @@ function motivoAlerta(fila: FilaDashboard): string {
               <p class="text-xs text-[var(--color-muted)]">
                 {{ etiquetaSemestre }}
               </p>
-              <p class="font-[family-name:var(--font-mono)] text-2xl">
+              <p class="cifra text-2xl font-semibold">
                 {{ formatoCLP.format(finanzasAcumuladas.gastoEjecutadoSemestre + finanzasAcumuladas.gastoAgendadoSemestre) }}
               </p>
               <p class="text-xs text-[var(--color-subtle)]">
@@ -386,7 +386,7 @@ function motivoAlerta(fila: FilaDashboard): string {
               <p class="text-xs text-[var(--color-muted)]">
                 Año {{ finanzasAcumuladas.anio }}
               </p>
-              <p class="font-[family-name:var(--font-mono)] text-2xl">
+              <p class="cifra text-2xl font-semibold">
                 {{ formatoCLP.format(finanzasAcumuladas.gastoEjecutadoAnio + finanzasAcumuladas.gastoAgendadoAnio) }}
               </p>
               <p class="text-xs text-[var(--color-subtle)]">
@@ -546,7 +546,7 @@ function motivoAlerta(fila: FilaDashboard): string {
                       :style="{ width: `${(c.count / maxCompetencia) * 100}%` }"
                     />
                   </div>
-                  <span class="text-right font-[family-name:var(--font-mono)] text-xs">{{ c.count }}</span>
+                  <span class="text-right cifra text-xs">{{ c.count }}</span>
                 </div>
                 <div
                   v-if="competenciaSeleccionada === c.competencia"

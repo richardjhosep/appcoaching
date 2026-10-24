@@ -218,7 +218,7 @@ async function enviarSolicitudConsentimiento(coacheeId: string, nombre: string) 
         class="rounded-2xl border border-[var(--color-line)] bg-white px-4 py-3"
       >
         <p
-          class="font-[family-name:var(--font-mono)] text-2xl font-semibold"
+          class="cifra text-2xl font-semibold"
           :class="a.valor === 0 ? 'text-[var(--color-subtle)]' : a.color"
         >
           {{ a.valor }}

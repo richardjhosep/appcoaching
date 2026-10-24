@@ -30,7 +30,7 @@ function go(page: number) {
       >
         ← Anterior
       </button>
-      <span class="font-[family-name:var(--font-mono)] text-xs">Página {{ page }} de {{ totalPages }}</span>
+      <span class="cifra text-xs">Página {{ page }} de {{ totalPages }}</span>
       <button
         type="button"
         :disabled="page >= totalPages"

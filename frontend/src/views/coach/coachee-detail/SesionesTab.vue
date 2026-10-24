@@ -307,7 +307,7 @@ async function onSesionEliminada() {
               :class="highlightedId === s.id ? 'rounded-xl ring-2 ring-[var(--color-sage)]' : ''"
             >
               <div class="mb-2 flex items-center justify-between gap-3">
-                <span class="font-[family-name:var(--font-mono)] text-[var(--color-muted)]">
+                <span class="cifra text-[var(--color-muted)]">
                   {{ new Date(s.fechaHora).toLocaleDateString('es-CL') }}
                 </span>
                 <select
@@ -453,7 +453,7 @@ async function onSesionEliminada() {
               v-for="logro in logros"
               :key="logro.id"
             >
-              <span class="font-[family-name:var(--font-mono)] text-[var(--color-muted)]">{{ logro.fecha }}</span>
+              <span class="cifra text-[var(--color-muted)]">{{ logro.fecha }}</span>
               — {{ logro.descripcion }}
               <span
                 v-if="logro.situacion"

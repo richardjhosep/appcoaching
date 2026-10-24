@@ -25,7 +25,7 @@ onMounted(async () => {
         <h2 class="text-sm font-medium">
           Panel de cumplimiento LPDP
         </h2>
-        <p class="font-[family-name:var(--font-mono)] text-xl text-[var(--color-sage)]">
+        <p class="cifra text-xl text-[var(--color-sage)]">
           {{ activas }} de {{ medidas.length }}
         </p>
       </div>

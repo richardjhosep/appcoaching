@@ -260,13 +260,13 @@ describe('AgendaView', () => {
 
       expect(wrapper.text()).toContain('Sesiones agendadas')
       // 3 futuras (s1, s2, s3) — s4 es pasada.
-      const sesionesAgendadas = wrapper.findAll('p.font-\\[family-name\\:var\\(--font-mono\\)\\]')[0]!
+      const sesionesAgendadas = wrapper.findAll('p.cifra')[0]!
       expect(sesionesAgendadas.text()).toBe('3')
       // Esta semana: s1 y s2 (s3 cae dos meses después).
-      const estaSemana = wrapper.findAll('p.font-\\[family-name\\:var\\(--font-mono\\)\\]')[1]!
+      const estaSemana = wrapper.findAll('p.cifra')[1]!
       expect(estaSemana.text()).toBe('2')
       // Clientes únicos entre las 3 futuras: coachee-1 y coachee-2 (coachee-3 solo tiene la pasada).
-      const clientes = wrapper.findAll('p.font-\\[family-name\\:var\\(--font-mono\\)\\]')[2]!
+      const clientes = wrapper.findAll('p.cifra')[2]!
       expect(clientes.text()).toBe('2')
     })
   })

@@ -230,7 +230,7 @@ const formatoCLP = new Intl.NumberFormat('es-CL', { style: 'currency', currency:
             <p class="text-xs text-[var(--color-muted)]">
               Horas realizadas
             </p>
-            <p class="font-[family-name:var(--font-mono)] text-xl">
+            <p class="cifra text-xl font-semibold">
               {{ inversion.horasRealizadas }}
             </p>
           </div>
@@ -238,7 +238,7 @@ const formatoCLP = new Intl.NumberFormat('es-CL', { style: 'currency', currency:
             <p class="text-xs text-[var(--color-muted)]">
               Monto del período
             </p>
-            <p class="font-[family-name:var(--font-mono)] text-xl text-[var(--color-sage)]">
+            <p class="cifra text-xl text-[var(--color-sage)]">
               {{ formatoCLP.format(inversion.montoDelPeriodo) }}
             </p>
           </div>
@@ -246,7 +246,7 @@ const formatoCLP = new Intl.NumberFormat('es-CL', { style: 'currency', currency:
             <p class="text-xs text-[var(--color-muted)]">
               Proyectado
             </p>
-            <p class="font-[family-name:var(--font-mono)] text-xl text-[var(--color-bronze)]">
+            <p class="cifra text-xl text-[var(--color-bronze)]">
               {{ formatoCLP.format(inversion.montoProyectado) }}
             </p>
           </div>

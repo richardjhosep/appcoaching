@@ -183,7 +183,7 @@ async function enviarSolicitudCambios() {
 
         <div class="grid grid-cols-2 gap-4 border-b border-[var(--color-line)] pb-4 sm:grid-cols-4">
           <div v-if="plan.trabajarNiveles">
-            <p class="font-[family-name:var(--font-mono)] text-xs font-semibold uppercase text-[var(--color-muted)]">
+            <p class="cifra text-xs font-semibold uppercase text-[var(--color-muted)]">
               Nivel actual
             </p>
             <p class="text-sm font-bold text-[var(--color-ink)]">
@@ -191,15 +191,15 @@ async function enviarSolicitudCambios() {
             </p>
           </div>
           <div v-if="plan.trabajarNiveles">
-            <p class="font-[family-name:var(--font-mono)] text-xs font-semibold uppercase text-[var(--color-muted)]">
+            <p class="cifra text-xs font-semibold uppercase text-[var(--color-muted)]">
               Nivel objetivo
             </p>
-            <p class="font-[family-name:var(--font-mono)] text-sm font-semibold text-[var(--color-sage)]">
+            <p class="cifra text-sm font-semibold text-[var(--color-sage)]">
               {{ plan.nivelObjetivo ?? '—' }}
             </p>
           </div>
           <div>
-            <p class="font-[family-name:var(--font-mono)] text-xs font-semibold uppercase text-[var(--color-muted)]">
+            <p class="cifra text-xs font-semibold uppercase text-[var(--color-muted)]">
               Plazo
             </p>
             <p class="text-sm font-bold text-[var(--color-ink)]">
@@ -207,7 +207,7 @@ async function enviarSolicitudCambios() {
             </p>
           </div>
           <div>
-            <p class="font-[family-name:var(--font-mono)] text-xs font-semibold uppercase text-[var(--color-muted)]">
+            <p class="cifra text-xs font-semibold uppercase text-[var(--color-muted)]">
               Competencia
             </p>
             <p class="text-sm font-bold text-[var(--color-ink)]">
@@ -217,7 +217,7 @@ async function enviarSolicitudCambios() {
         </div>
 
         <div>
-          <p class="mb-1 font-[family-name:var(--font-mono)] text-xs font-semibold uppercase text-[var(--color-muted)]">
+          <p class="mb-1 cifra text-xs font-semibold uppercase text-[var(--color-muted)]">
             Asignar competencia
           </p>
           <p class="mb-2 text-xs text-[var(--color-muted)]">
@@ -251,7 +251,7 @@ async function enviarSolicitudCambios() {
         </div>
 
         <div>
-          <p class="mb-1 font-[family-name:var(--font-mono)] text-xs font-semibold uppercase text-[var(--color-muted)]">
+          <p class="mb-1 cifra text-xs font-semibold uppercase text-[var(--color-muted)]">
             Estado actual
           </p>
           <p class="text-sm text-[var(--color-ink)]">
@@ -260,7 +260,7 @@ async function enviarSolicitudCambios() {
         </div>
 
         <div>
-          <p class="mb-1 font-[family-name:var(--font-mono)] text-xs font-semibold uppercase text-[var(--color-muted)]">
+          <p class="mb-1 cifra text-xs font-semibold uppercase text-[var(--color-muted)]">
             Objetivo general
           </p>
           <p class="border-l-4 border-[var(--color-sage)] py-1 pl-4 text-sm font-semibold text-[var(--color-ink)]">
@@ -269,7 +269,7 @@ async function enviarSolicitudCambios() {
         </div>
 
         <div>
-          <p class="mb-1 font-[family-name:var(--font-mono)] text-xs font-semibold uppercase text-[var(--color-muted)]">
+          <p class="mb-1 cifra text-xs font-semibold uppercase text-[var(--color-muted)]">
             Objetivos específicos
           </p>
           <div class="rounded-lg border border-[var(--color-line)] bg-[var(--color-ivory)] p-3 text-xs">
@@ -293,7 +293,7 @@ async function enviarSolicitudCambios() {
               v-for="a in autoevaluaciones"
               :key="a.id"
             >
-              <p class="font-[family-name:var(--font-mono)] text-xs text-[var(--color-muted)]">
+              <p class="cifra text-xs text-[var(--color-muted)]">
                 {{ new Date(a.createdAt).toLocaleDateString('es-CL') }} —
                 {{ competenciaDe(a.competenciaId)?.nombre ?? 'Competencia' }} — Nivel {{ a.nivel }}
               </p>
@@ -304,7 +304,7 @@ async function enviarSolicitudCambios() {
                 {{ descripcionNivel(a) }}
               </p>
               <div class="mt-1.5 rounded-xl border border-[var(--color-line)] bg-[var(--color-parchment)]/70 p-3.5 text-xs italic text-[var(--color-ink)]">
-                <span class="mb-1 block font-[family-name:var(--font-mono)] text-xs font-semibold not-italic uppercase text-[var(--color-muted)]">
+                <span class="mb-1 block cifra text-xs font-semibold not-italic uppercase text-[var(--color-muted)]">
                   Observación del coachee:
                 </span>
                 «{{ a.ejemplo }}»
@@ -322,7 +322,7 @@ async function enviarSolicitudCambios() {
           </h2>
 
           <div>
-            <p class="mb-1 font-[family-name:var(--font-mono)] text-xs font-semibold uppercase text-[var(--color-muted)]">
+            <p class="mb-1 cifra text-xs font-semibold uppercase text-[var(--color-muted)]">
               Hábito — Cuándo
             </p>
             <p class="rounded-xl border border-[var(--color-line)] bg-[var(--color-parchment)]/40 p-3 text-xs text-[var(--color-ink)]">
@@ -331,7 +331,7 @@ async function enviarSolicitudCambios() {
           </div>
 
           <div>
-            <p class="mb-1 font-[family-name:var(--font-mono)] text-xs font-semibold uppercase text-[var(--color-muted)]">
+            <p class="mb-1 cifra text-xs font-semibold uppercase text-[var(--color-muted)]">
               En vez de
             </p>
             <p class="rounded-xl border border-[var(--color-danger)]/20 bg-[var(--color-danger)]/5 p-3 text-xs text-[var(--color-danger)]">
@@ -340,7 +340,7 @@ async function enviarSolicitudCambios() {
           </div>
 
           <div>
-            <p class="mb-1 font-[family-name:var(--font-mono)] text-xs font-semibold uppercase text-[var(--color-muted)]">
+            <p class="mb-1 cifra text-xs font-semibold uppercase text-[var(--color-muted)]">
               Voy a
             </p>
             <p class="rounded-xl border border-[var(--color-sage)]/20 bg-[var(--color-sage)]/5 p-3 text-xs font-semibold text-[var(--color-sage)]">
@@ -349,7 +349,7 @@ async function enviarSolicitudCambios() {
           </div>
 
           <div>
-            <p class="mb-1 font-[family-name:var(--font-mono)] text-xs font-semibold uppercase text-[var(--color-muted)]">
+            <p class="mb-1 cifra text-xs font-semibold uppercase text-[var(--color-muted)]">
               Plan de ejecución
             </p>
             <ul class="ml-4 list-disc space-y-1.5 text-xs text-[var(--color-ink)]">

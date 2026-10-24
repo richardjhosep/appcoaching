@@ -24,7 +24,7 @@ const valueClass = computed(() => ({
       {{ label }}
     </p>
     <p
-      class="mt-1 font-[family-name:var(--font-mono)] text-2xl font-semibold"
+      class="mt-1 cifra text-2xl font-semibold"
       :class="valueClass"
     >
       {{ value }}

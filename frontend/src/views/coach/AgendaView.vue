@@ -248,7 +248,7 @@ async function crearNuevaSesion() {
         <p class="text-xs text-[var(--color-muted)]">
           Sesiones agendadas
         </p>
-        <p class="font-[family-name:var(--font-mono)] text-2xl">
+        <p class="cifra text-2xl font-semibold">
           {{ sesionesFuturas.length }}
         </p>
       </div>
@@ -256,7 +256,7 @@ async function crearNuevaSesion() {
         <p class="text-xs text-[var(--color-muted)]">
           Esta semana
         </p>
-        <p class="font-[family-name:var(--font-mono)] text-2xl">
+        <p class="cifra text-2xl font-semibold">
           {{ sesionesEstaSemana.length }}
         </p>
       </div>
@@ -264,7 +264,7 @@ async function crearNuevaSesion() {
         <p class="text-xs text-[var(--color-muted)]">
           Clientes con sesión agendada
         </p>
-        <p class="font-[family-name:var(--font-mono)] text-2xl">
+        <p class="cifra text-2xl font-semibold">
           {{ clientesConSesionAgendada }}
         </p>
       </div>
@@ -392,7 +392,7 @@ async function crearNuevaSesion() {
                 :key="b.id"
                 class="flex items-center justify-between gap-2 rounded-lg border border-[var(--color-line)] bg-[var(--color-parchment)]/30 px-3 py-2 text-sm"
               >
-                <span class="font-[family-name:var(--font-mono)]">{{ b.horaInicio }}–{{ b.horaFin }}</span>
+                <span class="cifra">{{ b.horaInicio }}–{{ b.horaFin }}</span>
                 <button
                   class="text-xs text-[var(--color-danger)] hover:underline"
                   @click="quitarBloque(b.id)"

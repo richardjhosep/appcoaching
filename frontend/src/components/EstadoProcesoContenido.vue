@@ -21,7 +21,7 @@ const fechaGenerado = new Date().toLocaleDateString('es-CL', { day: 'numeric', m
     <p class="mb-1 font-[family-name:var(--font-heading)] text-xs uppercase tracking-widest text-[var(--color-spark)]">
       Coach Fernando Ramos
     </p>
-    <h1 class="mb-1 font-[family-name:var(--font-heading)] text-2xl font-semibold">
+    <h1 class="mb-1 font-[family-name:var(--font-display)] font-medium text-3xl">
       Resumen de proceso de coaching
     </h1>
     <p class="mb-6 text-sm text-[var(--color-muted)]">
@@ -102,7 +102,7 @@ const fechaGenerado = new Date().toLocaleDateString('es-CL', { day: 'numeric', m
           v-for="(logro, i) in logrosRecientes"
           :key="i"
         >
-          <span class="font-[family-name:var(--font-mono)] text-xs text-[var(--color-muted)]">{{ logro.fecha }}</span>
+          <span class="cifra text-xs text-[var(--color-muted)]">{{ logro.fecha }}</span>
           — {{ logro.descripcion }}
         </li>
       </ul>

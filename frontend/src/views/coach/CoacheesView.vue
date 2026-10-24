@@ -531,7 +531,7 @@ async function eliminar(coachee: CoacheeListItem) {
               <td class="text-[var(--color-muted)]">
                 {{ c.areaGerencia ?? '—' }}
               </td>
-              <td class="font-[family-name:var(--font-mono)] text-xs">
+              <td class="cifra text-xs">
                 {{ formatoTarifaPropia(c) }}
               </td>
               <td>

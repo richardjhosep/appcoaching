@@ -145,7 +145,7 @@ onMounted(() => {
             <p class="text-xs text-[var(--color-muted)]">
               Gasto del período
             </p>
-            <p class="font-[family-name:var(--font-mono)] text-2xl">
+            <p class="cifra text-2xl font-semibold">
               {{ monto(resumen.gastoDelPeriodo) }}
             </p>
           </div>
@@ -153,7 +153,7 @@ onMounted(() => {
             <p class="text-xs text-[var(--color-muted)]">
               Horas consumidas / contratadas
             </p>
-            <p class="font-[family-name:var(--font-mono)] text-2xl">
+            <p class="cifra text-2xl font-semibold">
               {{ resumen.horasConsumidas }} / {{ resumen.horasContratadas ?? '—' }}
             </p>
           </div>
@@ -176,7 +176,7 @@ onMounted(() => {
               Monto pendiente
             </p>
             <p
-              class="font-[family-name:var(--font-mono)] text-2xl"
+              class="cifra text-2xl font-semibold"
               :class="resumen.gastoPendiente > 0 ? 'text-[var(--color-bronze)]' : 'text-[var(--color-sage)]'"
             >
               {{ monto(resumen.gastoPendiente) }}
@@ -281,7 +281,7 @@ onMounted(() => {
             <p class="text-xs text-[var(--color-muted)]">
               {{ etiquetaSemestre }}
             </p>
-            <p class="font-[family-name:var(--font-mono)] text-2xl">
+            <p class="cifra text-2xl font-semibold">
               {{ monto(acumulado.gastoEjecutadoSemestre + acumulado.gastoAgendadoSemestre) }}
             </p>
             <p class="text-xs text-[var(--color-subtle)]">
@@ -292,7 +292,7 @@ onMounted(() => {
             <p class="text-xs text-[var(--color-muted)]">
               Año {{ acumulado.anio }}
             </p>
-            <p class="font-[family-name:var(--font-mono)] text-2xl">
+            <p class="cifra text-2xl font-semibold">
               {{ monto(acumulado.gastoEjecutadoAnio + acumulado.gastoAgendadoAnio) }}
             </p>
             <p class="text-xs text-[var(--color-subtle)]">
@@ -324,7 +324,7 @@ onMounted(() => {
               <p class="text-xs text-[var(--color-muted)]">
                 Invertido en procesos cerrados
               </p>
-              <p class="font-[family-name:var(--font-mono)] text-2xl">
+              <p class="cifra text-2xl font-semibold">
                 {{ monto(retorno.costoTotalProcesosCerrados) }}
               </p>
             </div>
@@ -332,7 +332,7 @@ onMounted(() => {
               <p class="text-xs text-[var(--color-muted)]">
                 Costo promedio por proceso
               </p>
-              <p class="font-[family-name:var(--font-mono)] text-2xl">
+              <p class="cifra text-2xl font-semibold">
                 {{ monto(retorno.costoPromedioPorProceso ?? 0) }}
               </p>
             </div>
@@ -362,7 +362,7 @@ onMounted(() => {
                 <span class="text-sm font-medium">{{ p.coacheeNombre }}</span>
                 <span class="flex items-center gap-2 text-xs text-[var(--color-subtle)]">
                   <span>{{ new Date(p.fechaCierre).toLocaleDateString('es-CL') }}</span>
-                  <span class="font-[family-name:var(--font-mono)] text-sm text-[var(--color-ink)]">{{ monto(p.costo) }}</span>
+                  <span class="cifra text-sm text-[var(--color-ink)]">{{ monto(p.costo) }}</span>
                   <StatusBadge :tone="resultadoTono[p.resultado]">
                     {{ resultadoLabel[p.resultado] }}
                   </StatusBadge>

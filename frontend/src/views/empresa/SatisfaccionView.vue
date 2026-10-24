@@ -222,7 +222,7 @@ async function enviarSolicitud() {
               <span class="font-medium">
                 {{ e.ciclo?.coachee?.nombre ?? 'Encuesta general (sin ciclo asociado)' }}
               </span>
-              <span class="font-[family-name:var(--font-mono)] text-xs text-[var(--color-subtle)]">
+              <span class="cifra text-xs text-[var(--color-subtle)]">
                 <span class="inline-flex items-center gap-1">
                   {{ new Date(e.createdAt).toLocaleDateString('es-CL') }} — {{ promedioRespuestas(e) }}
                   <NavIcon
@@ -313,7 +313,7 @@ async function enviarSolicitud() {
             v-for="s in solicitudes"
             :key="s.id"
           >
-            <span class="font-[family-name:var(--font-mono)] text-[var(--color-subtle)]">{{ new Date(s.createdAt).toLocaleDateString('es-CL') }}</span>
+            <span class="cifra text-[var(--color-subtle)]">{{ new Date(s.createdAt).toLocaleDateString('es-CL') }}</span>
             — {{ s.nombreSugerido }}
             <StatusBadge :tone="s.estado === 'atendida' ? 'sage' : 'bronze'">
               {{ s.estado === 'atendida' ? 'Atendida' : 'Pendiente' }}

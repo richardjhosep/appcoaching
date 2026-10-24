@@ -239,7 +239,7 @@ async function enviar() {
               :style="{ width: `${(fila.conteo / fila.max) * 100}%` }"
             />
           </div>
-          <span class="w-4 shrink-0 text-right font-[family-name:var(--font-mono)] text-[var(--color-muted)]">{{ fila.conteo }}</span>
+          <span class="w-4 shrink-0 text-right cifra text-[var(--color-muted)]">{{ fila.conteo }}</span>
         </div>
       </div>
       <button
@@ -263,7 +263,7 @@ async function enviar() {
           :key="intento.id"
           class="flex items-center justify-between"
         >
-          <span class="font-[family-name:var(--font-mono)] text-xs text-[var(--color-muted)]">
+          <span class="cifra text-xs text-[var(--color-muted)]">
             {{ new Date(intento.createdAt).toLocaleDateString('es-CL') }}
           </span>
           <span class="text-[var(--color-ink)]/70">{{ intento.categoriaDominante }}</span>

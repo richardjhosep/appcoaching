@@ -831,7 +831,7 @@ const mostrarPrimerosPasos = computed(
               <p class="text-xs text-[var(--color-muted)]">
                 Ingreso del mes
               </p>
-              <p class="font-[family-name:var(--font-mono)] text-lg text-[var(--color-sage)]">
+              <p class="cifra text-lg text-[var(--color-sage)]">
                 {{ formatoCLP.format(comercialMes.ingresoDelPeriodo) }}
               </p>
               <p
@@ -846,7 +846,7 @@ const mostrarPrimerosPasos = computed(
               <p class="text-xs text-[var(--color-muted)]">
                 Proyectado
               </p>
-              <p class="font-[family-name:var(--font-mono)] text-lg text-[var(--color-bronze)]">
+              <p class="cifra text-lg text-[var(--color-bronze)]">
                 {{ formatoCLP.format(comercialMes.ingresoProyectado) }}
               </p>
             </div>
@@ -854,7 +854,7 @@ const mostrarPrimerosPasos = computed(
               <p class="text-xs text-[var(--color-muted)]">
                 Horas realizadas
               </p>
-              <p class="font-[family-name:var(--font-mono)] text-lg">
+              <p class="cifra text-lg font-semibold">
                 {{ comercialMes.horasRealizadas }}
               </p>
             </div>
@@ -873,7 +873,7 @@ const mostrarPrimerosPasos = computed(
             <p class="text-xs text-[var(--color-muted)]">
               Horas esta semana
             </p>
-            <p class="font-[family-name:var(--font-mono)] text-2xl">
+            <p class="cifra text-2xl font-semibold">
               {{ comparativo ? `${comparativo.horasComprometidasSemana}/${comparativo.horasDisponiblesSemana}` : sesionesSemana.length }} <span class="text-sm font-normal text-[var(--color-muted)]">hrs</span>
             </p>
           </div>
@@ -882,7 +882,7 @@ const mostrarPrimerosPasos = computed(
               Empresas por renovar este mes
             </p>
             <p
-              class="font-[family-name:var(--font-mono)] text-2xl"
+              class="cifra text-2xl font-semibold"
               :class="empresasPorAccion > 0 ? 'text-[var(--color-danger)]' : 'text-[var(--color-sage)]'"
             >
               {{ empresasPorAccion }}
@@ -892,7 +892,7 @@ const mostrarPrimerosPasos = computed(
             <p class="text-xs text-[var(--color-muted)]">
               Ingreso esperado este mes
             </p>
-            <p class="font-[family-name:var(--font-mono)] text-2xl">
+            <p class="cifra text-2xl font-semibold">
               {{ formatoCLP.format(ingresoEsperadoMes) }}
             </p>
           </div>
@@ -901,7 +901,7 @@ const mostrarPrimerosPasos = computed(
               Empresas sin fecha de contrato
             </p>
             <p
-              class="font-[family-name:var(--font-mono)] text-2xl"
+              class="cifra text-2xl font-semibold"
               :class="empresasSinFecha > 0 ? 'text-[var(--color-bronze)]' : 'text-[var(--color-sage)]'"
             >
               {{ empresasSinFecha }}
@@ -949,7 +949,7 @@ const mostrarPrimerosPasos = computed(
                     class="flex w-full items-center gap-3 rounded-lg border border-[var(--color-line)]/60 px-3 py-2 text-left text-sm hover:border-[var(--color-sage)] hover:bg-[var(--color-parchment)]/30"
                     @click="verPerfil(sesion.coacheeId)"
                   >
-                    <span class="shrink-0 font-[family-name:var(--font-mono)] text-xs text-[var(--color-muted)]">
+                    <span class="shrink-0 cifra text-xs text-[var(--color-muted)]">
                       {{ formatoHora(sesion.fechaHora) }}
                     </span>
                     <span class="min-w-0 flex-1 truncate">

@@ -250,7 +250,7 @@ async function eliminar(parametro: ParametroConfiguracion) {
                 :key="p.id"
                 class="align-top"
               >
-                <td class="font-[family-name:var(--font-mono)] text-xs text-[var(--color-muted)]">
+                <td class="cifra text-xs text-[var(--color-muted)]">
                   {{ p.clave }}
                 </td>
                 <td>

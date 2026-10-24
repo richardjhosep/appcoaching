@@ -123,7 +123,7 @@ onMounted(recargar)
               <p class="text-xs text-[var(--color-muted)]">
                 Invertido en procesos cerrados
               </p>
-              <p class="font-[family-name:var(--font-mono)] text-2xl">
+              <p class="cifra text-2xl font-semibold">
                 {{ formatoCLP.format(retorno.costoTotalProcesosCerrados) }}
               </p>
             </div>
@@ -131,7 +131,7 @@ onMounted(recargar)
               <p class="text-xs text-[var(--color-muted)]">
                 Costo promedio por proceso
               </p>
-              <p class="font-[family-name:var(--font-mono)] text-2xl">
+              <p class="cifra text-2xl font-semibold">
                 {{ formatoCLP.format(retorno.costoPromedioPorProceso ?? 0) }}
               </p>
             </div>
@@ -156,7 +156,7 @@ onMounted(recargar)
                 <span class="text-sm font-medium">{{ p.coacheeNombre }}</span>
                 <span class="flex items-center gap-2 text-xs text-[var(--color-muted)]">
                   <span>{{ formatoFecha(p.fechaCierre) }}</span>
-                  <span class="font-[family-name:var(--font-mono)] text-sm text-[var(--color-ink)]">{{ formatoCLP.format(p.costo) }}</span>
+                  <span class="cifra text-sm text-[var(--color-ink)]">{{ formatoCLP.format(p.costo) }}</span>
                   <StatusBadge :tone="resultadoTono[p.resultado]">
                     {{ resultadoLabel[p.resultado] }}
                   </StatusBadge>

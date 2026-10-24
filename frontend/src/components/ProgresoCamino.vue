@@ -204,7 +204,7 @@ const option = computed(() => {
             :style="{ backgroundColor: coloresNivel[nivelDePunto(p)].suave }"
           >
             <span
-              class="font-[family-name:var(--font-mono)] text-base font-semibold leading-none"
+              class="cifra text-base font-semibold leading-none"
               :class="coloresNivel[nivelDePunto(p)].texto"
             >{{ p.cercaniaObjetivo }}<span class="text-xs font-normal">/10</span></span>
           </div>

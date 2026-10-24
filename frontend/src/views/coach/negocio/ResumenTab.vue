@@ -159,7 +159,7 @@ function exportarExcel() {
         <p class="text-xs text-[var(--color-muted)]">
           Horas realizadas (mes)
         </p>
-        <p class="font-[family-name:var(--font-mono)] text-2xl">
+        <p class="cifra text-2xl font-semibold">
           {{ resumen.horasRealizadasTotal }}
         </p>
       </div>
@@ -167,7 +167,7 @@ function exportarExcel() {
         <p class="text-xs text-[var(--color-muted)]">
           Ingreso del período
         </p>
-        <p class="font-[family-name:var(--font-mono)] text-2xl text-[var(--color-sage)]">
+        <p class="cifra text-2xl text-[var(--color-sage)]">
           {{ monto(resumen.ingresoDelPeriodoTotal) }}
         </p>
       </div>
@@ -175,7 +175,7 @@ function exportarExcel() {
         <p class="text-xs text-[var(--color-muted)]">
           Ingreso proyectado
         </p>
-        <p class="font-[family-name:var(--font-mono)] text-2xl">
+        <p class="cifra text-2xl font-semibold">
           {{ monto(resumen.ingresoProyectadoTotal) }}
         </p>
       </div>
@@ -183,7 +183,7 @@ function exportarExcel() {
         <p class="text-xs text-[var(--color-muted)]">
           Coachees activos
         </p>
-        <p class="font-[family-name:var(--font-mono)] text-2xl">
+        <p class="cifra text-2xl font-semibold">
           {{ resumen.coacheesActivos }}
         </p>
       </div>
@@ -191,7 +191,7 @@ function exportarExcel() {
         <p class="text-xs text-[var(--color-muted)]">
           Satisfacción promedio
         </p>
-        <p class="font-[family-name:var(--font-mono)] text-2xl">
+        <p class="cifra text-2xl font-semibold">
           {{ resumen.satisfaccionPromedio !== null ? `${resumen.satisfaccionPromedio} ★` : '—' }}
         </p>
       </div>
@@ -330,7 +330,7 @@ function exportarExcel() {
               :style="{ width: `${(a.avancePromedio / maxAvance) * 100}%` }"
             />
           </div>
-          <span class="w-12 shrink-0 text-right font-[family-name:var(--font-mono)] text-xs">{{ a.avancePromedio }}%</span>
+          <span class="w-12 shrink-0 text-right cifra text-xs">{{ a.avancePromedio }}%</span>
         </div>
       </div>
     </div>
@@ -484,7 +484,7 @@ function exportarExcel() {
                   Pago pendiente
                 </StatusBadge>
               </td>
-              <td class="py-2 font-[family-name:var(--font-mono)] text-xs">
+              <td class="py-2 cifra text-xs">
                 <span v-if="c.totalSesiones !== null">{{ c.sesionesRealizadas }}/{{ c.totalSesiones }}</span>
                 <span
                   v-else

@@ -313,7 +313,7 @@ function onSelectSesion(id: string) {
             :title="s.confirmada ? 'Confirmada — ver en la agenda' : 'Ver en la agenda'"
             @click="irASesion(s)"
           >
-            <span class="font-[family-name:var(--font-mono)]">{{ i + 1 }}</span>
+            <span class="cifra">{{ i + 1 }}</span>
             {{ formatoProxima(s.fechaHora) }}
             <span
               v-if="s.confirmada"
@@ -644,7 +644,7 @@ function onSelectSesion(id: string) {
       >
         <p
           v-if="sesionParaReagendar"
-          class="font-[family-name:var(--font-mono)] text-sm text-[var(--color-muted)]"
+          class="cifra text-sm text-[var(--color-muted)]"
         >
           Sesión actual: {{ new Date(sesionParaReagendar.fechaHora).toLocaleString('es-CL') }}
         </p>
@@ -686,7 +686,7 @@ function onSelectSesion(id: string) {
       >
         <p
           v-if="slotSeleccionado"
-          class="font-[family-name:var(--font-mono)] text-sm text-[var(--color-muted)]"
+          class="cifra text-sm text-[var(--color-muted)]"
         >
           Horario: {{ new Date(slotSeleccionado).toLocaleString('es-CL', { dateStyle: 'medium', timeStyle: 'short' }) }}
         </p>

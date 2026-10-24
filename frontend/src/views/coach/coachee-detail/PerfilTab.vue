@@ -48,7 +48,7 @@ function onConsentimientoActualizado(actualizado: { consentimientoInformado: boo
       </h2>
 
       <div class="mb-5 border-l-4 border-[var(--color-saltup)] py-1.5 pl-4">
-        <p class="mb-1 font-[family-name:var(--font-mono)] text-xs font-semibold uppercase text-[var(--color-muted)]">
+        <p class="mb-1 cifra text-xs font-semibold uppercase text-[var(--color-muted)]">
           Objetivo del proceso
         </p>
         <p class="text-base font-semibold text-[var(--color-ink)]">
@@ -58,7 +58,7 @@ function onConsentimientoActualizado(actualizado: { consentimientoInformado: boo
 
       <dl class="grid grid-cols-2 gap-4 border-y border-[var(--color-line)] py-4 md:grid-cols-4">
         <div>
-          <dt class="font-[family-name:var(--font-mono)] text-xs font-semibold uppercase text-[var(--color-muted)]">
+          <dt class="cifra text-xs font-semibold uppercase text-[var(--color-muted)]">
             Empresa
           </dt>
           <dd class="text-sm font-semibold text-[var(--color-ink)]">
@@ -66,7 +66,7 @@ function onConsentimientoActualizado(actualizado: { consentimientoInformado: boo
           </dd>
         </div>
         <div>
-          <dt class="font-[family-name:var(--font-mono)] text-xs font-semibold uppercase text-[var(--color-muted)]">
+          <dt class="cifra text-xs font-semibold uppercase text-[var(--color-muted)]">
             Cargo
           </dt>
           <dd class="text-sm font-semibold text-[var(--color-ink)]">
@@ -74,7 +74,7 @@ function onConsentimientoActualizado(actualizado: { consentimientoInformado: boo
           </dd>
         </div>
         <div>
-          <dt class="font-[family-name:var(--font-mono)] text-xs font-semibold uppercase text-[var(--color-muted)]">
+          <dt class="cifra text-xs font-semibold uppercase text-[var(--color-muted)]">
             Área / gerencia
           </dt>
           <dd class="text-sm font-semibold text-[var(--color-ink)]">
@@ -82,7 +82,7 @@ function onConsentimientoActualizado(actualizado: { consentimientoInformado: boo
           </dd>
         </div>
         <div>
-          <dt class="font-[family-name:var(--font-mono)] text-xs font-semibold uppercase text-[var(--color-muted)]">
+          <dt class="cifra text-xs font-semibold uppercase text-[var(--color-muted)]">
             Jefe directo
           </dt>
           <dd class="text-sm font-semibold text-[var(--color-ink)]">
@@ -90,10 +90,10 @@ function onConsentimientoActualizado(actualizado: { consentimientoInformado: boo
           </dd>
         </div>
         <div>
-          <dt class="font-[family-name:var(--font-mono)] text-xs font-semibold uppercase text-[var(--color-muted)]">
+          <dt class="cifra text-xs font-semibold uppercase text-[var(--color-muted)]">
             Tarifa acordada
           </dt>
-          <dd class="font-[family-name:var(--font-mono)] text-sm font-semibold text-[var(--color-sage)]">
+          <dd class="cifra text-sm font-semibold text-[var(--color-sage)]">
             {{ coachee.tarifaPropia != null ? formatoCLP.format(coachee.tarifaPropia) : '—' }}
           </dd>
         </div>
@@ -177,15 +177,15 @@ function onConsentimientoActualizado(actualizado: { consentimientoInformado: boo
         </h2>
         <dl class="space-y-3 text-sm">
           <div>
-            <dt class="font-[family-name:var(--font-mono)] text-xs font-semibold uppercase text-[var(--color-muted)]">
+            <dt class="cifra text-xs font-semibold uppercase text-[var(--color-muted)]">
               Correo principal
             </dt>
-            <dd class="font-[family-name:var(--font-mono)] font-semibold text-[var(--color-ink)]">
+            <dd class="cifra font-semibold text-[var(--color-ink)]">
               {{ coachee.emailContacto ?? coachee.user?.email ?? '—' }}
             </dd>
           </div>
           <div>
-            <dt class="font-[family-name:var(--font-mono)] text-xs font-semibold uppercase text-[var(--color-muted)]">
+            <dt class="cifra text-xs font-semibold uppercase text-[var(--color-muted)]">
               Teléfono / SMS
             </dt>
             <dd

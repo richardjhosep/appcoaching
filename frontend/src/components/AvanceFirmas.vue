@@ -47,7 +47,7 @@ const CIRCUNFERENCIA = 2 * Math.PI * 9
       />
     </svg>
     <span class="text-xs text-[var(--color-muted)]">
-      <span class="font-[family-name:var(--font-mono)] font-semibold text-[var(--color-ink)]">{{ firmados }}/3</span> firmados
+      <span class="cifra font-semibold text-[var(--color-ink)]">{{ firmados }}/3</span> firmados
     </span>
   </div>
 </template>

@@ -79,7 +79,7 @@ const option = computed(() => ({
           class="truncate"
           :title="s.label"
         >{{ s.label }}</span>
-        <span class="ml-auto shrink-0 font-[family-name:var(--font-mono)] text-xs text-[var(--color-muted)]">
+        <span class="ml-auto shrink-0 cifra text-xs text-[var(--color-muted)]">
           {{ s.count }} · {{ s.pct }}%
         </span>
       </li>

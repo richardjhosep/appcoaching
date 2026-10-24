@@ -22,7 +22,7 @@ function imprimir() {
     />
     <div class="flex items-start justify-between gap-3">
       <div>
-        <h1 class="font-[family-name:var(--font-heading)] text-xl font-semibold">
+        <h1 class="font-[family-name:var(--font-display)] font-medium text-2xl">
           {{ titulo }}
         </h1>
         <p

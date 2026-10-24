@@ -414,7 +414,7 @@ async function borrarPregunta(preguntaId: string) {
             :class="i === 0 ? 'border-[var(--color-spark)]/50 bg-[var(--color-spark)]/5' : ''"
           >
             <span
-              class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full font-[family-name:var(--font-mono)] text-xs font-semibold"
+              class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full cifra text-xs font-semibold"
               :class="i === 0
                 ? 'bg-[var(--color-spark)]/20 text-[var(--color-spark)]'
                 : i === 1
@@ -436,7 +436,7 @@ async function borrarPregunta(preguntaId: string) {
               v-if="fila.totalIntentos > 1"
               class="text-xs text-[var(--color-muted)]"
             >{{ fila.totalIntentos }} intentos</span>
-            <span class="font-[family-name:var(--font-mono)] font-semibold text-[var(--color-ink)]/80">
+            <span class="cifra font-semibold text-[var(--color-ink)]/80">
               {{ fila.mejorPuntaje }}/{{ fila.totalPreguntas }}
             </span>
           </li>

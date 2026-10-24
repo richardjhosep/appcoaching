@@ -1,10 +1,8 @@
 @import "tailwindcss";
-@import "@fontsource/poppins/latin-400.css";
-@import "@fontsource/poppins/latin-600.css";
 @import "@fontsource/inter/latin-400.css";
 @import "@fontsource/inter/latin-500.css";
-@import "@fontsource/jetbrains-mono/latin-400.css";
-@import "@fontsource/jetbrains-mono/latin-600.css";
+@import "@fontsource/inter/latin-600.css";
+@import "@fontsource/fraunces/latin-500.css";
 
 @theme {
   --color-ink: #121212;
@@ -39,9 +37,10 @@
   --shadow-card: 0 1px 2px rgb(18 18 18 / 0.06);
   --shadow-pop: 0 10px 30px rgb(18 18 18 / 0.16);
 
-  --font-heading: "Poppins", sans-serif;
+  --font-heading: "Inter", sans-serif;
+  --font-display: "Fraunces", Georgia, serif; /* solo momentos editoriales: saludo, informes, certificado */
   --font-body: "Inter", sans-serif;
-  --font-mono: "JetBrains Mono", monospace;
+  --font-mono: ui-monospace, "SF Mono", Menlo, monospace; /* solo códigos; las cifras usan .cifra */
 }
 
 body {
@@ -230,4 +229,9 @@ button:not(:disabled),
   h3 {
     break-after: avoid;
   }
+}
+
+/* Cifras (KPIs, montos, fechas): Inter con dígitos de ancho fijo para que alineen en columnas. */
+.cifra {
+  font-variant-numeric: tabular-nums;
 }

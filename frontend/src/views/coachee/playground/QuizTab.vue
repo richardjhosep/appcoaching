@@ -169,7 +169,7 @@ async function enviar() {
           :key="intento.id"
           class="flex items-center gap-2"
         >
-          <span class="font-[family-name:var(--font-mono)] text-xs text-[var(--color-muted)]">
+          <span class="cifra text-xs text-[var(--color-muted)]">
             {{ new Date(intento.createdAt).toLocaleDateString('es-CL') }}
           </span>
           <span class="flex-1" />
@@ -185,7 +185,7 @@ async function enviar() {
             {{ intento.puntaje > miHistorial[i - 1].puntaje ? '↑ mejoraste' : intento.puntaje < miHistorial[i - 1].puntaje ? '↓' : '=' }}
           </span>
           <span
-            class="font-[family-name:var(--font-mono)] font-semibold"
+            class="cifra font-semibold"
             :class="intento.puntaje === Math.max(...miHistorial.map((h) => h.puntaje)) ? 'text-[var(--color-spark)]' : 'text-[var(--color-ink)]/70'"
           >
             {{ intento.puntaje }}/{{ intento.totalPreguntas }}

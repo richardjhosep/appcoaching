@@ -331,7 +331,7 @@ function cerrarModalCertificados() {
                     />
                   </div>
                   <span
-                    class="font-[family-name:var(--font-mono)] text-xs font-medium"
+                    class="cifra text-xs font-medium"
                     :style="{ color: coloresNivel[nivelProgreso(fila.resumen.avance)].fuerte }"
                   >{{ fila.resumen.avance }}%</span>
                 </div>

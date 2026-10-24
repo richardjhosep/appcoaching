@@ -21,13 +21,13 @@ defineProps<{
     <p class="mb-1 font-[family-name:var(--font-heading)] text-xs uppercase tracking-widest text-[var(--color-spark)]">
       Coach Fernando Ramos
     </p>
-    <h1 class="mb-6 font-[family-name:var(--font-heading)] text-2xl font-semibold">
+    <h1 class="mb-6 font-[family-name:var(--font-display)] font-medium text-3xl">
       Certificado de Finalización de Proceso de Coaching
     </h1>
     <p class="mb-2 text-sm text-[var(--color-ink)]/70">
       Se certifica que
     </p>
-    <p class="mb-6 font-[family-name:var(--font-heading)] text-xl font-semibold">
+    <p class="mb-6 font-[family-name:var(--font-display)] font-medium text-2xl">
       {{ nombreCoachee }}
     </p>
     <p class="mb-1 text-sm text-[var(--color-ink)]/70">
@@ -42,7 +42,7 @@ defineProps<{
     <p class="mb-6 font-[family-name:var(--font-heading)] text-lg font-semibold text-[var(--color-sage)]">
       {{ resultadoLabel[resultado] }}
     </p>
-    <p class="font-[family-name:var(--font-mono)] text-xs text-[var(--color-muted)]">
+    <p class="cifra text-xs text-[var(--color-muted)]">
       {{ new Date(fechaApertura).toLocaleDateString('es-CL') }}
       —
       {{ new Date(fechaCierre).toLocaleDateString('es-CL') }}
