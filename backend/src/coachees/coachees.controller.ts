@@ -27,6 +27,7 @@ import { UpdateCoacheeDto } from './dto/update-coachee.dto';
 import { UpdateMiPerfilDto } from './dto/update-mi-perfil.dto';
 import { SetConsentimientoDto } from './dto/set-consentimiento.dto';
 import { SetActivoDto } from './dto/set-activo.dto';
+import { redactarCoacheeParaRol } from './coachee-visibility.util';
 import { UPLOADS_DIR } from '../recursos/uploads-dir.util';
 import {
   soloPermitir,
@@ -63,8 +64,9 @@ export class CoacheesController {
 
   @Roles(Role.COACH, Role.EMPRESA)
   @Get()
-  findAll(@CurrentUser() actor: AuthenticatedUser) {
-    return this.coachees.findAllForActor(actor);
+  async findAll(@CurrentUser() actor: AuthenticatedUser) {
+    const lista = await this.coachees.findAllForActor(actor);
+    return lista.map((c) => redactarCoacheeParaRol(c, actor.role));
   }
 
   @Roles(Role.COACHEE)
@@ -131,15 +133,17 @@ export class CoacheesController {
 
   @Roles(Role.COACH, Role.EMPRESA)
   @Get(':id')
-  findOne(@Param('id') id: string, @CurrentUser() actor: AuthenticatedUser) {
-    return this.coachees.findOneForActor(id, actor);
+  async findOne(
+    @Param('id') id: string,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    const coachee = await this.coachees.findOneForActor(id, actor);
+    return redactarCoacheeParaRol(coachee, actor.role);
   }
 
   // Solo Role.COACH — el consentimiento es específicamente "que mi coach me vea", la empresa
-  // no entra en este intercambio. Sin gate de compartirPerfilConCoach en el backend: el coach
-  // ya ve el registro completo del coachee vía findOne de arriba (objetivoProceso, tarifaPropia,
-  // etc., sin redacción) — el frontend decide si llama a esta ruta según el interruptor (ver
-  // PerfilTab.vue).
+  // no entra en este intercambio. La foto y la bio solo se entregan si el coachee activó
+  // compartirPerfilConCoach (ver coachee-visibility.util.ts); no depende de la pantalla.
   @Roles(Role.COACH)
   @Get(':id/foto')
   async fotoDeCoachee(
@@ -147,10 +151,13 @@ export class CoacheesController {
     @CurrentUser() actor: AuthenticatedUser,
     @Res() res: Response,
   ) {
-    const coachee = await this.coachees.findOneForActor(id, actor);
+    const coachee = redactarCoacheeParaRol(
+      await this.coachees.findOneForActor(id, actor),
+      actor.role,
+    );
     if (!coachee.fotoPath) {
       throw new NotFoundException(
-        'Este coachee todavía no tiene una foto de perfil.',
+        'Este coachee todavía no tiene una foto de perfil (o no la comparte contigo).',
       );
     }
     res.sendFile(join(UPLOADS_DIR, coachee.fotoPath));

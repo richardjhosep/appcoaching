@@ -439,7 +439,7 @@ describe('CoacheesService', () => {
         userId: 'user-1',
         consentimientoInformado: false,
         consentimientoFecha: null,
-      } as unknown as PartialCoachee);
+      });
 
       const coachee = await service.aceptarMiConsentimiento('user-1');
 
@@ -460,7 +460,7 @@ describe('CoacheesService', () => {
         userId: 'user-1',
         consentimientoInformado: true,
         consentimientoFecha: new Date('2026-01-01'),
-      } as unknown as PartialCoachee);
+      });
 
       const coachee = await service.aceptarMiConsentimiento('user-1');
 
