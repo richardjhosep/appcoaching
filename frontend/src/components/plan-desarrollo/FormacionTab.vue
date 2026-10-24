@@ -21,6 +21,7 @@ import { notifyError } from '../../lib/notify'
 import SectionCard from '../SectionCard.vue'
 import EmptyState from '../EmptyState.vue'
 import RecursoIcono from '../RecursoIcono.vue'
+import NavIcon from '../NavIcon.vue'
 
 const props = defineProps<{ plan: PlanDesarrollo }>()
 
@@ -180,7 +181,7 @@ const notasAntiguas = computed(() =>
           class="mt-3 text-xs text-[var(--color-sage)] hover:underline"
           @click="router.push({ name: 'coachee-biblioteca' })"
         >
-          Ir a Biblioteca →
+          Ir a Biblioteca <NavIcon name="flecha-derecha" :size="14" class="inline-block align-[-0.15em]" aria-hidden="true" />
         </button>
       </SectionCard>
 
@@ -201,7 +202,7 @@ const notasAntiguas = computed(() =>
           class="mt-3 text-xs text-[var(--color-sage)] hover:underline"
           @click="router.push({ name: 'coachee-quiz' })"
         >
-          Ir a Quiz →
+          Ir a Quiz <NavIcon name="flecha-derecha" :size="14" class="inline-block align-[-0.15em]" aria-hidden="true" />
         </button>
       </SectionCard>
 
@@ -217,7 +218,7 @@ const notasAntiguas = computed(() =>
           class="mt-3 text-xs text-[var(--color-sage)] hover:underline"
           @click="router.push({ name: 'coachee-flashcards' })"
         >
-          Ir a Flashcards →
+          Ir a Flashcards <NavIcon name="flecha-derecha" :size="14" class="inline-block align-[-0.15em]" aria-hidden="true" />
         </button>
       </SectionCard>
 
@@ -238,7 +239,7 @@ const notasAntiguas = computed(() =>
           class="mt-3 text-xs text-[var(--color-sage)] hover:underline"
           @click="router.push({ name: 'coachee-mapas' })"
         >
-          Ir a Mapas mentales →
+          Ir a Mapas mentales <NavIcon name="flecha-derecha" :size="14" class="inline-block align-[-0.15em]" aria-hidden="true" />
         </button>
       </SectionCard>
     </template>

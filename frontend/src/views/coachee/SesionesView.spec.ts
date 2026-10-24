@@ -144,23 +144,23 @@ describe('SesionesView', () => {
     const wrapper = mount(SesionesView)
     await flushPromises()
 
-    expect(wrapper.text()).not.toContain('✓ Confirmada')
+    expect(wrapper.text()).not.toContain('Confirmada')
     const confirmarBtn = wrapper.findAll('button').find((b) => b.text() === 'Confirmar asistencia')!
     await confirmarBtn.trigger('click')
     await flushPromises()
 
     expect(confirmarSesion).toHaveBeenCalledWith('s3')
-    expect(wrapper.text()).toContain('✓ Confirmada')
+    expect(wrapper.text()).toContain('Confirmada')
     expect(wrapper.findAll('button').find((b) => b.text() === 'Confirmar asistencia')).toBeUndefined()
   })
 
-  it('shows "✓ Confirmada" instead of the button for an already confirmed session', async () => {
+  it('shows "Confirmada" instead of the button for an already confirmed session', async () => {
     vi.mocked(getMisSesiones).mockResolvedValue([{ ...sesionFutura, confirmada: true }])
 
     const wrapper = mount(SesionesView)
     await flushPromises()
 
-    expect(wrapper.text()).toContain('✓ Confirmada')
+    expect(wrapper.text()).toContain('Confirmada')
     expect(wrapper.findAll('button').find((b) => b.text() === 'Confirmar asistencia')).toBeUndefined()
   })
 
@@ -252,8 +252,8 @@ describe('SesionesView', () => {
     // La más próxima primero (2998 antes que 2999), y la sesión pasada no aparece.
     expect(chips).toHaveLength(2)
     expect(chips[0].text()).toContain('jun')
-    expect(chips[0].text()).toContain('✓')
-    expect(chips[1].text()).not.toContain('✓')
+    expect(chips[0].find('svg[aria-label="confirmada"]').exists()).toBe(true)
+    expect(chips[1].find('svg[aria-label="confirmada"]').exists()).toBe(false)
 
     await chips[0].trigger('click')
     await flushPromises()

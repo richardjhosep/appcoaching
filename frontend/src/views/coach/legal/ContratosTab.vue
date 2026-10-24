@@ -232,7 +232,7 @@ async function enviarSolicitudConsentimiento(coacheeId: string, nombre: string) 
       v-else
       class="flex items-center gap-2 rounded-2xl bg-[var(--color-sage)]/10 px-4 py-3 text-sm font-medium text-[var(--color-sage)]"
     >
-      ✓ Todo al día — sin documentos pendientes ni vencidos.
+      <NavIcon name="check" :size="14" class="inline-block align-[-0.15em]" aria-hidden="true" /> Todo al día — sin documentos pendientes ni vencidos.
     </p>
 
     <p
@@ -339,7 +339,10 @@ async function enviarSolicitudConsentimiento(coacheeId: string, nombre: string) 
                 : 'border border-[var(--color-line)] text-transparent'"
               @click="toggleConsentimiento(c.id, !c.consentimientoInformado)"
             >
-              ✓
+              <NavIcon
+                name="check"
+                :size="12"
+              />
             </button>
             <span class="flex-1">{{ c.nombre }}</span>
             <button

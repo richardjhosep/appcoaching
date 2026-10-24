@@ -214,7 +214,7 @@ describe('PlanesListView', () => {
     expect(wrapper.text()).not.toContain('Coachee 5')
     expect(wrapper.text()).toContain('Mostrando 1–5 de 7')
 
-    const siguienteBtn = wrapper.findAll('button').find((b) => b.text() === 'Siguiente →')
+    const siguienteBtn = wrapper.findAll('button').find((b) => b.text() === 'Siguiente')
     await siguienteBtn!.trigger('click')
     await flushPromises()
 

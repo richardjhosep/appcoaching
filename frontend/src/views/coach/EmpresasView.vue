@@ -35,6 +35,7 @@ import { useCarga } from '../../lib/useCarga'
 import { ordenarPor, useOrden } from '../../lib/ordenar'
 import { leerTexto } from '../../lib/queryParams'
 import { enfocarPrimerInvalido } from '../../lib/enfocarInvalido'
+import NavIcon from '../../components/NavIcon.vue'
 
 const PAGE_SIZE = 12
 
@@ -803,7 +804,8 @@ async function eliminar(empresa: Empresa) {
               Satisfacción promedio
             </p>
             <p class="cifra text-xl font-semibold">
-              {{ kpisSatisfaccion.satisfaccionPromedio !== null ? `${kpisSatisfaccion.satisfaccionPromedio} ★` : '—' }}
+              {{ kpisSatisfaccion.satisfaccionPromedio !== null ? kpisSatisfaccion.satisfaccionPromedio : '—' }}
+              <NavIcon name="estrella" :size="16" class="inline-block align-[-0.12em]" aria-label="de 5"  v-if="kpisSatisfaccion.satisfaccionPromedio !== null" />
             </p>
           </div>
           <div class="rounded-xl border border-[var(--color-line)] p-3">
@@ -857,11 +859,15 @@ async function eliminar(empresa: Empresa) {
                 </span>
                 <span class="flex items-center gap-2">
                   <span class="text-sm">
-                    <span
+                    <NavIcon
                       v-for="n in 5"
                       :key="n"
-                      :class="n <= enc.calificacion ? 'text-[var(--color-bronze)]' : 'text-[var(--color-muted)]'"
-                    >★</span>
+                      name="estrella"
+                      :size="14"
+                      aria-hidden="true"
+                      class="inline-block align-[-0.12em]"
+                      :class="n <= enc.calificacion ? 'text-[var(--color-bronze)]' : 'text-[var(--color-line)]'"
+                    />
                   </span>
                   <span class="text-xs text-[var(--color-muted)]">{{ new Date(enc.createdAt).toLocaleDateString('es-CL') }}</span>
                 </span>

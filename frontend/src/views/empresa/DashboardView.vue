@@ -402,7 +402,7 @@ function motivoAlerta(fila: FilaDashboard): string {
             to="/empresa/finanzas"
             class="mt-3 inline-block text-xs text-[var(--color-saltup-ink)] hover:underline"
           >
-            Ver detalle por coachee y proyección a 6 meses →
+            Ver detalle por coachee y proyección a 6 meses <NavIcon name="flecha-derecha" :size="14" class="inline-block align-[-0.15em]" aria-hidden="true" />
           </RouterLink>
         </SectionCard>
       </div>

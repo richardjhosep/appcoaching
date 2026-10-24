@@ -665,7 +665,13 @@ const mostrarPrimerosPasos = computed(
               class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs"
               :class="paso.hecho ? 'bg-[var(--color-sage)] text-white' : 'border border-[var(--color-line)] bg-white text-[var(--color-muted)]'"
               aria-hidden="true"
-            >{{ paso.hecho ? '✓' : '' }}</span>
+            >
+              <NavIcon
+                v-if="paso.hecho"
+                name="check"
+                :size="12"
+              />
+            </span>
             <span v-if="paso.hecho">
               <span class="sr-only">Hecho: </span>{{ paso.label }}
             </span>
@@ -727,7 +733,7 @@ const mostrarPrimerosPasos = computed(
             v-if="nadaUrgente"
             class="text-sm text-[var(--color-sage)]"
           >
-            ✓ Nada urgente ahora mismo.
+            <NavIcon name="check" :size="14" class="inline-block align-[-0.15em]" aria-hidden="true" /> Nada urgente ahora mismo.
           </p>
           <div
             v-else-if="atencion"
@@ -820,7 +826,7 @@ const mostrarPrimerosPasos = computed(
               to="/coach/negocio"
               class="text-xs text-[var(--color-sage)] hover:underline"
             >
-              Ver detalle completo →
+              Ver detalle completo <NavIcon name="flecha-derecha" :size="14" class="inline-block align-[-0.15em]" aria-hidden="true" />
             </RouterLink>
           </div>
           <div
@@ -919,7 +925,7 @@ const mostrarPrimerosPasos = computed(
               to="/coach/agenda"
               class="text-xs text-[var(--color-sage)] hover:underline"
             >
-              Ver mi agenda completa →
+              Ver mi agenda completa <NavIcon name="flecha-derecha" :size="14" class="inline-block align-[-0.15em]" aria-hidden="true" />
             </RouterLink>
           </div>
           <p
@@ -1055,7 +1061,7 @@ const mostrarPrimerosPasos = computed(
               v-if="coacheesAtencion.length === 0"
               class="text-sm text-[var(--color-sage)]"
             >
-              ✓ Todo al día — ningún coachee necesita algo de ti ahora mismo.
+              <NavIcon name="check" :size="14" class="inline-block align-[-0.15em]" aria-hidden="true" /> Todo al día — ningún coachee necesita algo de ti ahora mismo.
             </p>
             <!-- Lista plana (sin tarjeta por coachee ni chips con fondo): cada fila es avatar +
                nombre + banderas como texto con un punto de color, y una sola acción como enlace.
@@ -1091,10 +1097,12 @@ const mostrarPrimerosPasos = computed(
                       @click="fila.primario.accion"
                     >
                       {{ fila.primario.accionLabel?.replace(' →', '') }}
-                      <span
+                      <NavIcon
+                        name="flecha-derecha"
+                        :size="14"
                         aria-hidden="true"
                         class="transition-transform group-hover:translate-x-0.5"
-                      >→</span>
+                      />
                     </button>
                   </div>
                   <p class="truncate text-xs text-[var(--color-muted)]">
@@ -1146,7 +1154,7 @@ const mostrarPrimerosPasos = computed(
               v-if="empresasLegalPendientes.length === 0"
               class="text-sm text-[var(--color-sage)]"
             >
-              ✓ Todo al día — sin contratos ni NDA pendientes.
+              <NavIcon name="check" :size="14" class="inline-block align-[-0.15em]" aria-hidden="true" /> Todo al día — sin contratos ni NDA pendientes.
             </p>
             <!-- Mismo lenguaje visual que la lista de coachees: fila plana con ícono, el estado de
                cada documento como texto + punto de color, y la acción como enlace. -->
@@ -1181,10 +1189,12 @@ const mostrarPrimerosPasos = computed(
                       class="group inline-flex shrink-0 items-center gap-1 text-xs font-medium text-[var(--color-sage)] hover:underline"
                     >
                       Revisar
-                      <span
+                      <NavIcon
+                        name="flecha-derecha"
+                        :size="14"
                         aria-hidden="true"
                         class="transition-transform group-hover:translate-x-0.5"
-                      >→</span>
+                      />
                     </RouterLink>
                   </div>
                   <ul class="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-xs">
@@ -1194,10 +1204,12 @@ const mostrarPrimerosPasos = computed(
                       class="inline-flex items-center gap-1.5"
                       :class="textoEstadoLegal[estadoVisual(d.doc)]"
                     >
-                      <span
+                      <NavIcon
                         v-if="estadoVisual(d.doc) === 'firmado'"
+                        name="check"
+                        :size="12"
                         aria-hidden="true"
-                      >✓</span>
+                      />
                       <span
                         v-else
                         class="h-1.5 w-1.5 shrink-0 rounded-full"
@@ -1241,7 +1253,7 @@ const mostrarPrimerosPasos = computed(
               v-if="prospectosPorSeguir.length === 0"
               class="text-sm text-[var(--color-sage)]"
             >
-              ✓ Ningún prospecto necesita seguimiento ahora mismo.
+              <NavIcon name="check" :size="14" class="inline-block align-[-0.15em]" aria-hidden="true" /> Ningún prospecto necesita seguimiento ahora mismo.
             </p>
             <ul
               v-else

@@ -153,7 +153,7 @@ async function enviar() {
       class="mb-4 text-sm text-[var(--color-muted)] hover:text-[var(--color-ink)] hover:underline"
       @click="cerrar"
     >
-      ← Volver a Quiz
+      <NavIcon name="flecha-izquierda" :size="14" class="inline-block align-[-0.15em]" aria-hidden="true" /> Volver a Quiz
     </button>
 
     <div
@@ -259,7 +259,11 @@ async function enviar() {
           class="flex items-start gap-2 rounded-lg border border-[var(--color-line)]/60 p-2"
         >
           <span :class="detalle.correcta ? 'text-[var(--color-sage)]' : 'text-[var(--color-danger)]'">
-            {{ detalle.correcta ? '✓' : '✗' }}
+            <NavIcon
+              :name="detalle.correcta ? 'check' : 'cerrar'"
+              :size="14"
+              :aria-label="detalle.correcta ? 'Correcta' : 'Incorrecta'"
+            />
           </span>
           <span>
             Pregunta {{ i + 1 }}<template v-if="!detalle.correcta">

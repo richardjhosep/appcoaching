@@ -144,7 +144,7 @@ async function enviar() {
       class="mb-4 text-sm text-[var(--color-muted)] hover:text-[var(--color-ink)] hover:underline"
       @click="cerrar"
     >
-      ← Volver a Ejercicios
+      <NavIcon name="flecha-izquierda" :size="14" class="inline-block align-[-0.15em]" aria-hidden="true" /> Volver a Ejercicios
     </button>
 
     <div class="mb-4 rounded-2xl border border-[var(--color-line)] bg-white p-6">

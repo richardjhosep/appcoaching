@@ -621,7 +621,7 @@ function cerrarModalCertificados() {
             variant="secondary"
             @click="certificadoPreview = null"
           >
-            ← Volver
+            <NavIcon name="flecha-izquierda" :size="14" class="inline-block align-[-0.15em]" aria-hidden="true" /> Volver
           </AppButton>
           <RouterLink
             v-slot="{ navigate }"

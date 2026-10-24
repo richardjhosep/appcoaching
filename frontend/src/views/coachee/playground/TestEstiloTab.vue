@@ -147,7 +147,7 @@ async function enviar() {
       class="mb-4 text-sm text-[var(--color-muted)] hover:text-[var(--color-ink)] hover:underline"
       @click="cerrar"
     >
-      ← Volver a Test de Estilo
+      <NavIcon name="flecha-izquierda" :size="14" class="inline-block align-[-0.15em]" aria-hidden="true" /> Volver a Test de Estilo
     </button>
 
     <div

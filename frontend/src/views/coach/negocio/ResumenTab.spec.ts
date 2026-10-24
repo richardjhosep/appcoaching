@@ -84,7 +84,7 @@ describe('ResumenTab', () => {
 
     expect(wrapper.text()).toContain('4') // horas realizadas
     expect(wrapper.text()).toContain('$120.000')
-    expect(wrapper.text()).toContain('4.5 ★')
+    expect(wrapper.text()).toContain('4.5')
   })
 
   it('converts KPI amounts to UF when toggled, keeping the underlying totals in CLP', async () => {

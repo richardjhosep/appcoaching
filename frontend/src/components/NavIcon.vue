@@ -374,5 +374,36 @@ withDefaults(defineProps<{ name: string; size?: number }>(), { size: 18 })
         r="3"
       /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1.08-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9.6a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
     </template>
+    <template v-else-if="name === 'flecha-derecha'">
+      <path d="M5 12h14" /><path d="M13 6l6 6-6 6" />
+    </template>
+    <template v-else-if="name === 'check'">
+      <path d="M5 12.5l4.5 4.5L19 7.5" />
+    </template>
+    <template v-else-if="name === 'cerrar'">
+      <path d="M6 6l12 12" /><path d="M18 6L6 18" />
+    </template>
+    <template v-else-if="name === 'estrella'">
+      <path
+        d="M12 3.5l2.6 5.3 5.9.9-4.25 4.15 1 5.85L12 16.9l-5.25 2.8 1-5.85L3.5 9.7l5.9-.9L12 3.5z"
+        stroke-linejoin="round"
+      />
+    </template>
+    <template v-else-if="name === 'circulo'">
+      <circle
+        cx="12"
+        cy="12"
+        r="8"
+      />
+    </template>
+    <template v-else-if="name === 'flecha-arriba'">
+      <path d="M12 19V5" /><path d="M6 11l6-6 6 6" />
+    </template>
+    <template v-else-if="name === 'flecha-abajo'">
+      <path d="M12 5v14" /><path d="M6 13l6 6 6-6" />
+    </template>
+    <template v-else-if="name === 'ordenar'">
+      <path d="M8 9l4-4 4 4" /><path d="M8 15l4 4 4-4" />
+    </template>
   </svg>
 </template>

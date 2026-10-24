@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { passwordRules, passwordStrength, type PasswordStrength } from '../lib/password'
+import NavIcon from './NavIcon.vue'
 
 const props = defineProps<{ password: string }>()
 
@@ -44,7 +45,11 @@ const strengthWidth = computed(() => {
           class="flex items-center gap-2"
           :class="rule.passes ? 'text-[var(--color-sage)]' : 'text-[var(--color-muted)]'"
         >
-          <span aria-hidden="true">{{ rule.passes ? '✓' : '✗' }}</span>
+          <NavIcon
+            :name="rule.passes ? 'check' : 'cerrar'"
+            :size="14"
+            aria-hidden="true"
+          />
           {{ rule.label }}
         </li>
       </ul>

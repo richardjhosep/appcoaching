@@ -40,16 +40,16 @@ async function verCertificacion(id: string, nombre: string, archivoNombre: strin
           v-if="fotoUrl"
           :src="fotoUrl"
           alt=""
-          class="h-14 w-14 shrink-0 rounded-full object-cover"
+          class="h-20 w-20 shrink-0 rounded-full object-cover ring-2 ring-[var(--color-amber)]/60"
         >
         <div
           v-else
-          class="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-[var(--color-primary)] text-sm font-semibold text-[var(--color-on-primary)]"
+          class="flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-[var(--color-primary)] text-xl font-semibold text-[var(--color-on-primary)]"
         >
           {{ iniciales(perfil.nombre || 'Coach') }}
         </div>
         <div class="min-w-0">
-          <p class="truncate text-sm font-medium text-[var(--color-ink)]/80">
+          <p class="truncate font-[family-name:var(--font-display)] text-xl font-medium text-[var(--color-ink)]">
             {{ perfil.nombre || 'Tu coach' }}
           </p>
           <p

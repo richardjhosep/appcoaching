@@ -265,7 +265,7 @@ async function guardarRetro() {
               v-if="cicloIdsConRetro.has(c.id)"
               tone="sage"
             >
-              Enviada ✓
+              Enviada <NavIcon name="check" :size="14" class="inline-block align-[-0.15em]" aria-hidden="true" />
             </StatusBadge>
             <AppButton
               v-else

@@ -192,7 +192,8 @@ function exportarExcel() {
           Satisfacción promedio
         </p>
         <p class="cifra text-2xl font-semibold">
-          {{ resumen.satisfaccionPromedio !== null ? `${resumen.satisfaccionPromedio} ★` : '—' }}
+          {{ resumen.satisfaccionPromedio !== null ? resumen.satisfaccionPromedio : '—' }}
+          <NavIcon name="estrella" :size="18" class="inline-block align-[-0.12em]" aria-label="de 5"  v-if="resumen.satisfaccionPromedio !== null" />
         </p>
       </div>
     </div>

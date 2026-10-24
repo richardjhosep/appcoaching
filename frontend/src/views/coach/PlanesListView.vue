@@ -374,7 +374,7 @@ async function recordar(coacheeId: string) {
             </span>
 
             <span class="ml-auto hidden items-center gap-1 font-medium text-[var(--color-sage)] opacity-0 transition-opacity group-hover:opacity-100 sm:inline-flex">
-              Ver plan <span aria-hidden="true">→</span>
+              Ver plan <NavIcon name="flecha-derecha" :size="14" class="inline-block align-[-0.15em]" aria-hidden="true" />
             </span>
           </div>
         </li>

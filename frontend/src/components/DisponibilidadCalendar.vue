@@ -6,6 +6,7 @@
 import { computed, ref, watch } from 'vue'
 import { inicioDeSemana } from '../lib/dateRange'
 import DisponibilidadLista from './DisponibilidadLista.vue'
+import NavIcon from './NavIcon.vue'
 
 const props = defineProps<{ slots: string[] }>()
 const emit = defineEmits<{ 'cambio-semana': [desde: string, hasta: string]; solicitar: [string] }>()
@@ -89,7 +90,7 @@ const esHoy = (d: Date) => esMismoDia(d, new Date())
           class="min-h-11 min-w-11 rounded-lg border border-[var(--color-line)] px-2 py-1 hover:bg-[var(--color-parchment)]/50 sm:min-h-0 sm:min-w-0"
           @click="semanaAnterior"
         >
-          ←
+          <NavIcon name="flecha-izquierda" :size="16" />
         </button>
         <button
           class="min-h-11 min-w-11 rounded-lg border border-[var(--color-line)] px-2 py-1 hover:bg-[var(--color-parchment)]/50 sm:min-h-0 sm:min-w-0"
@@ -102,7 +103,7 @@ const esHoy = (d: Date) => esMismoDia(d, new Date())
           class="min-h-11 min-w-11 rounded-lg border border-[var(--color-line)] px-2 py-1 hover:bg-[var(--color-parchment)]/50 sm:min-h-0 sm:min-w-0"
           @click="semanaSiguiente"
         >
-          →
+          <NavIcon name="flecha-derecha" :size="16" />
         </button>
       </div>
     </div>

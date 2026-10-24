@@ -45,7 +45,12 @@ async function descargarPdf(ciclo: Ciclo) {
         >
           <span class="font-medium">
             {{ formatoFecha(ciclo.fechaApertura) }}
-            <span class="text-[var(--color-subtle)]">→</span>
+            <NavIcon
+              name="flecha-derecha"
+              :size="14"
+              aria-hidden="true"
+              class="inline-block align-[-0.15em] text-[var(--color-subtle)]"
+            />
             {{ ciclo.fechaCierre ? formatoFecha(ciclo.fechaCierre) : 'en curso' }}
           </span>
           <span class="flex shrink-0 items-center gap-2">

@@ -6,6 +6,7 @@ import MapaCanvas from '../../../components/MapaCanvas.vue'
 import SkeletonBlock from '../../../components/SkeletonBlock.vue'
 import { getMapa, listMapasDisponibles, type MapaConNodos, type MapaResumen } from '../../../api/mapas'
 import { formatearFechaLimite } from '../../../lib/fechaLimite'
+import NavIcon from '../../../components/NavIcon.vue'
 
 const loading = ref(true)
 const disponibles = ref<MapaResumen[]>([])
@@ -82,7 +83,7 @@ function cerrar() {
       class="mb-4 text-sm text-[var(--color-muted)] hover:text-[var(--color-ink)] hover:underline"
       @click="cerrar"
     >
-      ← Volver a Mapas mentales
+      <NavIcon name="flecha-izquierda" :size="14" class="inline-block align-[-0.15em]" aria-hidden="true" /> Volver a Mapas mentales
     </button>
     <h2 class="mb-3 font-[family-name:var(--font-heading)] text-lg font-semibold">
       {{ mapaAbierto.titulo }}

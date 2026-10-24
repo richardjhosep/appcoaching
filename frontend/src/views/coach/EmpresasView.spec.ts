@@ -254,7 +254,7 @@ describe('EmpresasView', () => {
     expect(getEncuestasDeEmpresa).toHaveBeenCalledWith('e1')
 
     const modal = new DOMWrapper(document.body)
-    expect(modal.text()).toContain('4.5 ★')
+    expect(modal.text()).toContain('4.5')
     expect(modal.text()).toContain('90%')
     expect(modal.text()).toContain('Felipe Cortes')
     expect(modal.text()).toContain('Comunicación: 5/5')

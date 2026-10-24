@@ -22,6 +22,7 @@ import {
 import { listCompetencias, type Competencia } from '../../../api/competencias'
 import { ApiError } from '../../../api/client'
 import { confirmDialog, notifyError, notifySuccess } from '../../../lib/notify'
+import NavIcon from '../../../components/NavIcon.vue'
 
 const loading = ref(true)
 const ejercicios = ref<Ejercicio[]>([])
@@ -234,7 +235,7 @@ async function guardarFeedback(version: VersionEjercicio) {
       class="mb-4 text-sm text-[var(--color-muted)] hover:text-[var(--color-ink)] hover:underline"
       @click="volverALista"
     >
-      ← Volver a Ejercicios
+      <NavIcon name="flecha-izquierda" :size="14" class="inline-block align-[-0.15em]" aria-hidden="true" /> Volver a Ejercicios
     </button>
 
     <div class="mb-4 flex flex-wrap items-center justify-between gap-3">

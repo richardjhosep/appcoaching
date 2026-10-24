@@ -5,6 +5,7 @@ import { ApiError } from '../api/client'
 import { inicioDeSemana } from '../lib/dateRange'
 import { confirmDialog, confirmSerieDialog, notifyError, notifySuccess } from '../lib/notify'
 import { iniciales } from '../lib/avatar'
+import NavIcon from './NavIcon.vue'
 
 const props = defineProps<{
   sesiones: Sesion[]
@@ -372,7 +373,7 @@ const esHoy = (d: Date) => esMismoDia(d, new Date())
             class="rounded-lg border border-[var(--color-line)] px-2 py-1 hover:bg-[var(--color-parchment)]/50"
             @click="semanaAnterior"
           >
-            ←
+            <NavIcon name="flecha-izquierda" :size="16" />
           </button>
           <button
             class="rounded-lg border border-[var(--color-line)] px-2 py-1 hover:bg-[var(--color-parchment)]/50"
@@ -384,7 +385,7 @@ const esHoy = (d: Date) => esMismoDia(d, new Date())
             class="rounded-lg border border-[var(--color-line)] px-2 py-1 hover:bg-[var(--color-parchment)]/50"
             @click="semanaSiguiente"
           >
-            →
+            <NavIcon name="flecha-derecha" :size="16" />
           </button>
         </div>
         <button

@@ -18,6 +18,7 @@ import {
 import { ApiError } from '../../api/client'
 import { buildArbol, breadcrumbDe, idsDescendientes } from '../../lib/carpetaArbol'
 import { formatearFechaLimite } from '../../lib/fechaLimite'
+import NavIcon from '../../components/NavIcon.vue'
 
 const loading = ref(true)
 const error = ref<string | null>(null)
@@ -475,7 +476,10 @@ async function descargar(r: Recurso) {
                 :aria-label="`Quitar aprendizaje ${i + 1}`"
                 @click="quitarAprendizaje(i)"
               >
-                ✕
+                <NavIcon
+                  name="cerrar"
+                  :size="14"
+                />
               </button>
             </div>
             <button

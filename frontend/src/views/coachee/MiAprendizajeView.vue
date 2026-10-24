@@ -7,6 +7,7 @@ import ErrorState from '../../components/ErrorState.vue'
 import SectionCard from '../../components/SectionCard.vue'
 import EmptyState from '../../components/EmptyState.vue'
 import SkeletonBlock from '../../components/SkeletonBlock.vue'
+import CoachSaludo from '../../components/CoachSaludo.vue'
 import ProgresoCamino from '../../components/ProgresoCamino.vue'
 import { getMisSesiones } from '../../api/sesiones'
 import { getMisRecursos, listMisAprendizajes } from '../../api/recursos'
@@ -21,6 +22,7 @@ import { getMyCoachee, type Coachee } from '../../api/coachees'
 import { resumenAprendizaje, type ResumenAprendizaje, type TipoTarea } from '../../lib/miAprendizaje'
 import { primerosPasos, type PrimerPaso } from '../../lib/primerosPasos'
 import { useCarga } from '../../lib/useCarga'
+import NavIcon from '../../components/NavIcon.vue'
 
 const router = useRouter()
 const resumen = ref<ResumenAprendizaje | null>(null)
@@ -126,12 +128,15 @@ function formatFecha(fecha: string): string {
           {{ saludo }}
         </h1>
       </div>
-      <RouterLink
-        to="/coachee/resumen"
-        class="rounded-full border border-[var(--color-line)] px-3 py-1.5 text-xs hover:bg-[var(--color-parchment)]/60"
-      >
-        Imprimir resumen
-      </RouterLink>
+      <div class="flex flex-wrap items-center gap-3">
+        <CoachSaludo />
+        <RouterLink
+          to="/coachee/resumen"
+          class="rounded-full border border-[var(--color-line)] px-3 py-1.5 text-xs hover:bg-[var(--color-parchment)]/60"
+        >
+          Imprimir resumen
+        </RouterLink>
+      </div>
     </div>
 
     <SkeletonBlock v-if="loading" />
@@ -189,10 +194,12 @@ function formatFecha(fecha: string): string {
               class="min-w-0 flex-1"
               :class="paso.hecho ? 'text-[var(--color-muted)] line-through' : ''"
             >
-              <span
+              <NavIcon
+                :name="paso.hecho ? 'check' : 'circulo'"
+                :size="14"
                 aria-hidden="true"
-                class="mr-1"
-              >{{ paso.hecho ? '✓' : '○' }}</span>
+                class="mr-1 inline-block align-[-0.15em]"
+              />
               {{ paso.titulo }}
               <span
                 v-if="!paso.hecho"
@@ -261,7 +268,7 @@ function formatFecha(fecha: string): string {
             v-if="resumen!.tareasPendientes.length === 0"
             class="text-sm text-[var(--color-sage)]"
           >
-            ✓ Nada pendiente por ahora.
+            <NavIcon name="check" :size="14" class="inline-block align-[-0.15em]" aria-hidden="true" /> Nada pendiente por ahora.
           </p>
           <ul
             v-else

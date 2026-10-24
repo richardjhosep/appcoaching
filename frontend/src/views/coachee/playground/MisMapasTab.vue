@@ -19,6 +19,7 @@ import {
 } from '../../../api/mapasPersonales'
 import { ApiError } from '../../../api/client'
 import { confirmDialog, notifyError, notifySuccess } from '../../../lib/notify'
+import NavIcon from '../../../components/NavIcon.vue'
 
 const loading = ref(true)
 const mapas = ref<MapaPersonal[]>([])
@@ -231,7 +232,7 @@ async function eliminarNodo() {
       class="mb-4 text-sm text-[var(--color-muted)] hover:text-[var(--color-ink)] hover:underline"
       @click="volverALista"
     >
-      ← Volver a Mis mapas mentales
+      <NavIcon name="flecha-izquierda" :size="14" class="inline-block align-[-0.15em]" aria-hidden="true" /> Volver a Mis mapas mentales
     </button>
     <h2 class="mb-3 font-[family-name:var(--font-heading)] text-lg font-semibold">
       {{ mapaAbierto.titulo }}

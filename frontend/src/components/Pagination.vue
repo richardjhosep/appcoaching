@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import NavIcon from './NavIcon.vue'
 
 const props = defineProps<{
   page: number
@@ -28,7 +29,7 @@ function go(page: number) {
         class="rounded-lg border border-[var(--color-line)] px-3 py-1.5 text-xs disabled:opacity-40"
         @click="go(page - 1)"
       >
-        ← Anterior
+        <NavIcon name="flecha-izquierda" :size="14" class="inline-block align-[-0.15em]" aria-hidden="true" /> Anterior
       </button>
       <span class="cifra text-xs">Página {{ page }} de {{ totalPages }}</span>
       <button
@@ -37,7 +38,7 @@ function go(page: number) {
         class="rounded-lg border border-[var(--color-line)] px-3 py-1.5 text-xs disabled:opacity-40"
         @click="go(page + 1)"
       >
-        Siguiente →
+        Siguiente <NavIcon name="flecha-derecha" :size="14" class="inline-block align-[-0.15em]" aria-hidden="true" />
       </button>
     </div>
   </div>

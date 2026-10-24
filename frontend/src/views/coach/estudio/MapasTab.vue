@@ -25,6 +25,7 @@ import {
 import { listCompetencias, type Competencia } from '../../../api/competencias'
 import { ApiError } from '../../../api/client'
 import { confirmDialog, notifyError, notifySuccess } from '../../../lib/notify'
+import NavIcon from '../../../components/NavIcon.vue'
 
 const loading = ref(true)
 const mapas = ref<Mapa[]>([])
@@ -291,7 +292,7 @@ async function eliminarNodo() {
       class="mb-4 text-sm text-[var(--color-muted)] hover:text-[var(--color-ink)] hover:underline"
       @click="volverALista"
     >
-      ← Volver a Mapas mentales
+      <NavIcon name="flecha-izquierda" :size="14" class="inline-block align-[-0.15em]" aria-hidden="true" /> Volver a Mapas mentales
     </button>
     <h1 class="mb-1 font-[family-name:var(--font-heading)] text-xl font-semibold">
       {{ mapaAbierto.titulo }}

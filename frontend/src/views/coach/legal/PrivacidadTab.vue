@@ -2,6 +2,7 @@
 import SkeletonBlock from '../../../components/SkeletonBlock.vue'
 import { computed, onMounted, ref } from 'vue'
 import { getCumplimiento, type MedidaCumplimiento } from '../../../api/legal'
+import NavIcon from '../../../components/NavIcon.vue'
 
 const loading = ref(true)
 const medidas = ref<MedidaCumplimiento[]>([])
@@ -45,7 +46,10 @@ onMounted(async () => {
           ? 'bg-[var(--color-sage)]/20 text-[var(--color-sage)]'
           : 'bg-[var(--color-bronze)]/20 text-[var(--color-bronze)]'"
       >
-        {{ m.activa ? '✓' : '○' }}
+        <NavIcon
+          :name="m.activa ? 'check' : 'circulo'"
+          :size="14"
+        />
       </span>
       <p class="text-sm text-[var(--color-ink)]/80">
         {{ m.descripcion }}

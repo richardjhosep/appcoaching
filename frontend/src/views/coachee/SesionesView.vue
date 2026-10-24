@@ -315,10 +315,12 @@ function onSelectSesion(id: string) {
           >
             <span class="cifra">{{ i + 1 }}</span>
             {{ formatoProxima(s.fechaHora) }}
-            <span
+            <NavIcon
               v-if="s.confirmada"
+              name="check"
+              :size="14"
               aria-label="confirmada"
-            >✓</span>
+            />
           </button>
         </li>
       </ul>
@@ -377,10 +379,12 @@ function onSelectSesion(id: string) {
             {{ new Date(sesion.fechaHora).toLocaleString('es-CL', { dateStyle: 'medium', timeStyle: 'short' }) }}
           </span>
           <StatusBadge :tone="yaRealizada(sesion) ? 'sage' : 'neutral'">
-            <span
+            <NavIcon
               v-if="yaRealizada(sesion)"
+              name="check"
+              :size="14"
               aria-hidden="true"
-            >✓</span>
+            />
             {{ yaRealizada(sesion) ? 'Realizada' : 'Programada' }}
           </StatusBadge>
         </div>
@@ -603,7 +607,7 @@ function onSelectSesion(id: string) {
               v-if="sesion.confirmada"
               tone="sage"
             >
-              ✓ Confirmada
+              <NavIcon name="check" :size="14" class="inline-block align-[-0.15em]" aria-hidden="true" /> Confirmada
             </StatusBadge>
             <AppButton
               v-else

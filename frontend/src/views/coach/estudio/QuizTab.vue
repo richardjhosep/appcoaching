@@ -268,7 +268,7 @@ async function borrarPregunta(preguntaId: string) {
       class="mb-4 text-sm text-[var(--color-muted)] hover:text-[var(--color-ink)] hover:underline"
       @click="volverALista"
     >
-      ← Volver a Quiz
+      <NavIcon name="flecha-izquierda" :size="14" class="inline-block align-[-0.15em]" aria-hidden="true" /> Volver a Quiz
     </button>
 
     <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -336,7 +336,16 @@ async function borrarPregunta(preguntaId: string) {
                 :key="i"
                 :class="i === pregunta.respuestaCorrecta ? 'font-semibold text-[var(--color-sage)]' : ''"
               >
-                {{ i === pregunta.respuestaCorrecta ? '✓ ' : '· ' }}{{ opcion }}
+                <NavIcon
+                  v-if="i === pregunta.respuestaCorrecta"
+                  name="check"
+                  :size="14"
+                  class="inline-block align-[-0.15em]"
+                />
+                <template v-else>
+                  ·
+                </template>
+                {{ opcion }}
               </li>
             </ul>
           </li>
