@@ -12,9 +12,7 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { diskStorage } from 'multer';
-import { extname, join } from 'path';
-import { randomUUID } from 'crypto';
+import { join } from 'path';
 import type { Response } from 'express';
 import { CiclosService } from './ciclos.service';
 import { AuditService } from '../audit/audit.service';
@@ -24,6 +22,7 @@ import { UpdateResumenDto } from './dto/update-resumen.dto';
 import { UpdateInformeFinalDto } from './dto/update-informe-final.dto';
 import { UpdateImpactoNegocioDto } from './dto/update-impacto-negocio.dto';
 import { UpdateTotalSesionesDto } from './dto/update-total-sesiones.dto';
+import { almacenamientoSeguro } from '../common/almacenamiento-seguro.util';
 import { UPLOADS_DIR } from '../recursos/uploads-dir.util';
 import { soloPermitir, MIMETYPES_PDF } from '../common/file-type-filter.util';
 import { CoacheesService } from '../coachees/coachees.service';
@@ -124,12 +123,7 @@ export class CiclosController {
   @Post(':id/informe-pdf')
   @UseInterceptors(
     FileInterceptor('archivo', {
-      storage: diskStorage({
-        destination: UPLOADS_DIR,
-        filename: (_req, file, cb) => {
-          cb(null, `${randomUUID()}${extname(file.originalname)}`);
-        },
-      }),
+      storage: almacenamientoSeguro(UPLOADS_DIR),
       limits: { fileSize: 20 * 1024 * 1024 },
       fileFilter: soloPermitir(MIMETYPES_PDF),
     }),

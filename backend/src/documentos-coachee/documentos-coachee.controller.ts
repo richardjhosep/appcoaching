@@ -13,12 +13,11 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { diskStorage } from 'multer';
-import { extname, join } from 'path';
-import { randomUUID } from 'crypto';
+import { join } from 'path';
 import type { Response } from 'express';
 import { DocumentosCoacheeService } from './documentos-coachee.service';
 import { CreateDocumentoCoacheeDto } from './dto/create-documento-coachee.dto';
+import { almacenamientoSeguro } from '../common/almacenamiento-seguro.util';
 import { UPLOADS_DIR } from '../recursos/uploads-dir.util';
 import {
   MIMETYPES_DOCUMENTO_COACHEE,
@@ -32,15 +31,7 @@ import { Role } from '../auth/enums/role.enum';
 import type { AuthenticatedUser } from '../auth/auth.types';
 
 const subidaDocumento = FileInterceptor('archivo', {
-  storage: diskStorage({
-    destination: UPLOADS_DIR,
-    filename: (_req, file, cb) => {
-      cb(
-        null,
-        `documento-coachee-${randomUUID()}${extname(file.originalname)}`,
-      );
-    },
-  }),
+  storage: almacenamientoSeguro(UPLOADS_DIR, 'documento-coachee-'),
   limits: { fileSize: 20 * 1024 * 1024 },
   fileFilter: soloPermitir(MIMETYPES_DOCUMENTO_COACHEE),
 });

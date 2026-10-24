@@ -16,9 +16,7 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Throttle } from '@nestjs/throttler';
-import { diskStorage } from 'multer';
-import { extname, join } from 'path';
-import { randomUUID } from 'crypto';
+import { join } from 'path';
 import type { Response } from 'express';
 import { CoacheesService } from './coachees.service';
 import { AuditService } from '../audit/audit.service';
@@ -28,6 +26,10 @@ import { UpdateMiPerfilDto } from './dto/update-mi-perfil.dto';
 import { SetConsentimientoDto } from './dto/set-consentimiento.dto';
 import { SetActivoDto } from './dto/set-activo.dto';
 import { redactarCoacheeParaRol } from './coachee-visibility.util';
+import {
+  almacenamientoSeguro,
+  enviarArchivoSeguro,
+} from '../common/almacenamiento-seguro.util';
 import { UPLOADS_DIR } from '../recursos/uploads-dir.util';
 import {
   soloPermitir,
@@ -41,12 +43,7 @@ import { Role } from '../auth/enums/role.enum';
 import type { AuthenticatedUser } from '../auth/auth.types';
 
 const storageDe = (subcarpeta: string) =>
-  diskStorage({
-    destination: UPLOADS_DIR,
-    filename: (_req, file, cb) => {
-      cb(null, `${subcarpeta}-${randomUUID()}${extname(file.originalname)}`);
-    },
-  });
+  almacenamientoSeguro(UPLOADS_DIR, `${subcarpeta}-`);
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('coachees')
@@ -128,7 +125,7 @@ export class CoacheesController {
     if (!coachee?.fotoPath) {
       throw new NotFoundException('Todavía no tienes una foto de perfil.');
     }
-    res.sendFile(join(UPLOADS_DIR, coachee.fotoPath));
+    enviarArchivoSeguro(res, join(UPLOADS_DIR, coachee.fotoPath));
   }
 
   @Roles(Role.COACH, Role.EMPRESA)
@@ -160,7 +157,7 @@ export class CoacheesController {
         'Este coachee todavía no tiene una foto de perfil (o no la comparte contigo).',
       );
     }
-    res.sendFile(join(UPLOADS_DIR, coachee.fotoPath));
+    enviarArchivoSeguro(res, join(UPLOADS_DIR, coachee.fotoPath));
   }
 
   @Roles(Role.COACH)

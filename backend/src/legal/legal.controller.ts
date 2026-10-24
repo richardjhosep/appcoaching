@@ -14,14 +14,13 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { diskStorage } from 'multer';
-import { extname, join } from 'path';
-import { randomUUID } from 'crypto';
+import { join } from 'path';
 import type { Response } from 'express';
 import { LegalService } from './legal.service';
 import { UpsertDocumentoLegalDto } from './dto/upsert-documento-legal.dto';
 import { SubirDocumentoAdicionalDto } from './dto/subir-documento-adicional.dto';
 import { TipoDocumentoLegal } from './enums/tipo-documento-legal.enum';
+import { almacenamientoSeguro } from '../common/almacenamiento-seguro.util';
 import { UPLOADS_DIR } from '../recursos/uploads-dir.util';
 import { soloPermitir, MIMETYPES_PDF } from '../common/file-type-filter.util';
 import { AuditService } from '../audit/audit.service';
@@ -33,12 +32,7 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../auth/auth.types';
 
 const ARCHIVO_INTERCEPTOR = FileInterceptor('archivo', {
-  storage: diskStorage({
-    destination: UPLOADS_DIR,
-    filename: (_req, file, cb) => {
-      cb(null, `${randomUUID()}${extname(file.originalname)}`);
-    },
-  }),
+  storage: almacenamientoSeguro(UPLOADS_DIR),
   limits: { fileSize: 20 * 1024 * 1024 },
   fileFilter: soloPermitir(MIMETYPES_PDF),
 });

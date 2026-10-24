@@ -15,9 +15,7 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { diskStorage } from 'multer';
-import { extname, join } from 'path';
-import { randomUUID } from 'crypto';
+import { join } from 'path';
 import type { Response } from 'express';
 import { RecursosService } from './recursos.service';
 import { AprendizajesRecursoService } from './aprendizajes-recurso.service';
@@ -25,6 +23,7 @@ import { CreateRecursoDto } from './dto/create-recurso.dto';
 import { UpdateRecursoDto } from './dto/update-recurso.dto';
 import { AsignarAccesoDto } from './dto/asignar-acceso.dto';
 import { CreateAprendizajeDto } from './dto/create-aprendizaje.dto';
+import { almacenamientoSeguro } from '../common/almacenamiento-seguro.util';
 import { UPLOADS_DIR } from './uploads-dir.util';
 import {
   soloPermitir,
@@ -49,12 +48,7 @@ export class RecursosController {
   @Post()
   @UseInterceptors(
     FileInterceptor('archivo', {
-      storage: diskStorage({
-        destination: UPLOADS_DIR,
-        filename: (_req, file, cb) => {
-          cb(null, `${randomUUID()}${extname(file.originalname)}`);
-        },
-      }),
+      storage: almacenamientoSeguro(UPLOADS_DIR),
       limits: { fileSize: 20 * 1024 * 1024 },
       fileFilter: soloPermitir(MIMETYPES_RECURSO),
     }),

@@ -13,14 +13,16 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { diskStorage } from 'multer';
-import { extname, join } from 'path';
-import { randomUUID } from 'crypto';
+import { join } from 'path';
 import type { Response } from 'express';
 import { PerfilCoachService } from './perfil-coach.service';
 import { UpdatePerfilCoachDto } from './dto/update-perfil-coach.dto';
 import { CreateCertificacionDto } from './dto/create-certificacion.dto';
 import { CreateExperienciaDto } from './dto/create-experiencia.dto';
+import {
+  almacenamientoSeguro,
+  enviarArchivoSeguro,
+} from '../common/almacenamiento-seguro.util';
 import { UPLOADS_DIR } from '../recursos/uploads-dir.util';
 import {
   soloPermitir,
@@ -36,12 +38,7 @@ import { Role } from '../auth/enums/role.enum';
 import type { AuthenticatedUser } from '../auth/auth.types';
 
 const storageDe = (subcarpeta: string) =>
-  diskStorage({
-    destination: UPLOADS_DIR,
-    filename: (_req, file, cb) => {
-      cb(null, `${subcarpeta}-${randomUUID()}${extname(file.originalname)}`);
-    },
-  });
+  almacenamientoSeguro(UPLOADS_DIR, `${subcarpeta}-`);
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('perfil-coach')
@@ -204,7 +201,7 @@ export class PerfilCoachController {
         'El coach todavía no tiene una foto de perfil.',
       );
     }
-    res.sendFile(join(UPLOADS_DIR, perfil.fotoPath));
+    enviarArchivoSeguro(res, join(UPLOADS_DIR, perfil.fotoPath));
   }
 
   @Roles(Role.COACH, Role.COACHEE, Role.EMPRESA)
@@ -254,6 +251,6 @@ export class PerfilCoachController {
         'Esta experiencia no tiene un logo asociado.',
       );
     }
-    res.sendFile(join(UPLOADS_DIR, experiencia.logoPath));
+    enviarArchivoSeguro(res, join(UPLOADS_DIR, experiencia.logoPath));
   }
 }
