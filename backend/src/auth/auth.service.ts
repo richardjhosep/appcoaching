@@ -1,6 +1,8 @@
 import {
   BadRequestException,
   ForbiddenException,
+  HttpException,
+  HttpStatus,
   Injectable,
   NotFoundException,
   UnauthorizedException,
@@ -24,6 +26,16 @@ import {
 } from './auth.types';
 
 const PASSWORD_RESET_TTL_SECONDS = 60 * 60;
+
+// Bloqueo por cuenta (además del límite por IP del controller): tras tantos intentos fallidos
+// seguidos contra un mismo correo, se rechazan los siguientes durante la ventana. Un atacante
+// con muchas IPs ya no puede probar contraseñas sin tope contra una sola cuenta.
+const MAX_INTENTOS_FALLIDOS = 10;
+const VENTANA_BLOQUEO_SEGUNDOS = 15 * 60;
+// Hash de una contraseña inexistente: se compara cuando el correo no existe, para que la
+// respuesta tarde lo mismo y no revele qué correos están registrados.
+const HASH_FICTICIO =
+  '$2b$12$OfNcUN2z68a.u9mxmn7EwuqSMCCObTh/zxrjQgSymnd34FbVXWACi';
 
 export interface TokenPair {
   accessToken: string;
@@ -131,6 +143,7 @@ export class AuthService {
       email: user.email,
       role: user.role,
       empresaId: user.empresaId,
+      ...(user.mustChangePassword ? { mcp: true } : {}),
     };
     const accessToken = this.jwt.sign(accessPayload, {
       secret: this.config.get<string>('jwt.accessSecret'),
@@ -156,16 +169,32 @@ export class AuthService {
     return { accessToken, refreshToken };
   }
 
+  private intentosFallidosKey(email: string): string {
+    return `login:fail:${email.trim().toLowerCase()}`;
+  }
+
   async login(email: string, password: string): Promise<TokenPair> {
+    const intentosKey = this.intentosFallidosKey(email);
+    const intentos = Number((await this.redis.get(intentosKey)) ?? 0);
+    if (intentos >= MAX_INTENTOS_FALLIDOS) {
+      throw new HttpException(
+        'Demasiados intentos fallidos. Espera unos minutos antes de volver a intentarlo.',
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+
     const user = await this.users.findByEmail(email);
-    const valid = user
-      ? await bcrypt.compare(password, user.passwordHash)
-      : false;
+    const valid = await bcrypt.compare(
+      password,
+      user ? user.passwordHash : HASH_FICTICIO,
+    );
 
     if (!user || !user.isActive || !valid) {
+      await this.redis.incrWithTtl(intentosKey, VENTANA_BLOQUEO_SEGUNDOS);
       await this.audit.record('LOGIN_FAILED', { metadata: { email } });
       throw new UnauthorizedException('Credenciales inválidas.');
     }
+    await this.redis.delete(intentosKey);
 
     if (
       user.mustChangePassword &&
@@ -184,6 +213,23 @@ export class AuthService {
     const tokens = await this.issueTokens(user);
     await this.audit.record('LOGIN_SUCCESS', { userId: user.id });
     return tokens;
+  }
+
+  /**
+   * Cambia la contraseña del propio usuario. Como eso cierra todas sus sesiones (incluida esta),
+   * devuelve un par de tokens nuevo para que el dispositivo desde el que cambió siga adentro.
+   */
+  async changePassword(
+    userId: string,
+    currentPassword: string,
+    newPassword: string,
+  ): Promise<TokenPair> {
+    await this.users.changePassword(userId, currentPassword, newPassword);
+    const user = await this.users.findById(userId);
+    if (!user) {
+      throw new UnauthorizedException('Sesión inválida o expirada.');
+    }
+    return this.issueTokens(user);
   }
 
   async refresh(refreshToken: string): Promise<TokenPair> {

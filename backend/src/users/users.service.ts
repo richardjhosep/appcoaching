@@ -15,6 +15,7 @@ import { User } from './entities/user.entity';
 import { Role } from '../auth/enums/role.enum';
 import { EmpresasService } from '../empresas/empresas.service';
 import { EmailService } from '../email/email.service';
+import { SessionRevocationService } from '../redis/session-revocation.service';
 
 const TEMP_PASSWORD_LENGTH = 12;
 const TEMP_PASSWORD_TTL_HOURS = 48;
@@ -26,6 +27,7 @@ export class UsersService {
     private readonly config: ConfigService,
     private readonly empresas: EmpresasService,
     private readonly email: EmailService,
+    private readonly sessions: SessionRevocationService,
   ) {}
 
   private tempPasswordExpiry(): Date {
@@ -79,7 +81,11 @@ export class UsersService {
       throw new NotFoundException('Usuario no encontrado.');
     }
     user.isActive = isActive;
-    return this.users.save(user);
+    const guardado = await this.users.save(user);
+    if (!isActive) {
+      await this.sessions.revokeAll(id);
+    }
+    return guardado;
   }
 
   hasAnyWithRole(role: Role): Promise<boolean> {
@@ -182,6 +188,8 @@ export class UsersService {
     user.mustChangePassword = false;
     user.tempPasswordExpiresAt = null;
     await this.users.save(user);
+    // Una contraseña nueva invalida toda sesión abierta con la anterior.
+    await this.sessions.revokeAll(user.id);
   }
 
   async changePassword(
@@ -224,6 +232,7 @@ export class UsersService {
     user.mustChangePassword = true;
     user.tempPasswordExpiresAt = this.tempPasswordExpiry();
     await this.users.save(user);
+    await this.sessions.revokeAll(user.id);
     this.notifyTemporaryPassword(user.email, temporaryPassword);
     return temporaryPassword;
   }
@@ -243,6 +252,7 @@ export class UsersService {
     }
     const email = user.email;
     await this.users.remove(user);
+    await this.sessions.revokeAll(id);
     return email;
   }
 
@@ -254,5 +264,6 @@ export class UsersService {
    */
   async removeById(id: string): Promise<void> {
     await this.users.delete(id);
+    await this.sessions.revokeAll(id);
   }
 }

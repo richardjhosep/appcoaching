@@ -1,3 +1,4 @@
+import { RedisModule } from '../redis/redis.module';
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from './entities/user.entity';
@@ -13,6 +14,7 @@ import { EmailModule } from '../email/email.module';
     AuditModule,
     EmpresasModule,
     EmailModule,
+    RedisModule,
   ],
   providers: [UsersService],
   controllers: [UsersController],

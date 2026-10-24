@@ -38,7 +38,8 @@ async function guardar() {
   }
   saving.value = true
   try {
-    await changeOwnPassword(currentPassword.value, newPassword.value)
+    const tokens = await changeOwnPassword(currentPassword.value, newPassword.value)
+    auth.setTokens(tokens.accessToken, tokens.refreshToken)
     await auth.restoreSession()
     void router.replace(homeFor(auth.user?.role ?? 'coach'))
   } catch (err) {

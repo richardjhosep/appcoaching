@@ -16,6 +16,11 @@ export interface AccessTokenPayload {
   role: Role;
   empresaId: string | null;
   impersonadoPor?: string;
+  // "Must change password": la cuenta aún usa una contraseña temporal. Mientras dure, JwtStrategy
+  // solo deja pasar los endpoints necesarios para cambiarla.
+  mcp?: boolean;
+  // Lo agrega jsonwebtoken al firmar (segundos); se usa para revocar sesiones.
+  iat?: number;
 }
 
 export interface RefreshTokenPayload {

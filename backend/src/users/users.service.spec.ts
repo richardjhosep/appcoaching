@@ -13,6 +13,7 @@ import { User } from './entities/user.entity';
 import { Role } from '../auth/enums/role.enum';
 import { EmpresasService } from '../empresas/empresas.service';
 import { EmailService } from '../email/email.service';
+import { SessionRevocationService } from '../redis/session-revocation.service';
 
 type PartialUser = Partial<User>;
 
@@ -30,6 +31,7 @@ describe('UsersService', () => {
   };
   let config: { get: jest.Mock };
   let empresas: { exists: jest.Mock<Promise<boolean>, [string]> };
+  let sessions: { revokeAll: jest.Mock };
   let email: { sendTemporaryPassword: jest.Mock };
 
   beforeEach(() => {
@@ -48,11 +50,13 @@ describe('UsersService', () => {
     config = { get: jest.fn().mockReturnValue(4) };
     empresas = { exists: jest.fn<Promise<boolean>, [string]>() };
     email = { sendTemporaryPassword: jest.fn().mockResolvedValue(undefined) };
+    sessions = { revokeAll: jest.fn().mockResolvedValue(undefined) };
     service = new UsersService(
       repo as unknown as Repository<User>,
       config as unknown as ConfigService,
       empresas as unknown as EmpresasService,
       email as unknown as EmailService,
+      sessions as unknown as SessionRevocationService,
     );
   });
 
@@ -212,6 +216,32 @@ describe('UsersService', () => {
       expect(await bcrypt.compare('new-password', saved.passwordHash)).toBe(
         true,
       );
+    });
+
+    it('closes every open session after changing the password', async () => {
+      const existingHash = await bcrypt.hash('old-password', 4);
+      repo.findOne.mockResolvedValue({
+        id: 'user-1',
+        passwordHash: existingHash,
+        mustChangePassword: false,
+      });
+
+      await service.changePassword('user-1', 'old-password', 'new-password');
+
+      expect(sessions.revokeAll).toHaveBeenCalledWith('user-1');
+    });
+
+    it('does not revoke sessions when the current password is wrong', async () => {
+      const existingHash = await bcrypt.hash('old-password', 4);
+      repo.findOne.mockResolvedValue({
+        id: 'user-1',
+        passwordHash: existingHash,
+      });
+
+      await expect(
+        service.changePassword('user-1', 'wrong', 'new-password'),
+      ).rejects.toThrow(UnauthorizedException);
+      expect(sessions.revokeAll).not.toHaveBeenCalled();
     });
 
     it('rejects when the current password is wrong', async () => {
@@ -417,6 +447,38 @@ describe('UsersService', () => {
       await service.removeById('u1');
 
       expect(repo.delete).toHaveBeenCalledWith('u1');
+    });
+  });
+
+  describe('revocación de sesiones', () => {
+    it('resetPassword cierra las sesiones del usuario', async () => {
+      repo.findOne.mockResolvedValue({
+        id: 'user-1',
+        email: 'u@x.cl',
+        mustChangePassword: false,
+      });
+
+      await service.resetPassword('user-1');
+
+      expect(sessions.revokeAll).toHaveBeenCalledWith('user-1');
+    });
+
+    it('setActivo(false) cierra las sesiones; setActivo(true) no', async () => {
+      repo.findOne.mockResolvedValue({ id: 'user-1', isActive: true });
+
+      await service.setActivo('user-1', true);
+      expect(sessions.revokeAll).not.toHaveBeenCalled();
+
+      await service.setActivo('user-1', false);
+      expect(sessions.revokeAll).toHaveBeenCalledWith('user-1');
+    });
+
+    it('removeById cierra las sesiones del usuario eliminado', async () => {
+      repo.delete = jest.fn().mockResolvedValue(undefined);
+
+      await service.removeById('user-1');
+
+      expect(sessions.revokeAll).toHaveBeenCalledWith('user-1');
     });
   });
 });

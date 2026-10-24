@@ -21,8 +21,14 @@ describe('AuthService', () => {
     findByEmail: jest.Mock;
     findById: jest.Mock;
     setNewPassword: jest.Mock;
+    changePassword: jest.Mock;
   };
-  let redis: { setWithTtl: jest.Mock; get: jest.Mock; delete: jest.Mock };
+  let redis: {
+    setWithTtl: jest.Mock;
+    get: jest.Mock;
+    delete: jest.Mock;
+    incrWithTtl: jest.Mock;
+  };
   let audit: { record: jest.Mock };
   let config: { get: jest.Mock };
   let coachees: { findByUserId: jest.Mock };
@@ -46,8 +52,14 @@ describe('AuthService', () => {
       findByEmail: jest.fn(),
       findById: jest.fn(),
       setNewPassword: jest.fn(),
+      changePassword: jest.fn(),
     };
-    redis = { setWithTtl: jest.fn(), get: jest.fn(), delete: jest.fn() };
+    redis = {
+      setWithTtl: jest.fn(),
+      get: jest.fn(),
+      delete: jest.fn(),
+      incrWithTtl: jest.fn().mockResolvedValue(1),
+    };
     audit = { record: jest.fn() };
     config = { get: jest.fn((key: string) => CONFIG_VALUES[key]) };
     coachees = { findByUserId: jest.fn() };
@@ -104,6 +116,49 @@ describe('AuthService', () => {
       });
     });
 
+    it('counts a failed attempt against the account and clears the counter on success', async () => {
+      const user = await buildUser('correct-password');
+      users.findByEmail.mockResolvedValue(user);
+
+      await expect(
+        service.login('Coach@Example.com', 'wrong-password'),
+      ).rejects.toThrow(UnauthorizedException);
+      expect(redis.incrWithTtl).toHaveBeenCalledWith(
+        'login:fail:coach@example.com',
+        15 * 60,
+      );
+
+      await service.login('coach@example.com', 'correct-password');
+      expect(redis.delete).toHaveBeenCalledWith('login:fail:coach@example.com');
+    });
+
+    it('locks the account after too many failed attempts, even with the right password', async () => {
+      const user = await buildUser('correct-password');
+      users.findByEmail.mockResolvedValue(user);
+      redis.get.mockResolvedValue('10');
+
+      await expect(
+        service.login('coach@example.com', 'correct-password'),
+      ).rejects.toMatchObject({ status: 429 });
+      expect(users.findByEmail).not.toHaveBeenCalled();
+    });
+
+    it('marks the access token (mcp) while the account still has a temporary password', async () => {
+      const user = {
+        ...(await buildUser('correct-password')),
+        mustChangePassword: true,
+        tempPasswordExpiresAt: null,
+      };
+      users.findByEmail.mockResolvedValue(user);
+
+      await service.login('coach@example.com', 'correct-password');
+
+      expect(jwt.sign).toHaveBeenCalledWith(
+        expect.objectContaining({ mcp: true }),
+        expect.anything(),
+      );
+    });
+
     it('rejects when no user exists for the email', async () => {
       users.findByEmail.mockResolvedValue(null);
 
@@ -155,6 +210,38 @@ describe('AuthService', () => {
         accessToken: 'signed-token',
         refreshToken: 'signed-token',
       });
+    });
+  });
+
+  describe('changePassword', () => {
+    it('cambia la contraseña y devuelve tokens nuevos para el dispositivo actual', async () => {
+      users.changePassword.mockResolvedValue(undefined);
+      users.findById.mockResolvedValue(await buildUser('nueva-clave-segura'));
+
+      const result = await service.changePassword(
+        'user-1',
+        'clave-actual',
+        'nueva-clave-segura',
+      );
+
+      expect(users.changePassword).toHaveBeenCalledWith(
+        'user-1',
+        'clave-actual',
+        'nueva-clave-segura',
+      );
+      expect(result).toEqual({
+        accessToken: 'signed-token',
+        refreshToken: 'signed-token',
+      });
+    });
+
+    it('no emite tokens si la contraseña actual es incorrecta', async () => {
+      users.changePassword.mockRejectedValue(new UnauthorizedException());
+
+      await expect(
+        service.changePassword('user-1', 'mala', 'nueva-clave-segura'),
+      ).rejects.toThrow(UnauthorizedException);
+      expect(jwt.sign).not.toHaveBeenCalled();
     });
   });
 
@@ -292,9 +379,10 @@ describe('AuthService', () => {
       expect(email.sendPasswordReset).toHaveBeenCalledWith(
         expect.objectContaining({ to: 'coach@example.com' }),
       );
-      const { resetUrl } = email.sendPasswordReset.mock.calls[0][0] as {
-        resetUrl: string;
-      };
+      const [[enviado]] = email.sendPasswordReset.mock.calls as [
+        [{ resetUrl: string }],
+      ];
+      const { resetUrl } = enviado;
       expect(resetUrl).toMatch(
         /^https:\/\/app\.example\.com\/restablecer-contrasena\/[0-9a-f]{64}$/,
       );

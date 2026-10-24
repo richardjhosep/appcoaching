@@ -1,4 +1,5 @@
 import { apiRequest } from './client'
+import type { TokenPair } from './auth'
 
 export type Role = 'coach' | 'coachee' | 'empresa'
 
@@ -48,9 +49,11 @@ export function deleteUser(id: string): Promise<{ success: boolean }> {
   return apiRequest<{ success: boolean }>(`/users/${id}`, { method: 'DELETE' })
 }
 
-export function changeOwnPassword(currentPassword: string, newPassword: string): Promise<{ success: boolean }> {
-  return apiRequest<{ success: boolean }>('/users/me/password', {
-    method: 'PATCH',
+/** Cambia la contraseña propia. El servidor cierra todas las sesiones y devuelve tokens nuevos
+ * para este dispositivo — quien llama debe guardarlos (auth.setTokens). */
+export function changeOwnPassword(currentPassword: string, newPassword: string): Promise<TokenPair> {
+  return apiRequest<TokenPair>('/auth/change-password', {
+    method: 'POST',
     body: { currentPassword, newPassword },
   })
 }

@@ -11,7 +11,6 @@ import {
 import { UsersService } from './users.service';
 import { AuditService } from '../audit/audit.service';
 import { CreateUserDto } from './dto/create-user.dto';
-import { ChangePasswordDto } from './dto/change-password.dto';
 import { SetActivoDto } from './dto/set-activo.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -58,25 +57,6 @@ export class UsersController {
   @Get()
   findAll() {
     return this.users.findAll();
-  }
-
-  @UseGuards(JwtAuthGuard)
-  @Patch('me/password')
-  async changeOwnPassword(
-    @Body() dto: ChangePasswordDto,
-    @CurrentUser() actor: AuthenticatedUser,
-  ) {
-    await this.users.changePassword(
-      actor.id,
-      dto.currentPassword,
-      dto.newPassword,
-    );
-    await this.audit.record('PASSWORD_CHANGED', {
-      userId: actor.id,
-      targetType: 'User',
-      targetId: actor.id,
-    });
-    return { success: true };
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)

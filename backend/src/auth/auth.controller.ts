@@ -15,13 +15,18 @@ import { LoginDto } from './dto/login.dto';
 import { RefreshDto } from './dto/refresh.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { ChangePasswordDto } from '../users/dto/change-password.dto';
+import { AuditService } from '../audit/audit.service';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { CurrentUser } from './decorators/current-user.decorator';
 import type { AuthenticatedUser } from './auth.types';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly auth: AuthService) {}
+  constructor(
+    private readonly auth: AuthService,
+    private readonly audit: AuditService,
+  ) {}
 
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @HttpCode(HttpStatus.OK)
@@ -48,6 +53,29 @@ export class AuthController {
   @Post('reset-password')
   resetPassword(@Body() dto: ResetPasswordDto) {
     return this.auth.resetPasswordWithToken(dto.token, dto.newPassword);
+  }
+
+  // Cambia la contraseña propia y devuelve tokens nuevos (las sesiones anteriores quedan
+  // cerradas). El límite evita adivinar la contraseña actual con un access token robado.
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  @Post('change-password')
+  async changePassword(
+    @Body() dto: ChangePasswordDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    const tokens = await this.auth.changePassword(
+      user.id,
+      dto.currentPassword,
+      dto.newPassword,
+    );
+    await this.audit.record('PASSWORD_CHANGED', {
+      userId: user.id,
+      targetType: 'User',
+      targetId: user.id,
+    });
+    return tokens;
   }
 
   @UseGuards(JwtAuthGuard)

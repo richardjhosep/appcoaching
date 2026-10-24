@@ -231,7 +231,8 @@ async function guardarPassword() {
   if (!validarPassword()) return
   guardandoPassword.value = true
   try {
-    await changeOwnPassword(passwordForm.currentPassword, passwordForm.newPassword)
+    const tokens = await changeOwnPassword(passwordForm.currentPassword, passwordForm.newPassword)
+    auth.setTokens(tokens.accessToken, tokens.refreshToken)
     changePasswordModalOpen.value = false
     await notifySuccess('Contraseña actualizada')
   } catch (err) {

@@ -32,8 +32,9 @@ describe('CambiarPasswordView', () => {
   }
 
   it('sends the coachee to Mi Aprendizaje (same destination as the router) after changing the password', async () => {
-    vi.mocked(changeOwnPassword).mockResolvedValue(undefined as never)
+    vi.mocked(changeOwnPassword).mockResolvedValue({ accessToken: 'nuevo-a', refreshToken: 'nuevo-r' })
     const auth = useAuthStore()
+    const setTokens = vi.spyOn(auth, 'setTokens')
     vi.spyOn(auth, 'restoreSession').mockImplementation(async () => {
       auth.user = { id: 'u1', email: 'a@b.cl', role: 'coachee' } as never
     })
@@ -44,6 +45,7 @@ describe('CambiarPasswordView', () => {
     await wrapper.find('form').trigger('submit')
     await flushPromises()
 
+    expect(setTokens).toHaveBeenCalledWith('nuevo-a', 'nuevo-r')
     expect(replace).toHaveBeenCalledWith('/coachee/mi-aprendizaje')
   })
 
@@ -60,7 +62,7 @@ describe('CambiarPasswordView', () => {
 
   it('changes the button text while saving', async () => {
     let resolver: () => void = () => {}
-    vi.mocked(changeOwnPassword).mockReturnValue(new Promise<never>((r) => { resolver = () => r(undefined as never) }))
+    vi.mocked(changeOwnPassword).mockReturnValue(new Promise((r) => { resolver = () => r({ accessToken: 'a', refreshToken: 'r' }) }))
     const auth = useAuthStore()
     vi.spyOn(auth, 'restoreSession').mockResolvedValue(undefined as never)
 
