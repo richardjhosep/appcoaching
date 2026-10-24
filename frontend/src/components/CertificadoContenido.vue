@@ -2,6 +2,7 @@
 import type { ResultadoCiclo } from '../api/ciclos'
 import { resultadoLabel } from '../lib/resultadoCiclo'
 import AppLogo from './AppLogo.vue'
+import CoachFirma from './CoachFirma.vue'
 
 defineProps<{
   nombreCoachee: string
@@ -47,5 +48,8 @@ defineProps<{
       —
       {{ new Date(fechaCierre).toLocaleDateString('es-CL') }}
     </p>
+    <div class="mt-8 flex justify-center border-t border-[var(--color-line)] pt-6">
+      <CoachFirma />
+    </div>
   </div>
 </template>

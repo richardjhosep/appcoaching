@@ -77,6 +77,7 @@ onMounted(recargar)
   <AppShell>
     <ReporteCabecera
       titulo="Informe ejecutivo"
+      con-coach
       :empresa="empresa?.nombre"
     />
 
