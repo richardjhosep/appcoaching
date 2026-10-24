@@ -15,23 +15,23 @@ export class UpdatePerfilCoachDto {
   bio?: string;
 
   @IsOptional()
-  @IsUrl()
+  @IsUrl({ protocols: ['http', 'https'] })
   linkedinUrl?: string;
 
   @IsOptional()
-  @IsUrl()
+  @IsUrl({ protocols: ['http', 'https'] })
   sitioWeb?: string;
 
   @IsOptional()
-  @IsUrl()
+  @IsUrl({ protocols: ['http', 'https'] })
   instagramUrl?: string;
 
   @IsOptional()
-  @IsUrl()
+  @IsUrl({ protocols: ['http', 'https'] })
   facebookUrl?: string;
 
   @IsOptional()
-  @IsUrl()
+  @IsUrl({ protocols: ['http', 'https'] })
   youtubeUrl?: string;
 
   @IsOptional()

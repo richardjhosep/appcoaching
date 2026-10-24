@@ -8,6 +8,6 @@ export class CreateSesionDto {
   fechaHora: string;
 
   @IsOptional()
-  @IsUrl()
+  @IsUrl({ protocols: ['http', 'https'] })
   linkVideollamada?: string;
 }

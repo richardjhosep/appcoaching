@@ -16,7 +16,7 @@ export class CreateRecursoPersonalDto {
   titulo: string;
 
   @IsOptional()
-  @IsUrl()
+  @IsUrl({ protocols: ['http', 'https'] })
   url?: string;
 
   @IsOptional()

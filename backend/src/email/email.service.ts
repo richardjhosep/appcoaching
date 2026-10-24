@@ -41,7 +41,7 @@ function renderFallbackLink(url: string): string {
   return `
     <p style="margin:0;font-size:13px;line-height:1.6;color:#6b6b6b;">
       Si el botón no funciona, copia y pega este enlace en tu navegador:<br>
-      <a href="${url}" style="color:#1d6a49;">${url}</a>
+      <a href="${escapeHtml(url)}" style="color:#1d6a49;">${escapeHtml(url)}</a>
     </p>
   `;
 }
@@ -112,7 +112,7 @@ export class EmailService {
       ${renderFallbackLink(options.loginUrl)}
       ${
         options.guideUrl
-          ? `<p style="margin:16px 0 0;font-size:13px;line-height:1.6;color:#6b6b6b;">Además, preparamos una <a href="${options.guideUrl}" style="color:#1d6a49;">guía rápida con capturas de la plataforma</a> para que sepas qué esperar en cada sección.</p>`
+          ? `<p style="margin:16px 0 0;font-size:13px;line-height:1.6;color:#6b6b6b;">Además, preparamos una <a href="${escapeHtml(options.guideUrl)}" style="color:#1d6a49;">guía rápida con capturas de la plataforma</a> para que sepas qué esperar en cada sección.</p>`
           : ''
       }
     `;

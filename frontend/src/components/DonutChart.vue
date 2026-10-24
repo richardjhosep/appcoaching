@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { VChart, ECHARTS_INIT_OPTIONS } from '../lib/echartsCore'
 import { baseOption } from '../lib/echartsTheme'
+import { escaparHtml } from '../lib/progresoCamino'
 
 export interface DonutSegment {
   label: string
@@ -24,7 +25,7 @@ const resumenAria = computed(() => {
 
 const option = computed(() => ({
   ...baseOption(),
-  tooltip: { ...baseOption().tooltip, formatter: (p: { name: string; value: number; percent: number }) => `${p.name}: ${p.value} · ${p.percent}%` },
+  tooltip: { ...baseOption().tooltip, formatter: (p: { name: string; value: number; percent: number }) => `${escaparHtml(p.name)}: ${p.value} · ${p.percent}%` },
   series: [
     {
       type: 'pie',

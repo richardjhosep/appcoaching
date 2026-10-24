@@ -80,9 +80,8 @@ export class EjerciciosController {
     return this.ejercicios.findAll();
   }
 
-  // Sin @Roles propio: coach ve el ejercicio con TODAS las versiones (de cualquier
-  // coachee), coachee ve solo la consigna (su propio historial lo trae por separado
-  // vía mis-versiones, para no exponerle versiones ajenas).
+  // Coach y coachee (la empresa no entra): el service decide qué campos incluir según el rol.
+  @Roles(Role.COACH, Role.COACHEE)
   @Get(':id')
   findOne(@Param('id') id: string, @CurrentUser() actor: AuthenticatedUser) {
     if (actor.role === Role.COACH) {

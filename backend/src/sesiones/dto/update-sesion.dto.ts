@@ -12,7 +12,7 @@ export class UpdateSesionDto {
   fechaHora?: string;
 
   @IsOptional()
-  @IsUrl()
+  @IsUrl({ protocols: ['http', 'https'] })
   linkVideollamada?: string;
 
   @IsOptional()

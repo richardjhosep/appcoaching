@@ -15,7 +15,15 @@ async function bootstrap() {
   // los saltos de red privada (loopback, red de Docker, LAN) y se toma como cliente la primera
   // IP no privada de X-Forwarded-For contando desde la derecha: un X-Forwarded-For falsificado
   // por el cliente queda a la izquierda de lo que añade nginx y no se usa.
-  app.set('trust proxy', 'loopback, linklocal, uniquelocal');
+  // En producción, si se conoce la cadena exacta de proxies, es más estricto fijar el número de
+  // saltos (TRUST_PROXY_HOPS=1 con solo nginx, 2 con cloudflared delante) que confiar en rangos.
+  const saltos = Number(process.env.TRUST_PROXY_HOPS);
+  app.set(
+    'trust proxy',
+    Number.isInteger(saltos) && saltos > 0
+      ? saltos
+      : 'loopback, linklocal, uniquelocal',
+  );
 
   app.use(helmet());
   app.enableCors({

@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  NotFoundException,
   Param,
   Patch,
   Post,
@@ -60,11 +61,19 @@ export class MapasController {
     return this.mapas.findAll();
   }
 
-  // Sin @Roles propio: coach y coachee ven exactamente lo mismo — no hay nada
-  // que ocultar en un mapa mental (a diferencia de Quiz).
+  // Coach y coachee (la empresa no entra) ven lo mismo, pero el coachee solo los mapas
+  // activos — uno en borrador no debe ser legible aunque conozca el id.
+  @Roles(Role.COACH, Role.COACHEE)
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.mapas.findOneConNodos(id);
+  async findOne(
+    @Param('id') id: string,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    const mapa = await this.mapas.findOneConNodos(id);
+    if (actor.role === Role.COACHEE && !mapa.activo) {
+      throw new NotFoundException('Mapa mental no encontrado.');
+    }
+    return mapa;
   }
 
   @Roles(Role.COACH)

@@ -48,4 +48,16 @@ describe('colorCategoria', () => {
 
     expect(new Set(colores).size).toBe(12)
   })
+
+  it('el tooltip escapa el nombre del segmento (viene de texto libre de un usuario)', () => {
+    const option = montar().findComponent(VChart).props('option') as {
+      tooltip: { formatter: (p: { name: string; value: number; percent: number }) => string }
+    }
+
+    const html = option.tooltip.formatter({ name: '<img src=x onerror=alert(1)>', value: 2, percent: 40 })
+
+    expect(html).not.toContain('<img')
+    expect(html).toContain('&lt;img src=x onerror=alert(1)&gt;')
+    expect(html).toContain('2 · 40%')
+  })
 })

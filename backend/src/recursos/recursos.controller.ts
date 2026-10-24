@@ -157,13 +157,13 @@ export class RecursosController {
     @CurrentUser() actor: AuthenticatedUser,
     @Res() res: Response,
   ) {
-    const recurso = await this.recursos.findOne(id);
     // El permiso se valida antes que cualquier detalle del recurso — si no, un
-    // coachee podría usar la respuesta (404 sin archivo vs. 403 sin permiso) como
+    // coachee podría usar la respuesta (404 inexistente vs. 403 sin permiso) como
     // oráculo para saber qué recursos existen fuera de su biblioteca asignada.
     if (actor.role === Role.COACHEE) {
       await this.recursos.assertCoacheePuedeDescargar(actor.id, id);
     }
+    const recurso = await this.recursos.findOne(id);
     if (!recurso.archivoPath) {
       throw new NotFoundException('Este recurso no tiene un archivo asociado.');
     }

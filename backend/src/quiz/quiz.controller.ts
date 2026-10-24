@@ -79,8 +79,8 @@ export class QuizController {
     return this.quiz.findAll();
   }
 
-  // Sin @Roles propio: coach y coachee ven versiones distintas del mismo quiz
-  // (el service decide qué campos incluir según el rol del actor).
+  // Coach y coachee (la empresa no entra): el service decide qué campos incluir según el rol.
+  @Roles(Role.COACH, Role.COACHEE)
   @Get(':id')
   findOne(@Param('id') id: string, @CurrentUser() actor: AuthenticatedUser) {
     if (actor.role === Role.COACH) {

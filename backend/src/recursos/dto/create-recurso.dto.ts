@@ -26,7 +26,7 @@ export class CreateRecursoDto {
   tipo: TipoRecurso;
 
   @ValidateIf((dto: CreateRecursoDto) => dto.tipo === TipoRecurso.LINK)
-  @IsUrl()
+  @IsUrl({ protocols: ['http', 'https'] })
   url?: string;
 
   @IsOptional()
