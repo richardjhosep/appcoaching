@@ -8,7 +8,8 @@ import StatusBadge from '../../components/StatusBadge.vue'
 import { useCarga } from '../../lib/useCarga'
 import TabBar from '../../components/TabBar.vue'
 import DocumentosCoacheePanel from '../../components/DocumentosCoacheePanel.vue'
-import { getMyCoachee, type Coachee } from '../../api/coachees'
+import AppButton from '../../components/AppButton.vue'
+import { aceptarMiConsentimiento, getMyCoachee, type Coachee } from '../../api/coachees'
 import {
   getMisDocumentosLegales,
   descargarMiAcuerdo,
@@ -18,13 +19,26 @@ import {
 import { getMiInversion, type MiInversion, type PeriodoComercial } from '../../api/negocio'
 import { estadoVisual, ESTADO_VISUAL_LABEL, type EstadoVisualDocumento } from '../../lib/legalFormat'
 import { ApiError } from '../../api/client'
-import { notifyError } from '../../lib/notify'
+import { notifyError, notifySuccess } from '../../lib/notify'
 
 const coachee = ref<Coachee | null>(null)
 const documentos = ref<MisDocumentosLegales | null>(null)
 
 async function cargarDocumentos() {
   documentos.value = await getMisDocumentosLegales()
+}
+
+const aceptandoConsentimiento = ref(false)
+async function aceptarConsentimiento() {
+  aceptandoConsentimiento.value = true
+  try {
+    coachee.value = await aceptarMiConsentimiento()
+    await notifySuccess('Consentimiento registrado', 'Gracias — tu coach ya puede acompañarte en el proceso.')
+  } catch (err) {
+    await notifyError('No se pudo registrar', err instanceof ApiError ? err.message : 'Ocurrió un error inesperado.')
+  } finally {
+    aceptandoConsentimiento.value = false
+  }
 }
 
 const { loading, error, recargar } = useCarga(async () => {
@@ -135,10 +149,29 @@ const formatoCLP = new Intl.NumberFormat('es-CL', { style: 'currency', currency:
             Registraste tu consentimiento para el proceso de coaching.
           </template>
           <template v-else>
-            Tu coach te envía un correo con un enlace para que lo confirmes. Si no lo encuentras,
-            revisa tu carpeta de spam o pídele que te lo reenvíe.
+            Puedes confirmarlo aquí mismo, o con el enlace que tu coach te envía por correo.
           </template>
         </p>
+        <div
+          v-if="!coachee.consentimientoInformado"
+          class="mt-3 rounded-xl border border-[var(--color-line)] bg-[var(--color-parchment)]/40 p-4 text-xs text-[var(--color-ink)]/70"
+        >
+          <p class="mb-2">
+            Al aceptar, confirmas que:
+          </p>
+          <ul class="list-disc space-y-1 pl-4">
+            <li>Participas voluntariamente del proceso de coaching.</li>
+            <li>Autorizas el tratamiento de tus datos personales para ese fin (tus notas privadas de sesión nunca son visibles para tu coach ni tu empresa; tu empresa solo accede a datos agregados del proceso).</li>
+            <li>Puedes revocar este consentimiento en cualquier momento contactando a tu coach.</li>
+          </ul>
+          <AppButton
+            class="mt-4"
+            :loading="aceptandoConsentimiento"
+            @click="aceptarConsentimiento"
+          >
+            Acepto el consentimiento informado
+          </AppButton>
+        </div>
       </SectionCard>
 
       <SectionCard

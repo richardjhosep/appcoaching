@@ -182,7 +182,26 @@ async function enviar() {
                 ? 'text-[var(--color-bronze)]'
                 : 'text-[var(--color-muted)]'"
           >
-            {{ intento.puntaje > miHistorial[i - 1].puntaje ? '↑ mejoraste' : intento.puntaje < miHistorial[i - 1].puntaje ? '↓' : '=' }}
+            <template v-if="intento.puntaje > miHistorial[i - 1].puntaje">
+              <NavIcon
+                name="flecha-arriba"
+                :size="12"
+                class="inline-block align-[-0.1em]"
+                aria-hidden="true"
+              />
+              mejoraste
+            </template>
+            <template v-else-if="intento.puntaje < miHistorial[i - 1].puntaje">
+              <NavIcon
+                name="flecha-abajo"
+                :size="12"
+                class="inline-block align-[-0.1em]"
+                aria-label="bajó"
+              />
+            </template>
+            <template v-else>
+              =
+            </template>
           </span>
           <span
             class="cifra font-semibold"

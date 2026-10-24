@@ -2662,3 +2662,13 @@ vue-tsc + eslint + vitest verdes; commit por fase; comprobación visual en Chrom
 - [x] Fraunces en saludo/informes/certificado; Inter 600 en títulos; cifras `.cifra` (tabular-nums). Commit b3fed94.
 - [x] Paleta: sage #1d6a49 (primario), forest #12372a (menú/guía), amber #e0a12a (acento decorativo), bronze #8c5514 (tinta), danger #b91c1c, saltup-ink #0a6e6a.
 - [ ] Pendiente: íconos de línea en vez de glifos (→ ✓ ★ ▲ ▼), foto del coach, estados vacíos con ilustración, favicon/apple-touch-icon y landing/correos con la nueva paleta.
+
+### Cierre de pendientes (rama feat/ux-iconos-foto-coach, 2026-10-24)
+- [x] Íconos de línea, foto del coach (saludo, Mi Coach, certificado, informe), estados vacíos con ilustración, correos y favicon con la paleta nueva.
+- [x] Landing: paleta + tipografía + diagrama de anillos (colapsaba a ancho 0 por falta de width:100%). Sin `meta viewport` a propósito (la landing no se publica; el perfil del coach vive en la app).
+- [x] trust proxy: `app.set('trust proxy','loopback, linklocal, uniquelocal')` en backend/src/main.ts. Verificado: cada IP de X-Forwarded-For tiene su propio cupo (5 logins/min).
+- [x] Consentimiento dentro de la app: POST /coachees/me/consentimiento/aceptar (rol COACHEE, idempotente, deja solicitud ACEPTADA como evidencia + auditoría via:'app') y botón en Mi cuenta.
+- [x] Tablas anchas en móvil: sombras de desplazamiento + primera columna fija (.data-table-wrap).
+- [x] Flechas de tendencia como íconos.
+- [x] Recorrido de los 3 perfiles (desktop y móvil): sin excepciones JS, sin desborde horizontal. Certificado e informe impreso (PDF) verificados con la foto real de Fernando.
+- [ ] No hecho: borrar 50 copias "… 2" (el sistema bloqueó el borrado), mover el proyecto fuera de iCloud, endpoint agregado del dashboard de empresa (opcional), decisión sobre main/túnel.

@@ -129,6 +129,11 @@ export function actualizarMiPerfil(input: UpdateMiPerfilInput): Promise<Coachee>
   return apiRequest<Coachee>('/coachees/me/perfil', { method: 'PATCH', body: input })
 }
 
+/** El coachee acepta su consentimiento informado desde la app (sin el enlace del correo). */
+export function aceptarMiConsentimiento(): Promise<Coachee> {
+  return apiRequest<Coachee>('/coachees/me/consentimiento/aceptar', { method: 'POST' })
+}
+
 export function subirFotoCoachee(archivo: File): Promise<Coachee> {
   const form = new FormData()
   form.set('archivo', archivo)

@@ -201,6 +201,36 @@ export class CoacheesService {
     return { solicitud, coachee: solicitud.coachee };
   }
 
+  /**
+   * El coachee acepta su consentimiento informado desde la app, con su sesión iniciada (sin
+   * pasar por el enlace del correo). Se deja igualmente una solicitud ACEPTADA como registro
+   * de evidencia, igual que en el flujo por correo. Es idempotente: si ya consintió, no hace nada.
+   */
+  async aceptarMiConsentimiento(userId: string): Promise<Coachee> {
+    const coachee = await this.coachees.findOne({ where: { userId } });
+    if (!coachee) {
+      throw new NotFoundException('Perfil de coachee no encontrado.');
+    }
+    if (coachee.consentimientoInformado) {
+      return coachee;
+    }
+
+    const ahora = new Date();
+    await this.solicitudes.save(
+      this.solicitudes.create({
+        coacheeId: coachee.id,
+        token: randomBytes(32).toString('base64url'),
+        estado: EstadoSolicitudConsentimiento.ACEPTADO,
+        expiraEn: ahora,
+        respondidoEn: ahora,
+      }),
+    );
+
+    coachee.consentimientoInformado = true;
+    coachee.consentimientoFecha = ahora;
+    return this.coachees.save(coachee);
+  }
+
   async responderSolicitud(token: string, aceptado: boolean): Promise<Coachee> {
     const { solicitud, coachee } = await this.obtenerSolicitudPorToken(token);
 

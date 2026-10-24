@@ -432,6 +432,52 @@ describe('CoacheesService', () => {
     });
   });
 
+  describe('aceptarMiConsentimiento', () => {
+    it('marks the coachee as consentido and records an ACEPTADO solicitud as evidence', async () => {
+      repo.findOne.mockResolvedValue({
+        id: 'c1',
+        userId: 'user-1',
+        consentimientoInformado: false,
+        consentimientoFecha: null,
+      } as unknown as PartialCoachee);
+
+      const coachee = await service.aceptarMiConsentimiento('user-1');
+
+      expect(coachee.consentimientoInformado).toBe(true);
+      expect(coachee.consentimientoFecha).toBeInstanceOf(Date);
+      expect(solicitudesRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          coacheeId: 'c1',
+          estado: EstadoSolicitudConsentimiento.ACEPTADO,
+        }),
+      );
+      expect(solicitudesRepo.save).toHaveBeenCalled();
+    });
+
+    it('is idempotent when the coachee already consented', async () => {
+      repo.findOne.mockResolvedValue({
+        id: 'c1',
+        userId: 'user-1',
+        consentimientoInformado: true,
+        consentimientoFecha: new Date('2026-01-01'),
+      } as unknown as PartialCoachee);
+
+      const coachee = await service.aceptarMiConsentimiento('user-1');
+
+      expect(coachee.consentimientoInformado).toBe(true);
+      expect(solicitudesRepo.save).not.toHaveBeenCalled();
+      expect(repo.save).not.toHaveBeenCalled();
+    });
+
+    it('throws NotFound when the user has no coachee profile', async () => {
+      repo.findOne.mockResolvedValue(null);
+
+      await expect(service.aceptarMiConsentimiento('user-x')).rejects.toThrow(
+        'Perfil de coachee no encontrado.',
+      );
+    });
+  });
+
   describe('responderSolicitud', () => {
     // Fábrica (no un objeto compartido): responderSolicitud() muta la solicitud y el
     // coachee en el lugar, así que reusar la misma instancia entre tests haría que un

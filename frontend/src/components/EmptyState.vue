@@ -11,7 +11,7 @@ withDefaults(defineProps<{ icon: string; title: string; description?: string }>(
     <!-- Ilustración de línea: el anillo partido de la marca (dos arcos que se encuentran) con el
          ícono del contexto al centro. Un solo dibujo para los ~45 estados vacíos. -->
     <div
-      class="relative flex h-20 w-20 items-center justify-center text-[var(--color-primary)]"
+      class="relative flex h-20 w-20 items-center justify-center text-[var(--color-forest)]"
       aria-hidden="true"
     >
       <svg
@@ -56,7 +56,7 @@ withDefaults(defineProps<{ icon: string; title: string; description?: string }>(
       </svg>
       <NavIcon
         :name="icon"
-        :size="26"
+        :size="28"
       />
     </div>
     <p class="font-[family-name:var(--font-heading)] text-sm font-semibold text-[var(--color-ink)]">

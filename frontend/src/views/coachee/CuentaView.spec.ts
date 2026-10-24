@@ -8,7 +8,7 @@ import type { MiInversion } from '../../api/negocio'
 
 vi.mock('../../api/coachees', async () => {
   const actual = await vi.importActual<typeof import('../../api/coachees')>('../../api/coachees')
-  return { ...actual, getMyCoachee: vi.fn() }
+  return { ...actual, getMyCoachee: vi.fn(), aceptarMiConsentimiento: vi.fn() }
 })
 vi.mock('../../api/legal', async () => {
   const actual = await vi.importActual<typeof import('../../api/legal')>('../../api/legal')
@@ -23,7 +23,7 @@ vi.mock('../../lib/notify', () => ({
   notifyError: vi.fn(),
 }))
 
-import { getMyCoachee } from '../../api/coachees'
+import { aceptarMiConsentimiento, getMyCoachee } from '../../api/coachees'
 import { getMisDocumentosLegales, descargarMiAcuerdo } from '../../api/legal'
 import { getMiInversion } from '../../api/negocio'
 
@@ -156,7 +156,25 @@ describe('CuentaView (coachee)', () => {
     await flushPromises()
 
     expect(wrapper.text()).toContain('Pendiente')
-    expect(wrapper.text()).toContain('Tu coach te envía un correo con un enlace')
+    expect(wrapper.text()).toContain('Puedes confirmarlo aquí mismo')
+  })
+
+  it('lets the coachee accept the consentimiento from the app and then shows it as Firmado', async () => {
+    vi.mocked(getMyCoachee).mockResolvedValue({ ...coacheeEmpresa, consentimientoInformado: false })
+    vi.mocked(aceptarMiConsentimiento).mockResolvedValue({
+      ...coacheeEmpresa,
+      consentimientoInformado: true,
+      consentimientoFecha: '2026-10-24T12:00:00.000Z',
+    })
+
+    const wrapper = mount(CuentaView)
+    await flushPromises()
+    await wrapper.findAll('button').find((b) => b.text() === 'Acepto el consentimiento informado')!.trigger('click')
+    await flushPromises()
+
+    expect(aceptarMiConsentimiento).toHaveBeenCalledTimes(1)
+    expect(wrapper.text()).toContain('Firmado')
+    expect(wrapper.text()).not.toContain('Acepto el consentimiento informado')
   })
 
   it('shows an error state with retry when the cuenta fails to load', async () => {

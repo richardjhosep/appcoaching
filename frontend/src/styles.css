@@ -139,6 +139,31 @@ button:not(:disabled),
     border-radius: 1rem;
     border: 1px solid var(--color-line);
     background-color: white;
+    /* Sombras en los bordes que aparecen solo si hay más contenido que desplazar (truco de
+       background-attachment: los velos "local" tapan la sombra cuando se llega al extremo). */
+    background-image:
+      linear-gradient(to right, white 30%, rgb(255 255 255 / 0)),
+      linear-gradient(to left, white 30%, rgb(255 255 255 / 0)),
+      radial-gradient(farthest-side at 0 50%, rgb(18 18 18 / 0.16), rgb(18 18 18 / 0)),
+      radial-gradient(farthest-side at 100% 50%, rgb(18 18 18 / 0.16), rgb(18 18 18 / 0));
+    background-position: left center, right center, left center, right center;
+    background-repeat: no-repeat;
+    background-size: 2rem 100%, 2rem 100%, 0.75rem 100%, 0.75rem 100%;
+    background-attachment: local, local, scroll, scroll;
+  }
+  /* En pantallas angostas la primera columna (el nombre) queda fija para no perder de qué fila se habla. */
+  @media (max-width: 640px) {
+    .data-table th:first-child,
+    .data-table td:first-child {
+      position: sticky;
+      left: 0;
+      z-index: 1;
+      background-color: white;
+      box-shadow: 1px 0 0 var(--color-line);
+    }
+    .data-table th:first-child {
+      background-color: var(--color-parchment);
+    }
   }
   .data-table {
     width: 100%;

@@ -845,7 +845,14 @@ const mostrarPrimerosPasos = computed(
                 class="text-xs font-medium"
                 :class="comparativo.variacionIngresoPct >= 0 ? 'text-[var(--color-sage)]' : 'text-[var(--color-bronze)]'"
               >
-                {{ comparativo.variacionIngresoPct >= 0 ? '↑' : '↓' }} {{ Math.abs(comparativo.variacionIngresoPct) }}% vs. mes anterior
+                <NavIcon
+                  :name="comparativo.variacionIngresoPct >= 0 ? 'flecha-arriba' : 'flecha-abajo'"
+                  :size="12"
+                  class="inline-block align-[-0.1em]"
+                  aria-hidden="true"
+                />
+                <span class="sr-only">{{ comparativo.variacionIngresoPct >= 0 ? 'Subió' : 'Bajó' }}</span>
+                {{ Math.abs(comparativo.variacionIngresoPct) }}% vs. mes anterior
               </p>
             </div>
             <div>

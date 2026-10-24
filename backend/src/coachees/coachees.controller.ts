@@ -3,6 +3,8 @@ import {
   Controller,
   Delete,
   Get,
+  HttpCode,
+  HttpStatus,
   NotFoundException,
   Param,
   Patch,
@@ -13,6 +15,7 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { Throttle } from '@nestjs/throttler';
 import { diskStorage } from 'multer';
 import { extname, join } from 'path';
 import { randomUUID } from 'crypto';
@@ -83,6 +86,21 @@ export class CoacheesController {
     @CurrentUser() actor: AuthenticatedUser,
   ) {
     return this.coachees.actualizarMiPerfil(actor.id, dto);
+  }
+
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @Roles(Role.COACHEE)
+  @HttpCode(HttpStatus.OK)
+  @Post('me/consentimiento/aceptar')
+  async aceptarMiConsentimiento(@CurrentUser() actor: AuthenticatedUser) {
+    const coachee = await this.coachees.aceptarMiConsentimiento(actor.id);
+    await this.audit.record('CONSENTIMIENTO_ACTUALIZADO', {
+      userId: actor.id,
+      targetType: 'Coachee',
+      targetId: coachee.id,
+      metadata: { informado: true, via: 'app' },
+    });
+    return coachee;
   }
 
   @Roles(Role.COACHEE)

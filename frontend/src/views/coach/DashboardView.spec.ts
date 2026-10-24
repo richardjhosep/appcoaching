@@ -654,7 +654,7 @@ describe('DashboardView', () => {
       const wrapper = mount(DashboardView, { global: { plugins: [router] } })
       await flushPromises()
 
-      expect(wrapper.text()).toContain('↑ 12.5% vs. mes anterior')
+      expect(wrapper.text()).toContain('Subió 12.5% vs. mes anterior')
     })
 
     it('shows a down arrow when ingreso fell vs. mes anterior', async () => {
@@ -663,7 +663,7 @@ describe('DashboardView', () => {
       const wrapper = mount(DashboardView, { global: { plugins: [router] } })
       await flushPromises()
 
-      expect(wrapper.text()).toContain('↓ 8% vs. mes anterior')
+      expect(wrapper.text()).toContain('Bajó 8% vs. mes anterior')
     })
   })
 

@@ -23,7 +23,7 @@ withDefaults(
       <path
         d="M 43.4 87.4 A 38 38 0 0 1 43.4 12.6"
         fill="none"
-        :stroke="dark ? 'var(--color-parchment)' : 'var(--color-ink)'"
+        :stroke="dark ? 'var(--color-parchment)' : 'var(--color-forest)'"
         stroke-width="13"
         stroke-linecap="round"
       />
