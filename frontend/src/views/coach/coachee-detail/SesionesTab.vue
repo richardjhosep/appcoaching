@@ -432,7 +432,7 @@ async function onSesionEliminada() {
                 {{ s.motivo }}
               </p>
               <button
-                class="mt-2 w-full rounded-lg bg-[var(--color-ink)] px-3 py-2 text-xs text-[var(--color-parchment)]"
+                class="mt-2 w-full rounded-lg bg-[var(--color-primary)] px-3 py-2 text-xs text-[var(--color-on-primary)]"
                 @click="abrirResponder(s)"
               >
                 Responder
@@ -517,7 +517,7 @@ async function onSesionEliminada() {
           <button
             type="submit"
             :disabled="agendando"
-            class="rounded-lg bg-[var(--color-ink)] px-4 py-2 text-sm text-[var(--color-parchment)] disabled:opacity-60"
+            class="rounded-lg bg-[var(--color-primary)] px-4 py-2 text-sm text-[var(--color-on-primary)] disabled:opacity-60"
           >
             {{ agendando ? 'Agendando…' : 'Agendar sesión' }}
           </button>
@@ -581,7 +581,7 @@ async function onSesionEliminada() {
           <button
             type="submit"
             :disabled="guardandoRespuesta"
-            class="rounded-lg bg-[var(--color-ink)] px-4 py-2 text-sm text-[var(--color-parchment)] disabled:opacity-60"
+            class="rounded-lg bg-[var(--color-primary)] px-4 py-2 text-sm text-[var(--color-on-primary)] disabled:opacity-60"
           >
             {{ guardandoRespuesta ? 'Guardando…' : 'Guardar' }}
           </button>

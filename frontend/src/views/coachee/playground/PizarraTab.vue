@@ -82,7 +82,7 @@ async function onEliminar(id: string) {
     </div>
     <button
       type="button"
-      class="rounded-lg bg-[var(--color-ink)] px-4 py-2 text-sm text-[var(--color-parchment)]"
+      class="rounded-lg bg-[var(--color-primary)] px-4 py-2 text-sm text-[var(--color-on-primary)]"
       @click="agregarNota"
     >
       + Nueva nota

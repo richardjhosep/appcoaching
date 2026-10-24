@@ -292,7 +292,7 @@ async function enviar() {
         </label>
 
         <button
-          class="w-fit rounded-lg bg-[var(--color-ink)] px-4 py-2 text-sm text-[var(--color-parchment)] disabled:opacity-60 sm:col-span-2"
+          class="w-fit rounded-lg bg-[var(--color-primary)] px-4 py-2 text-sm text-[var(--color-on-primary)] disabled:opacity-60 sm:col-span-2"
           :disabled="saving"
           @click="guardar"
         >

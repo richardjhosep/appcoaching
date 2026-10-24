@@ -120,7 +120,7 @@ async function onFotoChange(e: Event) {
           >
           <div
             v-else
-            class="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-[var(--color-ink)] text-lg font-semibold text-[var(--color-parchment)]"
+            class="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-[var(--color-primary)] text-lg font-semibold text-[var(--color-on-primary)]"
           >
             {{ iniciales(coachee.nombre) }}
           </div>
@@ -130,7 +130,7 @@ async function onFotoChange(e: Event) {
               type="file"
               accept="image/jpeg,image/png,image/webp"
               :disabled="subiendoFoto"
-              class="mt-0.5 block w-full text-xs file:mr-2 file:rounded-full file:border-0 file:bg-[var(--color-ink)] file:px-3 file:py-1 file:text-xs file:text-[var(--color-parchment)]"
+              class="mt-0.5 block w-full text-xs file:mr-2 file:rounded-full file:border-0 file:bg-[var(--color-primary)] file:px-3 file:py-1 file:text-xs file:text-[var(--color-on-primary)]"
               @change="onFotoChange"
             >
           </label>

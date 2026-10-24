@@ -358,7 +358,7 @@ async function enviarSolicitud() {
               :aria-pressed="respuestasEncuesta[categoria] === valor"
               class="h-9 w-9 shrink-0 rounded-full border text-xs"
               :class="respuestasEncuesta[categoria] === valor
-                ? 'border-[var(--color-ink)] bg-[var(--color-ink)] text-[var(--color-parchment)]'
+                ? 'border-[var(--color-primary)] bg-[var(--color-primary)] text-[var(--color-on-primary)]'
                 : 'border-[var(--color-line)]'"
               @click="respuestasEncuesta[categoria] = valor"
             >

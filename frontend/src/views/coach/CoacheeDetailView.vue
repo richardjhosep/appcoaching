@@ -118,7 +118,7 @@ const planEstadoClase: Record<EstadoPlan, string> = {
         <div class="flex flex-wrap items-start justify-between gap-4">
           <div class="flex items-start gap-3">
             <div
-              class="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-[var(--color-ink)] text-lg font-semibold text-[var(--color-parchment)]"
+              class="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-[var(--color-primary)] text-lg font-semibold text-[var(--color-on-primary)]"
               aria-hidden="true"
             >
               {{ iniciales(coachee.nombre) }}

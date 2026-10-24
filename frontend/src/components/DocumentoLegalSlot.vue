@@ -202,13 +202,13 @@ async function descargar() {
         <input
           type="file"
           accept="application/pdf"
-          class="mt-0.5 w-full text-xs file:mr-2 file:rounded-full file:border-0 file:bg-[var(--color-ink)] file:px-3 file:py-1 file:text-xs file:text-[var(--color-parchment)]"
+          class="mt-0.5 w-full text-xs file:mr-2 file:rounded-full file:border-0 file:bg-[var(--color-primary)] file:px-3 file:py-1 file:text-xs file:text-[var(--color-on-primary)]"
           @change="onArchivoChange"
         >
       </label>
       <button
         type="button"
-        class="rounded-lg bg-[var(--color-ink)] px-3 py-1.5 text-xs text-[var(--color-parchment)] disabled:opacity-50"
+        class="rounded-lg bg-[var(--color-primary)] px-3 py-1.5 text-xs text-[var(--color-on-primary)] disabled:opacity-50"
         :disabled="guardando"
         @click="guardar"
       >

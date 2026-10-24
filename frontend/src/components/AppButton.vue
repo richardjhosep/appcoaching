@@ -16,7 +16,7 @@ withDefaults(defineProps<{
 })
 
 const VARIANTS = {
-  primary: 'bg-[var(--color-ink)] text-[var(--color-parchment)] hover:bg-[var(--color-ink)]/85',
+  primary: 'bg-[var(--color-primary)] text-[var(--color-on-primary)] hover:bg-[var(--color-primary-hover)]',
   secondary: 'border border-[var(--color-line)] bg-white text-[var(--color-ink)] hover:bg-[var(--color-parchment)]/60',
   danger: 'bg-[var(--color-danger)] text-white hover:bg-[var(--color-danger)]/90',
   ghost: 'text-[var(--color-ink)] hover:bg-[var(--color-parchment)]/70',

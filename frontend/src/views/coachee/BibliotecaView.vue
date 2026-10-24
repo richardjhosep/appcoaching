@@ -181,7 +181,7 @@ async function descargar(r: Recurso) {
           :key="f.label"
           class="rounded-full border px-3 py-1 text-xs"
           :class="categoriaFiltro === f.value
-            ? 'border-[var(--color-ink)] bg-[var(--color-ink)] text-[var(--color-parchment)]'
+            ? 'border-[var(--color-primary)] bg-[var(--color-primary)] text-[var(--color-on-primary)]'
             : 'border-[var(--color-line)] hover:bg-[var(--color-parchment)]/50'"
           @click="categoriaFiltro = f.value"
         >
@@ -508,7 +508,7 @@ async function descargar(r: Recurso) {
 
           <button
             type="submit"
-            class="rounded-lg bg-[var(--color-ink)] px-3 py-2 text-sm text-[var(--color-parchment)] disabled:opacity-60"
+            class="rounded-lg bg-[var(--color-primary)] px-3 py-2 text-sm text-[var(--color-on-primary)] disabled:opacity-60"
             :disabled="guardandoAprendizaje"
           >
             {{ guardandoAprendizaje ? 'Guardando…' : 'Guardar aprendizaje' }}

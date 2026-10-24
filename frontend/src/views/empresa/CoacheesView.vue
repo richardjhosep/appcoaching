@@ -273,7 +273,7 @@ function cerrarModalCertificados() {
         >
           <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div class="flex min-w-0 flex-wrap items-center gap-3">
-              <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[var(--color-ink)] text-sm font-semibold text-[var(--color-parchment)]">
+              <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[var(--color-primary)] text-sm font-semibold text-[var(--color-on-primary)]">
                 {{ iniciales(fila.coachee.nombre) }}
               </div>
               <div class="min-w-0">
@@ -403,7 +403,7 @@ function cerrarModalCertificados() {
         >
           <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div class="flex min-w-0 items-center gap-3">
-              <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[var(--color-ink)] text-sm font-semibold text-[var(--color-parchment)]">
+              <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[var(--color-primary)] text-sm font-semibold text-[var(--color-on-primary)]">
                 {{ iniciales(fila.coachee.nombre) }}
               </div>
               <div class="min-w-0">
@@ -509,7 +509,7 @@ function cerrarModalCertificados() {
       @close="modalProgreso = null"
     >
       <div class="mb-4 flex items-center gap-3">
-        <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[var(--color-ink)] text-sm font-semibold text-[var(--color-parchment)]">
+        <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[var(--color-primary)] text-sm font-semibold text-[var(--color-on-primary)]">
           {{ iniciales(modalProgreso.coachee.nombre) }}
         </div>
         <div class="min-w-0">

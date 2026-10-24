@@ -387,7 +387,7 @@ async function guardarPassword() {
               aria-label="Cuenta"
               aria-haspopup="true"
               :aria-expanded="userPanelOpen"
-              class="flex h-11 w-11 items-center justify-center overflow-hidden rounded-full bg-[var(--color-ink)] text-xs font-semibold sm:h-9 sm:w-9 text-[var(--color-parchment)]"
+              class="flex h-11 w-11 items-center justify-center overflow-hidden rounded-full bg-[var(--color-primary)] text-xs font-semibold sm:h-9 sm:w-9 text-[var(--color-on-primary)]"
               @click="userPanelOpen = !userPanelOpen"
             >
               <img
@@ -411,7 +411,7 @@ async function guardarPassword() {
               class="absolute right-0 top-full z-30 mt-2 w-72 rounded-xl border border-[var(--color-line)] bg-white p-4 shadow-[var(--shadow-pop)]"
             >
               <div class="flex items-center gap-3">
-                <div class="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--color-ink)] text-sm font-semibold text-[var(--color-parchment)]">
+                <div class="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--color-primary)] text-sm font-semibold text-[var(--color-on-primary)]">
                   <img
                     v-if="avatarFotoUrl"
                     :src="avatarFotoUrl"

@@ -100,7 +100,7 @@ function tocar(nodo: NodoPosicionado) {
         :style="{ left: `${px(n).left}px`, top: `${px(n).top}px`, width: `${NODE_WIDTH}px` }"
         :class="[
           n.x === 0
-            ? 'border-[var(--color-ink)] bg-[var(--color-ink)] font-semibold text-[var(--color-parchment)]'
+            ? 'border-[var(--color-primary)] bg-[var(--color-primary)] font-semibold text-[var(--color-on-primary)]'
             : 'border-[var(--color-line)] bg-white text-[var(--color-ink)]',
           seleccionadoId === n.id && n.x !== 0 ? 'ring-2 ring-[var(--color-sage)]' : '',
         ]"

@@ -29,7 +29,7 @@ function elegir(valor: number) {
       :aria-label="`${valor} de ${max}`"
       class="h-11 min-w-11 rounded-lg border text-sm font-medium transition-colors"
       :class="modelValue === valor
-        ? 'border-[var(--color-ink)] bg-[var(--color-ink)] text-[var(--color-parchment)]'
+        ? 'border-[var(--color-primary)] bg-[var(--color-primary)] text-[var(--color-on-primary)]'
         : invalid
           ? 'border-[var(--color-danger)] hover:bg-[var(--color-parchment)]/60'
           : 'border-[var(--color-line)] hover:bg-[var(--color-parchment)]/60'"

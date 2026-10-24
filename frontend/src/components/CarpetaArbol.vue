@@ -31,7 +31,7 @@ function toggle(id: string, event: Event) {
       <div
         class="flex cursor-pointer items-center gap-1.5 rounded-lg py-1.5 pr-2 text-sm transition-colors"
         :class="n.id === seleccionadaId
-          ? 'bg-[var(--color-ink)] text-[var(--color-parchment)]'
+          ? 'bg-[var(--color-primary)] text-[var(--color-on-primary)]'
           : 'hover:bg-[var(--color-parchment)]/70'"
         :style="{ paddingLeft: `${8 + profundidad * 16}px` }"
         @click="emit('select', n.id)"

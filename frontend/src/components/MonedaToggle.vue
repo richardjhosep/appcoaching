@@ -19,7 +19,7 @@ defineEmits<{ 'update:modelValue': [Moneda] }>()
       <button
         type="button"
         class="rounded-full px-3 py-1"
-        :class="modelValue === 'clp' ? 'bg-[var(--color-ink)] text-[var(--color-parchment)]' : 'hover:bg-[var(--color-parchment)]/50'"
+        :class="modelValue === 'clp' ? 'bg-[var(--color-primary)] text-[var(--color-on-primary)]' : 'hover:bg-[var(--color-parchment)]/50'"
         @click="$emit('update:modelValue', 'clp')"
       >
         CLP
@@ -27,7 +27,7 @@ defineEmits<{ 'update:modelValue': [Moneda] }>()
       <button
         type="button"
         class="rounded-full px-3 py-1"
-        :class="modelValue === 'uf' ? 'bg-[var(--color-ink)] text-[var(--color-parchment)]' : 'hover:bg-[var(--color-parchment)]/50'"
+        :class="modelValue === 'uf' ? 'bg-[var(--color-primary)] text-[var(--color-on-primary)]' : 'hover:bg-[var(--color-parchment)]/50'"
         @click="$emit('update:modelValue', 'uf')"
       >
         UF

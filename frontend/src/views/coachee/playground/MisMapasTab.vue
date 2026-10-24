@@ -184,7 +184,7 @@ async function eliminarNodo() {
         </p>
       </div>
       <button
-        class="rounded-lg bg-[var(--color-ink)] px-4 py-2 text-sm text-[var(--color-parchment)]"
+        class="rounded-lg bg-[var(--color-primary)] px-4 py-2 text-sm text-[var(--color-on-primary)]"
         @click="abrirModal"
       >
         Nuevo mapa
@@ -253,7 +253,7 @@ async function eliminarNodo() {
           class="rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
         >
         <button
-          class="rounded-lg bg-[var(--color-ink)] px-4 py-2 text-sm text-[var(--color-parchment)] disabled:opacity-60"
+          class="rounded-lg bg-[var(--color-primary)] px-4 py-2 text-sm text-[var(--color-on-primary)] disabled:opacity-60"
           :disabled="guardandoNodo || !nuevoLabel.trim()"
           @click="agregarNodo"
         >
@@ -372,7 +372,7 @@ async function eliminarNodo() {
         <button
           type="submit"
           :disabled="creando"
-          class="rounded-lg bg-[var(--color-ink)] px-4 py-2 text-sm text-[var(--color-parchment)] disabled:opacity-60"
+          class="rounded-lg bg-[var(--color-primary)] px-4 py-2 text-sm text-[var(--color-on-primary)] disabled:opacity-60"
         >
           {{ creando ? 'Creando…' : 'Crear' }}
         </button>

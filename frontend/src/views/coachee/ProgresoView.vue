@@ -316,7 +316,7 @@ async function guardarRetro() {
               </AppButton>
               <RouterLink
                 :to="{ name: 'coachee-certificado', params: { cicloId: c.id } }"
-                class="rounded-lg bg-[var(--color-ink)] px-3 py-1.5 text-xs text-[var(--color-parchment)]"
+                class="rounded-lg bg-[var(--color-primary)] px-3 py-1.5 text-xs text-[var(--color-on-primary)]"
               >
                 Descargar
               </RouterLink>
@@ -467,7 +467,7 @@ async function guardarRetro() {
         </button>
         <RouterLink
           :to="{ name: 'coachee-certificado', params: { cicloId: previewCiclo.id } }"
-          class="rounded-lg bg-[var(--color-ink)] px-4 py-2 text-sm text-[var(--color-parchment)]"
+          class="rounded-lg bg-[var(--color-primary)] px-4 py-2 text-sm text-[var(--color-on-primary)]"
         >
           Descargar / Imprimir
         </RouterLink>
@@ -561,7 +561,7 @@ async function guardarRetro() {
           <button
             type="submit"
             :disabled="guardandoRetro"
-            class="rounded-lg bg-[var(--color-ink)] px-4 py-2 text-sm text-[var(--color-parchment)] disabled:opacity-60"
+            class="rounded-lg bg-[var(--color-primary)] px-4 py-2 text-sm text-[var(--color-on-primary)] disabled:opacity-60"
           >
             {{ guardandoRetro ? 'Enviando…' : 'Enviar retroalimentación' }}
           </button>

@@ -100,7 +100,7 @@ async function handleSubmit() {
         <button
           type="submit"
           :disabled="loading"
-          class="w-full rounded-lg bg-[var(--color-ink)] px-4 py-2.5 text-sm font-medium text-[var(--color-parchment)] transition-colors hover:bg-[var(--color-ink)]/85 disabled:opacity-60"
+          class="w-full rounded-lg bg-[var(--color-primary)] px-4 py-2.5 text-sm font-medium text-[var(--color-on-primary)] transition-colors hover:bg-[var(--color-primary-hover)] disabled:opacity-60"
         >
           {{ loading ? 'Ingresando…' : 'Ingresar' }}
         </button>

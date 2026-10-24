@@ -113,7 +113,7 @@ function onConsentimientoActualizado(actualizado: { consentimientoInformado: boo
             >
             <div
               v-else
-              class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[var(--color-ink)] text-sm font-semibold text-[var(--color-parchment)]"
+              class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[var(--color-primary)] text-sm font-semibold text-[var(--color-on-primary)]"
             >
               {{ iniciales(coachee.nombre) }}
             </div>

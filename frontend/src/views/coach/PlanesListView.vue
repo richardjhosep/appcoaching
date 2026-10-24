@@ -225,7 +225,7 @@ async function recordar(coacheeId: string) {
 
           <div class="flex items-start gap-3">
             <div
-              class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--color-ink)] text-xs font-semibold text-[var(--color-parchment)]"
+              class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--color-primary)] text-xs font-semibold text-[var(--color-on-primary)]"
               aria-hidden="true"
             >
               {{ iniciales(p.coachee?.nombre) }}

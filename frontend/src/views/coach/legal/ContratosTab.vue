@@ -368,7 +368,7 @@ async function enviarSolicitudConsentimiento(coacheeId: string, nombre: string) 
       <template v-else>
         <div class="mb-4 flex items-center gap-3">
           <span
-            class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--color-ink)] text-xs font-semibold text-[var(--color-parchment)]"
+            class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--color-primary)] text-xs font-semibold text-[var(--color-on-primary)]"
             aria-hidden="true"
           >
             {{ iniciales(item.nombre) }}

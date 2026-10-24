@@ -398,7 +398,7 @@ function abrirNuevoProceso(coacheeId: string) {
           </div>
           <button
             :disabled="atendiendo === s.id"
-            class="shrink-0 rounded-lg bg-[var(--color-ink)] px-3 py-2 text-xs text-[var(--color-parchment)] disabled:opacity-50"
+            class="shrink-0 rounded-lg bg-[var(--color-primary)] px-3 py-2 text-xs text-[var(--color-on-primary)] disabled:opacity-50"
             @click="marcarAtendida(s.id)"
           >
             Atender

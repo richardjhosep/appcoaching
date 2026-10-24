@@ -449,7 +449,7 @@ async function crearNuevaSesion() {
             >
           </label>
           <button
-            class="h-9 rounded-lg bg-[var(--color-ink)] px-3 text-sm text-[var(--color-parchment)] disabled:opacity-60"
+            class="h-9 rounded-lg bg-[var(--color-primary)] px-3 text-sm text-[var(--color-on-primary)] disabled:opacity-60"
             :disabled="agregandoBloque"
             @click="agregarBloque"
           >
@@ -593,7 +593,7 @@ async function crearNuevaSesion() {
           <button
             type="submit"
             :disabled="agendandoNueva"
-            class="rounded-lg bg-[var(--color-ink)] px-4 py-2 text-sm text-[var(--color-parchment)] disabled:opacity-60"
+            class="rounded-lg bg-[var(--color-primary)] px-4 py-2 text-sm text-[var(--color-on-primary)] disabled:opacity-60"
           >
             {{ agendandoNueva ? 'Agendando…' : 'Agendar sesión' }}
           </button>

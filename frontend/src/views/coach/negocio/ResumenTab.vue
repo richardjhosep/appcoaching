@@ -126,7 +126,7 @@ function exportarExcel() {
       Exportar Excel
     </button>
     <button
-      class="rounded-lg bg-[var(--color-ink)] px-3 py-2 text-xs text-[var(--color-parchment)]"
+      class="rounded-lg bg-[var(--color-primary)] px-3 py-2 text-xs text-[var(--color-on-primary)]"
       @click="imprimir"
     >
       Imprimir / PDF

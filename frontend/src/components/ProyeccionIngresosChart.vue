@@ -86,7 +86,7 @@ function onClick(params: { dataIndex: number }) {
           :key="v"
           type="button"
           class="rounded-full px-3 py-1 text-xs transition-colors"
-          :class="vista === v ? 'bg-[var(--color-ink)] text-[var(--color-parchment)]' : 'text-[var(--color-ink)]/70'"
+          :class="vista === v ? 'bg-[var(--color-primary)] text-[var(--color-on-primary)]' : 'text-[var(--color-ink)]/70'"
           @click="vista = v"
         >
           {{ vistaLabel[v] }}

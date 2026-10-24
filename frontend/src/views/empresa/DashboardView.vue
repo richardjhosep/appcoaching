@@ -240,7 +240,7 @@ function motivoAlerta(fila: FilaDashboard): string {
               class="flex flex-wrap items-center gap-2.5 rounded-xl border border-[var(--color-line)] p-3 text-sm hover:border-[var(--color-sage)]"
             >
               <div
-                class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--color-ink)] text-xs font-semibold text-[var(--color-parchment)]"
+                class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--color-primary)] text-xs font-semibold text-[var(--color-on-primary)]"
                 aria-hidden="true"
               >
                 {{ iniciales(fila.coachee.nombre) }}

@@ -114,7 +114,7 @@ function formatoFechaSolo(iso: string): string {
         </label>
         <button
           type="button"
-          class="w-full rounded-lg bg-[var(--color-ink)] px-3 py-2 text-sm text-[var(--color-parchment)] disabled:opacity-50"
+          class="w-full rounded-lg bg-[var(--color-primary)] px-3 py-2 text-sm text-[var(--color-on-primary)] disabled:opacity-50"
           :disabled="guardando || !notaForm.trim()"
           @click="guardar"
         >

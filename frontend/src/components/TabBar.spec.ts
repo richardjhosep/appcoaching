@@ -46,8 +46,8 @@ describe('TabBar', () => {
     const wrapper = mount(TabBar, { props: { tabs, modelValue: 'b' as Key } })
     const buttons = wrapper.findAll('button')
 
-    expect(buttons[1].classes()).toContain('bg-[var(--color-ink)]')
-    expect(buttons[0].classes()).not.toContain('bg-[var(--color-ink)]')
+    expect(buttons[1].classes()).toContain('bg-[var(--color-primary)]')
+    expect(buttons[0].classes()).not.toContain('bg-[var(--color-primary)]')
   })
 
   it('keeps a single scrollable row when `scroll` is set', () => {

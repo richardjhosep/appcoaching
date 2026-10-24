@@ -375,7 +375,7 @@ async function eliminar(empresa: Empresa) {
       <span class="flex items-center gap-2">
         <RouterLink
           :to="{ path: '/coach/coachees', query: { crear: '1', empresaId: recienCreada.id } }"
-          class="inline-flex min-h-11 items-center rounded-lg bg-[var(--color-ink)] px-4 text-sm font-medium text-[var(--color-parchment)] hover:bg-[var(--color-ink)]/85 sm:min-h-9"
+          class="inline-flex min-h-11 items-center rounded-lg bg-[var(--color-primary)] px-4 text-sm font-medium text-[var(--color-on-primary)] hover:bg-[var(--color-primary-hover)] sm:min-h-9"
         >
           Crear coachee de esta empresa
         </RouterLink>

@@ -440,7 +440,7 @@ async function alternarPublica() {
           </div>
           <button
             class="mb-1 w-full rounded-lg px-2 py-1.5 text-left text-sm transition-colors"
-            :class="seleccionadaId === null ? 'bg-[var(--color-ink)] text-[var(--color-parchment)]' : 'hover:bg-[var(--color-parchment)]/70'"
+            :class="seleccionadaId === null ? 'bg-[var(--color-primary)] text-[var(--color-on-primary)]' : 'hover:bg-[var(--color-parchment)]/70'"
             @click="seleccionar(null)"
           >
             Todas las carpetas
@@ -503,7 +503,7 @@ async function alternarPublica() {
               </div>
               <div class="flex flex-wrap items-center gap-2 text-xs">
                 <button
-                  class="rounded-lg bg-[var(--color-ink)] px-3 py-1.5 text-[var(--color-parchment)]"
+                  class="rounded-lg bg-[var(--color-primary)] px-3 py-1.5 text-[var(--color-on-primary)]"
                   @click="abrirSubirModal"
                 >
                   + Archivo
@@ -596,7 +596,7 @@ async function alternarPublica() {
                   :key="f.label"
                   class="rounded-full border px-2.5 py-0.5 text-xs"
                   :class="categoriaFiltro === f.value
-                    ? 'border-[var(--color-ink)] bg-[var(--color-ink)] text-[var(--color-parchment)]'
+                    ? 'border-[var(--color-primary)] bg-[var(--color-primary)] text-[var(--color-on-primary)]'
                     : 'border-[var(--color-line)] hover:bg-[var(--color-parchment)]/50'"
                   @click="categoriaFiltro = f.value"
                 >
@@ -784,7 +784,7 @@ async function alternarPublica() {
           >
         </label>
         <button
-          class="w-fit rounded-lg bg-[var(--color-ink)] px-4 py-2 text-sm text-[var(--color-parchment)] disabled:opacity-60 sm:col-span-2"
+          class="w-fit rounded-lg bg-[var(--color-primary)] px-4 py-2 text-sm text-[var(--color-on-primary)] disabled:opacity-60 sm:col-span-2"
           :disabled="creando || !form.titulo.trim()"
           @click="crear"
         >
@@ -919,7 +919,7 @@ async function alternarPublica() {
                 class="rounded-lg border border-[var(--color-line)] px-2 py-1 text-xs"
               >
               <button
-                class="rounded-lg bg-[var(--color-ink)] px-2.5 py-1 text-xs text-[var(--color-parchment)]"
+                class="rounded-lg bg-[var(--color-primary)] px-2.5 py-1 text-xs text-[var(--color-on-primary)]"
                 @click="otorgarAcceso(c.id)"
               >
                 Dar acceso

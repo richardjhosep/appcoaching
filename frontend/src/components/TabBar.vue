@@ -31,7 +31,7 @@ defineEmits<{ 'update:modelValue': [T] }>()
       :aria-selected="modelValue === t.key"
       class="flex items-center gap-1.5 whitespace-nowrap rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors"
       :class="modelValue === t.key
-        ? 'bg-[var(--color-ink)] text-[var(--color-parchment)] shadow-sm'
+        ? 'bg-[var(--color-primary)] text-[var(--color-on-primary)] shadow-sm'
         : 'text-[var(--color-muted)] hover:bg-white/50'"
       @click="$emit('update:modelValue', t.key)"
     >

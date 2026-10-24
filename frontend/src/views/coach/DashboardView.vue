@@ -593,7 +593,7 @@ const mostrarPrimerosPasos = computed(
             @mousedown.prevent="irACoacheeDesdeBusqueda(c.id)"
           >
             <div
-              class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--color-ink)] text-xs font-semibold text-[var(--color-parchment)]"
+              class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--color-primary)] text-xs font-semibold text-[var(--color-on-primary)]"
               aria-hidden="true"
             >
               {{ iniciales(c.nombre) }}
@@ -701,7 +701,7 @@ const mostrarPrimerosPasos = computed(
       </p>
       <RouterLink
         to="/coach/coachees"
-        class="inline-block rounded-lg bg-[var(--color-ink)] px-3 py-2 text-xs text-[var(--color-parchment)]"
+        class="inline-block rounded-lg bg-[var(--color-primary)] px-3 py-2 text-xs text-[var(--color-on-primary)]"
       >
         Ir a Coachees
       </RouterLink>
@@ -1070,7 +1070,7 @@ const mostrarPrimerosPasos = computed(
                 class="flex items-start gap-3 border-b border-[var(--color-line)]/70 py-3"
               >
                 <div
-                  class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--color-ink)] text-xs font-semibold text-[var(--color-parchment)]"
+                  class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--color-primary)] text-xs font-semibold text-[var(--color-on-primary)]"
                   aria-hidden="true"
                 >
                   {{ iniciales(fila.coachee.nombre) }}

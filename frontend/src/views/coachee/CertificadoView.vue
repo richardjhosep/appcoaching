@@ -54,7 +54,7 @@ function imprimir() {
           @click="router.push({ name: 'coachee-progreso' })"
         />
         <button
-          class="rounded-lg bg-[var(--color-ink)] px-4 py-2 text-sm text-[var(--color-parchment)]"
+          class="rounded-lg bg-[var(--color-primary)] px-4 py-2 text-sm text-[var(--color-on-primary)]"
           @click="imprimir"
         >
           Descargar / Imprimir

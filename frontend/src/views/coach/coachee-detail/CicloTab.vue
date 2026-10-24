@@ -244,7 +244,7 @@ async function cerrar() {
         </label>
       </div>
       <button
-        class="mt-3 rounded-lg bg-[var(--color-ink)] px-4 py-2 text-sm text-[var(--color-parchment)] disabled:opacity-60"
+        class="mt-3 rounded-lg bg-[var(--color-primary)] px-4 py-2 text-sm text-[var(--color-on-primary)] disabled:opacity-60"
         :disabled="acting"
         @click="abrir"
       >

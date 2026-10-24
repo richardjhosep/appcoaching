@@ -73,3 +73,13 @@ describe('KpiCard / StatusBadge', () => {
     expect(w.classes().join(' ')).toContain('--color-danger')
   })
 })
+
+describe('AppButton — color de acción', () => {
+  it('el botón principal usa el color primario (no negro) con texto blanco', () => {
+    const clases = mount(AppButton, { slots: { default: 'Guardar' } }).classes().join(' ')
+
+    expect(clases).toContain('bg-[var(--color-primary)]')
+    expect(clases).toContain('text-[var(--color-on-primary)]')
+    expect(clases).not.toContain('bg-[var(--color-ink)]')
+  })
+})

@@ -130,12 +130,12 @@ async function eliminar(doc: DocumentoAdicionalLegal) {
         >
         <input
           type="file"
-          class="text-xs file:mr-2 file:rounded-full file:border-0 file:bg-[var(--color-ink)] file:px-3 file:py-1 file:text-xs file:text-[var(--color-parchment)]"
+          class="text-xs file:mr-2 file:rounded-full file:border-0 file:bg-[var(--color-primary)] file:px-3 file:py-1 file:text-xs file:text-[var(--color-on-primary)]"
           @change="onArchivoChange"
         >
         <button
           type="button"
-          class="rounded-full bg-[var(--color-ink)] px-3 py-1 text-xs text-[var(--color-parchment)] disabled:opacity-50"
+          class="rounded-full bg-[var(--color-primary)] px-3 py-1 text-xs text-[var(--color-on-primary)] disabled:opacity-50"
           :disabled="subiendo || !titulo.trim() || !archivo"
           @click="subir"
         >

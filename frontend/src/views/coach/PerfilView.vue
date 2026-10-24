@@ -324,7 +324,7 @@ async function eliminarExp(id: string) {
           >
           <div
             v-else
-            class="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-[var(--color-ink)] text-lg font-semibold text-[var(--color-parchment)]"
+            class="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-[var(--color-primary)] text-lg font-semibold text-[var(--color-on-primary)]"
           >
             {{ iniciales(form.nombre || 'Coach') }}
           </div>
@@ -334,7 +334,7 @@ async function eliminarExp(id: string) {
               type="file"
               accept="image/jpeg,image/png,image/webp"
               :disabled="subiendoFoto"
-              class="mt-0.5 block w-full text-xs file:mr-2 file:rounded-full file:border-0 file:bg-[var(--color-ink)] file:px-3 file:py-1 file:text-xs file:text-[var(--color-parchment)]"
+              class="mt-0.5 block w-full text-xs file:mr-2 file:rounded-full file:border-0 file:bg-[var(--color-primary)] file:px-3 file:py-1 file:text-xs file:text-[var(--color-on-primary)]"
               @change="onFotoChange"
             >
           </label>
@@ -451,7 +451,7 @@ async function eliminarExp(id: string) {
           </div>
           <button
             type="submit"
-            class="rounded-lg bg-[var(--color-ink)] px-3 py-1.5 text-xs text-[var(--color-parchment)] disabled:opacity-50"
+            class="rounded-lg bg-[var(--color-primary)] px-3 py-1.5 text-xs text-[var(--color-on-primary)] disabled:opacity-50"
             :disabled="guardandoDatos"
           >
             {{ guardandoDatos ? 'Guardando…' : 'Guardar' }}
@@ -478,7 +478,7 @@ async function eliminarExp(id: string) {
               type="file"
               accept="application/pdf"
               :disabled="subiendoCv"
-              class="mt-0.5 block text-xs file:mr-2 file:rounded-full file:border-0 file:bg-[var(--color-ink)] file:px-3 file:py-1 file:text-xs file:text-[var(--color-parchment)]"
+              class="mt-0.5 block text-xs file:mr-2 file:rounded-full file:border-0 file:bg-[var(--color-primary)] file:px-3 file:py-1 file:text-xs file:text-[var(--color-on-primary)]"
               @change="onCvChange"
             >
           </label>
@@ -605,14 +605,14 @@ async function eliminarExp(id: string) {
               id="exp-logo-input"
               type="file"
               accept="image/jpeg,image/png,image/webp"
-              class="mt-0.5 block w-full text-xs file:mr-2 file:rounded-full file:border-0 file:bg-[var(--color-ink)] file:px-3 file:py-1 file:text-xs file:text-[var(--color-parchment)]"
+              class="mt-0.5 block w-full text-xs file:mr-2 file:rounded-full file:border-0 file:bg-[var(--color-primary)] file:px-3 file:py-1 file:text-xs file:text-[var(--color-on-primary)]"
               @change="onExpLogoChange"
             >
           </label>
           <div class="flex items-center gap-3">
             <button
               type="submit"
-              class="rounded-lg bg-[var(--color-ink)] px-3 py-1.5 text-xs text-[var(--color-parchment)] disabled:opacity-50"
+              class="rounded-lg bg-[var(--color-primary)] px-3 py-1.5 text-xs text-[var(--color-on-primary)] disabled:opacity-50"
               :disabled="agregandoExp"
             >
               {{ agregandoExp ? 'Guardando…' : editandoExpId ? 'Guardar cambios' : '+ Agregar experiencia' }}
@@ -730,7 +730,7 @@ async function eliminarExp(id: string) {
                 id="cert-archivo-input"
                 type="file"
                 accept="application/pdf,image/jpeg,image/png,image/webp"
-                class="mt-0.5 block w-full text-xs file:mr-2 file:rounded-full file:border-0 file:bg-[var(--color-ink)] file:px-3 file:py-1 file:text-xs file:text-[var(--color-parchment)]"
+                class="mt-0.5 block w-full text-xs file:mr-2 file:rounded-full file:border-0 file:bg-[var(--color-primary)] file:px-3 file:py-1 file:text-xs file:text-[var(--color-on-primary)]"
                 @change="onCertArchivoChange"
               >
             </label>
@@ -738,7 +738,7 @@ async function eliminarExp(id: string) {
           <div class="flex items-center gap-3">
             <button
               type="submit"
-              class="rounded-lg bg-[var(--color-ink)] px-3 py-1.5 text-xs text-[var(--color-parchment)] disabled:opacity-50"
+              class="rounded-lg bg-[var(--color-primary)] px-3 py-1.5 text-xs text-[var(--color-on-primary)] disabled:opacity-50"
               :disabled="agregandoCert"
             >
               {{ agregandoCert ? 'Guardando…' : editandoCertId ? 'Guardar cambios' : '+ Agregar certificación' }}

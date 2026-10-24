@@ -25,6 +25,11 @@
 
   /* Texto secundario con contraste AA sobre ivory/blanco (ink al ~65 % y ~58 %).
      Usar en vez de `text-ink/40..60` suelto. */
+  /* Color de ACCIÓN (botones principales, pestaña/selección activa, avatares). Hoy es la
+     salvia; cambiar de paleta es cambiar esta línea. El negro (--color-ink) queda para texto. */
+  --color-primary: var(--color-sage);
+  --color-primary-hover: #245f3a;
+  --color-on-primary: #ffffff;
   --color-muted: #636261;
   --color-subtle: #72706d;
   /* Velo de los modales/drawers. */
