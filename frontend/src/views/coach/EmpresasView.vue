@@ -725,7 +725,7 @@ async function eliminar(empresa: Empresa) {
           </p>
           <div class="max-h-56 space-y-2 overflow-y-auto rounded-lg border border-[var(--color-line)] p-2">
             <div v-if="competenciasDeLaEmpresa.length > 0">
-              <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-[var(--color-saltup)]">
+              <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-[var(--color-saltup-ink)]">
                 Manual de la empresa
               </p>
               <div class="grid gap-1 sm:grid-cols-2">

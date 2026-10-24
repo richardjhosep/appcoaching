@@ -33,7 +33,7 @@ const enviandoRecordatorio = reactive<Record<string, boolean>>({})
 // `franja` = la barra de color a la izquierda de la tarjeta y el punto junto al estado.
 const estadoConfig: Record<EstadoPlan, { label: string; texto: string; franja: string }> = {
   sin_enviar: { label: 'Sin enviar', texto: 'text-[var(--color-bronze)]', franja: 'bg-[var(--color-bronze)]' },
-  pendiente_aprobacion: { label: 'Pendiente de aprobación', texto: 'text-[var(--color-saltup)]', franja: 'bg-[var(--color-saltup)]' },
+  pendiente_aprobacion: { label: 'Pendiente de aprobación', texto: 'text-[var(--color-saltup-ink)]', franja: 'bg-[var(--color-saltup)]' },
   aprobado: { label: 'Aprobado', texto: 'text-[var(--color-sage)]', franja: 'bg-[var(--color-sage)]' },
   cambios_solicitados: { label: 'Cambios solicitados', texto: 'text-[var(--color-danger)]', franja: 'bg-[var(--color-danger)]' },
 }
@@ -320,7 +320,7 @@ async function recordar(coacheeId: string) {
           <div class="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-[var(--color-muted)]">
             <span
               v-if="p.competencia"
-              class="inline-flex items-center gap-1.5 font-medium text-[var(--color-saltup)]"
+              class="inline-flex items-center gap-1.5 font-medium text-[var(--color-saltup-ink)]"
             >
               <NavIcon
                 name="objetivo"

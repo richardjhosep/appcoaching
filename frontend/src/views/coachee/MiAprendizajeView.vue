@@ -213,7 +213,7 @@ function formatFecha(fecha: string): string {
         <div class="mt-3 flex flex-wrap items-center justify-between gap-2">
           <RouterLink
             :to="{ name: 'guia-coachee' }"
-            class="text-xs text-[var(--color-saltup)] hover:underline"
+            class="text-xs text-[var(--color-saltup-ink)] hover:underline"
           >
             Ver la guía de la plataforma
           </RouterLink>

@@ -263,7 +263,7 @@ async function eliminar(competencia: Competencia) {
             </p>
             <button
               type="button"
-              class="text-xs text-[var(--color-saltup)] hover:underline"
+              class="text-xs text-[var(--color-saltup-ink)] hover:underline"
               @click="agregarNivel"
             >
               + Agregar nivel

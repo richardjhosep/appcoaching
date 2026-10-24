@@ -267,7 +267,7 @@ function motivoAlerta(fila: FilaDashboard): string {
               >
                 Ciclo por vencer
               </StatusBadge>
-              <span class="flex shrink-0 items-center gap-1 text-xs font-medium text-[var(--color-saltup)]">
+              <span class="flex shrink-0 items-center gap-1 text-xs font-medium text-[var(--color-saltup-ink)]">
                 Ver progreso
                 <NavIcon
                   name="flecha-izquierda"
@@ -400,7 +400,7 @@ function motivoAlerta(fila: FilaDashboard): string {
           </p>
           <RouterLink
             to="/empresa/finanzas"
-            class="mt-3 inline-block text-xs text-[var(--color-saltup)] hover:underline"
+            class="mt-3 inline-block text-xs text-[var(--color-saltup-ink)] hover:underline"
           >
             Ver detalle por coachee y proyección a 6 meses →
           </RouterLink>

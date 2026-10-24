@@ -344,7 +344,7 @@ async function enviarSolicitudConsentimiento(coacheeId: string, nombre: string) 
             <span class="flex-1">{{ c.nombre }}</span>
             <button
               type="button"
-              class="text-[var(--color-saltup)] hover:underline"
+              class="text-[var(--color-saltup-ink)] hover:underline"
               title="Enviar solicitud de consentimiento por correo"
               @click="enviarSolicitudConsentimiento(c.id, c.nombre)"
             >

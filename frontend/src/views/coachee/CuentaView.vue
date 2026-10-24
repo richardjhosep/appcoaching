@@ -99,7 +99,7 @@ const formatoCLP = new Intl.NumberFormat('es-CL', { style: 'currency', currency:
       Tus documentos y, si aplica, cuánto has generado en el período.
       <RouterLink
         :to="{ name: 'guia-coachee' }"
-        class="ml-1 text-[var(--color-saltup)] hover:underline"
+        class="ml-1 text-[var(--color-saltup-ink)] hover:underline"
       >
         Ver la guía de la plataforma
       </RouterLink>
@@ -192,7 +192,7 @@ const formatoCLP = new Intl.NumberFormat('es-CL', { style: 'currency', currency:
             <button
               v-if="doc.tieneArchivo"
               type="button"
-              class="mt-2 inline-flex min-h-11 items-center text-xs text-[var(--color-saltup)] hover:underline sm:min-h-0"
+              class="mt-2 inline-flex min-h-11 items-center text-xs text-[var(--color-saltup-ink)] hover:underline sm:min-h-0"
               @click="descargar(tipo, LABEL_DOCUMENTO[tipo])"
             >
               ⬇ Descargar

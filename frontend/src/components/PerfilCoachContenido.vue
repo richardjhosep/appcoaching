@@ -125,7 +125,7 @@ async function verCertificacion(id: string, nombre: string, archivoNombre: strin
       <button
         v-if="perfil.cvPath"
         type="button"
-        class="mb-3 flex items-center gap-2 rounded-full border border-[var(--color-line)] px-3 py-1.5 text-xs text-[var(--color-saltup)] hover:bg-[var(--color-parchment)]/60"
+        class="mb-3 flex items-center gap-2 rounded-full border border-[var(--color-line)] px-3 py-1.5 text-xs text-[var(--color-saltup-ink)] hover:bg-[var(--color-parchment)]/60"
         @click="verCv"
       >
         ⬇ Descargar CV
@@ -154,7 +154,7 @@ async function verCertificacion(id: string, nombre: string, archivoNombre: strin
           <button
             v-if="cert.archivoPath"
             type="button"
-            class="shrink-0 text-xs text-[var(--color-saltup)] hover:underline"
+            class="shrink-0 text-xs text-[var(--color-saltup-ink)] hover:underline"
             @click="verCertificacion(cert.id, cert.nombre, cert.archivoNombre)"
           >
             Ver

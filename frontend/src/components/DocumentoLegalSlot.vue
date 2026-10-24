@@ -159,7 +159,7 @@ async function descargar() {
       <button
         v-if="doc.tieneArchivo"
         type="button"
-        class="text-[var(--color-saltup)] hover:underline"
+        class="text-[var(--color-saltup-ink)] hover:underline"
         @click="descargar"
       >
         Ver documento

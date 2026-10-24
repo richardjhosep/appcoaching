@@ -90,7 +90,7 @@ const pasos: Paso[] = [
 
 <template>
   <div class="min-h-screen bg-[var(--color-parchment)]">
-    <header class="rounded-b-2xl bg-[var(--color-ink)] px-6 py-12 text-center text-[var(--color-ivory)]">
+    <header class="rounded-b-2xl bg-[var(--color-forest)] px-6 py-12 text-center text-[var(--color-ivory)]">
       <p class="mb-4 font-[family-name:var(--font-heading)] text-sm font-semibold tracking-[0.08em] text-[var(--color-bronze)] uppercase">
         Coach<span class="text-[var(--color-bronze)]">Nexus</span>
       </p>

@@ -19,7 +19,7 @@ import NavIcon from './NavIcon.vue'
       <NavIcon
         name="legal"
         :size="16"
-        class="text-[var(--color-saltup)]"
+        class="text-[var(--color-saltup-ink)]"
       />
       Qué ve tu empresa y qué no
     </h2>

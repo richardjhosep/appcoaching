@@ -381,11 +381,11 @@ async function descargar(r: Recurso) {
             :href="recursoAbierto.url!"
             target="_blank"
             rel="noopener noreferrer"
-            class="mt-2 inline-block text-sm text-[var(--color-saltup)] underline"
+            class="mt-2 inline-block text-sm text-[var(--color-saltup-ink)] underline"
           >Abrir link</a>
           <button
             v-else
-            class="mt-2 text-sm text-[var(--color-saltup)] underline"
+            class="mt-2 text-sm text-[var(--color-saltup-ink)] underline"
             @click="descargar(recursoAbierto)"
           >
             Descargar archivo
@@ -405,7 +405,7 @@ async function descargar(r: Recurso) {
           >
             <p
               v-if="a.seccion"
-              class="mb-1 text-xs font-semibold text-[var(--color-saltup)]"
+              class="mb-1 text-xs font-semibold text-[var(--color-saltup-ink)]"
             >
               {{ a.seccion }}
             </p>
@@ -480,7 +480,7 @@ async function descargar(r: Recurso) {
             </div>
             <button
               type="button"
-              class="text-xs text-[var(--color-saltup)] hover:underline"
+              class="text-xs text-[var(--color-saltup-ink)] hover:underline"
               @click="agregarOtroAprendizaje"
             >
               + Otro aprendizaje

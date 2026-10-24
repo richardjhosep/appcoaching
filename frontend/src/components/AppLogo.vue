@@ -30,7 +30,7 @@ withDefaults(
       <path
         d="M 56.6 12.6 A 38 38 0 0 1 56.6 87.4"
         fill="none"
-        stroke="var(--color-bronze)"
+        stroke="var(--color-amber)"
         stroke-width="13"
         stroke-linecap="round"
       />
@@ -38,7 +38,7 @@ withDefaults(
         cx="50"
         cy="50"
         r="9"
-        fill="var(--color-sage)"
+        :fill="dark ? '#8fd1ae' : 'var(--color-sage)'"
       />
     </svg>
     <span
@@ -46,7 +46,7 @@ withDefaults(
       class="font-[family-name:var(--font-heading)] text-lg font-semibold tracking-tight"
       :class="dark ? 'text-[var(--color-ivory)]' : 'text-[var(--color-ink)]'"
     >
-      Coach<span class="text-[var(--color-bronze)]">Nexus</span>
+      Coach<span :class="dark ? 'text-[var(--color-amber)]' : 'text-[var(--color-bronze)]'">Nexus</span>
     </span>
   </div>
 </template>

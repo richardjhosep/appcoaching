@@ -1,8 +1,8 @@
 import Swal from 'sweetalert2'
 
 const base = Swal.mixin({
-  confirmButtonColor: '#121212',
-  cancelButtonColor: '#a2651a',
+  confirmButtonColor: '#1d6a49',
+  cancelButtonColor: '#8c5514',
   buttonsStyling: true,
   customClass: {
     popup: 'font-[family-name:var(--font-body)] rounded-2xl',
@@ -52,7 +52,7 @@ export async function confirmDialog(options: {
     showCancelButton: true,
     confirmButtonText: options.confirmText ?? 'Confirmar',
     cancelButtonText: 'Cancelar',
-    confirmButtonColor: options.danger ? '#dc2626' : '#121212',
+    confirmButtonColor: options.danger ? '#b91c1c' : '#1d6a49',
     reverseButtons: true,
   })
   return result.isConfirmed
@@ -77,8 +77,8 @@ export async function confirmSerieDialog(options: {
     confirmButtonText: options.todaSerieText,
     denyButtonText: options.soloEstaText,
     cancelButtonText: 'Cancelar',
-    confirmButtonColor: options.danger ? '#dc2626' : '#121212',
-    denyButtonColor: options.danger ? '#dc2626' : '#a2651a',
+    confirmButtonColor: options.danger ? '#b91c1c' : '#1d6a49',
+    denyButtonColor: options.danger ? '#b91c1c' : '#8c5514',
     reverseButtons: true,
   })
   if (result.isConfirmed) return 'toda-serie'

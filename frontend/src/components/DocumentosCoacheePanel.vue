@@ -155,7 +155,7 @@ async function descargar(doc: DocumentoCoachee) {
         <div class="flex shrink-0 items-center gap-3">
           <button
             type="button"
-            class="text-xs text-[var(--color-saltup)] hover:underline"
+            class="text-xs text-[var(--color-saltup-ink)] hover:underline"
             @click="descargar(d)"
           >
             Descargar

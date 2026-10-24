@@ -253,7 +253,7 @@ async function guardarPassword() {
     />
 
     <aside
-      class="fixed inset-y-0 left-0 z-40 flex w-64 -translate-x-full flex-col bg-[var(--color-ink)] text-[var(--color-parchment)] transition-transform duration-200 print:hidden"
+      class="fixed inset-y-0 left-0 z-40 flex w-64 -translate-x-full flex-col bg-[var(--color-forest)] text-[var(--color-parchment)] transition-transform duration-200 print:hidden"
       :class="{ 'translate-x-0': sidebarOpen }"
     >
       <div class="flex items-center justify-between px-5 py-5">
@@ -307,7 +307,7 @@ async function guardarPassword() {
               :key="item.to"
               :to="item.to"
               class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-[var(--color-parchment)]/80 transition-colors hover:bg-white/10 hover:text-[var(--color-parchment)]"
-              active-class="bg-[var(--color-sage)]/20 text-[var(--color-parchment)] font-medium"
+              active-class="bg-white/10 text-[var(--color-parchment)] font-medium shadow-[inset_3px_0_0_var(--color-amber)]"
               @click="closeOnMobileNav"
             >
               <NavIcon :name="item.icon" />

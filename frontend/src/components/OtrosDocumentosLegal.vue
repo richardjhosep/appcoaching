@@ -100,7 +100,7 @@ async function eliminar(doc: DocumentoAdicionalLegal) {
         >
           <button
             type="button"
-            class="text-left text-[var(--color-saltup)] hover:underline"
+            class="text-left text-[var(--color-saltup-ink)] hover:underline"
             @click="descargar(doc)"
           >
             📄 {{ doc.titulo }}

@@ -94,7 +94,7 @@ async function enviarSolicitud() {
       </button>
       <button
         type="button"
-        class="inline-flex items-center gap-1 rounded-full border border-[var(--color-line)] px-2.5 py-1 text-xs text-[var(--color-saltup)] hover:bg-[var(--color-parchment)]/60"
+        class="inline-flex items-center gap-1 rounded-full border border-[var(--color-line)] px-2.5 py-1 text-xs text-[var(--color-saltup-ink)] hover:bg-[var(--color-parchment)]/60"
         @click="enviarSolicitud"
       >
         <NavIcon

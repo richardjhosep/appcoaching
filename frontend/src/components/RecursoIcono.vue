@@ -9,10 +9,10 @@ const tipo = computed(() => tipoIconoDe(props.recurso))
 
 const estilos: Record<TipoIcono, { bg: string; fg: string }> = {
   pdf: { bg: 'color-mix(in srgb, var(--color-danger) 15%, white)', fg: 'var(--color-danger)' },
-  word: { bg: 'color-mix(in srgb, var(--color-saltup) 15%, white)', fg: 'var(--color-saltup)' },
+  word: { bg: 'color-mix(in srgb, var(--color-saltup) 15%, white)', fg: 'var(--color-saltup-ink)' },
   excel: { bg: 'color-mix(in srgb, var(--color-sage) 15%, white)', fg: 'var(--color-sage)' },
   video: { bg: 'color-mix(in srgb, var(--color-danger) 15%, white)', fg: 'var(--color-danger)' },
-  link: { bg: 'color-mix(in srgb, var(--color-saltup) 15%, white)', fg: 'var(--color-saltup)' },
+  link: { bg: 'color-mix(in srgb, var(--color-saltup) 15%, white)', fg: 'var(--color-saltup-ink)' },
   archivo: { bg: 'var(--color-parchment)', fg: 'var(--color-ink)' },
 }
 

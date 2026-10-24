@@ -186,7 +186,7 @@ const option = computed(() => {
         <button
           v-if="historial.length > VISIBLES"
           type="button"
-          class="text-sm font-medium text-[var(--color-saltup)] hover:underline"
+          class="text-sm font-medium text-[var(--color-saltup-ink)] hover:underline"
           :aria-expanded="verTodas"
           @click="verTodas = !verTodas"
         >

@@ -333,7 +333,7 @@ async function onSesionEliminada() {
                   :href="s.linkVideollamada"
                   target="_blank"
                   rel="noopener"
-                  class="inline-flex items-center gap-1.5 rounded-full bg-[var(--color-saltup)]/10 px-3 py-1 text-xs text-[var(--color-saltup)] hover:bg-[var(--color-saltup)]/20"
+                  class="inline-flex items-center gap-1.5 rounded-full bg-[var(--color-saltup)]/10 px-3 py-1 text-xs text-[var(--color-saltup-ink)] hover:bg-[var(--color-saltup)]/20"
                 >
                   <svg
                     width="11"

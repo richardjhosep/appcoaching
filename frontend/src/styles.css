@@ -11,11 +11,14 @@
   /* sage/bronze subidos de saturación (14%→44%, 36%→72%) — las versiones anteriores
      medían debajo de 3:1 de contraste como texto sobre ivory/blanco (fallaban WCAG AA),
      además de leerse apagadas. Mismo tono/familia, más vivos y ahora accesibles. */
-  --color-sage: #2f794a;
-  --color-bronze: #a2651a;
-  --color-danger: #dc2626;
+  --color-sage: #1d6a49; /* verde bosque: acción y estado "ok" */
+  --color-bronze: #8c5514; /* tono "tinta" del ámbar: apto como texto y chips (≥4.5:1) */
+  --color-amber: #e0a12a; /* acento de marca, solo decorativo (indicadores, logo); no como texto sobre claro */
+  --color-forest: #12372a; /* menú lateral y cabeceras oscuras */
+  --color-danger: #b91c1c;
   --color-line: #e4dcc9;
   --color-saltup: #03b3ac;
+  --color-saltup-ink: #0a6e6a; /* saltup como texto/ícono sobre claro (el turquesa puro mide <3:1) */
   /* Acento nuevo, reservado para momentos de logro/celebración — sobre todo en la
      experiencia del coachee (progreso, hitos), donde el pedido fue "más atractivo,
      no tan serio". No reemplaza a los colores de estado, se suma como quinto tono. */
@@ -26,7 +29,7 @@
   /* Color de ACCIÓN (botones principales, pestaña/selección activa, avatares). Hoy es la
      salvia; cambiar de paleta es cambiar esta línea. El negro (--color-ink) queda para texto. */
   --color-primary: var(--color-sage);
-  --color-primary-hover: #245f3a;
+  --color-primary-hover: #154f38;
   --color-on-primary: #ffffff;
   --color-muted: #636261;
   --color-subtle: #72706d;

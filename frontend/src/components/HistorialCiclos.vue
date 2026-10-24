@@ -94,7 +94,7 @@ async function descargarPdf(ciclo: Ciclo) {
           <button
             v-if="ciclo.informePdfPath"
             type="button"
-            class="flex items-center gap-1.5 rounded-full border border-[var(--color-line)] px-3 py-1.5 text-xs text-[var(--color-saltup)] hover:bg-[var(--color-parchment)]/60"
+            class="flex items-center gap-1.5 rounded-full border border-[var(--color-line)] px-3 py-1.5 text-xs text-[var(--color-saltup-ink)] hover:bg-[var(--color-parchment)]/60"
             @click="descargarPdf(ciclo)"
           >
             <NavIcon

@@ -13,7 +13,7 @@ const abierto = ref(false)
   <div class="mb-4 rounded-2xl border border-[var(--color-saltup)]/20 bg-[var(--color-saltup)]/5">
     <button
       type="button"
-      class="flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-medium text-[var(--color-saltup)]"
+      class="flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-medium text-[var(--color-saltup-ink)]"
       @click="abierto = !abierto"
     >
       <svg

@@ -467,7 +467,7 @@ async function eliminarExp(id: string) {
           <button
             v-if="perfil?.cvPath"
             type="button"
-            class="rounded-full border border-[var(--color-line)] px-2.5 py-1 text-xs text-[var(--color-saltup)] hover:bg-[var(--color-parchment)]/60"
+            class="rounded-full border border-[var(--color-line)] px-2.5 py-1 text-xs text-[var(--color-saltup-ink)] hover:bg-[var(--color-parchment)]/60"
             @click="verCv"
           >
             ⬇ Ver CV actual
@@ -521,7 +521,7 @@ async function eliminarExp(id: string) {
             <div class="flex shrink-0 items-center gap-3">
               <button
                 type="button"
-                class="text-xs text-[var(--color-saltup)] hover:underline"
+                class="text-xs text-[var(--color-saltup-ink)] hover:underline"
                 @click="editarExp(exp)"
               >
                 Editar
@@ -549,7 +549,7 @@ async function eliminarExp(id: string) {
         >
           <p
             v-if="editandoExpId"
-            class="text-xs font-medium text-[var(--color-saltup)]"
+            class="text-xs font-medium text-[var(--color-saltup-ink)]"
           >
             Editando experiencia
           </p>
@@ -657,14 +657,14 @@ async function eliminarExp(id: string) {
               <button
                 v-if="cert.archivoPath"
                 type="button"
-                class="text-xs text-[var(--color-saltup)] hover:underline"
+                class="text-xs text-[var(--color-saltup-ink)] hover:underline"
                 @click="verCertificacion(cert.id, cert.nombre, cert.archivoNombre)"
               >
                 Ver
               </button>
               <button
                 type="button"
-                class="text-xs text-[var(--color-saltup)] hover:underline"
+                class="text-xs text-[var(--color-saltup-ink)] hover:underline"
                 @click="editarCert(cert)"
               >
                 Editar
@@ -692,7 +692,7 @@ async function eliminarExp(id: string) {
         >
           <p
             v-if="editandoCertId"
-            class="text-xs font-medium text-[var(--color-saltup)]"
+            class="text-xs font-medium text-[var(--color-saltup-ink)]"
           >
             Editando certificación
           </p>
