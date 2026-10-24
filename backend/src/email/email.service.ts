@@ -41,7 +41,7 @@ function renderFallbackLink(url: string): string {
   return `
     <p style="margin:0;font-size:13px;line-height:1.6;color:#6b6b6b;">
       Si el botón no funciona, copia y pega este enlace en tu navegador:<br>
-      <a href="${url}" style="color:#a2651a;">${url}</a>
+      <a href="${url}" style="color:#1d6a49;">${url}</a>
     </p>
   `;
 }
@@ -91,7 +91,7 @@ export class EmailService {
     const subject = 'Bienvenido/a a CoachNexus — tu cuenta ya está lista';
 
     const body = `
-      <h1 style="margin:0 0 16px;font-family:'Poppins',Arial,sans-serif;font-size:22px;color:#121212;">${saludo}</h1>
+      <h1 style="margin:0 0 16px;font-family:Georgia,'Times New Roman',serif;font-weight:500;font-size:24px;color:#121212;">${saludo}</h1>
       <p style="margin:0 0 16px;font-size:15px;line-height:1.6;">
         ${intro}
       </p>
@@ -112,7 +112,7 @@ export class EmailService {
       ${renderFallbackLink(options.loginUrl)}
       ${
         options.guideUrl
-          ? `<p style="margin:16px 0 0;font-size:13px;line-height:1.6;color:#6b6b6b;">Además, preparamos una <a href="${options.guideUrl}" style="color:#a2651a;">guía rápida con capturas de la plataforma</a> para que sepas qué esperar en cada sección.</p>`
+          ? `<p style="margin:16px 0 0;font-size:13px;line-height:1.6;color:#6b6b6b;">Además, preparamos una <a href="${options.guideUrl}" style="color:#1d6a49;">guía rápida con capturas de la plataforma</a> para que sepas qué esperar en cada sección.</p>`
           : ''
       }
     `;
@@ -159,7 +159,7 @@ export class EmailService {
       : '';
 
     const body = `
-      <h1 style="margin:0 0 16px;font-family:'Poppins',Arial,sans-serif;font-size:22px;color:#121212;">Nueva solicitud de reagendamiento</h1>
+      <h1 style="margin:0 0 16px;font-family:Georgia,'Times New Roman',serif;font-weight:500;font-size:24px;color:#121212;">Nueva solicitud de reagendamiento</h1>
       <p style="margin:0 0 16px;font-size:15px;line-height:1.6;">${intro}</p>
       ${motivoBox}
       ${renderButton(options.verUrl, 'Ver en CoachNexus')}
@@ -205,7 +205,7 @@ export class EmailService {
       : '';
 
     const body = `
-      <h1 style="margin:0 0 16px;font-family:'Poppins',Arial,sans-serif;font-size:22px;color:#121212;">Tu reagendamiento fue resuelto</h1>
+      <h1 style="margin:0 0 16px;font-family:Georgia,'Times New Roman',serif;font-weight:500;font-size:24px;color:#121212;">Tu reagendamiento fue resuelto</h1>
       <p style="margin:0 0 16px;font-size:15px;line-height:1.6;">${intro}</p>
       ${respuestaBox}
       ${renderButton(options.verUrl, 'Ver mis sesiones')}
@@ -249,7 +249,7 @@ export class EmailService {
       : '';
 
     const body = `
-      <h1 style="margin:0 0 16px;font-family:'Poppins',Arial,sans-serif;font-size:22px;color:#121212;">Nueva solicitud de sesión</h1>
+      <h1 style="margin:0 0 16px;font-family:Georgia,'Times New Roman',serif;font-weight:500;font-size:24px;color:#121212;">Nueva solicitud de sesión</h1>
       <p style="margin:0 0 16px;font-size:15px;line-height:1.6;">${intro}</p>
       ${motivoBox}
       ${renderButton(options.verUrl, 'Ver en CoachNexus')}
@@ -294,7 +294,7 @@ export class EmailService {
       : '';
 
     const body = `
-      <h1 style="margin:0 0 16px;font-family:'Poppins',Arial,sans-serif;font-size:22px;color:#121212;">${subject}</h1>
+      <h1 style="margin:0 0 16px;font-family:Georgia,'Times New Roman',serif;font-weight:500;font-size:24px;color:#121212;">${subject}</h1>
       <p style="margin:0 0 16px;font-size:15px;line-height:1.6;">${intro}</p>
       ${respuestaBox}
       ${renderButton(options.verUrl, 'Ver mis sesiones')}
@@ -332,7 +332,7 @@ export class EmailService {
     const intro = `Hola ${nombreCoachee}, tu coach notó que todavía no envías tu plan de desarrollo para aprobación. Complétalo cuando puedas para seguir avanzando en tu proceso.`;
 
     const body = `
-      <h1 style="margin:0 0 16px;font-family:'Poppins',Arial,sans-serif;font-size:22px;color:#121212;">Recordatorio de tu plan de desarrollo</h1>
+      <h1 style="margin:0 0 16px;font-family:Georgia,'Times New Roman',serif;font-weight:500;font-size:24px;color:#121212;">Recordatorio de tu plan de desarrollo</h1>
       <p style="margin:0 0 16px;font-size:15px;line-height:1.6;">${intro}</p>
       ${renderButton(options.verUrl, 'Ir a mi plan de desarrollo')}
       ${renderFallbackLink(options.verUrl)}
@@ -366,7 +366,7 @@ export class EmailService {
     const intro = `Hola ${nombreCoachee}, tu coach notó que todavía no tienes una próxima sesión agendada. Agenda cuando puedas para seguir avanzando en tu proceso.`;
 
     const body = `
-      <h1 style="margin:0 0 16px;font-family:'Poppins',Arial,sans-serif;font-size:22px;color:#121212;">Agenda tu próxima sesión</h1>
+      <h1 style="margin:0 0 16px;font-family:Georgia,'Times New Roman',serif;font-weight:500;font-size:24px;color:#121212;">Agenda tu próxima sesión</h1>
       <p style="margin:0 0 16px;font-size:15px;line-height:1.6;">${intro}</p>
       ${renderButton(options.verUrl, 'Agendar mi próxima sesión')}
       ${renderFallbackLink(options.verUrl)}
@@ -400,7 +400,7 @@ export class EmailService {
     const intro = `Hola ${nombreCoachee}, tu coach notó que no has registrado avances recientes. Cuéntale cómo vas para que pueda acompañarte mejor.`;
 
     const body = `
-      <h1 style="margin:0 0 16px;font-family:'Poppins',Arial,sans-serif;font-size:22px;color:#121212;">Registra tu progreso</h1>
+      <h1 style="margin:0 0 16px;font-family:Georgia,'Times New Roman',serif;font-weight:500;font-size:24px;color:#121212;">Registra tu progreso</h1>
       <p style="margin:0 0 16px;font-size:15px;line-height:1.6;">${intro}</p>
       ${renderButton(options.verUrl, 'Registrar mi progreso')}
       ${renderFallbackLink(options.verUrl)}
@@ -434,7 +434,7 @@ export class EmailService {
     const intro = `Hola ${nombreCoachee}, tu coach te pide confirmar tu consentimiento informado para participar del proceso de coaching y el uso de tus datos personales en la plataforma. Revisa el detalle y responde cuando quieras — solo tú puedes hacerlo.`;
 
     const body = `
-      <h1 style="margin:0 0 16px;font-family:'Poppins',Arial,sans-serif;font-size:22px;color:#121212;">Confirma tu consentimiento informado</h1>
+      <h1 style="margin:0 0 16px;font-family:Georgia,'Times New Roman',serif;font-weight:500;font-size:24px;color:#121212;">Confirma tu consentimiento informado</h1>
       <p style="margin:0 0 16px;font-size:15px;line-height:1.6;">${intro}</p>
       ${renderButton(options.verUrl, 'Revisar y responder')}
       ${renderFallbackLink(options.verUrl)}
@@ -470,7 +470,7 @@ export class EmailService {
     const subject = 'Restablece tu contraseña — CoachNexus';
 
     const body = `
-      <h1 style="margin:0 0 16px;font-family:'Poppins',Arial,sans-serif;font-size:22px;color:#121212;">Restablece tu contraseña</h1>
+      <h1 style="margin:0 0 16px;font-family:Georgia,'Times New Roman',serif;font-weight:500;font-size:24px;color:#121212;">Restablece tu contraseña</h1>
       <p style="margin:0 0 16px;font-size:15px;line-height:1.6;">${saludo} ${intro}</p>
       ${renderButton(options.resetUrl, 'Elegir nueva contraseña')}
       ${renderFallbackLink(options.resetUrl)}

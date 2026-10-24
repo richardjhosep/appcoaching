@@ -13,7 +13,7 @@ export function renderEmailLayout(bodyHtml: string): string {
         <td align="center">
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;background-color:#fbf9f4;border-radius:12px;overflow:hidden;border:1px solid #e4dcc9;">
             <tr>
-              <td style="background-color:#121212;padding:28px 32px;text-align:center;">
+              <td style="background-color:#12372a;padding:28px 32px;text-align:center;">
                 <img src="cid:${LOGO_CID}" width="200" alt="CoachNexus" style="display:block;margin:0 auto;max-width:200px;height:auto;border:0;">
               </td>
             </tr>
@@ -44,8 +44,8 @@ export function renderButton(url: string, label: string): string {
   return `
     <table role="presentation" cellpadding="0" cellspacing="0" style="margin:24px 0;">
       <tr>
-        <td style="border-radius:8px;background-color:#a2651a;">
-          <a href="${url}" style="display:inline-block;padding:12px 28px;font-family:'Poppins',Arial,sans-serif;font-size:14px;font-weight:600;color:#fbf9f4;text-decoration:none;border-radius:8px;">
+        <td style="border-radius:8px;background-color:#1d6a49;">
+          <a href="${url}" style="display:inline-block;padding:12px 28px;font-family:'Inter',Arial,sans-serif;font-size:14px;font-weight:600;color:#ffffff;text-decoration:none;border-radius:8px;">
             ${label}
           </a>
         </td>
