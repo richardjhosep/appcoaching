@@ -2657,3 +2657,8 @@ vue-tsc + eslint + vitest verdes; commit por fase; comprobación visual en Chrom
   `req.ip` sería la IP del proxy (todos los usuarios compartirían el contador); no se tocó porque la topología (nginx → ¿cloudflared?) define cuántos saltos confiar y un valor mal puesto permite falsear la IP.
   Idea no hecha: endpoint agregado para el dashboard de empresa (hoy ~4 llamadas por coachee).
 - Pendiente aparte: archivos duplicados "… 2" sin versionar en backend/ y frontend/public/manual/ (idénticos a sus originales; solo se borraron los de frontend/src).
+
+### Diseño: tipografía B + paleta "Bosque y ámbar" (rama feat/ux-ui-brechas, 2026-10-24)
+- [x] Fraunces en saludo/informes/certificado; Inter 600 en títulos; cifras `.cifra` (tabular-nums). Commit b3fed94.
+- [x] Paleta: sage #1d6a49 (primario), forest #12372a (menú/guía), amber #e0a12a (acento decorativo), bronze #8c5514 (tinta), danger #b91c1c, saltup-ink #0a6e6a.
+- [ ] Pendiente: íconos de línea en vez de glifos (→ ✓ ★ ▲ ▼), foto del coach, estados vacíos con ilustración, favicon/apple-touch-icon y landing/correos con la nueva paleta.
