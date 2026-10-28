@@ -84,28 +84,53 @@ async function eliminarDefinitivo() {
 </script>
 
 <template>
-  <div class="space-y-3">
-    <p class="text-xs text-[var(--color-muted)]">
-      <template v-if="modo === 'titular'">
-        Puedes descargar una copia de todos los datos que esta plataforma guarda sobre ti, o pedir
-        que se eliminen.
-      </template>
-      <template v-else>
-        Atiende aquí las solicitudes de acceso y eliminación de datos de {{ coacheeNombre }}. La
-        eliminación borra su cuenta y todo lo asociado, y no se puede deshacer.
-      </template>
-    </p>
-    <div class="flex flex-wrap gap-2">
+  <div class="text-sm">
+    <!-- Derecho de acceso: acción segura, sin énfasis. -->
+    <section class="space-y-3">
+      <div>
+        <h3 class="text-sm font-semibold text-[var(--color-ink)]">
+          Copia de los datos
+        </h3>
+        <p class="mt-1 text-xs text-[var(--color-muted)]">
+          <template v-if="modo === 'titular'">
+            Descarga un archivo con todo lo que esta plataforma guarda sobre ti.
+          </template>
+          <template v-else>
+            Descarga un archivo con todo lo que la plataforma guarda sobre {{ coacheeNombre }}, para
+            atender una solicitud de acceso.
+          </template>
+        </p>
+      </div>
       <AppButton
         variant="secondary"
+        class="w-full sm:w-auto"
         :loading="descargando"
         @click="descargar"
       >
         Descargar {{ modo === 'titular' ? 'mis datos' : 'sus datos' }}
       </AppButton>
+    </section>
+
+    <!-- Supresión: irreversible, así que va aparte y con el tinte de peligro de la app. -->
+    <section class="mt-5 space-y-3 rounded-xl border border-[var(--color-danger)]/25 bg-[var(--color-danger)]/5 p-4">
+      <div>
+        <h3 class="text-sm font-semibold text-[var(--color-danger)]">
+          Eliminación de datos
+        </h3>
+        <p class="mt-1 text-xs text-[var(--color-muted)]">
+          <template v-if="modo === 'titular'">
+            Pide que se borren tu cuenta y todo lo asociado. Tu coach recibe el aviso y lo atiende.
+          </template>
+          <template v-else>
+            Borra su cuenta, sesiones, planes, documentos y fotos. No se puede deshacer; para
+            confirmar deberás escribir su nombre.
+          </template>
+        </p>
+      </div>
       <AppButton
         v-if="modo === 'titular'"
         variant="secondary"
+        class="w-full sm:w-auto"
         :loading="procesando"
         @click="pedirSupresion"
       >
@@ -114,11 +139,12 @@ async function eliminarDefinitivo() {
       <AppButton
         v-else
         variant="danger"
+        class="w-full sm:w-auto"
         :loading="procesando"
         @click="eliminarDefinitivo"
       >
         Eliminar definitivamente
       </AppButton>
-    </div>
+    </section>
   </div>
 </template>

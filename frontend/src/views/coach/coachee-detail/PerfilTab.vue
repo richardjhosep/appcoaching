@@ -203,17 +203,18 @@ function onConsentimientoActualizado(actualizado: { consentimientoInformado: boo
           Datos sincronizados desde la cuenta del coachee (solo lectura).
         </p>
       </div>
-    </div>
-    <div class="rounded-2xl border border-[var(--color-line)] bg-white p-6 shadow-sm lg:col-span-full mt-4 lg:mt-0">
-      <h2 class="mb-2 font-[family-name:var(--font-heading)] text-base font-semibold">
-        Privacidad y datos personales
-      </h2>
-      <PrivacidadPanel
-        modo="coach"
-        :coachee-id="props.coacheeId"
-        :coachee-nombre="coachee.nombre"
-        @suprimido="router.push('/coach/coachees')"
-      />
+
+      <div class="rounded-2xl border border-[var(--color-line)] bg-white p-5">
+        <h2 class="mb-3 font-[family-name:var(--font-heading)] text-base font-semibold text-[var(--color-ink)]">
+          Privacidad y datos personales
+        </h2>
+        <PrivacidadPanel
+          modo="coach"
+          :coachee-id="props.coacheeId"
+          :coachee-nombre="coachee.nombre"
+          @suprimido="router.push('/coach/coachees')"
+        />
+      </div>
     </div>
   </div>
 </template>
