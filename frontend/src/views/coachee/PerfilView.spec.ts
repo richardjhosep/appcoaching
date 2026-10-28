@@ -39,6 +39,9 @@ const coacheeBase: Coachee = {
   compartirPerfilConCoach: false,
   consentimientoInformado: true,
   consentimientoFecha: '2026-08-01T00:00:00.000Z',
+  consentimientoSensibles: false,
+  consentimientoSensiblesFecha: null,
+  consentimientoSensiblesVersion: null,
 }
 
 describe('PerfilView (coachee)', () => {

@@ -18,6 +18,9 @@ const coachee = (over: Partial<Coachee> = {}): Coachee =>
     tarifaPropia: 100,
     compartirPerfilConCoach: false,
     consentimientoInformado: true,
+    consentimientoSensibles: true,
+    consentimientoSensiblesFecha: new Date(),
+    consentimientoSensiblesVersion: '2026-10',
     user: {
       id: 'u1',
       email: 'camila@empresa.cl',
@@ -39,6 +42,8 @@ describe('redactarCoacheeParaRol', () => {
     expect(r.emailContacto).toBeNull();
     expect(r.tarifaPropia).toBeNull();
     expect(r.compartirPerfilConCoach).toBe(false);
+    expect(r.consentimientoSensibles).toBe(false);
+    expect(r.consentimientoSensiblesFecha).toBeNull();
     expect(r.user).toEqual({ id: 'u1', email: 'camila@empresa.cl' });
   });
 

@@ -7,6 +7,7 @@ import {
 import { Repository } from 'typeorm';
 import { CoacheesService } from './coachees.service';
 import { Coachee } from './entities/coachee.entity';
+import { VERSION_CONSENTIMIENTO_SENSIBLES } from './consentimiento-sensibles';
 import { SolicitudConsentimiento } from './entities/solicitud-consentimiento.entity';
 import { EstadoSolicitudConsentimiento } from './enums/estado-solicitud-consentimiento.enum';
 import { EmpresasService } from '../empresas/empresas.service';
@@ -429,6 +430,65 @@ describe('CoacheesService', () => {
       await expect(service.solicitarConsentimiento('missing')).rejects.toThrow(
         NotFoundException,
       );
+    });
+  });
+
+  describe('consentimiento de datos sensibles', () => {
+    it('lo otorga con fecha y versión del texto', async () => {
+      repo.findOne.mockResolvedValue({ id: 'c1', userId: 'user-1' });
+
+      const coachee = await service.aceptarMisDatosSensibles('user-1');
+
+      expect(coachee.consentimientoSensibles).toBe(true);
+      expect(coachee.consentimientoSensiblesFecha).toBeInstanceOf(Date);
+      expect(coachee.consentimientoSensiblesVersion).toBe(
+        VERSION_CONSENTIMIENTO_SENSIBLES,
+      );
+    });
+
+    it('al revocarlo borra fecha y versión', async () => {
+      repo.findOne.mockResolvedValue({
+        id: 'c1',
+        userId: 'user-1',
+        consentimientoSensibles: true,
+        consentimientoSensiblesFecha: new Date(),
+        consentimientoSensiblesVersion: VERSION_CONSENTIMIENTO_SENSIBLES,
+      });
+
+      const coachee = await service.revocarMisDatosSensibles('user-1');
+
+      expect(coachee.consentimientoSensibles).toBe(false);
+      expect(coachee.consentimientoSensiblesFecha).toBeNull();
+      expect(coachee.consentimientoSensiblesVersion).toBeNull();
+    });
+
+    it('exigirConsentimientoSensibles deja pasar solo con consentimiento de la versión vigente', async () => {
+      repo.findOne.mockResolvedValue({
+        id: 'c1',
+        consentimientoSensibles: true,
+        consentimientoSensiblesVersion: VERSION_CONSENTIMIENTO_SENSIBLES,
+      });
+      await expect(
+        service.exigirConsentimientoSensibles('user-1'),
+      ).resolves.toBeUndefined();
+
+      repo.findOne.mockResolvedValue({
+        id: 'c1',
+        consentimientoSensibles: false,
+        consentimientoSensiblesVersion: null,
+      });
+      await expect(
+        service.exigirConsentimientoSensibles('user-1'),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+
+      repo.findOne.mockResolvedValue({
+        id: 'c1',
+        consentimientoSensibles: true,
+        consentimientoSensiblesVersion: '2020-01',
+      });
+      await expect(
+        service.exigirConsentimientoSensibles('user-1'),
+      ).rejects.toBeInstanceOf(ForbiddenException);
     });
   });
 

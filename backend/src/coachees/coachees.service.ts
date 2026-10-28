@@ -25,6 +25,7 @@ import { Role } from '../auth/enums/role.enum';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { assignDefined } from '../common/assign-defined.util';
 import { Moneda } from '../common/moneda.enum';
+import { VERSION_CONSENTIMIENTO_SENSIBLES } from './consentimiento-sensibles';
 
 const RELATIONS = { empresa: true, user: true };
 const SOLICITUD_CONSENTIMIENTO_TTL_DIAS = 7;
@@ -229,6 +230,49 @@ export class CoacheesService {
     coachee.consentimientoInformado = true;
     coachee.consentimientoFecha = ahora;
     return this.coachees.save(coachee);
+  }
+
+  /**
+   * Consentimiento para datos sensibles (Ley 21.719). Es del propio coachee: solo él lo da y lo
+   * revoca, desde su sesión. Revocar corta el uso a futuro; lo ya guardado se borra con la
+   * supresión de datos (módulo privacidad), no con este interruptor.
+   */
+  async aceptarMisDatosSensibles(userId: string): Promise<Coachee> {
+    const coachee = await this.requireByUserId(userId);
+    coachee.consentimientoSensibles = true;
+    coachee.consentimientoSensiblesFecha = new Date();
+    coachee.consentimientoSensiblesVersion = VERSION_CONSENTIMIENTO_SENSIBLES;
+    return this.coachees.save(coachee);
+  }
+
+  async revocarMisDatosSensibles(userId: string): Promise<Coachee> {
+    const coachee = await this.requireByUserId(userId);
+    coachee.consentimientoSensibles = false;
+    coachee.consentimientoSensiblesFecha = null;
+    coachee.consentimientoSensiblesVersion = null;
+    return this.coachees.save(coachee);
+  }
+
+  /** Corta una operación que guardaría datos sensibles si el coachee no consintió (o el texto cambió). */
+  async exigirConsentimientoSensibles(userId: string): Promise<void> {
+    const coachee = await this.requireByUserId(userId);
+    if (
+      !coachee.consentimientoSensibles ||
+      coachee.consentimientoSensiblesVersion !==
+        VERSION_CONSENTIMIENTO_SENSIBLES
+    ) {
+      throw new ForbiddenException(
+        'Para usar esta función necesitamos tu consentimiento para tratar datos sensibles. Puedes darlo en Mi cuenta.',
+      );
+    }
+  }
+
+  private async requireByUserId(userId: string): Promise<Coachee> {
+    const coachee = await this.coachees.findOne({ where: { userId } });
+    if (!coachee) {
+      throw new NotFoundException('Perfil de coachee no encontrado.');
+    }
+    return coachee;
   }
 
   async responderSolicitud(token: string, aceptado: boolean): Promise<Coachee> {

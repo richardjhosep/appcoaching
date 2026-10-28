@@ -10,7 +10,13 @@ import TabBar from '../../components/TabBar.vue'
 import DocumentosCoacheePanel from '../../components/DocumentosCoacheePanel.vue'
 import AppButton from '../../components/AppButton.vue'
 import PrivacidadPanel from '../../components/PrivacidadPanel.vue'
-import { aceptarMiConsentimiento, getMyCoachee, type Coachee } from '../../api/coachees'
+import {
+  aceptarMiConsentimiento,
+  aceptarMisDatosSensibles,
+  getMyCoachee,
+  revocarMisDatosSensibles,
+  type Coachee,
+} from '../../api/coachees'
 import {
   getMisDocumentosLegales,
   descargarMiAcuerdo,
@@ -20,7 +26,7 @@ import {
 import { getMiInversion, type MiInversion, type PeriodoComercial } from '../../api/negocio'
 import { estadoVisual, ESTADO_VISUAL_LABEL, type EstadoVisualDocumento } from '../../lib/legalFormat'
 import { ApiError } from '../../api/client'
-import { notifyError, notifySuccess } from '../../lib/notify'
+import { confirmDialog, notifyError, notifySuccess } from '../../lib/notify'
 
 const coachee = ref<Coachee | null>(null)
 const documentos = ref<MisDocumentosLegales | null>(null)
@@ -39,6 +45,28 @@ async function aceptarConsentimiento() {
     await notifyError('No se pudo registrar', err instanceof ApiError ? err.message : 'Ocurrió un error inesperado.')
   } finally {
     aceptandoConsentimiento.value = false
+  }
+}
+
+const guardandoSensibles = ref(false)
+async function cambiarConsentimientoSensibles(otorgar: boolean) {
+  if (!otorgar) {
+    const ok = await confirmDialog({
+      title: '¿Revocar el consentimiento?',
+      text: 'Dejarás de poder usar el diario de reflexión y los tests de estilo. Lo que ya guardaste se conserva hasta que pidas eliminar tus datos.',
+      confirmText: 'Revocar',
+      danger: true,
+    })
+    if (!ok) return
+  }
+  guardandoSensibles.value = true
+  try {
+    coachee.value = otorgar ? await aceptarMisDatosSensibles() : await revocarMisDatosSensibles()
+    await notifySuccess(otorgar ? 'Consentimiento registrado' : 'Consentimiento revocado')
+  } catch (err) {
+    await notifyError('No se pudo guardar', err instanceof ApiError ? err.message : 'Ocurrió un error inesperado.')
+  } finally {
+    guardandoSensibles.value = false
   }
 }
 
@@ -171,6 +199,52 @@ const formatoCLP = new Intl.NumberFormat('es-CL', { style: 'currency', currency:
             @click="aceptarConsentimiento"
           >
             Acepto el consentimiento informado
+          </AppButton>
+        </div>
+      </SectionCard>
+
+      <SectionCard
+        title="Datos sensibles"
+        icon="legal"
+      >
+        <div class="flex flex-wrap items-center gap-2">
+          <StatusBadge :tone="coachee.consentimientoSensibles ? 'sage' : 'bronze'">
+            {{ coachee.consentimientoSensibles ? 'Autorizado' : 'Sin autorizar' }}
+          </StatusBadge>
+          <span
+            v-if="coachee.consentimientoSensibles && coachee.consentimientoSensiblesFecha"
+            class="text-xs text-[var(--color-muted)]"
+          >
+            el {{ new Date(coachee.consentimientoSensiblesFecha).toLocaleDateString('es-CL') }}
+          </span>
+        </div>
+        <div class="mt-3 rounded-xl border border-[var(--color-line)] bg-[var(--color-parchment)]/40 p-4 text-xs text-[var(--color-ink)]/70">
+          <p class="mb-2">
+            Algunas herramientas guardan información personal delicada: tus reflexiones del diario
+            (emociones, vida personal) y los resultados de tests de estilo (perfil psicológico). La
+            ley protege estos datos de forma especial y necesitamos tu autorización expresa.
+          </p>
+          <ul class="list-disc space-y-1 pl-4">
+            <li>Las reflexiones de tu diario solo las ves tú. Los resultados de los tests de estilo los ve tu coach para acompañarte. Tu empresa no accede a ninguno de los dos.</li>
+            <li>Es voluntario: sin esta autorización el resto de la plataforma funciona igual.</li>
+            <li>Puedes revocarla cuando quieras desde aquí, y pedir la eliminación de lo guardado en "Mis datos y privacidad".</li>
+          </ul>
+          <AppButton
+            v-if="!coachee.consentimientoSensibles"
+            class="mt-4"
+            :loading="guardandoSensibles"
+            @click="cambiarConsentimientoSensibles(true)"
+          >
+            Autorizo el tratamiento de mis datos sensibles
+          </AppButton>
+          <AppButton
+            v-else
+            class="mt-4"
+            variant="secondary"
+            :loading="guardandoSensibles"
+            @click="cambiarConsentimientoSensibles(false)"
+          >
+            Revocar autorización
           </AppButton>
         </div>
       </SectionCard>

@@ -8,7 +8,13 @@ import type { MiInversion } from '../../api/negocio'
 
 vi.mock('../../api/coachees', async () => {
   const actual = await vi.importActual<typeof import('../../api/coachees')>('../../api/coachees')
-  return { ...actual, getMyCoachee: vi.fn(), aceptarMiConsentimiento: vi.fn() }
+  return {
+    ...actual,
+    getMyCoachee: vi.fn(),
+    aceptarMiConsentimiento: vi.fn(),
+    aceptarMisDatosSensibles: vi.fn(),
+    revocarMisDatosSensibles: vi.fn(),
+  }
 })
 vi.mock('../../api/legal', async () => {
   const actual = await vi.importActual<typeof import('../../api/legal')>('../../api/legal')
@@ -21,9 +27,17 @@ vi.mock('../../api/negocio', async () => {
 vi.mock('../../lib/notify', () => ({
   notifySuccess: vi.fn(),
   notifyError: vi.fn(),
+  confirmDialog: vi.fn(),
+  promptDialog: vi.fn(),
 }))
 
-import { aceptarMiConsentimiento, getMyCoachee } from '../../api/coachees'
+import {
+  aceptarMiConsentimiento,
+  aceptarMisDatosSensibles,
+  getMyCoachee,
+  revocarMisDatosSensibles,
+} from '../../api/coachees'
+import { confirmDialog } from '../../lib/notify'
 import { getMisDocumentosLegales, descargarMiAcuerdo } from '../../api/legal'
 import { getMiInversion } from '../../api/negocio'
 
@@ -39,6 +53,9 @@ const coacheeEmpresa: Coachee = {
   compartirPerfilConCoach: false,
   consentimientoInformado: true,
   consentimientoFecha: null,
+  consentimientoSensibles: false,
+  consentimientoSensiblesFecha: null,
+  consentimientoSensiblesVersion: null,
 }
 
 const coacheeIndependiente: Coachee = { ...coacheeEmpresa, id: 'c2', empresaId: null }
@@ -175,6 +192,50 @@ describe('CuentaView (coachee)', () => {
     expect(aceptarMiConsentimiento).toHaveBeenCalledTimes(1)
     expect(wrapper.text()).toContain('Firmado')
     expect(wrapper.text()).not.toContain('Acepto el consentimiento informado')
+  })
+
+  it('lets the coachee authorize sensitive data and shows it as Autorizado', async () => {
+    vi.mocked(getMyCoachee).mockResolvedValue(coacheeEmpresa)
+    vi.mocked(aceptarMisDatosSensibles).mockResolvedValue({
+      ...coacheeEmpresa,
+      consentimientoSensibles: true,
+      consentimientoSensiblesFecha: '2026-10-28T12:00:00.000Z',
+      consentimientoSensiblesVersion: '2026-10',
+    })
+
+    const wrapper = mount(CuentaView)
+    await flushPromises()
+    expect(wrapper.text()).toContain('Sin autorizar')
+    await wrapper.findAll('button').find((b) => b.text().startsWith('Autorizo el tratamiento'))!.trigger('click')
+    await flushPromises()
+
+    expect(aceptarMisDatosSensibles).toHaveBeenCalledTimes(1)
+    expect(wrapper.text()).toContain('Autorizado')
+  })
+
+  it('asks for confirmation before revoking the sensitive-data consent', async () => {
+    const autorizado = {
+      ...coacheeEmpresa,
+      consentimientoSensibles: true,
+      consentimientoSensiblesFecha: '2026-10-28T12:00:00.000Z',
+      consentimientoSensiblesVersion: '2026-10',
+    }
+    vi.mocked(getMyCoachee).mockResolvedValue(autorizado)
+    vi.mocked(confirmDialog).mockResolvedValueOnce(false)
+
+    const wrapper = mount(CuentaView)
+    await flushPromises()
+    const revocar = () => wrapper.findAll('button').find((b) => b.text() === 'Revocar autorización')!
+    await revocar().trigger('click')
+    await flushPromises()
+    expect(revocarMisDatosSensibles).not.toHaveBeenCalled()
+
+    vi.mocked(confirmDialog).mockResolvedValueOnce(true)
+    vi.mocked(revocarMisDatosSensibles).mockResolvedValue({ ...coacheeEmpresa })
+    await revocar().trigger('click')
+    await flushPromises()
+    expect(revocarMisDatosSensibles).toHaveBeenCalledTimes(1)
+    expect(wrapper.text()).toContain('Sin autorizar')
   })
 
   it('shows an error state with retry when the cuenta fails to load', async () => {

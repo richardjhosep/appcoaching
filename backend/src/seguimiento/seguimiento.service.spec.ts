@@ -1,4 +1,4 @@
-import { NotFoundException } from '@nestjs/common';
+import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { Repository } from 'typeorm';
 import { SeguimientoService } from './seguimiento.service';
 import { Logro } from './entities/logro.entity';
@@ -30,7 +30,10 @@ describe('SeguimientoService', () => {
     create: jest.Mock<PartialAutoevaluacion, [PartialAutoevaluacion]>;
     save: jest.Mock<Promise<PartialAutoevaluacion>, [PartialAutoevaluacion]>;
   };
-  let coachees: { findByUserId: jest.Mock };
+  let coachees: {
+    findByUserId: jest.Mock;
+    exigirConsentimientoSensibles: jest.Mock;
+  };
   let postSesiones: {
     avanceGeneral: jest.Mock;
     findAllPublicadasForCoachee: jest.Mock;
@@ -60,7 +63,10 @@ describe('SeguimientoService', () => {
         Promise.resolve({ id: 'generated-id', ...data }),
       ),
     };
-    coachees = { findByUserId: jest.fn() };
+    coachees = {
+      findByUserId: jest.fn(),
+      exigirConsentimientoSensibles: jest.fn().mockResolvedValue(undefined),
+    };
     postSesiones = {
       avanceGeneral: jest.fn(),
       findAllPublicadasForCoachee: jest.fn(),
@@ -119,6 +125,17 @@ describe('SeguimientoService', () => {
 
       expect(entrada.coacheeId).toBe('coachee-1');
       expect(entrada.contenido).toBe('reflexión de hoy');
+    });
+
+    it('no guarda la entrada si el coachee no dio el consentimiento de datos sensibles', async () => {
+      coachees.exigirConsentimientoSensibles.mockRejectedValue(
+        new ForbiddenException('sin consentimiento'),
+      );
+
+      await expect(
+        service.addEntradaDiarioOwn('user-1', { contenido: 'x' }),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+      expect(diariosRepo.save).not.toHaveBeenCalled();
     });
 
     it('lists entradas ordered by most recent first', async () => {

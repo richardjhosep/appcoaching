@@ -68,6 +68,7 @@ export class SeguimientoService {
     actorUserId: string,
     dto: CreateEntradaDiarioDto,
   ): Promise<EntradaDiario> {
+    await this.coachees.exigirConsentimientoSensibles(actorUserId);
     const coacheeId = await this.resolveCoacheeId(actorUserId);
     return this.diarios.save(
       this.diarios.create({ coacheeId, contenido: dto.contenido }),

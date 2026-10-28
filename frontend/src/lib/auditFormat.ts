@@ -62,6 +62,10 @@ export function verboAuditoria(log: AuditLog): string {
       return `Eliminó la empresa ${target ?? '(nombre no disponible)'}.`
     case 'COACHEE_ELIMINADO':
       return `Eliminó al coachee ${target ?? '(nombre no disponible)'}.`
+    case 'CONSENTIMIENTO_SENSIBLES_OTORGADO':
+      return `Dio su consentimiento para el tratamiento de datos sensibles${target ? ` (${target})` : ''}.`
+    case 'CONSENTIMIENTO_SENSIBLES_REVOCADO':
+      return `Revocó su consentimiento para el tratamiento de datos sensibles${target ? ` (${target})` : ''}.`
     case 'COACHEE_SUPRIMIDO':
       return 'Eliminó definitivamente los datos de un coachee (Ley 21.719).'
     case 'SUPRESION_SOLICITADA':

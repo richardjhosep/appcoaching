@@ -105,6 +105,26 @@ export class Coachee {
   @Column({ name: 'consentimiento_fecha', type: 'timestamptz', nullable: true })
   consentimientoFecha: Date | null;
 
+  // Consentimiento propio para datos sensibles (salud mental, vida afectiva, evaluaciones
+  // psicométricas) — Ley 21.719. Se acepta y se revoca desde la app; `version` identifica el texto
+  // que el coachee leyó, para poder pedirlo de nuevo si el texto cambia.
+  @Column({ name: 'consentimiento_sensibles', type: 'boolean', default: false })
+  consentimientoSensibles: boolean;
+
+  @Column({
+    name: 'consentimiento_sensibles_fecha',
+    type: 'timestamptz',
+    nullable: true,
+  })
+  consentimientoSensiblesFecha: Date | null;
+
+  @Column({
+    name: 'consentimiento_sensibles_version',
+    type: 'varchar',
+    nullable: true,
+  })
+  consentimientoSensiblesVersion: string | null;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

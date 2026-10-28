@@ -70,6 +70,9 @@ export interface Coachee {
   compartirPerfilConCoach: boolean
   consentimientoInformado: boolean
   consentimientoFecha: string | null
+  consentimientoSensibles: boolean
+  consentimientoSensiblesFecha: string | null
+  consentimientoSensiblesVersion: string | null
 }
 
 export function listCoachees(): Promise<CoacheeListItem[]> {
@@ -132,6 +135,15 @@ export function actualizarMiPerfil(input: UpdateMiPerfilInput): Promise<Coachee>
 /** El coachee acepta su consentimiento informado desde la app (sin el enlace del correo). */
 export function aceptarMiConsentimiento(): Promise<Coachee> {
   return apiRequest<Coachee>('/coachees/me/consentimiento/aceptar', { method: 'POST' })
+}
+
+/** Consentimiento propio para datos sensibles (Ley 21.719): lo da y lo revoca solo el coachee. */
+export function aceptarMisDatosSensibles(): Promise<Coachee> {
+  return apiRequest<Coachee>('/coachees/me/consentimiento-sensibles/aceptar', { method: 'POST' })
+}
+
+export function revocarMisDatosSensibles(): Promise<Coachee> {
+  return apiRequest<Coachee>('/coachees/me/consentimiento-sensibles/revocar', { method: 'POST' })
 }
 
 export function subirFotoCoachee(archivo: File): Promise<Coachee> {

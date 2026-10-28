@@ -82,6 +82,9 @@ const coachee: Coachee = {
   compartirPerfilConCoach: false,
   consentimientoInformado: true,
   consentimientoFecha: null,
+  consentimientoSensibles: false,
+  consentimientoSensiblesFecha: null,
+  consentimientoSensiblesVersion: null,
 }
 
 const plan: PlanDesarrollo = {

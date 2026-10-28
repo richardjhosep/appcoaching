@@ -42,6 +42,9 @@ const coachee: Coachee = {
   compartirPerfilConCoach: false,
   consentimientoInformado: false,
   consentimientoFecha: null,
+  consentimientoSensibles: false,
+  consentimientoSensiblesFecha: null,
+  consentimientoSensiblesVersion: null,
 }
 
 describe('PerfilTab', () => {

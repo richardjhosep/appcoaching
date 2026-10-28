@@ -22,6 +22,9 @@ export function redactarCoacheeParaRol(coachee: Coachee, role: Role): Coachee {
       emailContacto: null,
       tarifaPropia: null,
       compartirPerfilConCoach: false,
+      consentimientoSensibles: false,
+      consentimientoSensiblesFecha: null,
+      consentimientoSensiblesVersion: null,
       user: coachee.user
         ? ({
             id: coachee.user.id,

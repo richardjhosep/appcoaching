@@ -90,6 +90,35 @@ export class CoacheesController {
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @Roles(Role.COACHEE)
   @HttpCode(HttpStatus.OK)
+  @Post('me/consentimiento-sensibles/aceptar')
+  async aceptarMisDatosSensibles(@CurrentUser() actor: AuthenticatedUser) {
+    const coachee = await this.coachees.aceptarMisDatosSensibles(actor.id);
+    await this.audit.record('CONSENTIMIENTO_SENSIBLES_OTORGADO', {
+      userId: actor.id,
+      targetType: 'Coachee',
+      targetId: coachee.id,
+      metadata: { version: coachee.consentimientoSensiblesVersion },
+    });
+    return coachee;
+  }
+
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @Roles(Role.COACHEE)
+  @HttpCode(HttpStatus.OK)
+  @Post('me/consentimiento-sensibles/revocar')
+  async revocarMisDatosSensibles(@CurrentUser() actor: AuthenticatedUser) {
+    const coachee = await this.coachees.revocarMisDatosSensibles(actor.id);
+    await this.audit.record('CONSENTIMIENTO_SENSIBLES_REVOCADO', {
+      userId: actor.id,
+      targetType: 'Coachee',
+      targetId: coachee.id,
+    });
+    return coachee;
+  }
+
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @Roles(Role.COACHEE)
+  @HttpCode(HttpStatus.OK)
   @Post('me/consentimiento/aceptar')
   async aceptarMiConsentimiento(@CurrentUser() actor: AuthenticatedUser) {
     const coachee = await this.coachees.aceptarMiConsentimiento(actor.id);

@@ -302,6 +302,7 @@ export class TestEstiloService {
     testEstiloId: string,
     respuestas: ('A' | 'B')[],
   ): Promise<IntentoEstilo> {
+    await this.coachees.exigirConsentimientoSensibles(actorUserId);
     const coacheeId = await this.resolveCoacheeId(actorUserId);
     const test = await this.findOrThrow(testEstiloId);
     if (!test.activo) {

@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
 import { IsNull, Repository } from 'typeorm';
@@ -40,7 +41,10 @@ describe('TestEstiloService', () => {
     create: jest.Mock<PartialIntento, [PartialIntento]>;
     save: jest.Mock<Promise<PartialIntento>, [PartialIntento]>;
   };
-  let coachees: { findByUserId: jest.Mock };
+  let coachees: {
+    findByUserId: jest.Mock;
+    exigirConsentimientoSensibles: jest.Mock;
+  };
   let competencias: { exists: jest.Mock };
   let planesDesarrollo: { getByCoacheeId: jest.Mock };
 
@@ -76,7 +80,10 @@ describe('TestEstiloService', () => {
         Promise.resolve({ id: 'intento-1', ...data }),
       ),
     };
-    coachees = { findByUserId: jest.fn() };
+    coachees = {
+      findByUserId: jest.fn(),
+      exigirConsentimientoSensibles: jest.fn().mockResolvedValue(undefined),
+    };
     competencias = { exists: jest.fn() };
     planesDesarrollo = { getByCoacheeId: jest.fn() };
 
@@ -183,6 +190,17 @@ describe('TestEstiloService', () => {
         { id: 'p2', categoriaA: 'Competir', categoriaB: 'Colaborar', orden: 2 },
         { id: 'p3', categoriaA: 'Colaborar', categoriaB: 'Acomodar', orden: 3 },
       ]);
+    });
+
+    it('no registra el intento si el coachee no dio el consentimiento de datos sensibles', async () => {
+      coachees.exigirConsentimientoSensibles.mockRejectedValue(
+        new ForbiddenException('sin consentimiento'),
+      );
+
+      await expect(
+        service.responder(ACTOR_USER_ID, TEST_ID, ['A', 'A', 'A']),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+      expect(intentos.save).not.toHaveBeenCalled();
     });
 
     it('rejects when respuestas.length does not match the number of preguntas', async () => {
