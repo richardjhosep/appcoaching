@@ -14,6 +14,7 @@ import { AuthModule } from './auth/auth.module';
 import { SeedModule } from './seed/seed.module';
 import { EmpresasModule } from './empresas/empresas.module';
 import { CoacheesModule } from './coachees/coachees.module';
+import { PrivacidadModule } from './privacidad/privacidad.module';
 import { SesionesModule } from './sesiones/sesiones.module';
 import { CompetenciasModule } from './competencias/competencias.module';
 import { PlanesDesarrolloModule } from './planes-desarrollo/planes-desarrollo.module';
@@ -73,6 +74,7 @@ import { ProspectosModule } from './prospectos/prospectos.module';
     SeedModule,
     EmpresasModule,
     CoacheesModule,
+    PrivacidadModule,
     ProspectosModule,
     SesionesModule,
     CompetenciasModule,

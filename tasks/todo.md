@@ -2672,3 +2672,13 @@ vue-tsc + eslint + vitest verdes; commit por fase; comprobación visual en Chrom
 - [x] Flechas de tendencia como íconos.
 - [x] Recorrido de los 3 perfiles (desktop y móvil): sin excepciones JS, sin desborde horizontal. Certificado e informe impreso (PDF) verificados con la foto real de Fernando.
 - [ ] No hecho: borrar 50 copias "… 2" (el sistema bloqueó el borrado), mover el proyecto fuera de iCloud, endpoint agregado del dashboard de empresa (opcional), decisión sobre main/túnel.
+
+### Cumplimiento técnico Ley 21.719 (rama feat/cumplimiento-ley-21719, desde 2026-10-28; exigible 2026-12-01)
+Alcance: solo lo técnico. Política de privacidad, DPA, roles responsable/encargado, retención y subencargados los define el área legal.
+- [ ] 1. Derechos del titular: exportar datos (JSON, genérico por metadata de TypeORM: toda tabla con FK a coachees) y suprimirlos (borra archivos `*_path` + usuario en cascada; la auditoría guarda solo el id, sin nombre). Coachee: GET /privacidad/mis-datos y POST /privacidad/solicitar-supresion (avisa al coach). Coach: GET /privacidad/coachees/:id/exportar y DELETE /privacidad/coachees/:id (exige escribir el nombre).
+- [ ] 2. UI: tarjeta "Mis datos y privacidad" en Mi cuenta (coachee) y bloque "Privacidad" en el perfil del coachee (coach).
+- [ ] 3. Consentimiento separado para datos sensibles (salud mental / psicométricos), con fecha, versión y revocación.
+- [ ] 4. Cifrado de campos sensibles en reposo (notas de sesión, diario) — evaluar pgcrypto vs cifrado en aplicación.
+- [ ] 5. Ampliar auditoría a lectura de datos sensibles y exportaciones.
+- [ ] 6. HTTPS/HSTS/CSP en frontend; tokens fuera de localStorage.
+- Decisiones abiertas para legal: retención tras fin del servicio, quién ejecuta la supresión (coach vs plataforma), qué se conserva por obligación legal (facturación), subencargados.
