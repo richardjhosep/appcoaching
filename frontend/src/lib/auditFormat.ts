@@ -62,6 +62,16 @@ export function verboAuditoria(log: AuditLog): string {
       return `Eliminó la empresa ${target ?? '(nombre no disponible)'}.`
     case 'COACHEE_ELIMINADO':
       return `Eliminó al coachee ${target ?? '(nombre no disponible)'}.`
+    case 'COACHEE_SUPRIMIDO':
+      return 'Eliminó definitivamente los datos de un coachee (Ley 21.719).'
+    case 'SUPRESION_SOLICITADA':
+      return `Pidió la eliminación de sus datos personales${target ? ` (${target})` : ''}.`
+    case 'DATOS_EXPORTADOS': {
+      const via = metadata.via as string | undefined
+      return via === 'titular'
+        ? 'Descargó una copia de sus datos personales.'
+        : `Descargó los datos personales de ${target ?? 'un coachee'}.`
+    }
     case 'DOCUMENTO_LEGAL_ACTUALIZADO': {
       const tipo = metadata.tipo as string | undefined
       const tipoLabel = tipo === 'nda' ? 'NDA' : 'Contrato'

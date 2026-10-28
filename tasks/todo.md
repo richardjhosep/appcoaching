@@ -2675,8 +2675,8 @@ vue-tsc + eslint + vitest verdes; commit por fase; comprobación visual en Chrom
 
 ### Cumplimiento técnico Ley 21.719 (rama feat/cumplimiento-ley-21719, desde 2026-10-28; exigible 2026-12-01)
 Alcance: solo lo técnico. Política de privacidad, DPA, roles responsable/encargado, retención y subencargados los define el área legal.
-- [ ] 1. Derechos del titular: exportar datos (JSON, genérico por metadata de TypeORM: toda tabla con FK a coachees) y suprimirlos (borra archivos `*_path` + usuario en cascada; la auditoría guarda solo el id, sin nombre). Coachee: GET /privacidad/mis-datos y POST /privacidad/solicitar-supresion (avisa al coach). Coach: GET /privacidad/coachees/:id/exportar y DELETE /privacidad/coachees/:id (exige escribir el nombre).
-- [ ] 2. UI: tarjeta "Mis datos y privacidad" en Mi cuenta (coachee) y bloque "Privacidad" en el perfil del coachee (coach).
+- [x] 1. Derechos del titular (verificado en vivo: exportación sin secretos, 403/404/401 por rol, solicitud → notificación al coach, supresión borra usuario+filas+archivos y deja auditoría sin nombre; migración 1788920000000; jest 656/656): exportar datos (JSON, genérico por metadata de TypeORM: toda tabla con FK a coachees) y suprimirlos (borra archivos `*_path` + usuario en cascada; la auditoría guarda solo el id, sin nombre). Coachee: GET /privacidad/mis-datos y POST /privacidad/solicitar-supresion (avisa al coach). Coach: GET /privacidad/coachees/:id/exportar y DELETE /privacidad/coachees/:id (exige escribir el nombre).
+- [x] 2. UI (PrivacidadPanel, vitest 734/734, build OK): tarjeta "Mis datos y privacidad" en Mi cuenta (coachee) y bloque "Privacidad" en el perfil del coachee (coach).
 - [ ] 3. Consentimiento separado para datos sensibles (salud mental / psicométricos), con fecha, versión y revocación.
 - [ ] 4. Cifrado de campos sensibles en reposo (notas de sesión, diario) — evaluar pgcrypto vs cifrado en aplicación.
 - [ ] 5. Ampliar auditoría a lectura de datos sensibles y exportaciones.

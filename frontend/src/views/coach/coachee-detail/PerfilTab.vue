@@ -4,9 +4,12 @@ import { getCoachee, obtenerUrlFotoDeCoachee, type Coachee } from '../../../api/
 import ConsentimientoInformado from '../../../components/ConsentimientoInformado.vue'
 import SkeletonBlock from '../../../components/SkeletonBlock.vue'
 import DocumentosCoacheePanel from '../../../components/DocumentosCoacheePanel.vue'
+import PrivacidadPanel from '../../../components/PrivacidadPanel.vue'
 import { iniciales } from '../../../lib/avatar'
+import { useRouter } from 'vue-router'
 
 const props = defineProps<{ coacheeId: string }>()
+const router = useRouter()
 
 const coachee = ref<Coachee | null>(null)
 const loading = ref(true)
@@ -200,6 +203,17 @@ function onConsentimientoActualizado(actualizado: { consentimientoInformado: boo
           Datos sincronizados desde la cuenta del coachee (solo lectura).
         </p>
       </div>
+    </div>
+    <div class="rounded-2xl border border-[var(--color-line)] bg-white p-6 shadow-sm lg:col-span-full mt-4 lg:mt-0">
+      <h2 class="mb-2 font-[family-name:var(--font-heading)] text-base font-semibold">
+        Privacidad y datos personales
+      </h2>
+      <PrivacidadPanel
+        modo="coach"
+        :coachee-id="props.coacheeId"
+        :coachee-nombre="coachee.nombre"
+        @suprimido="router.push('/coach/coachees')"
+      />
     </div>
   </div>
 </template>

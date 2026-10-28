@@ -9,6 +9,7 @@ import { useCarga } from '../../lib/useCarga'
 import TabBar from '../../components/TabBar.vue'
 import DocumentosCoacheePanel from '../../components/DocumentosCoacheePanel.vue'
 import AppButton from '../../components/AppButton.vue'
+import PrivacidadPanel from '../../components/PrivacidadPanel.vue'
 import { aceptarMiConsentimiento, getMyCoachee, type Coachee } from '../../api/coachees'
 import {
   getMisDocumentosLegales,
@@ -232,6 +233,13 @@ const formatoCLP = new Intl.NumberFormat('es-CL', { style: 'currency', currency:
             </button>
           </div>
         </div>
+      </SectionCard>
+
+      <SectionCard
+        title="Mis datos y privacidad"
+        icon="legal"
+      >
+        <PrivacidadPanel modo="titular" />
       </SectionCard>
 
       <SectionCard
