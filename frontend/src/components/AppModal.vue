@@ -62,7 +62,7 @@ onBeforeUnmount(() => {
 <template>
   <Teleport to="body">
     <div
-      class="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[var(--color-scrim)] px-4 py-8 sm:items-center"
+      class="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[var(--color-scrim)] px-4 py-8"
       @click.self="emit('close')"
     >
       <div
@@ -71,7 +71,7 @@ onBeforeUnmount(() => {
         aria-modal="true"
         :aria-labelledby="titleId"
         tabindex="-1"
-        class="w-full rounded-2xl bg-white p-6 shadow-xl focus:outline-none"
+        class="my-auto w-full rounded-2xl bg-white p-6 shadow-xl focus:outline-none"
         :class="size === 'lg' ? 'max-w-2xl' : 'max-w-lg'"
       >
         <div class="mb-4 flex items-center justify-between">

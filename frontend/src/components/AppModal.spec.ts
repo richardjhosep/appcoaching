@@ -51,4 +51,17 @@ describe('AppModal accesibilidad', () => {
     wrapper.unmount()
     expect(document.body.style.overflow).not.toBe('hidden')
   })
+
+  // Un overlay con scroll y `items-center` deja la parte de arriba de un diálogo alto
+  // fuera de alcance (pantallas bajas de notebook): se centra con `my-auto` en el diálogo.
+  it('no centra el overlay con items-center, para que un diálogo alto se pueda recorrer desde arriba', () => {
+    const wrapper = mount(AppModal, { props: { title: 'T' } })
+
+    const overlay = document.querySelector('.fixed.inset-0')
+    expect(overlay?.className).toContain('items-start')
+    expect(overlay?.className).not.toContain('items-center')
+    expect(document.querySelector('[role="dialog"]')?.className).toContain('my-auto')
+
+    wrapper.unmount()
+  })
 })
