@@ -24,7 +24,12 @@ import {
 } from '../../api/sesiones'
 import { getSlotsLibres } from '../../api/disponibilidad'
 import { getMiCicloActual, type Ciclo } from '../../api/ciclos'
-import { crearSolicitudSesion } from '../../api/solicitudes-sesion'
+import {
+  crearSolicitudSesion,
+  getMisSolicitudesSesion,
+  resolverContrapropuesta,
+  type SolicitudSesion,
+} from '../../api/solicitudes-sesion'
 import { ApiError } from '../../api/client'
 import { notifySuccess, notifyError, confirmDialog } from '../../lib/notify'
 import { useCarga } from '../../lib/useCarga'
@@ -91,6 +96,28 @@ async function confirmar(sesion: Sesion) {
 
 const slotsLibres = ref<string[]>([])
 
+// Solicitudes de hora que siguen "en espera": pendientes de respuesta o con un horario que el
+// coach contrapropuso y que el coachee debe aceptar o rechazar.
+const solicitudesAbiertas = ref<SolicitudSesion[]>([])
+const resolviendoSolicitudId = ref<string | null>(null)
+
+const formatoSolicitud = (iso: string) =>
+  new Date(iso).toLocaleString('es-CL', { dateStyle: 'medium', timeStyle: 'short' })
+
+async function responderContrapropuesta(solicitud: SolicitudSesion, aceptar: boolean) {
+  resolviendoSolicitudId.value = solicitud.id
+  try {
+    await resolverContrapropuesta(solicitud.id, aceptar)
+    solicitudesAbiertas.value = solicitudesAbiertas.value.filter((x) => x.id !== solicitud.id)
+    if (aceptar) sesiones.value = await getMisSesiones()
+    await notifySuccess(aceptar ? 'Sesión agendada' : 'Propuesta rechazada', aceptar ? 'Quedó en tu agenda.' : 'Tu coach fue avisado.')
+  } catch (err) {
+    await notifyError('No se pudo responder', err instanceof ApiError ? err.message : 'Ocurrió un error inesperado.')
+  } finally {
+    resolviendoSolicitudId.value = null
+  }
+}
+
 async function onCambioSemanaDisponibilidad(desde: string, hasta: string) {
   slotsLibres.value = await getSlotsLibres(desde, hasta)
 }
@@ -112,6 +139,7 @@ async function enviarSolicitudSesion() {
   enviandoSolicitud.value = true
   try {
     await crearSolicitudSesion(iso, motivoSolicitud.value || undefined)
+    solicitudesAbiertas.value = await getMisSolicitudesSesion().catch(() => solicitudesAbiertas.value)
     solicitarSesionModalOpen.value = false
     // El slot recién pedido deja de estar disponible hasta que el coach responda.
     slotsLibres.value = slotsLibres.value.filter((s) => s !== iso)
@@ -124,6 +152,19 @@ async function enviarSolicitudSesion() {
   } finally {
     enviandoSolicitud.value = false
   }
+}
+
+const LEYENDAS_UTILIDAD: Record<number, string> = {
+  5: 'Muy útil: salí con claridad y acciones concretas',
+  4: 'Útil',
+  3: 'Medianamente útil',
+  2: 'Poco útil',
+  1: 'Nada útil',
+}
+const LEYENDAS_CERCANIA: Record<number, string> = {
+  10: 'Logré mi objetivo',
+  5: 'A mitad de camino',
+  1: 'Recién comienzo',
 }
 
 const forms = reactive<
@@ -158,11 +199,13 @@ const cicloActual = ref<Ciclo | null>(null)
 
 const { loading, error, recargar, tolerar } = useCarga(async () => {
   // Las sesiones son críticas; ciclo y solicitudes de reagendamiento son complementarios.
-  const [s, c, r] = await Promise.all([
+  const [s, c, r, sol] = await Promise.all([
     getMisSesiones(),
     tolerar(getMiCicloActual()),
     tolerar(getMisReagendamientos()),
+    tolerar(getMisSolicitudesSesion()),
   ])
+  solicitudesAbiertas.value = sol ?? []
   sesiones.value = s
   cicloActual.value = c ?? null
   solicitudesReagendamiento.value = r ?? []
@@ -210,18 +253,17 @@ function cuerpoPostSesion(sesion: Sesion) {
   }
 }
 
-// Obligatorios para publicar (los mismos que exige el backend).
-const erroresPublicar = reactive<Record<string, { aprendizaje?: string; utilidad?: string; cercania?: string }>>({})
+// Obligatorios para publicar (los mismos que exige el backend). El aprendizaje es opcional.
+const erroresPublicar = reactive<Record<string, { utilidad?: string; cercania?: string }>>({})
 
 function validarParaPublicar(sesion: Sesion): boolean {
   const f = formFor(sesion)
   const errores = {
-    aprendizaje: f.aprendizaje.trim() ? undefined : 'Cuéntanos tu aprendizaje principal.',
     utilidad: f.utilidad ? undefined : 'Elige qué tan útil fue la sesión.',
     cercania: f.cercaniaObjetivo ? undefined : 'Elige qué tan cerca estás de tu objetivo.',
   }
   erroresPublicar[sesion.id] = errores
-  return !errores.aprendizaje && !errores.utilidad && !errores.cercania
+  return !errores.utilidad && !errores.cercania
 }
 
 async function guardarBorrador(sesion: Sesion) {
@@ -330,6 +372,63 @@ function onSelectSesion(id: string) {
       >
         No tienes sesiones agendadas a futuro. Puedes solicitar una hora en el calendario de disponibilidad; tu coach la aprueba.
       </p>
+    </section>
+    <section
+      v-if="solicitudesAbiertas.length > 0"
+      class="mb-4 rounded-2xl border border-[var(--color-line)] bg-white p-4"
+      aria-label="Mis solicitudes de sesión"
+    >
+      <h2 class="mb-2 text-sm font-semibold">
+        Mis solicitudes de sesión
+      </h2>
+      <ul class="space-y-2 text-sm">
+        <li
+          v-for="sol in solicitudesAbiertas"
+          :key="sol.id"
+          class="rounded-xl border border-[var(--color-line)] p-3"
+        >
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="font-medium">{{ formatoSolicitud(sol.fechaHoraPropuesta) }}</span>
+            <StatusBadge :tone="sol.estado === 'contrapropuesta' ? 'bronze' : 'neutral'">
+              {{ sol.estado === 'contrapropuesta' ? 'Tu coach propone otro horario' : 'En espera' }}
+            </StatusBadge>
+          </div>
+          <template v-if="sol.estado === 'contrapropuesta' && sol.fechaHoraContrapropuesta">
+            <p class="mt-1">
+              Horario propuesto: <strong>{{ formatoSolicitud(sol.fechaHoraContrapropuesta) }}</strong>
+            </p>
+            <p
+              v-if="sol.respuestaCoach"
+              class="mt-1 text-[var(--color-muted)]"
+            >
+              {{ sol.respuestaCoach }}
+            </p>
+            <div class="mt-2 flex gap-2">
+              <AppButton
+                size="sm"
+                :disabled="resolviendoSolicitudId === sol.id"
+                @click="responderContrapropuesta(sol, true)"
+              >
+                Aceptar
+              </AppButton>
+              <AppButton
+                variant="secondary"
+                size="sm"
+                :disabled="resolviendoSolicitudId === sol.id"
+                @click="responderContrapropuesta(sol, false)"
+              >
+                Rechazar
+              </AppButton>
+            </div>
+          </template>
+          <p
+            v-else-if="sol.motivo"
+            class="mt-1 text-[var(--color-muted)]"
+          >
+            {{ sol.motivo }}
+          </p>
+        </li>
+      </ul>
     </section>
     <DisponibilidadCalendar
       class="mb-4"
@@ -450,9 +549,9 @@ function onSelectSesion(id: string) {
                 Utilidad: {{ sesion.postSesion.utilidad ?? '—' }}<template v-if="sesion.postSesion.utilidad != null">/5</template>
               </span>
             </div>
-            <div>
+            <div v-if="sesion.postSesion.aprendizaje">
               <p class="text-xs font-medium uppercase tracking-wide text-[var(--color-muted)]">
-                Aprendizaje
+                Mi aprendizaje (privado)
               </p>
               <p class="mt-0.5 text-[var(--color-ink)]/90">
                 {{ sesion.postSesion.aprendizaje }}
@@ -468,7 +567,7 @@ function onSelectSesion(id: string) {
             </div>
             <div v-if="sesion.postSesion.temasProximaSesion">
               <p class="text-xs font-medium uppercase tracking-wide text-[var(--color-muted)]">
-                Temas para la próxima sesión
+                Tema a tratar en la próxima sesión
               </p>
               <p class="mt-0.5 text-[var(--color-ink)]/90">
                 {{ sesion.postSesion.temasProximaSesion }}
@@ -492,10 +591,7 @@ function onSelectSesion(id: string) {
             >
               {{ errorPorSesion[sesion.id] }}
             </p>
-            <FormField
-              label="Aprendizaje principal"
-              :error="erroresPublicar[sesion.id]?.aprendizaje"
-            >
+            <FormField label="Aprendizaje principal (opcional) — es confidencial: tu coach no lo ve">
               <template #default="{ id, describedby, invalid }">
                 <textarea
                   :id="id"
@@ -510,13 +606,14 @@ function onSelectSesion(id: string) {
             <div class="grid gap-3 sm:grid-cols-2">
               <div>
                 <p class="text-sm font-medium">
-                  Utilidad de la sesión (1-5)
+                  Utilidad de la sesión (5 a 1)
                 </p>
                 <RatingSelector
                   v-model="formFor(sesion).utilidad"
                   class="mt-1"
                   :max="5"
-                  label="Utilidad de la sesión, de 1 a 5"
+                  :leyendas="LEYENDAS_UTILIDAD"
+                  label="Utilidad de la sesión, de 5 a 1"
                   :invalid="!!erroresPublicar[sesion.id]?.utilidad"
                 />
                 <p
@@ -529,13 +626,14 @@ function onSelectSesion(id: string) {
               </div>
               <div>
                 <p class="text-sm font-medium">
-                  Qué tan cerca estás de tu objetivo (1-10)
+                  Qué tan cerca estás de tu objetivo (10 a 1)
                 </p>
                 <RatingSelector
                   v-model="formFor(sesion).cercaniaObjetivo"
                   class="mt-1"
                   :max="10"
-                  label="Qué tan cerca estás de tu objetivo, de 1 a 10"
+                  :leyendas="LEYENDAS_CERCANIA"
+                  label="Qué tan cerca estás de tu objetivo, de 10 a 1"
                   :invalid="!!erroresPublicar[sesion.id]?.cercania"
                 />
                 <p
@@ -557,7 +655,7 @@ function onSelectSesion(id: string) {
                 />
               </template>
             </FormField>
-            <FormField label="Temas propuestos para la próxima sesión">
+            <FormField label="Tema a tratar en la próxima sesión">
               <template #default="{ id }">
                 <textarea
                   :id="id"
@@ -568,7 +666,7 @@ function onSelectSesion(id: string) {
               </template>
             </FormField>
             <p class="text-xs text-[var(--color-muted)]">
-              Para publicar son obligatorios el aprendizaje, la utilidad y la cercanía al objetivo.
+              Para publicar son obligatorias la utilidad y la cercanía al objetivo. Tu recomendación y el tema a tratar se comparten con tu coach; el aprendizaje queda solo para ti.
             </p>
             <div class="flex flex-wrap gap-2">
               <AppButton

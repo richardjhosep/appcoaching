@@ -63,7 +63,12 @@ export class SesionesService {
       throw new NotFoundException('Coachee no encontrado.');
     }
     const fechaHora = new Date(dto.fechaHora);
-    if (await this.hayConflictoDeHorario(fechaHora)) {
+    // El choque de horario solo importa para agenda futura: una sesión ya realizada que el coach
+    // registra a mano (porque no pasó por la plataforma) es un registro histórico, no un cupo.
+    if (
+      fechaHora.getTime() > Date.now() &&
+      (await this.hayConflictoDeHorario(fechaHora))
+    ) {
       throw new ConflictException(
         'Ya existe una sesión agendada que se superpone con ese horario.',
       );

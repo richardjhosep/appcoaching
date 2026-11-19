@@ -220,7 +220,7 @@ const option = computed(() => {
               {{ p.aprendizaje }}
             </p>
             <p
-              v-else
+              v-else-if="audiencia === 'propio'"
               class="mt-0.5 text-sm text-[var(--color-subtle)]"
             >
               Sin aprendizaje registrado.

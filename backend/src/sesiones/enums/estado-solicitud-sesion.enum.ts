@@ -5,4 +5,6 @@ export enum EstadoSolicitudSesion {
   PENDIENTE = 'pendiente',
   APROBADA = 'aprobada',
   RECHAZADA = 'rechazada',
+  // El coach propuso otro horario y espera que el coachee lo acepte o lo rechace.
+  CONTRAPROPUESTA = 'contrapropuesta',
 }

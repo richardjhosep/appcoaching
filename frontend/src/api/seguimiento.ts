@@ -20,7 +20,8 @@ export interface PuntoProgreso {
   sesionId: string
   fecha: string
   cercaniaObjetivo: number
-  aprendizaje: string | null
+  // Solo lo recibe el propio coachee: el aprendizaje es confidencial para coach y empresa.
+  aprendizaje?: string | null
 }
 
 export function addLogro(fecha: string, descripcion: string, situacion?: string): Promise<Logro> {

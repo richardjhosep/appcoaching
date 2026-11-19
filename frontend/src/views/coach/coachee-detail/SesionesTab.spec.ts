@@ -218,4 +218,33 @@ describe('SesionesTab — reagendar directamente desde el calendario', () => {
 
     expect(agendarSesion).toHaveBeenCalledWith('coachee-1', expect.any(String), undefined)
   })
+
+  it('registra una sesión ya realizada con fecha pasada desde "+ Registrar sesión ya realizada"', async () => {
+    vi.mocked(getSesionesDeCoachee).mockResolvedValue([])
+    vi.mocked(agendarSesion).mockResolvedValue({
+      id: 'manual',
+      coacheeId: 'coachee-1',
+      fechaHora: '2026-10-01T12:00:00.000Z',
+      linkVideollamada: null,
+      resumenCompartido: null,
+      confirmada: false,
+      postSesion: null,
+    })
+
+    const wrapper = mount(SesionesTab, { props: { coacheeId: 'coachee-1' } })
+    await flushPromises()
+    await wrapper.findAll('button').find((b) => b.text().includes('Registrar sesión ya realizada'))!.trigger('click')
+    await flushPromises()
+
+    const modal = new DOMWrapper(document.body)
+    expect(modal.text()).toContain('ocurrió fuera de la plataforma')
+    const input = modal.find('input[type="datetime-local"]')
+    expect(input.attributes('max')).toBeTruthy() // solo fechas pasadas
+
+    await input.setValue('2026-10-01T09:00')
+    await modal.find('form').trigger('submit')
+    await flushPromises()
+
+    expect(agendarSesion).toHaveBeenCalledWith('coachee-1', new Date('2026-10-01T09:00').toISOString(), undefined)
+  })
 })

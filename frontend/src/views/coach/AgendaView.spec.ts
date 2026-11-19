@@ -21,7 +21,12 @@ vi.mock('../../api/disponibilidad', async () => {
 })
 vi.mock('../../api/solicitudes-sesion', async () => {
   const actual = await vi.importActual<typeof import('../../api/solicitudes-sesion')>('../../api/solicitudes-sesion')
-  return { ...actual, getSolicitudesSesionPendientes: vi.fn() }
+  return {
+    ...actual,
+    getSolicitudesSesionPendientes: vi.fn(),
+    responderSolicitudSesion: vi.fn(),
+    contraproponerSolicitudSesion: vi.fn(),
+  }
 })
 vi.mock('../../api/coachees', async () => {
   const actual = await vi.importActual<typeof import('../../api/coachees')>('../../api/coachees')
@@ -30,7 +35,12 @@ vi.mock('../../api/coachees', async () => {
 
 import { getTodasLasSesiones, reagendarSesion, agendarSesion, agendarSerieSesiones } from '../../api/sesiones'
 import { listBloquesDisponibilidad, eliminarBloqueDisponibilidad, type BloqueDisponibilidad } from '../../api/disponibilidad'
-import { getSolicitudesSesionPendientes } from '../../api/solicitudes-sesion'
+import {
+  getSolicitudesSesionPendientes,
+  responderSolicitudSesion,
+  contraproponerSolicitudSesion,
+  type SolicitudSesion,
+} from '../../api/solicitudes-sesion'
 import { listCoachees } from '../../api/coachees'
 
 const coacheeActivo: CoacheeListItem = {
@@ -325,5 +335,61 @@ describe('AgendaView', () => {
     await flushPromises()
     expect(wrapper.text()).toContain('la agenda puede estar incompleta')
     expect(wrapper.text()).toContain('Disponibilidad semanal')
+  })
+
+  describe('solicitudes de sesión', () => {
+    const solicitud: SolicitudSesion = {
+      id: 'sol-1',
+      coacheeId: 'coachee-1',
+      fechaHoraPropuesta: '2999-03-01T13:00:00.000Z',
+      motivo: null,
+      estado: 'pendiente',
+      respuestaCoach: null,
+      fechaHoraContrapropuesta: null,
+      linkVideollamada: null,
+      sesionCreadaId: null,
+      createdAt: '2999-01-01T00:00:00.000Z',
+      resolvedAt: null,
+      coachee: { id: 'coachee-1', nombre: 'Tomás Reyes' },
+    }
+
+    beforeEach(() => {
+      vi.mocked(getSolicitudesSesionPendientes).mockResolvedValue([solicitud])
+      vi.mocked(responderSolicitudSesion).mockReset().mockResolvedValue({ ...solicitud, estado: 'aprobada' })
+      vi.mocked(contraproponerSolicitudSesion).mockReset().mockResolvedValue({ ...solicitud, estado: 'contrapropuesta' })
+      Element.prototype.scrollIntoView = vi.fn()
+    })
+
+    it('envía el enlace de la videollamada al aprobar', async () => {
+      wrapper = mount(AgendaView)
+      await flushPromises()
+
+      await wrapper.find('input[aria-label="Enlace de la videollamada"]').setValue('https://meet.example.com/abc')
+      await wrapper.findAll('button').find((b) => b.text() === 'Aprobar')!.trigger('click')
+      await flushPromises()
+
+      expect(responderSolicitudSesion).toHaveBeenCalledWith('sol-1', {
+        aprobar: true,
+        respuestaCoach: undefined,
+        linkVideollamada: 'https://meet.example.com/abc',
+      })
+    })
+
+    it('propone otra hora: abre el selector y envía la contrapropuesta', async () => {
+      wrapper = mount(AgendaView)
+      await flushPromises()
+
+      await wrapper.findAll('button').find((b) => b.text() === 'Proponer otra hora')!.trigger('click')
+      await wrapper.find('input[aria-label="Otro horario"]').setValue('2999-03-02T10:00')
+      await wrapper.findAll('button').find((b) => b.text() === 'Enviar propuesta')!.trigger('click')
+      await flushPromises()
+
+      expect(contraproponerSolicitudSesion).toHaveBeenCalledWith('sol-1', {
+        fechaHora: new Date('2999-03-02T10:00').toISOString(),
+        respuestaCoach: undefined,
+        linkVideollamada: undefined,
+      })
+      expect(wrapper.text()).not.toContain('Solicitudes de sesión pendientes')
+    })
   })
 })

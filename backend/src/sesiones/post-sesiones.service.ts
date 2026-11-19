@@ -33,6 +33,17 @@ export class PostSesionesService {
     return this.postSesiones.findOne({ where: { sesionId } });
   }
 
+  /** Igual que `findForSesion` pero sin el aprendizaje confidencial, para coach y empresa. */
+  async findForSesionSinAprendizaje(
+    sesionId: string,
+  ): Promise<Omit<PostSesion, 'aprendizaje'> | null> {
+    const postSesion = await this.findForSesion(sesionId);
+    if (!postSesion) return null;
+    const { aprendizaje: _aprendizaje, ...resto } = postSesion;
+    void _aprendizaje;
+    return resto;
+  }
+
   private assertYaRealizada(sesion: Sesion): void {
     if (sesion.fechaHora.getTime() > Date.now()) {
       throw new BadRequestException(
@@ -74,13 +85,10 @@ export class PostSesionesService {
     if (postSesion.publicada) {
       throw new ForbiddenException('El post-sesión ya fue publicado.');
     }
-    if (
-      !postSesion.aprendizaje ||
-      !postSesion.utilidad ||
-      !postSesion.cercaniaObjetivo
-    ) {
+    // El aprendizaje es una reflexión personal y confidencial: no se exige para publicar.
+    if (!postSesion.utilidad || !postSesion.cercaniaObjetivo) {
       throw new BadRequestException(
-        'Para publicar el post-sesión debes completar aprendizaje, utilidad y cercanía al objetivo.',
+        'Para publicar el post-sesión debes completar la utilidad y la cercanía al objetivo.',
       );
     }
     postSesion.publicada = true;
@@ -91,12 +99,19 @@ export class PostSesionesService {
     return this.sesiones.resolveCoacheeIdForActor(actorUserId);
   }
 
-  async findAllPublicadasForCoachee(coacheeId: string): Promise<
+  /**
+   * `incluirAprendizaje` solo debe ser true cuando quien consulta es el propio coachee: el
+   * aprendizaje es confidencial y no se entrega al coach ni a la empresa.
+   */
+  async findAllPublicadasForCoachee(
+    coacheeId: string,
+    incluirAprendizaje: boolean,
+  ): Promise<
     Array<{
       sesionId: string;
       fecha: Date;
       cercaniaObjetivo: number;
-      aprendizaje: string | null;
+      aprendizaje?: string | null;
     }>
   > {
     const rows = await this.postSesiones
@@ -113,7 +128,7 @@ export class PostSesionesService {
       sesionId: r.sesionId,
       fecha: r.sesion!.fechaHora,
       cercaniaObjetivo: r.cercaniaObjetivo!,
-      aprendizaje: r.aprendizaje,
+      ...(incluirAprendizaje && { aprendizaje: r.aprendizaje }),
     }));
   }
 

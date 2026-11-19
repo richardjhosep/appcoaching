@@ -96,7 +96,7 @@ describe('DefinicionTab', () => {
     expect(wrapper.text()).not.toContain('Nivel objetivo')
     expect(wrapper.text()).not.toContain('Autoevaluación de competencia')
     expect(wrapper.text()).toContain('Objetivo general del proceso')
-    expect(wrapper.text()).toContain('Competencia asociada al objetivo')
+    expect(wrapper.text()).toContain('Competencia que trabajas')
   })
 
   it('always shows the submit button, even on an already-sent plan', () => {
@@ -144,5 +144,51 @@ describe('DefinicionTab', () => {
     expect(chips.map((c) => c.text())).toEqual(['Liderazgo', 'Comunicación'])
     expect(chips[0].classes()).toContain('text-[var(--color-bronze)]') // no seleccionada
     expect(chips[1].classes()).toContain('text-[var(--color-sage)]') // ya elegida en el plan
+  })
+
+  const competenciaConNiveles = {
+    id: 'comp-1',
+    nombre: 'Liderazgo',
+    definicion: 'd',
+    empresaId: null,
+    niveles: [
+      { nivel: 1, descripcion: 'Descripción del nivel uno', comportamientos: ['Conducta A'] },
+      { nivel: 2, descripcion: 'Descripción del nivel dos', comportamientos: ['Conducta B'] },
+    ],
+  }
+
+  it('shows only the competencia being worked on once chosen, and lets the coachee change it', async () => {
+    const wrapper = mount(DefinicionTab, {
+      props: {
+        plan: { ...basePlan, competenciaId: 'comp-1' },
+        competencias: [competenciaConNiveles, { ...competenciaConNiveles, id: 'comp-2', nombre: 'Comunicación' }],
+      },
+    })
+
+    expect(wrapper.find('select').exists()).toBe(false)
+    expect(wrapper.text()).toContain('Liderazgo')
+    expect(wrapper.text()).not.toContain('Comunicación')
+
+    await wrapper.findAll('button').find((b) => b.text() === 'Cambiar')!.trigger('click')
+
+    expect(wrapper.find('select').exists()).toBe(true)
+  })
+
+  it('shows every nivel side by side in the autoevaluación, each description only once', async () => {
+    const wrapper = mount(DefinicionTab, {
+      props: {
+        plan: { ...basePlan, competenciaId: 'comp-1', nivelActual: 1 },
+        competencias: [competenciaConNiveles],
+      },
+    })
+
+    const niveles = wrapper.findAll('[role="radio"]')
+    expect(niveles).toHaveLength(2)
+    expect(wrapper.text().split('Descripción del nivel uno')).toHaveLength(2) // aparece una sola vez
+
+    await niveles[1].trigger('click')
+
+    expect(niveles[1].attributes('aria-checked')).toBe('true')
+    expect(wrapper.text()).toContain('no certifica un avance de nivel')
   })
 })

@@ -108,6 +108,21 @@ describe('PostSesionesService', () => {
       );
     });
 
+    it('publishes without a written aprendizaje (it is optional and private)', async () => {
+      repo.findOne.mockResolvedValue({
+        id: 'p1',
+        sesionId: 's1',
+        publicada: false,
+        aprendizaje: null,
+        utilidad: 4,
+        cercaniaObjetivo: 7,
+      });
+
+      const result = await service.publicarOwn('user-1', 's1');
+
+      expect(result.publicada).toBe(true);
+    });
+
     it('publishes when all required fields are present', async () => {
       repo.findOne.mockResolvedValue({
         id: 'p1',
@@ -159,6 +174,26 @@ describe('PostSesionesService', () => {
     });
   });
 
+  describe('findForSesionSinAprendizaje', () => {
+    it('drops aprendizaje but keeps the shared fields', async () => {
+      repo.findOne.mockResolvedValue({
+        id: 'p1',
+        sesionId: 's1',
+        aprendizaje: 'privado',
+        recomendacion: 'mejorar X',
+        temasProximaSesion: 'tema Y',
+      });
+
+      const result = await service.findForSesionSinAprendizaje('s1');
+
+      expect(result).not.toHaveProperty('aprendizaje');
+      expect(result).toMatchObject({
+        recomendacion: 'mejorar X',
+        temasProximaSesion: 'tema Y',
+      });
+    });
+  });
+
   describe('findAllPublicadasForCoachee', () => {
     it('maps rows to the timeline shape', async () => {
       const fecha = new Date('2026-05-01');
@@ -173,7 +208,10 @@ describe('PostSesionesService', () => {
         ]),
       );
 
-      const result = await service.findAllPublicadasForCoachee('coachee-1');
+      const result = await service.findAllPublicadasForCoachee(
+        'coachee-1',
+        true,
+      );
 
       expect(result).toEqual([
         {
@@ -183,6 +221,26 @@ describe('PostSesionesService', () => {
           aprendizaje: 'algo aprendido',
         },
       ]);
+    });
+
+    it('omits the confidential aprendizaje for coach and empresa', async () => {
+      repo.createQueryBuilder.mockReturnValue(
+        makeQueryBuilder([
+          {
+            sesionId: 's1',
+            cercaniaObjetivo: 5,
+            aprendizaje: 'algo aprendido',
+            sesion: { fechaHora: new Date('2026-05-01') },
+          },
+        ]),
+      );
+
+      const result = await service.findAllPublicadasForCoachee(
+        'coachee-1',
+        false,
+      );
+
+      expect(result[0]).not.toHaveProperty('aprendizaje');
     });
   });
 });

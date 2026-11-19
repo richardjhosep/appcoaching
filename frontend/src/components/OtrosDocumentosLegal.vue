@@ -4,6 +4,7 @@ import { ref } from 'vue'
 import {
   subirAdicional,
   descargarAdicional,
+  verAdicional,
   eliminarAdicional,
   type DocumentoAdicionalLegal,
   type TargetLegal,
@@ -36,6 +37,14 @@ async function subir() {
     error.value = err instanceof ApiError ? err.message : 'No se pudo subir el documento.'
   } finally {
     subiendo.value = false
+  }
+}
+
+async function ver(doc: DocumentoAdicionalLegal) {
+  try {
+    await verAdicional(doc.id, doc.archivoNombre)
+  } catch (err) {
+    error.value = err instanceof ApiError ? err.message : 'No se pudo abrir el archivo.'
   }
 }
 
@@ -101,9 +110,16 @@ async function eliminar(doc: DocumentoAdicionalLegal) {
           <button
             type="button"
             class="text-left text-[var(--color-saltup-ink)] hover:underline"
-            @click="descargar(doc)"
+            @click="ver(doc)"
           >
             📄 {{ doc.titulo }}
+          </button>
+          <button
+            type="button"
+            class="text-xs text-[var(--color-saltup-ink)] hover:underline"
+            @click="descargar(doc)"
+          >
+            Descargar
           </button>
           <button
             type="button"

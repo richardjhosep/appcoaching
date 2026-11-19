@@ -27,6 +27,7 @@ import {
   asignarRecurso,
   getAsignacionesDeRecurso,
   updateRecurso,
+  verArchivoRecurso,
   type Recurso,
   type TipoRecurso,
   type CategoriaRecurso,
@@ -220,6 +221,14 @@ async function crear() {
 }
 
 const guardandoFechaLimiteId = ref<string | null>(null)
+
+async function verRecurso(recurso: Recurso) {
+  try {
+    await verArchivoRecurso(recurso.id, recurso.archivoNombre ?? 'archivo')
+  } catch (err) {
+    await notifyError('No se pudo abrir el archivo', err instanceof ApiError ? err.message : undefined)
+  }
+}
 
 async function guardarFechaLimite(recurso: Recurso, fechaLimite: string | null) {
   guardandoFechaLimiteId.value = recurso.id
@@ -642,6 +651,13 @@ async function alternarPublica() {
                     @guardar="(f) => guardarFechaLimite(r, f)"
                   />
                 </div>
+                <button
+                  v-if="r.tipo !== 'link'"
+                  class="shrink-0 text-xs text-[var(--color-sage)] hover:underline"
+                  @click="verRecurso(r)"
+                >
+                  Ver
+                </button>
                 <button
                   class="shrink-0 text-xs text-[var(--color-sage)] hover:underline"
                   @click="abrirAccesoRecurso(r)"

@@ -3,6 +3,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import {
   TIPOS_DOCUMENTO_COACHEE,
   descargarDocumentoCoachee,
+  verDocumentoCoachee,
   eliminarDocumentoCoachee,
   listarDocumentosCoachee,
   subirDocumentoCoachee,
@@ -99,6 +100,14 @@ async function eliminar(doc: DocumentoCoachee) {
   }
 }
 
+async function ver(doc: DocumentoCoachee) {
+  try {
+    await verDocumentoCoachee(doc)
+  } catch (err) {
+    await notifyError('No se pudo abrir', err instanceof ApiError ? err.message : 'Ocurrió un error inesperado.')
+  }
+}
+
 async function descargar(doc: DocumentoCoachee) {
   try {
     await descargarDocumentoCoachee(doc)
@@ -153,6 +162,13 @@ async function descargar(doc: DocumentoCoachee) {
           </p>
         </div>
         <div class="flex shrink-0 items-center gap-3">
+          <button
+            type="button"
+            class="text-xs text-[var(--color-saltup-ink)] hover:underline"
+            @click="ver(d)"
+          >
+            Ver
+          </button>
           <button
             type="button"
             class="text-xs text-[var(--color-saltup-ink)] hover:underline"

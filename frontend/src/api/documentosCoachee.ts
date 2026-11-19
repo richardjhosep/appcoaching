@@ -1,4 +1,5 @@
 import { apiDownload, apiRequest, apiUpload } from './client'
+import { verArchivo } from '../lib/verArchivo'
 import type { Role } from './auth'
 
 export type TipoDocumentoCoachee = 'cv' | 'evaluacion_desempeno' | 'descriptor_cargo' | 'otro'
@@ -47,6 +48,10 @@ export function subirDocumentoCoachee(input: SubirDocumentoInput, coacheeId?: st
 
 export function eliminarDocumentoCoachee(id: string): Promise<{ success: boolean }> {
   return apiRequest<{ success: boolean }>(`/documentos-coachee/${id}`, { method: 'DELETE' })
+}
+
+export function verDocumentoCoachee(doc: DocumentoCoachee): Promise<void> {
+  return verArchivo(`/documentos-coachee/${doc.id}/archivo`, doc.archivoNombre)
 }
 
 export async function descargarDocumentoCoachee(doc: DocumentoCoachee): Promise<void> {

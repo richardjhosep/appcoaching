@@ -2,6 +2,7 @@ import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
 import { SolicitudesSesionService } from './solicitudes-sesion.service';
 import { CreateSolicitudSesionDto } from './dto/create-solicitud-sesion.dto';
 import { ResponderSolicitudSesionDto } from './dto/responder-solicitud-sesion.dto';
+import { ContraproponerSolicitudSesionDto } from './dto/contraproponer-solicitud-sesion.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -21,6 +22,39 @@ export class SolicitudesSesionController {
     @CurrentUser() actor: AuthenticatedUser,
   ) {
     return this.solicitudes.crear(actor.id, dto.fechaHoraPropuesta, dto.motivo);
+  }
+
+  @Roles(Role.COACHEE)
+  @Get('mias')
+  findMine(@CurrentUser() actor: AuthenticatedUser) {
+    return this.solicitudes.findAbiertasDelCoachee(actor.id);
+  }
+
+  @Roles(Role.COACHEE)
+  @Post(':id/aceptar-contrapropuesta')
+  aceptarContrapropuesta(
+    @Param('id') id: string,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.solicitudes.resolverContrapropuesta(id, actor.id, true);
+  }
+
+  @Roles(Role.COACHEE)
+  @Post(':id/rechazar-contrapropuesta')
+  rechazarContrapropuesta(
+    @Param('id') id: string,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.solicitudes.resolverContrapropuesta(id, actor.id, false);
+  }
+
+  @Roles(Role.COACH)
+  @Post(':id/contraproponer')
+  contraproponer(
+    @Param('id') id: string,
+    @Body() dto: ContraproponerSolicitudSesionDto,
+  ) {
+    return this.solicitudes.contraproponer(id, dto);
   }
 
   @Roles(Role.COACH)

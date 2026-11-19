@@ -1,4 +1,5 @@
 import { apiRequest, apiUpload, apiDownload } from './client'
+import { verArchivo } from '../lib/verArchivo'
 
 export type TipoRecurso = 'archivo' | 'link'
 export type CategoriaRecurso = 'texto' | 'audio' | 'video'
@@ -144,6 +145,10 @@ export interface AprendizajeConRecurso extends Aprendizaje {
 // que es siempre de uno solo) — usado por "Mi Aprendizaje".
 export function listMisAprendizajes(): Promise<AprendizajeConRecurso[]> {
   return apiRequest<AprendizajeConRecurso[]>('/recursos/aprendizajes/me')
+}
+
+export function verArchivoRecurso(recursoId: string, nombreArchivo: string): Promise<void> {
+  return verArchivo(`/recursos/${recursoId}/archivo`, nombreArchivo)
 }
 
 export async function descargarArchivo(recursoId: string, nombreArchivo: string): Promise<void> {

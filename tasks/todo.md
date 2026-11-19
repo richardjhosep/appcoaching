@@ -2682,3 +2682,30 @@ Alcance: solo lo técnico. Política de privacidad, DPA, roles responsable/encar
 - [ ] 5. Ampliar auditoría a lectura de datos sensibles y exportaciones.
 - [ ] 6. HTTPS/HSTS/CSP en frontend; tokens fuera de localStorage.
 - Decisiones abiertas para legal: retención tras fin del servicio, quién ejecuta la supresión (coach vs plataforma), qué se conserva por obligación legal (facturación), subencargados.
+
+---
+
+# Ajustes docx "(Recuperado)" — checklist 2026-11-17
+
+Orden: 1 solicitudes → 2 evaluación de sesión → 3 ícono "Ver" → 4 competencia única/autoevaluación → 5 textos conversaciones difíciles + sesiones manuales → 6 Mi perfil (el docx lo marca "ESTO AÚN NO").
+
+- [x] 1a. Solicitud "en espera" en la agenda del coachee (`GET /solicitudes-sesion/mias`)
+- [x] 1b. Enlace de videollamada al aprobar
+- [x] 1c. "Proponer otra hora" (estado `contrapropuesta`; el coachee acepta o rechaza)
+- [x] 1d. Solicitudes de sesión en el Panorama del coach (pestaña "Solicitudes de sesión")
+- [x] 2a. Escala 5→1 con significado
+- [x] 2b. "Aprendizaje" confidencial (quitar de coach y empresa) + campo "tema a tratar"
+- [x] 2c. Publicar sin reflexión escrita
+- [x] 3. Ícono "Ver" documentos sin descargar (recursos, documentos del coachee, legales)
+- [x] 4a. Coachee solo ve la competencia trabajada
+- [x] 4b. Autoevaluación: todos los niveles en una vista, sin descripción repetida, evidencia de hechos, sin certificar
+- [x] 5a. "Practicar conversaciones difíciles" / "Practica el know-feel-do"
+- [x] 5b. Sesiones manuales (etiqueta/opción explícita, sin bloqueo por choque)
+- [x] 5c. Botón destacado "Nueva actividad"
+- [ ] 6. Mi perfil con 9 secciones y toggle por sección
+
+## Revisión bloque 1
+Backend: migración `1788940000000-SolicitudSesionContrapropuesta`, 7 tests nuevos (20 en total en el servicio). Frontend: 743 tests y `npm run build` en verde. Stack Docker reconstruido con la migración aplicada.
+
+## Revisión bloques 2-5
+Backend: 672 tests en verde. Frontend: 751 tests, `vue-tsc` y `npm run build` en verde. Sin migraciones nuevas. El "tema a tratar" reutiliza `temasProximaSesion` (no hay columna nueva). Pendiente solo el ítem 6 (Mi perfil), a confirmar con el cliente.

@@ -15,12 +15,23 @@ describe('RatingSelector', () => {
 
   it('emits the chosen value and clears it when pressed again', async () => {
     const wrapper = mount(RatingSelector, { props: { modelValue: null, max: 10, label: 'x' } })
-    await wrapper.findAll('button')[6].trigger('click')
+    // Se muestra de mayor a menor: la posición 3 de 10 es el valor 7.
+    await wrapper.findAll('button')[3].trigger('click')
     expect(wrapper.emitted('update:modelValue')![0]).toEqual([7])
 
     await wrapper.setProps({ modelValue: 7 })
-    await wrapper.findAll('button')[6].trigger('click')
+    await wrapper.findAll('button')[3].trigger('click')
     expect(wrapper.emitted('update:modelValue')![1]).toEqual([null])
+  })
+
+  it('shows values from highest to lowest with their legends', () => {
+    const wrapper = mount(RatingSelector, {
+      props: { modelValue: null, max: 5, label: 'x', leyendas: { 5: 'Muy útil', 1: 'Nada útil' } },
+    })
+
+    expect(wrapper.findAll('button').map((b) => b.text())).toEqual(['5', '4', '3', '2', '1'])
+    expect(wrapper.text()).toContain('= Muy útil')
+    expect(wrapper.text()).toContain('= Nada útil')
   })
 
   it('is at least 44px tall for touch', () => {

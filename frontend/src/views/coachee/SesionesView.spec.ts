@@ -32,10 +32,12 @@ vi.mock('../../api/disponibilidad', () => ({
 }))
 vi.mock('../../api/solicitudes-sesion', () => ({
   crearSolicitudSesion: vi.fn(),
+  getMisSolicitudesSesion: vi.fn().mockResolvedValue([]),
+  resolverContrapropuesta: vi.fn(),
 }))
 
 import { getSlotsLibres } from '../../api/disponibilidad'
-import { crearSolicitudSesion } from '../../api/solicitudes-sesion'
+import { crearSolicitudSesion, getMisSolicitudesSesion, resolverContrapropuesta } from '../../api/solicitudes-sesion'
 
 vi.mock('../../api/ciclos', () => ({
   getMiCicloActual: vi.fn().mockResolvedValue(null),
@@ -101,6 +103,8 @@ describe('SesionesView', () => {
     vi.mocked(notifySuccess).mockReset()
     vi.mocked(getSlotsLibres).mockReset().mockResolvedValue([])
     vi.mocked(crearSolicitudSesion).mockReset()
+    vi.mocked(getMisSolicitudesSesion).mockReset().mockResolvedValue([])
+    vi.mocked(resolverContrapropuesta).mockReset()
     vi.mocked(confirmarSesion).mockReset()
   })
 
@@ -213,6 +217,8 @@ describe('SesionesView', () => {
       motivo: null,
       estado: 'pendiente',
       respuestaCoach: null,
+      fechaHoraContrapropuesta: null,
+      linkVideollamada: null,
       sesionCreadaId: null,
       createdAt: slotIso,
       resolvedAt: null,
@@ -317,7 +323,7 @@ describe('SesionesView', () => {
 
     expect(confirmDialog).not.toHaveBeenCalled()
     expect(publicarPostSesion).not.toHaveBeenCalled()
-    expect(wrapper.text()).toContain('Cuéntanos tu aprendizaje principal.')
+    expect(wrapper.text()).not.toContain('Cuéntanos tu aprendizaje principal.')
     expect(wrapper.text()).toContain('Elige qué tan útil fue la sesión.')
     expect(wrapper.text()).toContain('Elige qué tan cerca estás de tu objetivo.')
   })
@@ -332,8 +338,9 @@ describe('SesionesView', () => {
     const wrapper = mount(SesionesView)
     await flushPromises()
     await wrapper.find('textarea').setValue('Mi aprendizaje')
-    await wrapper.find('[role="group"][aria-label^="Utilidad"] button:nth-child(4)').trigger('click')
-    await wrapper.find('[role="group"][aria-label^="Qué tan cerca"] button:nth-child(7)').trigger('click')
+    // Los botones van de mayor a menor: utilidad 4 es el 2.º y cercanía 7 el 4.º.
+    await wrapper.find('[role="group"][aria-label^="Utilidad"] button:nth-child(2)').trigger('click')
+    await wrapper.find('[role="group"][aria-label^="Qué tan cerca"] button:nth-child(4)').trigger('click')
     await wrapper.findAll('button').find((b) => b.text() === 'Publicar')!.trigger('click')
     await flushPromises()
 
@@ -342,6 +349,23 @@ describe('SesionesView', () => {
     expect(publicarPostSesion).toHaveBeenCalledWith('s9')
     expect(notifySuccess).toHaveBeenCalledWith('Post-sesión publicada')
     expect(wrapper.text()).toContain('Utilidad: 4/5')
+  })
+
+  it('publishes with only the numeric ratings, leaving the private aprendizaje empty', async () => {
+    vi.mocked(getMisSesiones).mockResolvedValue([{ ...sesionPasadaSinPublicar, id: 's6' }])
+    vi.mocked(confirmDialog).mockResolvedValue(true)
+    const publicada = { ...sesionPasadaPublicada.postSesion!, sesionId: 's6', aprendizaje: null, utilidad: 5, cercaniaObjetivo: 10 }
+    vi.mocked(guardarPostSesion).mockResolvedValue({ ...publicada, publicada: false })
+    vi.mocked(publicarPostSesion).mockResolvedValue(publicada)
+
+    const wrapper = mount(SesionesView)
+    await flushPromises()
+    await wrapper.find('[role="group"][aria-label^="Utilidad"] button:nth-child(1)').trigger('click')
+    await wrapper.find('[role="group"][aria-label^="Qué tan cerca"] button:nth-child(1)').trigger('click')
+    await wrapper.findAll('button').find((b) => b.text() === 'Publicar')!.trigger('click')
+    await flushPromises()
+
+    expect(publicarPostSesion).toHaveBeenCalledWith('s6')
   })
 
   it('does not publish when the coachee cancels the confirmation', async () => {
@@ -394,5 +418,45 @@ describe('SesionesView', () => {
     await wrapper.findAll('button').find((b) => b.text() === 'Reintentar')!.trigger('click')
     await flushPromises()
     expect(wrapper.find('[role="alert"]').exists()).toBe(false)
+  })
+
+  const solicitudBase = {
+    id: 'sol-1',
+    coacheeId: 'coachee-1',
+    fechaHoraPropuesta: '2999-03-01T13:00:00.000Z',
+    motivo: null,
+    respuestaCoach: null,
+    fechaHoraContrapropuesta: null,
+    linkVideollamada: null,
+    sesionCreadaId: null,
+    createdAt: '2999-01-01T00:00:00.000Z',
+    resolvedAt: null,
+  }
+
+  it('shows a pending session request as "En espera"', async () => {
+    vi.mocked(getMisSesiones).mockResolvedValue([])
+    vi.mocked(getMisSolicitudesSesion).mockResolvedValue([{ ...solicitudBase, estado: 'pendiente' }])
+
+    const wrapper = mount(SesionesView)
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Mis solicitudes de sesión')
+    expect(wrapper.text()).toContain('En espera')
+  })
+
+  it('lets the coachee accept a time proposed by the coach', async () => {
+    vi.mocked(getMisSesiones).mockResolvedValue([])
+    vi.mocked(getMisSolicitudesSesion).mockResolvedValue([
+      { ...solicitudBase, estado: 'contrapropuesta', fechaHoraContrapropuesta: '2999-03-02T13:00:00.000Z' },
+    ])
+    vi.mocked(resolverContrapropuesta).mockResolvedValue({ ...solicitudBase, estado: 'aprobada' })
+
+    const wrapper = mount(SesionesView)
+    await flushPromises()
+    await wrapper.findAll('button').find((b) => b.text() === 'Aceptar')!.trigger('click')
+    await flushPromises()
+
+    expect(resolverContrapropuesta).toHaveBeenCalledWith('sol-1', true)
+    expect(wrapper.text()).not.toContain('Mis solicitudes de sesión')
   })
 })

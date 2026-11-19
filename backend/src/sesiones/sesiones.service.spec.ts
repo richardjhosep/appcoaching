@@ -103,13 +103,13 @@ describe('SesionesService', () => {
     it('rejects when another session (any coachee) overlaps that time', async () => {
       coachees.exists.mockResolvedValue(true);
       repo.find.mockResolvedValue([
-        { id: 'otra', fechaHora: new Date('2026-08-01T15:00:00.000Z') },
+        { id: 'otra', fechaHora: new Date('2999-08-01T15:00:00.000Z') },
       ]);
 
       await expect(
         service.create({
           coacheeId: 'coachee-2',
-          fechaHora: '2026-08-01T15:00:00.000Z',
+          fechaHora: '2999-08-01T15:00:00.000Z',
         }),
       ).rejects.toThrow(ConflictException);
     });
@@ -117,7 +117,21 @@ describe('SesionesService', () => {
     it('allows a session right after another one ends (no overlap)', async () => {
       coachees.exists.mockResolvedValue(true);
       repo.find.mockResolvedValue([
-        { id: 'otra', fechaHora: new Date('2026-08-01T14:00:00.000Z') },
+        { id: 'otra', fechaHora: new Date('2999-08-01T14:00:00.000Z') },
+      ]);
+
+      const sesion = await service.create({
+        coacheeId: 'coachee-2',
+        fechaHora: '2999-08-01T15:00:00.000Z',
+      });
+
+      expect(sesion.coacheeId).toBe('coachee-2');
+    });
+
+    it('does not block a past session registered by hand, even if it overlaps another', async () => {
+      coachees.exists.mockResolvedValue(true);
+      repo.find.mockResolvedValue([
+        { id: 'otra', fechaHora: new Date('2026-08-01T15:00:00.000Z') },
       ]);
 
       const sesion = await service.create({

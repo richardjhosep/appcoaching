@@ -46,6 +46,9 @@ vi.mock('../../api/satisfaccion', async () => {
   const actual = await vi.importActual<typeof import('../../api/satisfaccion')>('../../api/satisfaccion')
   return { ...actual, getSolicitudes: vi.fn() }
 })
+vi.mock('../../api/solicitudes-sesion', () => ({
+  getSolicitudesSesionPendientes: vi.fn(),
+}))
 vi.mock('../../api/coachees', async () => {
   const actual = await vi.importActual<typeof import('../../api/coachees')>('../../api/coachees')
   return { ...actual, listCoachees: vi.fn() }
@@ -76,6 +79,7 @@ import {
 import { crearGestion, getGestionDeEmpresa } from '../../api/empresas'
 import { listPlanes, enviarRecordatorio } from '../../api/planesDesarrollo'
 import { getSolicitudes } from '../../api/satisfaccion'
+import { getSolicitudesSesionPendientes } from '../../api/solicitudes-sesion'
 import { listCoachees } from '../../api/coachees'
 import { getResumenLegal } from '../../api/legal'
 import { getSesionesSemana } from '../../api/sesiones'
@@ -157,6 +161,7 @@ describe('DashboardView', () => {
     vi.mocked(getAlertas).mockResolvedValue(alertasVacias)
     vi.mocked(listPlanes).mockResolvedValue([])
     vi.mocked(getSolicitudes).mockResolvedValue([])
+    vi.mocked(getSolicitudesSesionPendientes).mockResolvedValue([])
     vi.mocked(listCoachees).mockResolvedValue([{ id: 'c1', nombre: 'Rodrigo Peña', empresaId: null, consentimientoInformado: true, consentimientoFecha: null }])
     vi.mocked(getResumenLegal).mockResolvedValue(resumenLegalVacio)
     vi.mocked(getCarteraEmpresas).mockResolvedValue(carteraVacia)
@@ -369,6 +374,24 @@ describe('DashboardView', () => {
 
     expect(wrapper.text()).toContain('Nuevo Coachee')
     expect(wrapper.text()).toContain('Andes Minerals')
+  })
+
+  it('shows pending session requests in the Panorama', async () => {
+    vi.mocked(getSolicitudesSesionPendientes).mockResolvedValue([
+      {
+        id: 'ss1', coacheeId: 'c1', fechaHoraPropuesta: '2999-03-01T13:00:00.000Z', motivo: null,
+        estado: 'pendiente', respuestaCoach: null, fechaHoraContrapropuesta: null, linkVideollamada: null,
+        sesionCreadaId: null, createdAt: '2999-01-01T00:00:00.000Z', resolvedAt: null,
+        coachee: { id: 'c1', nombre: 'Ana Solicita' },
+      },
+    ])
+
+    const wrapper = mount(DashboardView, { global: { plugins: [router] } })
+    await flushPromises()
+    await wrapper.findAll('button').find((b) => b.text().startsWith('Solicitudes de sesión'))!.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Ana Solicita')
   })
 
   describe('buscador de coachees', () => {

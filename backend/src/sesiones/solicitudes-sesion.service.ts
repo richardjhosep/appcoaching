@@ -6,10 +6,11 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { SolicitudSesion } from './entities/solicitud-sesion.entity';
 import { EstadoSolicitudSesion } from './enums/estado-solicitud-sesion.enum';
 import { ResponderSolicitudSesionDto } from './dto/responder-solicitud-sesion.dto';
+import { ContraproponerSolicitudSesionDto } from './dto/contraproponer-solicitud-sesion.dto';
 import { DisponibilidadService } from './disponibilidad.service';
 import { SesionesService } from './sesiones.service';
 import { CoacheesService } from '../coachees/coachees.service';
@@ -115,6 +116,118 @@ export class SolicitudesSesionService {
     });
   }
 
+  /** Solicitudes del coachee que siguen "en espera": pendientes o con un horario contrapropuesto. */
+  async findAbiertasDelCoachee(
+    actorUserId: string,
+  ): Promise<SolicitudSesion[]> {
+    const coachee = await this.coachees.findByUserId(actorUserId);
+    if (!coachee) {
+      throw new NotFoundException('Perfil de coachee no encontrado.');
+    }
+    return this.solicitudes.find({
+      where: {
+        coacheeId: coachee.id,
+        estado: In([
+          EstadoSolicitudSesion.PENDIENTE,
+          EstadoSolicitudSesion.CONTRAPROPUESTA,
+        ]),
+      },
+      order: { createdAt: 'ASC' },
+    });
+  }
+
+  async contraproponer(
+    id: string,
+    dto: ContraproponerSolicitudSesionDto,
+  ): Promise<SolicitudSesion> {
+    const solicitud = await this.solicitudes.findOne({
+      where: { id },
+      relations: { coachee: true },
+    });
+    if (!solicitud) {
+      throw new NotFoundException('Solicitud no encontrada.');
+    }
+    if (solicitud.estado !== EstadoSolicitudSesion.PENDIENTE) {
+      throw new ConflictException('Esta solicitud ya fue resuelta.');
+    }
+    const fechaHora = new Date(dto.fechaHora);
+    if (fechaHora.getTime() <= Date.now()) {
+      throw new BadRequestException(
+        'No se puede proponer un horario en el pasado.',
+      );
+    }
+
+    solicitud.estado = EstadoSolicitudSesion.CONTRAPROPUESTA;
+    solicitud.fechaHoraContrapropuesta = fechaHora;
+    solicitud.respuestaCoach = dto.respuestaCoach ?? null;
+    solicitud.linkVideollamada = dto.linkVideollamada ?? null;
+    const resultado = await this.solicitudes.save(solicitud);
+
+    if (solicitud.coachee) {
+      void this.notificaciones.crear(
+        solicitud.coachee.userId,
+        TipoNotificacion.SOLICITUD_SESION_RESUELTA,
+        `Tu coach te propone otro horario: ${fechaHora.toLocaleString('es-CL')}`,
+        '/coachee/sesiones',
+      );
+    }
+    return resultado;
+  }
+
+  async resolverContrapropuesta(
+    id: string,
+    actorUserId: string,
+    aceptar: boolean,
+  ): Promise<SolicitudSesion> {
+    const coachee = await this.coachees.findByUserId(actorUserId);
+    if (!coachee) {
+      throw new NotFoundException('Perfil de coachee no encontrado.');
+    }
+    const solicitud = await this.solicitudes.findOne({ where: { id } });
+    if (!solicitud || solicitud.coacheeId !== coachee.id) {
+      throw new NotFoundException('Solicitud no encontrada.');
+    }
+    if (
+      solicitud.estado !== EstadoSolicitudSesion.CONTRAPROPUESTA ||
+      !solicitud.fechaHoraContrapropuesta
+    ) {
+      throw new ConflictException(
+        'Esta solicitud no tiene una propuesta abierta.',
+      );
+    }
+
+    if (aceptar) {
+      if (solicitud.fechaHoraContrapropuesta.getTime() <= Date.now()) {
+        throw new BadRequestException(
+          'El horario propuesto ya pasó; pide una nueva sesión.',
+        );
+      }
+      const sesion = await this.sesionesService.create({
+        coacheeId: solicitud.coacheeId,
+        fechaHora: solicitud.fechaHoraContrapropuesta.toISOString(),
+        linkVideollamada: solicitud.linkVideollamada ?? undefined,
+      });
+      solicitud.sesionCreadaId = sesion.id;
+      solicitud.estado = EstadoSolicitudSesion.APROBADA;
+    } else {
+      solicitud.estado = EstadoSolicitudSesion.RECHAZADA;
+    }
+    solicitud.resolvedAt = new Date();
+    const resultado = await this.solicitudes.save(solicitud);
+
+    const mensaje = `${coachee.nombre} ${aceptar ? 'aceptó' : 'rechazó'} el horario que propusiste`;
+    const coaches = await this.users.findAllByRole(Role.COACH);
+    for (const coach of coaches) {
+      void this.notificaciones.crear(
+        coach.id,
+        TipoNotificacion.SOLICITUD_SESION_CREADA,
+        mensaje,
+        '/coach/agenda',
+      );
+    }
+    return resultado;
+  }
+
   async responder(
     id: string,
     dto: ResponderSolicitudSesionDto,
@@ -139,9 +252,11 @@ export class SolicitudesSesionService {
       const sesion = await this.sesionesService.create({
         coacheeId: solicitud.coacheeId,
         fechaHora: solicitud.fechaHoraPropuesta.toISOString(),
+        linkVideollamada: dto.linkVideollamada,
       });
       solicitud.sesionCreadaId = sesion.id;
       solicitud.estado = EstadoSolicitudSesion.APROBADA;
+      solicitud.linkVideollamada = dto.linkVideollamada ?? null;
     } else {
       solicitud.estado = EstadoSolicitudSesion.RECHAZADA;
     }

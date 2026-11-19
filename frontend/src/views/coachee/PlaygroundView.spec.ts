@@ -96,11 +96,11 @@ describe('PlaygroundView', () => {
     expect(router.currentRoute.value.query.tab).toBe('test-estilo')
   })
 
-  it('switches to "Ejercicios" on click', async () => {
+  it('switches to "Conversaciones difíciles" on click', async () => {
     const wrapper = mount(PlaygroundView, { global: { plugins: [router], stubs } })
     await flushPromises()
 
-    const ejerciciosBtn = wrapper.findAll('button').find((b) => b.text().includes('Ejercicios'))
+    const ejerciciosBtn = wrapper.findAll('button').find((b) => b.text().includes('Conversaciones difíciles'))
     await ejerciciosBtn!.trigger('click')
     await flushPromises()
 
@@ -154,7 +154,7 @@ describe('PlaygroundView', () => {
     expect(tabs).toContain('Mapas mentales 0')
     expect(tabs).toContain('Mis mapas 1')
     expect(tabs).toContain('Mi pizarra 0')
-    expect(tabs).toContain('Ejercicios 1')
+    expect(tabs).toContain('Conversaciones difíciles 1')
     expect(tabs).toContain('Test de Estilo 0')
   })
 

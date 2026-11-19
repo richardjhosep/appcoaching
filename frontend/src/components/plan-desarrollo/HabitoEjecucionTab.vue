@@ -81,6 +81,13 @@ async function guardarHabito() {
   }
 }
 
+// El formulario está al final de la lista: el botón destacado de arriba lleva hasta él.
+function irANuevaActividad() {
+  const form = document.getElementById('form-nueva-actividad')
+  form?.scrollIntoView({ behavior: 'smooth' })
+  form?.querySelector('select')?.focus({ preventScroll: true })
+}
+
 async function agregarActividad() {
   if (!nuevaActividad.objetivoId || !nuevaActividad.actividad.trim()) return
   try {
@@ -233,6 +240,13 @@ function objetivoDescripcion(objetivoId: string): string {
       title="Plan de ejecución"
       icon="lista"
     >
+      <button
+        type="button"
+        class="mb-3 rounded-lg bg-[var(--color-primary)] px-4 py-2 text-sm font-medium text-[var(--color-on-primary)]"
+        @click="irANuevaActividad"
+      >
+        + Nueva actividad
+      </button>
       <ul class="mb-3 space-y-2">
         <li
           v-for="a in plan.actividades"
@@ -316,7 +330,10 @@ function objetivoDescripcion(objetivoId: string): string {
         </li>
       </ul>
 
-      <div class="grid gap-2 sm:grid-cols-2">
+      <div
+        id="form-nueva-actividad"
+        class="grid scroll-mt-4 gap-2 sm:grid-cols-2"
+      >
         <select
           v-model="nuevaActividad.objetivoId"
           class="rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm sm:col-span-2"
@@ -362,7 +379,7 @@ function objetivoDescripcion(objetivoId: string): string {
           >
         </label>
         <button
-          class="w-fit rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm hover:bg-[var(--color-parchment)]/50 sm:col-span-2"
+          class="w-fit rounded-lg bg-[var(--color-sage)] px-4 py-2 text-sm font-medium text-white sm:col-span-2"
           @click="agregarActividad"
         >
           Agregar actividad

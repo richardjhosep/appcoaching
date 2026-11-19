@@ -51,14 +51,15 @@ export class SesionesController {
   @Get()
   async findAll(@Query('coacheeId') coacheeId?: string) {
     const sesiones = await this.sesiones.findAllForCoach(coacheeId);
-    return this.withPostSesiones(sesiones);
+    // El aprendizaje del post-sesión es confidencial del coachee: el coach no lo recibe.
+    return this.withPostSesiones(sesiones, false);
   }
 
   @Roles(Role.COACHEE)
   @Get('me')
   async findMine(@CurrentUser() actor: AuthenticatedUser) {
     const sesiones = await this.sesiones.findAllForCoachee(actor.id);
-    return this.withPostSesiones(sesiones);
+    return this.withPostSesiones(sesiones, true);
   }
 
   @Roles(Role.COACHEE)
@@ -110,11 +111,14 @@ export class SesionesController {
 
   private async withPostSesiones<T extends { id: string }>(
     sesiones: T[],
+    incluirAprendizaje: boolean,
   ): Promise<Array<T & { postSesion: unknown }>> {
     return Promise.all(
       sesiones.map(async (sesion) => ({
         ...sesion,
-        postSesion: await this.postSesiones.findForSesion(sesion.id),
+        postSesion: incluirAprendizaje
+          ? await this.postSesiones.findForSesion(sesion.id)
+          : await this.postSesiones.findForSesionSinAprendizaje(sesion.id),
       })),
     );
   }

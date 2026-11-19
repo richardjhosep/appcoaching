@@ -1,4 +1,4 @@
-import { IsBoolean, IsOptional, IsString } from 'class-validator';
+import { IsBoolean, IsOptional, IsString, IsUrl } from 'class-validator';
 
 export class ResponderSolicitudSesionDto {
   @IsBoolean()
@@ -7,4 +7,8 @@ export class ResponderSolicitudSesionDto {
   @IsOptional()
   @IsString()
   respuestaCoach?: string;
+
+  @IsOptional()
+  @IsUrl({ protocols: ['http', 'https'] })
+  linkVideollamada?: string;
 }

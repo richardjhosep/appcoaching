@@ -262,4 +262,127 @@ describe('SolicitudesSesionService', () => {
       expect(email.sendSolicitudSesionResuelta).not.toHaveBeenCalled();
     });
   });
+
+  describe('enlace al aprobar', () => {
+    it('passes linkVideollamada to the created session and keeps it on the request', async () => {
+      repo.findOne.mockResolvedValue({
+        id: 'req-1',
+        coacheeId: 'coachee-1',
+        estado: EstadoSolicitudSesion.PENDIENTE,
+        fechaHoraPropuesta: new Date(FECHA_FUTURA),
+        coachee: { userId: 'u1', user: undefined },
+      });
+
+      const res = await service.responder('req-1', {
+        aprobar: true,
+        linkVideollamada: 'https://meet.example.com/abc',
+      });
+
+      expect(sesionesService.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          linkVideollamada: 'https://meet.example.com/abc',
+        }),
+      );
+      expect(res.linkVideollamada).toBe('https://meet.example.com/abc');
+    });
+  });
+
+  describe('contraproponer', () => {
+    const pendiente = () => ({
+      id: 'req-1',
+      coacheeId: 'coachee-1',
+      estado: EstadoSolicitudSesion.PENDIENTE,
+      fechaHoraPropuesta: new Date(FECHA_FUTURA),
+      coachee: { userId: 'user-coachee-1' },
+    });
+
+    it('marks the request as counter-proposed and notifies the coachee', async () => {
+      repo.findOne.mockResolvedValue(pendiente());
+
+      const res = await service.contraproponer('req-1', {
+        fechaHora: '2027-03-09T13:00:00.000Z',
+      });
+
+      expect(res.estado).toBe(EstadoSolicitudSesion.CONTRAPROPUESTA);
+      expect(res.fechaHoraContrapropuesta).toEqual(
+        new Date('2027-03-09T13:00:00.000Z'),
+      );
+      expect(notificaciones.crear).toHaveBeenCalledWith(
+        'user-coachee-1',
+        TipoNotificacion.SOLICITUD_SESION_RESUELTA,
+        expect.any(String) as string,
+        '/coachee/sesiones',
+      );
+    });
+
+    it('rejects a time in the past', async () => {
+      repo.findOne.mockResolvedValue(pendiente());
+
+      await expect(
+        service.contraproponer('req-1', { fechaHora: '2020-01-01T12:00:00Z' }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('rejects when the request is no longer pending', async () => {
+      repo.findOne.mockResolvedValue({
+        ...pendiente(),
+        estado: EstadoSolicitudSesion.APROBADA,
+      });
+
+      await expect(
+        service.contraproponer('req-1', { fechaHora: FECHA_FUTURA }),
+      ).rejects.toThrow(ConflictException);
+    });
+  });
+
+  describe('resolverContrapropuesta', () => {
+    const conPropuesta = () => ({
+      id: 'req-1',
+      coacheeId: 'coachee-1',
+      estado: EstadoSolicitudSesion.CONTRAPROPUESTA,
+      fechaHoraContrapropuesta: new Date(FECHA_FUTURA),
+      linkVideollamada: 'https://meet.example.com/abc',
+    });
+
+    beforeEach(() => {
+      coachees.findByUserId.mockResolvedValue({
+        id: 'coachee-1',
+        nombre: 'Ana',
+      });
+    });
+
+    it('creates the session at the proposed time when the coachee accepts', async () => {
+      repo.findOne.mockResolvedValue(conPropuesta());
+
+      const res = await service.resolverContrapropuesta('req-1', 'u1', true);
+
+      expect(sesionesService.create).toHaveBeenCalledWith({
+        coacheeId: 'coachee-1',
+        fechaHora: FECHA_FUTURA,
+        linkVideollamada: 'https://meet.example.com/abc',
+      });
+      expect(res.estado).toBe(EstadoSolicitudSesion.APROBADA);
+      expect(res.sesionCreadaId).toBe('sesion-1');
+    });
+
+    it('rejects without creating a session when the coachee declines', async () => {
+      repo.findOne.mockResolvedValue(conPropuesta());
+
+      const res = await service.resolverContrapropuesta('req-1', 'u1', false);
+
+      expect(sesionesService.create).not.toHaveBeenCalled();
+      expect(res.estado).toBe(EstadoSolicitudSesion.RECHAZADA);
+    });
+
+    it("hides another coachee's request", async () => {
+      repo.findOne.mockResolvedValue({
+        ...conPropuesta(),
+        coacheeId: 'otro',
+      });
+
+      await expect(
+        service.resolverContrapropuesta('req-1', 'u1', true),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
 });

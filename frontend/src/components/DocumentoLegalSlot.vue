@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 import {
   upsertDocumentoLegal,
   descargarAcuerdo,
+  verAcuerdo,
   type DocumentoLegal,
   type TipoDocumentoLegal,
   type TargetLegal,
@@ -60,6 +61,14 @@ async function guardar() {
     error.value = err instanceof ApiError ? err.message : 'No se pudo guardar el documento.'
   } finally {
     guardando.value = false
+  }
+}
+
+async function ver() {
+  try {
+    await verAcuerdo(props.target, props.tipo, `${props.label} - ${props.nombreParaArchivo}.pdf`)
+  } catch (err) {
+    error.value = err instanceof ApiError ? err.message : 'No se pudo abrir el archivo.'
   }
 }
 
@@ -160,9 +169,17 @@ async function descargar() {
         v-if="doc.tieneArchivo"
         type="button"
         class="text-[var(--color-saltup-ink)] hover:underline"
-        @click="descargar"
+        @click="ver"
       >
         Ver documento
+      </button>
+      <button
+        v-if="doc.tieneArchivo"
+        type="button"
+        class="text-[var(--color-saltup-ink)] hover:underline"
+        @click="descargar"
+      >
+        Descargar
       </button>
     </div>
 

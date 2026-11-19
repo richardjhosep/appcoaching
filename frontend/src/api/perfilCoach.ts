@@ -1,4 +1,5 @@
 import { apiRequest, apiUpload, apiDownload, ApiError } from './client'
+import { verArchivo } from '../lib/verArchivo'
 
 export interface CertificacionCoach {
   id: string
@@ -186,6 +187,10 @@ export async function obtenerUrlFoto(): Promise<string | null> {
 export async function descargarCv(nombreArchivo: string): Promise<void> {
   const blob = await apiDownload('/perfil-coach/cv')
   descargarBlob(blob, nombreArchivo)
+}
+
+export function verCertificacion(id: string, nombreArchivo: string): Promise<void> {
+  return verArchivo(`/perfil-coach/certificaciones/${id}/archivo`, nombreArchivo)
 }
 
 export async function descargarCertificacion(id: string, nombreArchivo: string): Promise<void> {

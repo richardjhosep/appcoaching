@@ -38,6 +38,16 @@ export class SolicitudSesion {
   @Column({ name: 'respuesta_coach', type: 'text', nullable: true })
   respuestaCoach: string | null;
 
+  @Column({
+    name: 'fecha_hora_contrapropuesta',
+    type: 'timestamptz',
+    nullable: true,
+  })
+  fechaHoraContrapropuesta: Date | null;
+
+  @Column({ name: 'link_videollamada', type: 'text', nullable: true })
+  linkVideollamada: string | null;
+
   @Column({ name: 'sesion_creada_id', type: 'uuid', nullable: true })
   sesionCreadaId: string | null;
 

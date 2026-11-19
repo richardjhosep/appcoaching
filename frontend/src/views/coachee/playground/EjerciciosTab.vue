@@ -80,8 +80,17 @@ async function enviar() {
 
 <template>
   <h1 class="mb-4 font-[family-name:var(--font-heading)] text-xl font-semibold">
-    Ejercicios de comunicación
+    Practica conversaciones difíciles
   </h1>
+  <p
+    v-if="!ejercicioAbierto"
+    class="mb-4 text-sm text-[var(--color-ink)]/70"
+  >
+    Antes de una conversación que te cuesta, ordena lo que quieres lograr con el método
+    <strong>know-feel-do</strong>: qué quieres que la otra persona <em>sepa</em> (know), qué quieres que
+    <em>sienta</em> (feel) y qué quieres que <em>haga</em> (do). Elige un ejercicio, escribe tus
+    respuestas y tu coach te dará retroalimentación.
+  </p>
 
   <SkeletonBlock v-if="loading" />
 
@@ -157,7 +166,7 @@ async function enviar() {
 
       <div class="space-y-3">
         <label class="block text-sm">
-          Sabe — ¿qué quieres que el destinatario sepa?
+          Sabe (know) — ¿qué quieres que el destinatario sepa?
           <textarea
             v-model="form.sabe"
             rows="3"
@@ -165,7 +174,7 @@ async function enviar() {
           />
         </label>
         <label class="block text-sm">
-          Siente — ¿qué quieres que sienta?
+          Siente (feel) — ¿qué quieres que sienta?
           <textarea
             v-model="form.siente"
             rows="3"
@@ -173,7 +182,7 @@ async function enviar() {
           />
         </label>
         <label class="block text-sm">
-          Haga — ¿qué quieres que haga?
+          Haga (do) — ¿qué quieres que haga?
           <textarea
             v-model="form.haga"
             rows="3"

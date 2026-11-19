@@ -21,7 +21,7 @@ import {
   eliminarExperiencia,
   obtenerUrlFoto,
   descargarCv,
-  descargarCertificacion,
+  verCertificacion as verCertificacionArchivo,
   type PerfilCoach,
   type CertificacionCoach,
   type ExperienciaCoach,
@@ -211,7 +211,7 @@ async function eliminarCert(id: string) {
 }
 
 async function verCertificacion(id: string, nombre: string, archivoNombre: string | null) {
-  await descargarCertificacion(id, archivoNombre ?? `${nombre}.pdf`)
+  await verCertificacionArchivo(id, archivoNombre ?? `${nombre}.pdf`)
 }
 
 // --- Experiencia ---

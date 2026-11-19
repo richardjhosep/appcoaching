@@ -51,10 +51,15 @@ const nuevoLink = ref('')
 const agendando = ref(false)
 const modalAgendarOpen = ref(false)
 const errorAgendar = ref<string | null>(null)
+// Modo "registrar sesión ya realizada": mismo modal, pero la fecha debe ser pasada (sesión que
+// no pasó por la plataforma) y el texto lo aclara.
+const modoManual = ref(false)
+const ahoraLocal = computed(() => aDatetimeLocal(new Date()))
 
 // `fechaHoraPrefill` viene de elegir un slot vacío en el calendario (clic o arrastre) —
 // el botón "+ Nueva sesión" la deja vacía para que el coach escriba la fecha a mano.
-function abrirModalAgendar(fechaHoraPrefill?: string) {
+function abrirModalAgendar(fechaHoraPrefill?: string, manual = false) {
+  modoManual.value = manual
   nuevaFecha.value = fechaHoraPrefill ? aDatetimeLocal(new Date(fechaHoraPrefill)) : ''
   nuevoLink.value = ''
   errorAgendar.value = null
@@ -260,7 +265,7 @@ async function onSesionEliminada() {
             <strong>Recomendación del coachee:</strong> {{ ultimaPostSesionPublicada.recomendacion }}
           </p>
           <p v-if="ultimaPostSesionPublicada.temasProximaSesion">
-            <strong>Temas propuestos:</strong> {{ ultimaPostSesionPublicada.temasProximaSesion }}
+            <strong>Tema a tratar:</strong> {{ ultimaPostSesionPublicada.temasProximaSesion }}
           </p>
         </div>
 
@@ -270,16 +275,25 @@ async function onSesionEliminada() {
           puede-editar
           @select="onSelectSesion"
           @nueva-sesion="abrirModalAgendar()"
-          @crear-en="abrirModalAgendar"
+          @crear-en="(f) => abrirModalAgendar(f)"
           @reagendar="abrirReagendar"
           @reagendada="onReagendada"
           @eliminada="onSesionEliminada"
         />
 
         <div class="space-y-3 rounded-2xl border border-[var(--color-line)] bg-white p-6 shadow-sm">
-          <h2 class="text-sm font-medium">
-            Sesiones pasadas — registro de la sesión
-          </h2>
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <h2 class="text-sm font-medium">
+              Sesiones pasadas — registro de la sesión
+            </h2>
+            <button
+              type="button"
+              class="rounded-lg border border-[var(--color-line)] px-3 py-1.5 text-xs hover:bg-[var(--color-parchment)]/50"
+              @click="abrirModalAgendar(undefined, true)"
+            >
+              + Registrar sesión ya realizada
+            </button>
+          </div>
           <p class="text-xs text-[var(--color-muted)]">
             Todo lo de abajo es visible para el coachee, salvo las notas privadas.
           </p>
@@ -475,7 +489,7 @@ async function onSesionEliminada() {
 
     <AppModal
       v-if="modalAgendarOpen"
-      title="Agendar sesión"
+      :title="modoManual ? 'Registrar sesión ya realizada' : 'Agendar sesión'"
       @close="modalAgendarOpen = false"
     >
       <form
@@ -488,12 +502,20 @@ async function onSesionEliminada() {
         >
           {{ errorAgendar }}
         </p>
+        <p
+          v-if="modoManual"
+          class="text-xs text-[var(--color-muted)]"
+        >
+          Para una sesión que ya ocurrió fuera de la plataforma. Quedará en "Sesiones pasadas" para
+          que registres asistencia y resumen, y el coachee podrá completar su post-sesión.
+        </p>
         <label class="block text-sm">
           Fecha y hora
           <input
             v-model="nuevaFecha"
             type="datetime-local"
             required
+            :max="modoManual ? ahoraLocal : undefined"
             class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
           >
         </label>
@@ -519,7 +541,7 @@ async function onSesionEliminada() {
             :disabled="agendando"
             class="rounded-lg bg-[var(--color-primary)] px-4 py-2 text-sm text-[var(--color-on-primary)] disabled:opacity-60"
           >
-            {{ agendando ? 'Agendando…' : 'Agendar sesión' }}
+            {{ agendando ? 'Guardando…' : (modoManual ? 'Registrar sesión' : 'Agendar sesión') }}
           </button>
         </div>
       </form>

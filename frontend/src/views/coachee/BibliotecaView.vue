@@ -11,6 +11,7 @@ import {
   addAprendizaje,
   getMisAprendizajes,
   descargarArchivo,
+  verArchivoRecurso,
   type Recurso,
   type Aprendizaje,
   type CategoriaRecurso,
@@ -153,6 +154,14 @@ async function guardarAprendizaje() {
     error.value = err instanceof ApiError ? err.message : 'No se pudo guardar el aprendizaje.'
   } finally {
     guardandoAprendizaje.value = false
+  }
+}
+
+async function ver(r: Recurso) {
+  try {
+    await verArchivoRecurso(r.id, r.archivoNombre ?? 'archivo')
+  } catch (err) {
+    error.value = err instanceof ApiError ? err.message : 'No se pudo abrir el archivo.'
   }
 }
 
@@ -384,13 +393,23 @@ async function descargar(r: Recurso) {
             rel="noopener noreferrer"
             class="mt-2 inline-block text-sm text-[var(--color-saltup-ink)] underline"
           >Abrir link</a>
-          <button
+          <div
             v-else
-            class="mt-2 text-sm text-[var(--color-saltup-ink)] underline"
-            @click="descargar(recursoAbierto)"
+            class="mt-2 flex items-center gap-4"
           >
-            Descargar archivo
-          </button>
+            <button
+              class="text-sm text-[var(--color-saltup-ink)] underline"
+              @click="ver(recursoAbierto)"
+            >
+              Ver archivo
+            </button>
+            <button
+              class="text-sm text-[var(--color-saltup-ink)] underline"
+              @click="descargar(recursoAbierto)"
+            >
+              Descargar archivo
+            </button>
+          </div>
         </div>
       </div>
 

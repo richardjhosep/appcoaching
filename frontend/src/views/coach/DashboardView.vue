@@ -34,6 +34,7 @@ import { listProspectos, type Prospecto } from '../../api/prospectos'
 import { etapaEsCerrada } from '../../lib/etapaProspecto'
 import { listPlanes, enviarRecordatorio, type PlanDesarrollo } from '../../api/planesDesarrollo'
 import { getSolicitudes, type SolicitudProceso } from '../../api/satisfaccion'
+import { getSolicitudesSesionPendientes, type SolicitudSesion } from '../../api/solicitudes-sesion'
 import { listCoachees, type CoacheeListItem } from '../../api/coachees'
 import { getResumenLegal, type ResumenLegal } from '../../api/legal'
 import { getSesionesSemana, type Sesion } from '../../api/sesiones'
@@ -54,6 +55,7 @@ const alertas = ref<Alertas | null>(null)
 const planesSinEnviar = ref<PlanDesarrollo[]>([])
 const planesConCambiosSolicitados = ref<PlanDesarrollo[]>([])
 const solicitudesPendientes = ref<SolicitudProceso[]>([])
+const solicitudesSesion = ref<SolicitudSesion[]>([])
 const resumenLegal = ref<ResumenLegal>({ empresas: [], independientes: [] })
 const coacheesLista = ref<CoacheeListItem[]>([])
 const sinCoacheesAun = ref(false)
@@ -67,7 +69,7 @@ const prospectosLista = ref<Prospecto[]>([])
 // null = no se pudo determinar (la llamada falló): el checklist no lo da por pendiente.
 const hayPlanes = ref<boolean | null>(null)
 
-type Tab = 'coachees' | 'empresas' | 'solicitudes' | 'prospectos'
+type Tab = 'coachees' | 'empresas' | 'solicitudes' | 'sesiones' | 'prospectos'
 const tab = ref<Tab>('coachees')
 
 const formatoCLP = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 })
@@ -86,6 +88,7 @@ async function load() {
     sinEnviar,
     conCambiosSolicitados,
     solicitudes,
+    solicitudesDeSesion,
     legal,
     carteraData,
     semana,
@@ -102,6 +105,7 @@ async function load() {
     tolerar(listPlanes('sin_enviar')),
     tolerar(listPlanes('cambios_solicitados')),
     tolerar(getSolicitudes('pendiente')),
+    tolerar(getSolicitudesSesionPendientes()),
     tolerar(getResumenLegal()),
     tolerar(getCarteraEmpresas()),
     tolerar(getSesionesSemana(aFechaLocal(lunes), aFechaLocal(finSemana))),
@@ -117,6 +121,7 @@ async function load() {
   planesSinEnviar.value = sinEnviar ?? []
   planesConCambiosSolicitados.value = conCambiosSolicitados ?? []
   solicitudesPendientes.value = solicitudes ?? []
+  solicitudesSesion.value = solicitudesDeSesion ?? []
   resumenLegal.value = legal ?? { empresas: [], independientes: [] }
   coacheesLista.value = coachees
   sinCoacheesAun.value = coachees.length === 0
@@ -496,6 +501,7 @@ const tabsAtencion = computed(() => [
   { key: 'coachees' as Tab, label: 'Coachees', badge: coacheesAtencion.value.length },
   { key: 'empresas' as Tab, label: 'Empresas', badge: empresasLegalPendientes.value.length },
   { key: 'solicitudes' as Tab, label: 'Solicitudes comerciales', badge: solicitudesPendientes.value.length },
+  { key: 'sesiones' as Tab, label: 'Solicitudes de sesión', badge: solicitudesSesion.value.length },
   { key: 'prospectos' as Tab, label: 'Prospectos por seguir', badge: prospectosPorSeguir.value.length },
 ])
 
@@ -1251,6 +1257,33 @@ const mostrarPrimerosPasos = computed(
                   v-if="s.empresa"
                   class="text-[var(--color-muted)]"
                 >— {{ s.empresa.nombre }}</span>
+              </li>
+            </ul>
+          </div>
+
+          <div v-else-if="tab === 'sesiones'">
+            <p
+              v-if="solicitudesSesion.length === 0"
+              class="text-sm text-[var(--color-muted)]"
+            >
+              No hay solicitudes de hora pendientes.
+            </p>
+            <ul
+              v-else
+              class="space-y-1 text-sm"
+            >
+              <li
+                v-for="s in solicitudesSesion"
+                :key="s.id"
+              >
+                {{ s.coachee?.nombre ?? 'Coachee' }}
+                <span class="text-[var(--color-muted)]">— {{ new Date(s.fechaHoraPropuesta).toLocaleString('es-CL', { dateStyle: 'medium', timeStyle: 'short' }) }}</span>
+                <RouterLink
+                  to="/coach/agenda"
+                  class="ml-2 text-[var(--color-sage)] underline"
+                >
+                  Responder en la agenda
+                </RouterLink>
               </li>
             </ul>
           </div>

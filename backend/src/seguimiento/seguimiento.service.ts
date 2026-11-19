@@ -94,11 +94,11 @@ export class SeguimientoService {
 
   async lineaProgresoOwn(actorUserId: string) {
     const coacheeId = await this.resolveCoacheeId(actorUserId);
-    return this.postSesiones.findAllPublicadasForCoachee(coacheeId);
+    return this.postSesiones.findAllPublicadasForCoachee(coacheeId, true);
   }
 
   lineaProgresoForCoachee(coacheeId: string) {
-    return this.postSesiones.findAllPublicadasForCoachee(coacheeId);
+    return this.postSesiones.findAllPublicadasForCoachee(coacheeId, false);
   }
 
   async addAutoevaluacionOwn(

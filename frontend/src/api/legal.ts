@@ -1,4 +1,5 @@
 import { apiRequest, apiUpload, apiDownload } from './client'
+import { verArchivo } from '../lib/verArchivo'
 
 export type TipoDocumentoLegal = 'contrato' | 'nda' | 'carta_invitacion'
 export type EstadoDocumentoLegal = 'firmado' | 'pendiente'
@@ -88,6 +89,10 @@ export function upsertDocumentoLegal(
   return apiUpload<DocumentoLegal>(`/legal/documentos/${targetPath(target)}/${tipo}`, form, 'PUT')
 }
 
+export function verAcuerdo(target: TargetLegal, tipo: TipoDocumentoLegal, nombreArchivo: string): Promise<void> {
+  return verArchivo(`/legal/documentos/${targetPath(target)}/${tipo}/archivo`, nombreArchivo)
+}
+
 export async function descargarAcuerdo(
   target: TargetLegal,
   tipo: TipoDocumentoLegal,
@@ -112,6 +117,10 @@ export function subirAdicional(
   return apiUpload<DocumentoAdicionalLegal>(`/legal/adicionales/${targetPath(target)}`, form)
 }
 
+export function verAdicional(id: string, nombreArchivo: string): Promise<void> {
+  return verArchivo(`/legal/adicionales/${id}/archivo`, nombreArchivo)
+}
+
 export async function descargarAdicional(id: string, nombreArchivo: string): Promise<void> {
   const blob = await apiDownload(`/legal/adicionales/${id}/archivo`)
   descargarBlob(blob, nombreArchivo)
@@ -132,6 +141,10 @@ export interface MisDocumentosLegales {
  * coach, "individual" si es propio (coachee independiente). */
 export function getMisDocumentosLegales(): Promise<MisDocumentosLegales> {
   return apiRequest<MisDocumentosLegales>('/legal/documentos/me')
+}
+
+export function verMiAcuerdo(tipo: TipoDocumentoLegal, nombreArchivo: string): Promise<void> {
+  return verArchivo(`/legal/documentos/me/${tipo}/archivo`, nombreArchivo)
 }
 
 export async function descargarMiAcuerdo(tipo: TipoDocumentoLegal, nombreArchivo: string): Promise<void> {

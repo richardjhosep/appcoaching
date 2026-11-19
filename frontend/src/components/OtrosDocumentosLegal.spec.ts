@@ -9,11 +9,12 @@ vi.mock('../api/legal', async () => {
     ...actual,
     subirAdicional: vi.fn(),
     descargarAdicional: vi.fn(),
+    verAdicional: vi.fn(),
     eliminarAdicional: vi.fn(),
   }
 })
 
-import { subirAdicional, descargarAdicional, eliminarAdicional } from '../api/legal'
+import { subirAdicional, descargarAdicional, verAdicional, eliminarAdicional } from '../api/legal'
 
 const documentos: DocumentoAdicionalLegal[] = [
   {
@@ -30,6 +31,7 @@ describe('OtrosDocumentosLegal', () => {
   beforeEach(() => {
     vi.mocked(subirAdicional).mockResolvedValue(documentos[0])
     vi.mocked(descargarAdicional).mockResolvedValue(undefined)
+    vi.mocked(verAdicional).mockResolvedValue(undefined)
     vi.mocked(eliminarAdicional).mockResolvedValue(undefined)
   })
 
@@ -46,7 +48,7 @@ describe('OtrosDocumentosLegal', () => {
     expect(wrapper.text()).toContain('Correo de aprobación')
   })
 
-  it('downloads a document by clicking its title', async () => {
+  it('opens a document by clicking its title and downloads it with the Descargar button', async () => {
     const wrapper = mount(OtrosDocumentosLegal, {
       props: { target: { empresaId: 'e1' }, documentos },
     })
@@ -54,6 +56,11 @@ describe('OtrosDocumentosLegal', () => {
 
     const link = wrapper.findAll('button').find((b) => b.text().includes('Correo de aprobación'))
     await link!.trigger('click')
+
+    expect(verAdicional).toHaveBeenCalledWith('a1', 'correo.pdf')
+    expect(descargarAdicional).not.toHaveBeenCalled()
+
+    await wrapper.findAll('button').find((b) => b.text() === 'Descargar')!.trigger('click')
 
     expect(descargarAdicional).toHaveBeenCalledWith('a1', 'correo.pdf')
   })

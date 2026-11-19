@@ -20,6 +20,7 @@ import {
 import {
   getMisDocumentosLegales,
   descargarMiAcuerdo,
+  verMiAcuerdo,
   type MisDocumentosLegales,
   type TipoDocumentoLegal,
 } from '../../api/legal'
@@ -89,6 +90,14 @@ const LABEL_DOCUMENTO: Record<TipoDocumentoLegal, string> = {
   contrato: 'Contrato',
   nda: 'NDA',
   carta_invitacion: 'Carta de invitación',
+}
+
+async function ver(tipo: TipoDocumentoLegal, label: string) {
+  try {
+    await verMiAcuerdo(tipo, `${label}.pdf`)
+  } catch (err) {
+    await notifyError('No se pudo abrir', err instanceof ApiError ? err.message : 'Ocurrió un error inesperado.')
+  }
 }
 
 async function descargar(tipo: TipoDocumentoLegal, label: string) {
@@ -297,14 +306,25 @@ const formatoCLP = new Intl.NumberFormat('es-CL', { style: 'currency', currency:
             >
               Vigencia: {{ new Date(`${doc.vigencia}T00:00:00`).toLocaleDateString('es-CL') }}
             </p>
-            <button
+            <div
               v-if="doc.tieneArchivo"
-              type="button"
-              class="mt-2 inline-flex min-h-11 items-center text-xs text-[var(--color-saltup-ink)] hover:underline sm:min-h-0"
-              @click="descargar(tipo, LABEL_DOCUMENTO[tipo])"
+              class="mt-2 flex items-center gap-4"
             >
-              ⬇ Descargar
-            </button>
+              <button
+                type="button"
+                class="inline-flex min-h-11 items-center text-xs text-[var(--color-saltup-ink)] hover:underline sm:min-h-0"
+                @click="ver(tipo, LABEL_DOCUMENTO[tipo])"
+              >
+                👁 Ver
+              </button>
+              <button
+                type="button"
+                class="inline-flex min-h-11 items-center text-xs text-[var(--color-saltup-ink)] hover:underline sm:min-h-0"
+                @click="descargar(tipo, LABEL_DOCUMENTO[tipo])"
+              >
+                ⬇ Descargar
+              </button>
+            </div>
           </div>
         </div>
       </SectionCard>

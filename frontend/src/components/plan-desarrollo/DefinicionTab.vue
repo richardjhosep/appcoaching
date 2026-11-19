@@ -67,7 +67,13 @@ const autoevaluacionesDeLaCompetencia = computed(() =>
 const nivelAutoeval = ref<number | null>(null)
 const ejemploAutoeval = ref('')
 const guardandoAutoeval = ref(false)
-const nivelAutoevalInfo = computed(() => nivelInfo(nivelAutoeval.value))
+
+// Una vez elegida la competencia del plan solo se muestra esa; el listado completo vuelve a
+// abrirse únicamente si el coachee pide cambiarla.
+const cambiandoCompetencia = ref(false)
+const mostrarSelectorCompetencia = computed(
+  () => !form.competenciaId || cambiandoCompetencia.value,
+)
 
 onMounted(async () => {
   autoevaluaciones.value = await getMisAutoevaluaciones()
@@ -191,7 +197,29 @@ async function enviar() {
           />
         </label>
 
-        <label class="text-sm sm:col-span-2">
+        <div
+          v-if="!mostrarSelectorCompetencia && competenciaSeleccionada"
+          class="text-sm sm:col-span-2"
+        >
+          Competencia que trabajas
+          <div class="mt-1 flex flex-wrap items-center gap-3">
+            <span class="rounded-full bg-[var(--color-sage)]/15 px-3 py-1 text-sm font-medium text-[var(--color-sage)]">
+              {{ competenciaSeleccionada.nombre }}
+            </span>
+            <button
+              type="button"
+              class="text-xs text-[var(--color-saltup-ink)] hover:underline"
+              @click="cambiandoCompetencia = true"
+            >
+              Cambiar
+            </button>
+          </div>
+        </div>
+
+        <label
+          v-else
+          class="text-sm sm:col-span-2"
+        >
           Competencia asociada al objetivo
           <div
             v-if="competenciasPrioritarias.length"
@@ -244,10 +272,6 @@ async function enviar() {
             v-if="serverErrors.nivelActual"
             class="mt-1 block text-xs text-[var(--color-danger)]"
           >{{ serverErrors.nivelActual }}</span>
-          <span
-            v-if="nivelInfo(form.nivelActual)"
-            class="mt-1 block text-xs text-[var(--color-muted)]"
-          >{{ nivelInfo(form.nivelActual)!.descripcion }}</span>
         </label>
 
         <label
@@ -350,8 +374,9 @@ async function enviar() {
       icon="objetivo"
     >
       <p class="mb-3 text-xs text-[var(--color-muted)]">
-        Marca en qué nivel de "{{ competenciaSeleccionada.nombre }}" crees estar hoy y describe un
-        ejemplo concreto que lo demuestre.
+        Compara los niveles de "{{ competenciaSeleccionada.nombre }}" y elige el que más te
+        identifica hoy. Esta autoevaluación no certifica un avance de nivel: la evaluación formal
+        corresponde a tu empresa.
       </p>
 
       <ul
@@ -370,42 +395,44 @@ async function enviar() {
         </li>
       </ul>
 
-      <label class="mb-2 block text-sm">
-        Nivel
-        <select
-          v-model.number="nivelAutoeval"
-          class="mt-1 w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm"
-        >
-          <option
-            :value="null"
-            disabled
-          >
-            Elige un nivel
-          </option>
-          <option
-            v-for="n in competenciaSeleccionada.niveles"
-            :key="n.nivel"
-            :value="n.nivel"
-          >
-            Nivel {{ n.nivel }}
-          </option>
-        </select>
-      </label>
-
-      <ul
-        v-if="nivelAutoevalInfo?.comportamientos?.length"
-        class="mb-3 list-disc space-y-1 pl-5 text-xs text-[var(--color-ink)]/70"
+      <div
+        role="radiogroup"
+        :aria-label="`Niveles de ${competenciaSeleccionada.nombre}`"
+        class="mb-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4"
       >
-        <li
-          v-for="(c, i) in nivelAutoevalInfo.comportamientos"
-          :key="i"
+        <button
+          v-for="n in competenciaSeleccionada.niveles"
+          :key="n.nivel"
+          type="button"
+          role="radio"
+          :aria-checked="nivelAutoeval === n.nivel"
+          class="rounded-xl border p-3 text-left text-xs transition-colors"
+          :class="nivelAutoeval === n.nivel
+            ? 'border-[var(--color-sage)] bg-[var(--color-sage)]/10'
+            : 'border-[var(--color-line)] hover:bg-[var(--color-parchment)]/50'"
+          @click="nivelAutoeval = n.nivel"
         >
-          {{ c }}
-        </li>
-      </ul>
+          <span class="block text-sm font-semibold">Nivel {{ n.nivel }}</span>
+          <span
+            v-if="n.descripcion"
+            class="mt-1 block text-[var(--color-ink)]/80"
+          >{{ n.descripcion }}</span>
+          <ul
+            v-if="n.comportamientos?.length"
+            class="mt-1.5 list-disc space-y-1 pl-4 text-[var(--color-ink)]/70"
+          >
+            <li
+              v-for="(c, i) in n.comportamientos"
+              :key="i"
+            >
+              {{ c }}
+            </li>
+          </ul>
+        </button>
+      </div>
 
       <label class="mb-2 block text-sm">
-        Ejemplo — ¿por qué crees estar en ese nivel?
+        Evidencia — ¿qué hechos concretos muestran que estás en ese nivel?
         <textarea
           v-model="ejemploAutoeval"
           rows="3"

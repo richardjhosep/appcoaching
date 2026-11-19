@@ -5,10 +5,10 @@ import type { DocumentoLegal } from '../api/legal'
 
 vi.mock('../api/legal', async () => {
   const actual = await vi.importActual<typeof import('../api/legal')>('../api/legal')
-  return { ...actual, upsertDocumentoLegal: vi.fn(), descargarAcuerdo: vi.fn() }
+  return { ...actual, upsertDocumentoLegal: vi.fn(), descargarAcuerdo: vi.fn(), verAcuerdo: vi.fn() }
 })
 
-import { upsertDocumentoLegal, descargarAcuerdo } from '../api/legal'
+import { upsertDocumentoLegal, descargarAcuerdo, verAcuerdo } from '../api/legal'
 
 const firmado: DocumentoLegal = {
   estado: 'firmado',
@@ -21,6 +21,7 @@ describe('DocumentoLegalSlot', () => {
   beforeEach(() => {
     vi.mocked(upsertDocumentoLegal).mockResolvedValue(firmado)
     vi.mocked(descargarAcuerdo).mockResolvedValue(undefined)
+    vi.mocked(verAcuerdo).mockResolvedValue(undefined)
   })
 
   it('shows "Firmado" (not "Sin firmar todavía") when estado is firmado even without a fecha — congruence fix', () => {
@@ -102,7 +103,7 @@ describe('DocumentoLegalSlot', () => {
     expect(wrapper.emitted('actualizado')).toBeTruthy()
   })
 
-  it('calls descargarAcuerdo with a filename built from the label and nombreParaArchivo', async () => {
+  it('opens the document (without downloading it) with a filename built from the label and nombreParaArchivo', async () => {
     const wrapper = mount(DocumentoLegalSlot, {
       props: {
         target: { empresaId: 'e1' },
@@ -115,6 +116,12 @@ describe('DocumentoLegalSlot', () => {
 
     const verBtn = wrapper.findAll('button').find((b) => b.text().includes('Ver documento'))
     await verBtn!.trigger('click')
+
+    expect(verAcuerdo).toHaveBeenCalledWith({ empresaId: 'e1' }, 'nda', 'NDA - Empresa Uno.pdf')
+    expect(descargarAcuerdo).not.toHaveBeenCalled()
+
+    const descargarBtn = wrapper.findAll('button').find((b) => b.text() === 'Descargar')
+    await descargarBtn!.trigger('click')
 
     expect(descargarAcuerdo).toHaveBeenCalledWith({ empresaId: 'e1' }, 'nda', 'NDA - Empresa Uno.pdf')
   })

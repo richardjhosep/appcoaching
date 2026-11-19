@@ -19,6 +19,7 @@ import {
 import {
   getSolicitudesSesionPendientes,
   responderSolicitudSesion,
+  contraproponerSolicitudSesion,
   type SolicitudSesion,
 } from '../../api/solicitudes-sesion'
 import { listCoachees, type CoacheeListItem } from '../../api/coachees'
@@ -89,6 +90,39 @@ onMounted(recargar)
 // --- Solicitudes pendientes ---
 const respondiendoId = ref<string | null>(null)
 const respuestaPorSolicitud = ref<Record<string, string>>({})
+const linkPorSolicitud = ref<Record<string, string>>({})
+// Solicitud para la que se está eligiendo otro horario, y el horario elegido (datetime-local).
+const proponiendoId = ref<string | null>(null)
+const horaPropuesta = ref('')
+
+function abrirProponerOtraHora(solicitud: SolicitudSesion) {
+  proponiendoId.value = solicitud.id
+  horaPropuesta.value = ''
+  // Lleva a la agenda para que el coach vea su disponibilidad antes de elegir.
+  document.getElementById('agenda-calendario')?.scrollIntoView({ behavior: 'smooth' })
+}
+
+async function enviarContrapropuesta(solicitud: SolicitudSesion) {
+  if (!horaPropuesta.value) return
+  respondiendoId.value = solicitud.id
+  try {
+    await contraproponerSolicitudSesion(solicitud.id, {
+      fechaHora: new Date(horaPropuesta.value).toISOString(),
+      respuestaCoach: respuestaPorSolicitud.value[solicitud.id] || undefined,
+      linkVideollamada: linkPorSolicitud.value[solicitud.id] || undefined,
+    })
+    solicitudes.value = solicitudes.value.filter((s) => s.id !== solicitud.id)
+    proponiendoId.value = null
+    await notifySuccess('Propuesta enviada', 'El coachee debe aceptar el nuevo horario.')
+  } catch (err) {
+    await notifyError(
+      'No se pudo enviar la propuesta',
+      err instanceof ApiError ? err.message : 'Ocurrió un error inesperado.',
+    )
+  } finally {
+    respondiendoId.value = null
+  }
+}
 
 async function responder(solicitud: SolicitudSesion, aprobar: boolean) {
   respondiendoId.value = solicitud.id
@@ -96,6 +130,7 @@ async function responder(solicitud: SolicitudSesion, aprobar: boolean) {
     await responderSolicitudSesion(solicitud.id, {
       aprobar,
       respuestaCoach: respuestaPorSolicitud.value[solicitud.id] || undefined,
+      linkVideollamada: aprobar ? linkPorSolicitud.value[solicitud.id] || undefined : undefined,
     })
     solicitudes.value = solicitudes.value.filter((s) => s.id !== solicitud.id)
     if (aprobar) {
@@ -324,6 +359,31 @@ async function crearNuevaSesion() {
               aria-label="Mensaje para el coachee"
               class="field-input mb-2"
             >
+            <input
+              v-model="linkPorSolicitud[s.id]"
+              type="url"
+              placeholder="Enlace de la videollamada (opcional)"
+              aria-label="Enlace de la videollamada"
+              class="field-input mb-2"
+            >
+            <div
+              v-if="proponiendoId === s.id"
+              class="mb-2 flex flex-wrap items-center gap-2"
+            >
+              <input
+                v-model="horaPropuesta"
+                type="datetime-local"
+                aria-label="Otro horario"
+                class="field-input w-auto"
+              >
+              <AppButton
+                size="sm"
+                :disabled="!horaPropuesta || respondiendoId === s.id"
+                @click="enviarContrapropuesta(s)"
+              >
+                Enviar propuesta
+              </AppButton>
+            </div>
             <div class="flex gap-2">
               <AppButton
                 size="sm"
@@ -331,6 +391,14 @@ async function crearNuevaSesion() {
                 @click="responder(s, true)"
               >
                 Aprobar
+              </AppButton>
+              <AppButton
+                variant="secondary"
+                size="sm"
+                :disabled="respondiendoId === s.id"
+                @click="abrirProponerOtraHora(s)"
+              >
+                Proponer otra hora
               </AppButton>
               <AppButton
                 variant="secondary"
@@ -345,6 +413,7 @@ async function crearNuevaSesion() {
         </ul>
       </SectionCard>
 
+      <div id="agenda-calendario">
       <WeekCalendar
         :sesiones="sesiones"
         mostrar-coachee
@@ -356,6 +425,7 @@ async function crearNuevaSesion() {
         @nueva-sesion="abrirNuevaSesion()"
         @crear-en="abrirNuevaSesion"
       />
+      </div>
 
       <SectionCard
         title="Disponibilidad semanal"

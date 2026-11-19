@@ -34,7 +34,7 @@ const tabs: Array<{ key: TabKey; label: string; icon: string; badge?: number | n
   { key: 'mapas', label: 'Mapas mentales', icon: 'mapa' },
   { key: 'mis-mapas', label: 'Mis mapas', icon: 'mapa' },
   { key: 'pizarra', label: 'Mi pizarra', icon: 'pizarra' },
-  { key: 'ejercicios', label: 'Ejercicios', icon: 'ejercicios' },
+  { key: 'ejercicios', label: 'Conversaciones difíciles', icon: 'ejercicios' },
   { key: 'test-estilo', label: 'Test de Estilo', icon: 'estilo' },
 ]
 
@@ -90,7 +90,7 @@ const tabsConConteo = computed(() => tabs.map((t) => ({ ...t, badge: conteos.val
       Playground
     </h1>
     <p class="mb-4 text-sm text-[var(--color-muted)]">
-      Tu espacio para practicar — quiz, flashcards, mapas mentales, ejercicios y tu test de estilo.
+      Tu espacio para practicar — quiz, flashcards, mapas mentales, conversaciones difíciles y tu test de estilo.
     </p>
 
     <div class="mb-5 max-w-full overflow-x-auto">
