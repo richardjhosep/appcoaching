@@ -33,14 +33,19 @@ export class PostSesionesService {
     return this.postSesiones.findOne({ where: { sesionId } });
   }
 
-  /** Igual que `findForSesion` pero sin el aprendizaje confidencial, para coach y empresa. */
-  async findForSesionSinAprendizaje(
+  /** Igual que `findForSesion` pero sin lo privado del coachee, para coach y empresa. */
+  async findForSesionSinPrivados(
     sesionId: string,
-  ): Promise<Omit<PostSesion, 'aprendizaje'> | null> {
+  ): Promise<Omit<PostSesion, 'aprendizaje' | 'compromisos'> | null> {
     const postSesion = await this.findForSesion(sesionId);
     if (!postSesion) return null;
-    const { aprendizaje: _aprendizaje, ...resto } = postSesion;
+    const {
+      aprendizaje: _aprendizaje,
+      compromisos: _compromisos,
+      ...resto
+    } = postSesion;
     void _aprendizaje;
+    void _compromisos;
     return resto;
   }
 
@@ -72,6 +77,22 @@ export class PostSesionesService {
     return this.postSesiones.save(postSesion);
   }
 
+  /** A diferencia del resto del post-sesión, los compromisos no se bloquean al publicar. */
+  async guardarCompromisosOwn(
+    actorUserId: string,
+    sesionId: string,
+    compromisos: string,
+  ): Promise<PostSesion> {
+    const sesion = await this.sesiones.findOneOwnedByCoachee(
+      sesionId,
+      await this.resolveCoacheeId(actorUserId),
+    );
+    this.assertYaRealizada(sesion);
+    const postSesion = await this.findOrCreate(sesionId);
+    postSesion.compromisos = compromisos.trim() || null;
+    return this.postSesiones.save(postSesion);
+  }
+
   async publicarOwn(
     actorUserId: string,
     sesionId: string,
@@ -85,10 +106,14 @@ export class PostSesionesService {
     if (postSesion.publicada) {
       throw new ForbiddenException('El post-sesión ya fue publicado.');
     }
-    // El aprendizaje es una reflexión personal y confidencial: no se exige para publicar.
-    if (!postSesion.utilidad || !postSesion.cercaniaObjetivo) {
+    // El aprendizaje es confidencial (solo lo ve el coachee), pero se exige para publicar.
+    if (
+      !postSesion.aprendizaje?.trim() ||
+      !postSesion.utilidad ||
+      !postSesion.cercaniaObjetivo
+    ) {
       throw new BadRequestException(
-        'Para publicar el post-sesión debes completar la utilidad y la cercanía al objetivo.',
+        'Para publicar el post-sesión debes completar el aprendizaje, la utilidad y la cercanía al objetivo.',
       );
     }
     postSesion.publicada = true;

@@ -39,7 +39,7 @@ const pasos: Paso[] = [
     id: 'sesiones',
     titulo: 'Mis sesiones',
     descripcion:
-      'Un calendario semanal con los horarios que tu coach dejó disponibles. Tocas un horario libre para solicitarlo: tu coach recibe la solicitud y la aprueba (la sesión queda agendada cuando responde). Desde ahí también puedes pedir reagendar si algo cambia, y ves si tu solicitud sigue pendiente.',
+      'Una lista con tus próximas sesiones, donde confirmas tu asistencia o pides reagendar, y más abajo las ya realizadas, con un espacio privado para anotar tus compromisos. Para pedir una hora, entra a «Solicitar sesión» y toca un horario libre del calendario: tu coach recibe la solicitud y la sesión queda agendada cuando la aprueba.',
     imagen: '/manual/sesiones.jpg',
     tip: 'Si necesitas reagendar, hazlo con la mayor anticipación posible — tu coach recibe una notificación y responde tu solicitud desde la plataforma.',
   },

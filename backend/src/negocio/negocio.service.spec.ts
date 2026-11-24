@@ -16,6 +16,7 @@ import { SeguimientoService } from '../seguimiento/seguimiento.service';
 import { EmailService } from '../email/email.service';
 import { EmpresasService } from '../empresas/empresas.service';
 import { IndicadoresService } from '../indicadores/indicadores.service';
+import { Moneda } from '../common/moneda.enum';
 import { ConfigService } from '@nestjs/config';
 import { NotFoundException } from '@nestjs/common';
 
@@ -342,10 +343,61 @@ describe('NegocioService', () => {
           nombre: 'Ana',
           empresaNombre: 'Empresa sin pagar',
           horasRealizadas: 1,
+          sesionesPorRealizar: 1,
           gastoBrutoDelPeriodo: 30000,
           gastoBrutoProyectado: 30000,
         },
       ]);
+    });
+  });
+
+  describe('facturacionMensual', () => {
+    const ana = {
+      id: 'c1',
+      nombre: 'Ana',
+      empresaId: 'e1',
+      tarifaPropia: 2,
+      tarifaPropiaMoneda: Moneda.UF,
+      empresa: { id: 'e1', nombre: 'Ferronor', tarifaHora: 0, pagada: false },
+    };
+
+    it('counts scheduled and done sessions with their amounts, even if the empresa is unpaid', async () => {
+      coacheesRepo.find.mockResolvedValue([ana]);
+      sesionesRepo.find.mockResolvedValue([
+        { coacheeId: 'c1', fechaHora: hace1h },
+        { coacheeId: 'c1', fechaHora: en1h },
+        { coacheeId: 'c1', fechaHora: en1h },
+      ]);
+
+      const result = await service.facturacionMensual('2026-11');
+
+      expect(result).toEqual({
+        mes: '2026-11',
+        valorUf: 39000,
+        coachees: [
+          {
+            coacheeId: 'c1',
+            nombre: 'Ana',
+            empresaNombre: 'Ferronor',
+            sesionesAgendadas: 3,
+            sesionesRealizadas: 1,
+            montoRealizado: 78000,
+            montoPorRealizar: 156000,
+          },
+        ],
+      });
+    });
+
+    it('cuts the month at Chile midnight, also across the year boundary', async () => {
+      await service.facturacionMensual('2026-12');
+
+      const [[{ where }]] = sesionesRepo.find.mock.calls as [
+        [{ where: { fechaHora: { value: [Date, Date] } } }],
+      ];
+      const [inicio, fin] = where.fechaHora.value;
+      // Chile está en UTC-3 en diciembre y enero.
+      expect(inicio.toISOString()).toBe('2026-12-01T03:00:00.000Z');
+      expect(fin.toISOString()).toBe('2027-01-01T02:59:59.999Z');
     });
   });
 
@@ -652,6 +704,7 @@ describe('NegocioService', () => {
             nombre: 'Ana',
             empresaNombre: 'Empresa sin pagar',
             horasRealizadas: 1,
+            sesionesPorRealizar: 0,
             gastoBrutoDelPeriodo: 30000,
             gastoBrutoProyectado: 0,
           },

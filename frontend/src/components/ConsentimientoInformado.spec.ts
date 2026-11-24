@@ -5,15 +5,10 @@ import type { CoacheeListItem } from '../api/coachees'
 
 vi.mock('../api/coachees', async () => {
   const actual = await vi.importActual<typeof import('../api/coachees')>('../api/coachees')
-  return { ...actual, setConsentimiento: vi.fn(), solicitarConsentimiento: vi.fn() }
+  return { ...actual, setConsentimiento: vi.fn() }
 })
-vi.mock('../lib/notify', () => ({
-  notifySuccess: vi.fn(),
-  notifyError: vi.fn(),
-}))
 
-import { setConsentimiento, solicitarConsentimiento } from '../api/coachees'
-import { notifySuccess, notifyError } from '../lib/notify'
+import { setConsentimiento } from '../api/coachees'
 
 const actualizado: CoacheeListItem = {
   id: 'c1',
@@ -26,12 +21,11 @@ const actualizado: CoacheeListItem = {
 describe('ConsentimientoInformado', () => {
   beforeEach(() => {
     vi.mocked(setConsentimiento).mockResolvedValue(actualizado)
-    vi.mocked(solicitarConsentimiento).mockResolvedValue({ success: true })
   })
 
   it('shows "Pendiente" when not informado, with no date', () => {
     const wrapper = mount(ConsentimientoInformado, {
-      props: { coacheeId: 'c1', nombre: 'Rodrigo Peña', informado: false },
+      props: { coacheeId: 'c1', informado: false },
     })
 
     expect(wrapper.text()).toContain('Pendiente')
@@ -40,7 +34,7 @@ describe('ConsentimientoInformado', () => {
 
   it('shows "Firmado" with the date when informado', () => {
     const wrapper = mount(ConsentimientoInformado, {
-      props: { coacheeId: 'c1', nombre: 'Rodrigo Peña', informado: true, fecha: '2026-08-01T12:00:00.000Z' },
+      props: { coacheeId: 'c1', informado: true, fecha: '2026-08-01T12:00:00.000Z' },
     })
 
     const text = wrapper.text()
@@ -50,7 +44,7 @@ describe('ConsentimientoInformado', () => {
 
   it('toggles the state and emits the updated coachee', async () => {
     const wrapper = mount(ConsentimientoInformado, {
-      props: { coacheeId: 'c1', nombre: 'Rodrigo Peña', informado: false },
+      props: { coacheeId: 'c1', informado: false },
     })
 
     const toggleBtn = wrapper.findAll('button').find((b) => b.text() === 'Marcar como firmado')
@@ -63,23 +57,17 @@ describe('ConsentimientoInformado', () => {
     ])
   })
 
-  it('sends the email request and shows a success toast', async () => {
-    const wrapper = mount(ConsentimientoInformado, {
-      props: { coacheeId: 'c1', nombre: 'Rodrigo Peña', informado: false },
-    })
+  it('does not offer to request the consent by email', () => {
+    const wrapper = mount(ConsentimientoInformado, { props: { coacheeId: 'c1', informado: false } })
 
-    const enviarBtn = wrapper.findAll('button').find((b) => b.text().includes('Enviar solicitud por correo'))
-    await enviarBtn!.trigger('click')
-    await flushPromises()
-
-    expect(solicitarConsentimiento).toHaveBeenCalledWith('c1')
-    expect(notifySuccess).toHaveBeenCalled()
+    expect(wrapper.findAll('button')).toHaveLength(1)
+    expect(wrapper.text()).not.toContain('correo')
   })
 
   it('shows an error message when toggling fails', async () => {
     vi.mocked(setConsentimiento).mockRejectedValue(new Error('boom'))
     const wrapper = mount(ConsentimientoInformado, {
-      props: { coacheeId: 'c1', nombre: 'Rodrigo Peña', informado: false },
+      props: { coacheeId: 'c1', informado: false },
     })
 
     const toggleBtn = wrapper.findAll('button').find((b) => b.text() === 'Marcar como firmado')
@@ -87,18 +75,5 @@ describe('ConsentimientoInformado', () => {
     await flushPromises()
 
     expect(wrapper.text()).toContain('No se pudo actualizar el consentimiento.')
-  })
-
-  it('shows an error toast when sending the email request fails', async () => {
-    vi.mocked(solicitarConsentimiento).mockRejectedValue(new Error('boom'))
-    const wrapper = mount(ConsentimientoInformado, {
-      props: { coacheeId: 'c1', nombre: 'Rodrigo Peña', informado: false },
-    })
-
-    const enviarBtn = wrapper.findAll('button').find((b) => b.text().includes('Enviar solicitud por correo'))
-    await enviarBtn!.trigger('click')
-    await flushPromises()
-
-    expect(notifyError).toHaveBeenCalled()
   })
 })

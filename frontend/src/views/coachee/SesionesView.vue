@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, type ComponentPublicInstance } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import AppShell from '../../components/AppShell.vue'
 import AppModal from '../../components/AppModal.vue'
-import WeekCalendar from '../../components/WeekCalendar.vue'
+import TabBar from '../../components/TabBar.vue'
 import DisponibilidadCalendar from '../../components/DisponibilidadCalendar.vue'
 import EmptyState from '../../components/EmptyState.vue'
 import NavIcon from '../../components/NavIcon.vue'
@@ -15,6 +16,7 @@ import FormField from '../../components/FormField.vue'
 import {
   getMisSesiones,
   guardarPostSesion,
+  guardarCompromisos,
   publicarPostSesion,
   solicitarReagendamiento,
   confirmarSesion,
@@ -30,6 +32,7 @@ import {
   resolverContrapropuesta,
   type SolicitudSesion,
 } from '../../api/solicitudes-sesion'
+import { getOwnPlan } from '../../api/planesDesarrollo'
 import { ApiError } from '../../api/client'
 import { notifySuccess, notifyError, confirmDialog } from '../../lib/notify'
 import { useCarga } from '../../lib/useCarga'
@@ -38,6 +41,14 @@ import { nivelProgreso, coloresNivel } from '../../lib/nivelProgreso'
 function coloresCercania(valor: number) {
   return coloresNivel[nivelProgreso(valor * 10)]
 }
+
+type TabKey = 'sesiones' | 'solicitar'
+const tabs: Array<{ key: TabKey; label: string; icon: string }> = [
+  { key: 'sesiones', label: 'Mis sesiones', icon: 'sesiones' },
+  { key: 'solicitar', label: 'Solicitar sesión', icon: 'lista' },
+]
+// Otras pantallas enlazan directo a la solicitud con ?tab=solicitar.
+const activeTab = ref<TabKey>(useRoute().query.tab === 'solicitar' ? 'solicitar' : 'sesiones')
 
 const sesiones = ref<Sesion[]>([])
 const savingId = ref<string | null>(null)
@@ -185,10 +196,10 @@ function formFor(sesion: Sesion) {
   return forms[sesion.id]
 }
 
-const sesionesOrdenadas = computed(() =>
-  [...sesiones.value].sort(
-    (a, b) => new Date(b.fechaHora).getTime() - new Date(a.fechaHora).getTime(),
-  ),
+const sesionesRealizadas = computed(() =>
+  sesiones.value
+    .filter(yaRealizada)
+    .sort((a, b) => new Date(b.fechaHora).getTime() - new Date(a.fechaHora).getTime()),
 )
 
 function yaRealizada(sesion: Sesion): boolean {
@@ -196,15 +207,18 @@ function yaRealizada(sesion: Sesion): boolean {
 }
 
 const cicloActual = ref<Ciclo | null>(null)
+const objetivoGeneral = ref<string | null>(null)
 
 const { loading, error, recargar, tolerar } = useCarga(async () => {
-  // Las sesiones son críticas; ciclo y solicitudes de reagendamiento son complementarios.
-  const [s, c, r, sol] = await Promise.all([
+  // Las sesiones son críticas; ciclo, solicitudes y objetivo son complementarios.
+  const [s, c, r, sol, plan] = await Promise.all([
     getMisSesiones(),
     tolerar(getMiCicloActual()),
     tolerar(getMisReagendamientos()),
     tolerar(getMisSolicitudesSesion()),
+    tolerar(getOwnPlan()),
   ])
+  objetivoGeneral.value = plan?.objetivoGeneral ?? null
   solicitudesAbiertas.value = sol ?? []
   sesiones.value = s
   cicloActual.value = c ?? null
@@ -222,19 +236,11 @@ const sesionesPorAgendar = computed(() =>
   cicloActual.value ? Math.max(0, cicloActual.value.sesionesRestantes - proximasSesiones.value.length) : 0,
 )
 
-const calendarioRef = ref<InstanceType<typeof WeekCalendar> | null>(null)
-const calendarioContenedor = ref<HTMLElement | null>(null)
-
-// Clic en una próxima sesión: lleva el calendario a esa semana y lo muestra, y además resalta
-// su tarjeta de detalle (mismo efecto que hacer clic en el bloque dentro del calendario).
-function irASesion(sesion: Sesion) {
-  calendarioRef.value?.irASemanaDe(new Date(sesion.fechaHora))
-  calendarioContenedor.value?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  highlightedId.value = sesion.id
-  setTimeout(() => {
-    if (highlightedId.value === sesion.id) highlightedId.value = null
-  }, 2000)
-}
+const MAX_PROXIMAS = 3
+const verTodasProximas = ref(false)
+const proximasVisibles = computed(() =>
+  verTodasProximas.value ? proximasSesiones.value : proximasSesiones.value.slice(0, MAX_PROXIMAS),
+)
 
 function formatoProxima(iso: string): string {
   return new Date(iso).toLocaleString('es-CL', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
@@ -253,17 +259,18 @@ function cuerpoPostSesion(sesion: Sesion) {
   }
 }
 
-// Obligatorios para publicar (los mismos que exige el backend). El aprendizaje es opcional.
-const erroresPublicar = reactive<Record<string, { utilidad?: string; cercania?: string }>>({})
+// Obligatorios para publicar (los mismos que exige el backend).
+const erroresPublicar = reactive<Record<string, { aprendizaje?: string; utilidad?: string; cercania?: string }>>({})
 
 function validarParaPublicar(sesion: Sesion): boolean {
   const f = formFor(sesion)
   const errores = {
+    aprendizaje: f.aprendizaje.trim() ? undefined : 'Cuéntanos tu aprendizaje principal.',
     utilidad: f.utilidad ? undefined : 'Elige qué tan útil fue la sesión.',
     cercania: f.cercaniaObjetivo ? undefined : 'Elige qué tan cerca estás de tu objetivo.',
   }
   erroresPublicar[sesion.id] = errores
-  return !errores.utilidad && !errores.cercania
+  return !errores.aprendizaje && !errores.utilidad && !errores.cercania
 }
 
 async function guardarBorrador(sesion: Sesion) {
@@ -302,19 +309,24 @@ async function publicar(sesion: Sesion) {
   }
 }
 
-const sesionRefs = ref<Record<string, HTMLElement | null>>({})
-const highlightedId = ref<string | null>(null)
+// Compromisos: aparte del post-sesión porque se pueden seguir editando después de publicarlo.
+const compromisosEdit = reactive<Record<string, string>>({})
+const guardandoCompromisosId = ref<string | null>(null)
 
-function setSesionRef(id: string, el: Element | ComponentPublicInstance | null) {
-  sesionRefs.value[id] = el as HTMLElement | null
+function compromisosDe(sesion: Sesion): string {
+  return compromisosEdit[sesion.id] ?? sesion.postSesion?.compromisos ?? ''
 }
 
-function onSelectSesion(id: string) {
-  sesionRefs.value[id]?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-  highlightedId.value = id
-  setTimeout(() => {
-    if (highlightedId.value === id) highlightedId.value = null
-  }, 2000)
+async function guardarMisCompromisos(sesion: Sesion) {
+  guardandoCompromisosId.value = sesion.id
+  try {
+    sesion.postSesion = await guardarCompromisos(sesion.id, compromisosDe(sesion))
+    await notifySuccess('Compromisos guardados')
+  } catch (err) {
+    await notifyError('No se pudieron guardar', err instanceof ApiError ? err.message : 'Ocurrió un error inesperado.')
+  } finally {
+    guardandoCompromisosId.value = null
+  }
 }
 </script>
 
@@ -323,190 +335,248 @@ function onSelectSesion(id: string) {
     <h1 class="mb-4 font-[family-name:var(--font-heading)] text-xl font-semibold">
       Mis sesiones
     </h1>
-    <section
-      v-if="!loading && !error && (proximasSesiones.length > 0 || cicloActual)"
-      class="mb-4 rounded-2xl border border-[var(--color-line)] bg-white p-4"
-      aria-label="Próximas sesiones"
+    <details
+      v-if="objetivoGeneral"
+      class="mb-4 text-sm"
     >
-      <div class="mb-2 flex flex-wrap items-baseline justify-between gap-2">
-        <h2 class="text-sm font-semibold">
-          Próximas sesiones
-        </h2>
-        <p
-          v-if="cicloActual"
-          class="text-xs text-[var(--color-muted)]"
-        >
-          Te quedan <strong class="text-[var(--color-ink)]">{{ cicloActual.sesionesRestantes }}</strong>
-          de {{ cicloActual.totalSesiones }} sesiones del proceso<span v-if="sesionesPorAgendar > 0"> · {{ sesionesPorAgendar }} aún sin fecha</span>
-        </p>
-      </div>
-      <ul
-        v-if="proximasSesiones.length > 0"
-        class="flex flex-wrap gap-2"
-      >
-        <li
-          v-for="(s, i) in proximasSesiones"
-          :key="s.id"
-        >
-          <button
-            type="button"
-            class="flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs transition-colors hover:bg-[var(--color-sage)]/10"
-            :class="i === 0 ? 'border-[var(--color-sage)] font-semibold text-[var(--color-sage)]' : 'border-[var(--color-line)] text-[var(--color-ink)]/80'"
-            :title="s.confirmada ? 'Confirmada — ver en la agenda' : 'Ver en la agenda'"
-            @click="irASesion(s)"
-          >
-            <span class="cifra">{{ i + 1 }}</span>
-            {{ formatoProxima(s.fechaHora) }}
-            <NavIcon
-              v-if="s.confirmada"
-              name="check"
-              :size="14"
-              aria-label="confirmada"
-            />
-          </button>
-        </li>
-      </ul>
-      <p
-        v-else
-        class="text-xs text-[var(--color-muted)]"
-      >
-        No tienes sesiones agendadas a futuro. Puedes solicitar una hora en el calendario de disponibilidad; tu coach la aprueba.
+      <summary class="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-[var(--color-line)] bg-white px-3 py-1.5 text-xs font-medium hover:bg-[var(--color-parchment)]/60">
+        <NavIcon
+          name="objetivo"
+          :size="14"
+          aria-hidden="true"
+        />
+        Ver mi objetivo general
+      </summary>
+      <p class="mt-2 whitespace-pre-line rounded-xl border border-[var(--color-line)] bg-white p-3">
+        {{ objetivoGeneral }}
       </p>
-    </section>
-    <section
-      v-if="solicitudesAbiertas.length > 0"
-      class="mb-4 rounded-2xl border border-[var(--color-line)] bg-white p-4"
-      aria-label="Mis solicitudes de sesión"
-    >
-      <h2 class="mb-2 text-sm font-semibold">
-        Mis solicitudes de sesión
-      </h2>
-      <ul class="space-y-2 text-sm">
-        <li
-          v-for="sol in solicitudesAbiertas"
-          :key="sol.id"
-          class="rounded-xl border border-[var(--color-line)] p-3"
+    </details>
+    <TabBar
+      v-model="activeTab"
+      class="mb-4"
+      :tabs="tabs"
+    />
+    <template v-if="activeTab === 'solicitar'">
+      <p class="mb-3 text-sm text-[var(--color-muted)]">
+        Elige una hora disponible. Es una solicitud: tu coach la revisa y la sesión queda agendada cuando la aprueba.
+      </p>
+      <DisponibilidadCalendar
+        :slots="slotsLibres"
+        @cambio-semana="onCambioSemanaDisponibilidad"
+        @solicitar="abrirSolicitarSesion"
+      />
+    </template>
+    <template v-else>
+      <section
+        v-if="!loading && !error && (proximasSesiones.length > 0 || cicloActual)"
+        class="mb-4 rounded-2xl border border-[var(--color-line)] bg-white p-4"
+        aria-label="Próximas sesiones"
+      >
+        <div class="mb-2 flex flex-wrap items-baseline justify-between gap-2">
+          <h2 class="text-sm font-semibold">
+            Próximas sesiones
+          </h2>
+          <p
+            v-if="cicloActual"
+            class="text-xs text-[var(--color-muted)]"
+          >
+            Te quedan <strong class="text-[var(--color-ink)]">{{ cicloActual.sesionesRestantes }}</strong>
+            de {{ cicloActual.totalSesiones }} sesiones del proceso<span v-if="sesionesPorAgendar > 0"> · {{ sesionesPorAgendar }} aún sin fecha</span>
+          </p>
+        </div>
+        <ul
+          v-if="proximasSesiones.length > 0"
+          class="space-y-2"
         >
-          <div class="flex flex-wrap items-center gap-2">
-            <span class="font-medium">{{ formatoSolicitud(sol.fechaHoraPropuesta) }}</span>
-            <StatusBadge :tone="sol.estado === 'contrapropuesta' ? 'bronze' : 'neutral'">
-              {{ sol.estado === 'contrapropuesta' ? 'Tu coach propone otro horario' : 'En espera' }}
-            </StatusBadge>
-          </div>
-          <template v-if="sol.estado === 'contrapropuesta' && sol.fechaHoraContrapropuesta">
-            <p class="mt-1">
-              Horario propuesto: <strong>{{ formatoSolicitud(sol.fechaHoraContrapropuesta) }}</strong>
-            </p>
-            <p
-              v-if="sol.respuestaCoach"
-              class="mt-1 text-[var(--color-muted)]"
-            >
-              {{ sol.respuestaCoach }}
-            </p>
-            <div class="mt-2 flex gap-2">
-              <AppButton
-                size="sm"
-                :disabled="resolviendoSolicitudId === sol.id"
-                @click="responderContrapropuesta(sol, true)"
+          <li
+            v-for="s in proximasVisibles"
+            :key="s.id"
+            class="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[var(--color-line)]/60 px-3 py-2 text-sm"
+          >
+            <span class="flex flex-wrap items-center gap-x-3 gap-y-1">
+              <span class="font-medium">{{ formatoProxima(s.fechaHora) }}</span>
+              <a
+                v-if="s.linkVideollamada"
+                :href="s.linkVideollamada"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="text-xs text-[var(--color-sage)] underline"
+              >Link de la videollamada</a>
+            </span>
+            <span class="flex flex-wrap items-center gap-2">
+              <StatusBadge
+                v-if="s.confirmada"
+                tone="sage"
               >
-                Aceptar
+                <NavIcon
+                  name="check"
+                  :size="14"
+                  class="inline-block align-[-0.15em]"
+                  aria-hidden="true"
+                /> Confirmada
+              </StatusBadge>
+              <AppButton
+                v-else
+                size="sm"
+                :loading="confirmandoId === s.id"
+                @click="confirmar(s)"
+              >
+                {{ confirmandoId === s.id ? 'Confirmando…' : 'Confirmar asistencia' }}
               </AppButton>
+              <StatusBadge
+                v-if="tieneSolicitudPendiente(s)"
+                tone="bronze"
+              >
+                Solicitud pendiente
+              </StatusBadge>
               <AppButton
                 variant="secondary"
                 size="sm"
-                :disabled="resolviendoSolicitudId === sol.id"
-                @click="responderContrapropuesta(sol, false)"
+                :disabled="tieneSolicitudPendiente(s)"
+                :title="tieneSolicitudPendiente(s) ? 'Ya enviaste una solicitud; tu coach la responderá' : undefined"
+                @click="abrirSolicitarReagendamiento(s)"
               >
-                Rechazar
+                Solicitar reagendamiento
               </AppButton>
-            </div>
-          </template>
-          <p
-            v-else-if="sol.motivo"
-            class="mt-1 text-[var(--color-muted)]"
-          >
-            {{ sol.motivo }}
-          </p>
-        </li>
-      </ul>
-    </section>
-    <DisponibilidadCalendar
-      class="mb-4"
-      :slots="slotsLibres"
-      @cambio-semana="onCambioSemanaDisponibilidad"
-      @solicitar="abrirSolicitarSesion"
-    />
-    <div
-      ref="calendarioContenedor"
-      class="scroll-mt-4"
-    >
-      <WeekCalendar
-        v-if="!loading && !error"
-        ref="calendarioRef"
-        class="mb-4"
-        :sesiones="sesiones"
-        @select="onSelectSesion"
-      />
-    </div>
-    <SkeletonBlock v-if="loading" />
-    <ErrorState
-      v-else-if="error"
-      :description="error"
-      @retry="recargar"
-    />
-    <EmptyState
-      v-else-if="sesionesOrdenadas.length === 0"
-      icon="sesiones"
-      title="Todavía no tienes sesiones agendadas"
-      description="Pide una hora en el calendario de disponibilidad: tu coach recibe la solicitud y, cuando la aprueba, la sesión aparece acá. También puede agendarla él directamente."
-    />
-    <TransitionGroup
-      v-else
-      name="fade-slide"
-      tag="div"
-      class="space-y-4"
-    >
-      <div
-        v-for="sesion in sesionesOrdenadas"
-        :key="sesion.id"
-        :ref="(el) => setSesionRef(sesion.id, el)"
-        class="rounded-2xl border border-[var(--color-line)] bg-white p-4 transition-shadow"
-        :class="highlightedId === sesion.id ? 'ring-2 ring-[var(--color-sage)]' : ''"
-      >
-        <div class="mb-3 flex items-center justify-between">
-          <span class="text-sm font-medium text-[var(--color-ink)]">
-            {{ new Date(sesion.fechaHora).toLocaleString('es-CL', { dateStyle: 'medium', timeStyle: 'short' }) }}
-          </span>
-          <StatusBadge :tone="yaRealizada(sesion) ? 'sage' : 'neutral'">
-            <NavIcon
-              v-if="yaRealizada(sesion)"
-              name="check"
-              :size="14"
-              aria-hidden="true"
-            />
-            {{ yaRealizada(sesion) ? 'Realizada' : 'Programada' }}
-          </StatusBadge>
-        </div>
-
-        <div
-          v-if="sesion.resumenCompartido || sesion.temaTratado || sesion.ejerciciosAplicados || sesion.acuerdos"
-          class="mb-3 space-y-1 text-sm text-[var(--color-ink)]/80"
+            </span>
+          </li>
+        </ul>
+        <p
+          v-else
+          class="text-xs text-[var(--color-muted)]"
         >
-          <p v-if="sesion.resumenCompartido">
-            <strong>Resumen del coach:</strong> {{ sesion.resumenCompartido }}
-          </p>
-          <p v-if="sesion.temaTratado">
-            <strong>Tema tratado:</strong> {{ sesion.temaTratado }}
-          </p>
-          <p v-if="sesion.ejerciciosAplicados">
-            <strong>Ejercicios/assessments aplicados:</strong> {{ sesion.ejerciciosAplicados }}
-          </p>
-          <p v-if="sesion.acuerdos">
-            <strong>Acuerdos:</strong> {{ sesion.acuerdos }}
-          </p>
+          No tienes sesiones agendadas a futuro.
+        </p>
+        <div class="mt-3 flex flex-wrap gap-2">
+          <AppButton
+            variant="secondary"
+            size="sm"
+            @click="activeTab = 'solicitar'"
+          >
+            Solicitar una sesión
+          </AppButton>
+          <AppButton
+            v-if="proximasSesiones.length > MAX_PROXIMAS"
+            variant="ghost"
+            size="sm"
+            @click="verTodasProximas = !verTodasProximas"
+          >
+            {{ verTodasProximas ? 'Ver menos' : `Ver todas (${proximasSesiones.length})` }}
+          </AppButton>
         </div>
+      </section>
+      <section
+        v-if="solicitudesAbiertas.length > 0"
+        class="mb-4 rounded-2xl border border-[var(--color-line)] bg-white p-4"
+        aria-label="Mis solicitudes de sesión"
+      >
+        <h2 class="mb-2 text-sm font-semibold">
+          Mis solicitudes de sesión
+        </h2>
+        <ul class="space-y-2 text-sm">
+          <li
+            v-for="sol in solicitudesAbiertas"
+            :key="sol.id"
+            class="rounded-xl border border-[var(--color-line)] p-3"
+          >
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="font-medium">{{ formatoSolicitud(sol.fechaHoraPropuesta) }}</span>
+              <StatusBadge :tone="sol.estado === 'contrapropuesta' ? 'bronze' : 'neutral'">
+                {{ sol.estado === 'contrapropuesta' ? 'Tu coach propone otro horario' : 'En espera' }}
+              </StatusBadge>
+            </div>
+            <template v-if="sol.estado === 'contrapropuesta' && sol.fechaHoraContrapropuesta">
+              <p class="mt-1">
+                Horario propuesto: <strong>{{ formatoSolicitud(sol.fechaHoraContrapropuesta) }}</strong>
+              </p>
+              <p
+                v-if="sol.respuestaCoach"
+                class="mt-1 text-[var(--color-muted)]"
+              >
+                {{ sol.respuestaCoach }}
+              </p>
+              <div class="mt-2 flex gap-2">
+                <AppButton
+                  size="sm"
+                  :disabled="resolviendoSolicitudId === sol.id"
+                  @click="responderContrapropuesta(sol, true)"
+                >
+                  Aceptar
+                </AppButton>
+                <AppButton
+                  variant="secondary"
+                  size="sm"
+                  :disabled="resolviendoSolicitudId === sol.id"
+                  @click="responderContrapropuesta(sol, false)"
+                >
+                  Rechazar
+                </AppButton>
+              </div>
+            </template>
+            <p
+              v-else-if="sol.motivo"
+              class="mt-1 text-[var(--color-muted)]"
+            >
+              {{ sol.motivo }}
+            </p>
+          </li>
+        </ul>
+      </section>
+      <SkeletonBlock v-if="loading" />
+      <ErrorState
+        v-else-if="error"
+        :description="error"
+        @retry="recargar"
+      />
+      <EmptyState
+        v-else-if="sesiones.length === 0"
+        icon="sesiones"
+        title="Todavía no tienes sesiones agendadas"
+        description="Pide una hora en «Solicitar sesión»: tu coach recibe la solicitud y, cuando la aprueba, la sesión aparece acá. También puede agendarla él directamente."
+      />
+      <TransitionGroup
+        v-else
+        name="fade-slide"
+        tag="div"
+        class="space-y-4"
+      >
+        <div
+          v-for="sesion in sesionesRealizadas"
+          :key="sesion.id"
+          class="rounded-2xl border border-[var(--color-line)] bg-white p-4"
+        >
+          <div class="mb-3 flex items-center justify-between">
+            <span class="text-sm font-medium text-[var(--color-ink)]">
+              {{ new Date(sesion.fechaHora).toLocaleString('es-CL', { dateStyle: 'medium', timeStyle: 'short' }) }}
+            </span>
+            <StatusBadge tone="sage">
+              <NavIcon
+                name="check"
+                :size="14"
+                aria-hidden="true"
+              />
+              Realizada
+            </StatusBadge>
+          </div>
 
-        <template v-if="yaRealizada(sesion)">
+          <div
+            v-if="sesion.resumenCompartido || sesion.temaTratado || sesion.ejerciciosAplicados || sesion.acuerdos"
+            class="mb-3 space-y-1 text-sm text-[var(--color-ink)]/80"
+          >
+            <p v-if="sesion.resumenCompartido">
+              <strong>Resumen del coach:</strong> {{ sesion.resumenCompartido }}
+            </p>
+            <p v-if="sesion.temaTratado">
+              <strong>Tema tratado:</strong> {{ sesion.temaTratado }}
+            </p>
+            <p v-if="sesion.ejerciciosAplicados">
+              <strong>Ejercicios/assessments aplicados:</strong> {{ sesion.ejerciciosAplicados }}
+            </p>
+            <p v-if="sesion.acuerdos">
+              <strong>Acuerdos:</strong> {{ sesion.acuerdos }}
+            </p>
+          </div>
+
           <p class="mb-3 text-sm">
             <a
               v-if="sesion.linkVideollamada"
@@ -591,7 +661,10 @@ function onSelectSesion(id: string) {
             >
               {{ errorPorSesion[sesion.id] }}
             </p>
-            <FormField label="Aprendizaje principal (opcional) — es confidencial: tu coach no lo ve">
+            <FormField
+              label="Aprendizaje principal — es confidencial: tu coach no lo ve"
+              :error="erroresPublicar[sesion.id]?.aprendizaje"
+            >
               <template #default="{ id, describedby, invalid }">
                 <textarea
                   :id="id"
@@ -603,6 +676,18 @@ function onSelectSesion(id: string) {
                 />
               </template>
             </FormField>
+            <p
+              v-if="objetivoGeneral"
+              class="flex items-start gap-1.5 rounded-lg bg-white p-2 text-sm"
+            >
+              <NavIcon
+                name="objetivo"
+                :size="14"
+                class="mt-0.5 shrink-0 text-[var(--color-bronze)]"
+                aria-hidden="true"
+              />
+              <span><strong>Tu objetivo:</strong> {{ objetivoGeneral }}</span>
+            </p>
             <div class="grid gap-3 sm:grid-cols-2">
               <div>
                 <p class="text-sm font-medium">
@@ -666,7 +751,7 @@ function onSelectSesion(id: string) {
               </template>
             </FormField>
             <p class="text-xs text-[var(--color-muted)]">
-              Para publicar son obligatorias la utilidad y la cercanía al objetivo. Tu recomendación y el tema a tratar se comparten con tu coach; el aprendizaje queda solo para ti.
+              Para publicar son obligatorios el aprendizaje, la utilidad y la cercanía al objetivo. Tu recomendación y el tema a tratar se comparten con tu coach; el aprendizaje queda solo para ti.
             </p>
             <div class="flex flex-wrap gap-2">
               <AppButton
@@ -684,56 +769,36 @@ function onSelectSesion(id: string) {
               </AppButton>
             </div>
           </div>
-        </template>
-        <div
-          v-else
-          class="space-y-2"
-        >
-          <p
-            v-if="sesion.linkVideollamada"
-            class="text-sm"
-          >
-            <a
-              :href="sesion.linkVideollamada"
-              target="_blank"
-              rel="noopener noreferrer"
-              class="text-[var(--color-sage)] underline"
-            >Link de la videollamada</a>
-          </p>
-          <div class="flex flex-wrap items-center gap-2">
-            <StatusBadge
-              v-if="sesion.confirmada"
-              tone="sage"
+          <div class="mt-3 space-y-2 rounded-xl border border-[var(--color-line)]/60 p-4">
+            <FormField
+              label="Mis compromisos y tareas de esta sesión"
+              hint="Solo tú los ves. Puedes actualizarlos cuando quieras."
             >
-              <NavIcon name="check" :size="14" class="inline-block align-[-0.15em]" aria-hidden="true" /> Confirmada
-            </StatusBadge>
-            <AppButton
-              v-else
-              size="sm"
-              :loading="confirmandoId === sesion.id"
-              @click="confirmar(sesion)"
-            >
-              {{ confirmandoId === sesion.id ? 'Confirmando…' : 'Confirmar asistencia' }}
-            </AppButton>
-            <StatusBadge
-              v-if="tieneSolicitudPendiente(sesion)"
-              tone="bronze"
-            >
-              Solicitud pendiente
-            </StatusBadge>
+              <template #default="{ id, describedby }">
+                <textarea
+                  :id="id"
+                  :value="compromisosDe(sesion)"
+                  rows="3"
+                  maxlength="5000"
+                  class="field-input"
+                  data-compromisos
+                  :aria-describedby="describedby"
+                  @input="compromisosEdit[sesion.id] = ($event.target as HTMLTextAreaElement).value"
+                />
+              </template>
+            </FormField>
             <AppButton
               variant="secondary"
               size="sm"
-              :disabled="tieneSolicitudPendiente(sesion)"
-              :title="tieneSolicitudPendiente(sesion) ? 'Ya enviaste una solicitud; tu coach la responderá' : undefined"
-              @click="abrirSolicitarReagendamiento(sesion)"
+              :loading="guardandoCompromisosId === sesion.id"
+              @click="guardarMisCompromisos(sesion)"
             >
-              Solicitar reagendamiento
+              Guardar compromisos
             </AppButton>
           </div>
         </div>
-      </div>
-    </TransitionGroup>
+      </TransitionGroup>
+    </template>
 
     <AppModal
       v-if="reagendarModalOpen"

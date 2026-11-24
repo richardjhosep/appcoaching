@@ -226,6 +226,30 @@ async function guardarRetro() {
       </p>
 
       <SectionCard
+        title="Mi objetivo general"
+        icon="objetivo"
+      >
+        <p
+          v-if="plan?.objetivoGeneral"
+          class="whitespace-pre-line text-sm"
+        >
+          {{ plan.objetivoGeneral }}
+        </p>
+        <p
+          v-else
+          class="text-sm text-[var(--color-muted)]"
+        >
+          Todavía no has definido tu objetivo general.
+          <RouterLink
+            :to="{ name: 'coachee-plan' }"
+            class="text-[var(--color-saltup-ink)] underline"
+          >
+            Definirlo en mi plan
+          </RouterLink>
+        </p>
+      </SectionCard>
+
+      <SectionCard
         title="Tu camino de crecimiento"
         icon="progreso"
       >
@@ -265,7 +289,12 @@ async function guardarRetro() {
               v-if="cicloIdsConRetro.has(c.id)"
               tone="sage"
             >
-              Enviada <NavIcon name="check" :size="14" class="inline-block align-[-0.15em]" aria-hidden="true" />
+              Enviada <NavIcon
+                name="check"
+                :size="14"
+                class="inline-block align-[-0.15em]"
+                aria-hidden="true"
+              />
             </StatusBadge>
             <AppButton
               v-else

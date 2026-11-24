@@ -10,7 +10,6 @@ vi.mock('../../../api/coachees', async () => {
     ...actual,
     getCoachee: vi.fn(),
     setConsentimiento: vi.fn(),
-    solicitarConsentimiento: vi.fn(),
     obtenerUrlFotoDeCoachee: vi.fn(),
   }
 })

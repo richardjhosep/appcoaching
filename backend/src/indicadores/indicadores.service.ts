@@ -115,13 +115,16 @@ export class IndicadoresService {
         this.fetchDesdeCmf('dolar', apiKey),
       ]);
       if (uf) {
-        await this.indicadores.save(
-          this.indicadores.create({
+        // upsert y no save: la primera pantalla del día lanza varias peticiones a la vez, todas
+        // llegan acá sin caché y con save la segunda chocaba con la PK de la fecha (500).
+        await this.indicadores.upsert(
+          {
             fecha: hoy,
             valorUf: uf.valor,
             valorUsd: dolar?.valor ?? null,
             fuente: 'cmf',
-          }),
+          },
+          ['fecha'],
         );
         return {
           valorUf: uf.valor,

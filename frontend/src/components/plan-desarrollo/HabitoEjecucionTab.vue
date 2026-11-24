@@ -88,8 +88,22 @@ function irANuevaActividad() {
   form?.querySelector('select')?.focus({ preventScroll: true })
 }
 
+const erroresActividad = reactive({ objetivo: '', actividad: '' })
+
+// Toda actividad debe responder a un objetivo del plan: sin vínculo no se guarda, y se avisa.
+function validarActividad(): boolean {
+  erroresActividad.objetivo = nuevaActividad.objetivoId
+    ? ''
+    : props.plan.objetivos.length === 0
+      ? 'Primero agrega un objetivo específico en la pestaña Definición.'
+      : 'Vincula la actividad a un objetivo específico para poder guardarla.'
+  erroresActividad.actividad =
+    nuevaActividad.actividad.trim().length >= 3 ? '' : 'Describe la actividad (mínimo 3 caracteres).'
+  return !erroresActividad.objetivo && !erroresActividad.actividad
+}
+
 async function agregarActividad() {
-  if (!nuevaActividad.objetivoId || !nuevaActividad.actividad.trim()) return
+  if (!validarActividad()) return
   try {
     const creada = await addActividad({
       objetivoId: nuevaActividad.objetivoId,
@@ -336,7 +350,11 @@ function objetivoDescripcion(objetivoId: string): string {
       >
         <select
           v-model="nuevaActividad.objetivoId"
-          class="rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm sm:col-span-2"
+          aria-label="Objetivo específico de la actividad"
+          :aria-invalid="erroresActividad.objetivo ? true : undefined"
+          class="rounded-lg border px-3 py-2 text-sm sm:col-span-2"
+          :class="erroresActividad.objetivo ? 'border-[var(--color-danger)]' : 'border-[var(--color-line)]'"
+          @change="erroresActividad.objetivo = ''"
         >
           <option
             value=""
@@ -352,12 +370,30 @@ function objetivoDescripcion(objetivoId: string): string {
             {{ o.descripcion }}
           </option>
         </select>
+        <p
+          v-if="erroresActividad.objetivo"
+          role="alert"
+          class="text-xs text-[var(--color-danger)] sm:col-span-2"
+        >
+          {{ erroresActividad.objetivo }}
+        </p>
         <input
           v-model="nuevaActividad.actividad"
           type="text"
           placeholder="Actividad"
-          class="rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm sm:col-span-2"
+          aria-label="Actividad"
+          :aria-invalid="erroresActividad.actividad ? true : undefined"
+          class="rounded-lg border px-3 py-2 text-sm sm:col-span-2"
+          :class="erroresActividad.actividad ? 'border-[var(--color-danger)]' : 'border-[var(--color-line)]'"
+          @input="erroresActividad.actividad = ''"
         >
+        <p
+          v-if="erroresActividad.actividad"
+          role="alert"
+          class="text-xs text-[var(--color-danger)] sm:col-span-2"
+        >
+          {{ erroresActividad.actividad }}
+        </p>
         <label class="text-sm">
           Inicio
           <input

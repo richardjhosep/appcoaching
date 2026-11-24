@@ -115,12 +115,6 @@ export function setConsentimiento(id: string, informado: boolean): Promise<Coach
   })
 }
 
-export function solicitarConsentimiento(id: string): Promise<{ success: boolean }> {
-  return apiRequest<{ success: boolean }>(`/coachees/${id}/consentimiento/solicitar`, {
-    method: 'POST',
-  })
-}
-
 export interface UpdateMiPerfilInput {
   telefono?: string
   emailContacto?: string

@@ -11,6 +11,7 @@ vi.mock('../../api/sesiones', async () => {
     ...actual,
     getMisSesiones: vi.fn(),
     guardarPostSesion: vi.fn(),
+    guardarCompromisos: vi.fn(),
     publicarPostSesion: vi.fn(),
     solicitarReagendamiento: vi.fn(),
     confirmarSesion: vi.fn(),
@@ -24,6 +25,7 @@ import {
   confirmarSesion,
   getMisReagendamientos,
   guardarPostSesion,
+  guardarCompromisos,
   publicarPostSesion,
 } from '../../api/sesiones'
 
@@ -43,6 +45,17 @@ vi.mock('../../api/ciclos', () => ({
   getMiCicloActual: vi.fn().mockResolvedValue(null),
 }))
 import { getMiCicloActual } from '../../api/ciclos'
+
+vi.mock('../../api/planesDesarrollo', () => ({
+  getOwnPlan: vi.fn().mockResolvedValue({ objetivoGeneral: null }),
+}))
+import { getOwnPlan } from '../../api/planesDesarrollo'
+
+const ruta = vi.hoisted(() => ({ query: {} as Record<string, string> }))
+vi.mock('vue-router', async () => ({
+  ...(await vi.importActual<typeof import('vue-router')>('vue-router')),
+  useRoute: () => ruta,
+}))
 
 vi.mock('../../lib/notify', () => ({
   notifySuccess: vi.fn(),
@@ -95,6 +108,8 @@ const sesionFutura: Sesion = {
 describe('SesionesView', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
+    ruta.query = {}
+    vi.mocked(guardarCompromisos).mockReset()
     vi.mocked(getMisSesiones).mockReset()
     vi.mocked(getMisReagendamientos).mockReset().mockResolvedValue([])
     vi.mocked(guardarPostSesion).mockReset()
@@ -125,7 +140,9 @@ describe('SesionesView', () => {
     const wrapper = mount(SesionesView)
     await flushPromises()
 
-    expect(wrapper.find('textarea').exists()).toBe(false)
+    // Solo queda editable el cuadro de compromisos.
+    expect(wrapper.findAll('textarea')).toHaveLength(1)
+    expect(wrapper.find('textarea[data-compromisos]').exists()).toBe(true)
     expect(wrapper.text()).toContain('Aprendí mucho')
     expect(wrapper.text()).toContain('5/5')
   })
@@ -136,7 +153,8 @@ describe('SesionesView', () => {
     const wrapper = mount(SesionesView)
     await flushPromises()
 
-    expect(wrapper.text()).toContain('Programada')
+    expect(wrapper.find('section[aria-label="Próximas sesiones"] li').exists()).toBe(true)
+    expect(wrapper.text()).not.toContain('Realizada')
     expect(wrapper.find('textarea').exists()).toBe(false)
     expect(wrapper.find('a[href="https://meet.example.com/x"]').exists()).toBe(true)
   })
@@ -208,6 +226,7 @@ describe('SesionesView', () => {
     slot.setHours(13, 0, 0, 0)
     const slotIso = slot.toISOString()
 
+    ruta.query = { tab: 'solicitar' }
     vi.mocked(getMisSesiones).mockResolvedValue([])
     vi.mocked(getSlotsLibres).mockResolvedValue([slotIso])
     vi.mocked(crearSolicitudSesion).mockResolvedValue({
@@ -240,33 +259,72 @@ describe('SesionesView', () => {
     expect(crearSolicitudSesion).toHaveBeenCalledWith(slotIso, undefined)
   })
 
-  it('summarizes the upcoming sessions and the ones still without a date, and jumps to the agenda on click', async () => {
-    const otraFutura: Sesion = { ...sesionFutura, id: 's4', fechaHora: '2998-06-01T15:00:00.000Z', confirmada: true }
-    // Copia: otro test confirma sesionFutura y muta el fixture compartido.
-    vi.mocked(getMisSesiones).mockResolvedValue([sesionPasadaPublicada, { ...sesionFutura, confirmada: false }, otraFutura])
+  it('lists the next sessions in order, three at most until the coachee asks for all', async () => {
+    const futuras: Sesion[] = ['2999-04', '2999-01', '2999-03', '2999-02'].map((m, i) => ({
+      ...sesionFutura,
+      id: `f${i}`,
+      fechaHora: `${m}-10T15:00:00.000Z`,
+      confirmada: m === '2999-01',
+    }))
+    vi.mocked(getMisSesiones).mockResolvedValue([sesionPasadaPublicada, ...futuras])
     vi.mocked(getMiCicloActual).mockResolvedValueOnce({ totalSesiones: 8, sesionesRestantes: 5 } as never)
-    const scrollIntoView = vi.fn()
-    Element.prototype.scrollIntoView = scrollIntoView
 
     const wrapper = mount(SesionesView)
     await flushPromises()
 
     const resumen = wrapper.find('section[aria-label="Próximas sesiones"]')
     expect(resumen.text()).toContain('Te quedan 5 de 8 sesiones del proceso')
-    expect(resumen.text()).toContain('3 aún sin fecha')
-    const chips = resumen.findAll('button')
-    // La más próxima primero (2998 antes que 2999), y la sesión pasada no aparece.
-    expect(chips).toHaveLength(2)
-    expect(chips[0].text()).toContain('jun')
-    expect(chips[0].find('svg[aria-label="confirmada"]').exists()).toBe(true)
-    expect(chips[1].find('svg[aria-label="confirmada"]').exists()).toBe(false)
+    expect(resumen.text()).toContain('1 aún sin fecha')
+    const filas = resumen.findAll('li').map((li) => li.text())
+    expect(filas).toHaveLength(3)
+    expect(filas[0]).toContain('ene')
+    expect(filas[0]).toContain('Confirmada')
+    expect(filas[2]).toContain('mar')
 
-    await chips[0].trigger('click')
+    await resumen.findAll('button').find((b) => b.text() === 'Ver todas (4)')!.trigger('click')
+    expect(resumen.findAll('li')).toHaveLength(4)
+  })
+
+  it('keeps the availability calendar out of the main view, in its own "Solicitar sesión" tab', async () => {
+    vi.mocked(getMisSesiones).mockResolvedValue([sesionPasadaPublicada])
+
+    const wrapper = mount(SesionesView)
+    await flushPromises()
+    expect(getSlotsLibres).not.toHaveBeenCalled()
+
+    await wrapper.findAll('[role="tab"]').find((t) => t.text() === 'Solicitar sesión')!.trigger('click')
+    await flushPromises()
+    expect(getSlotsLibres).toHaveBeenCalled()
+    expect(wrapper.text()).not.toContain('Aprendí mucho')
+  })
+
+  it('shows the general objective at hand, also next to the self-assessment', async () => {
+    vi.mocked(getOwnPlan).mockResolvedValueOnce({ objetivoGeneral: 'Delegar mejor' } as never)
+    vi.mocked(getMisSesiones).mockResolvedValue([sesionPasadaSinPublicar])
+
+    const wrapper = mount(SesionesView)
     await flushPromises()
 
-    expect(scrollIntoView).toHaveBeenCalled()
-    // Resalta la tarjeta de detalle de esa sesión, igual que un clic dentro del calendario.
-    expect(wrapper.find('.ring-2').exists()).toBe(true)
+    expect(wrapper.find('details').text()).toContain('Delegar mejor')
+    expect(wrapper.text()).toContain('Tu objetivo: Delegar mejor')
+  })
+
+  it('saves the commitments of an already published session', async () => {
+    const publicada = { ...sesionPasadaPublicada, postSesion: { ...sesionPasadaPublicada.postSesion!, compromisos: 'Leer capítulo 1' } }
+    vi.mocked(getMisSesiones).mockResolvedValue([publicada])
+    vi.mocked(guardarCompromisos).mockResolvedValue({ ...publicada.postSesion, compromisos: 'Leer capítulo 2' })
+
+    const wrapper = mount(SesionesView)
+    await flushPromises()
+    const cuadro = wrapper.find<HTMLTextAreaElement>('textarea[data-compromisos]')
+    expect(cuadro.element.value).toBe('Leer capítulo 1')
+    await cuadro.setValue('Leer capítulo 2')
+    await wrapper.findAll('button').find((b) => b.text() === 'Guardar compromisos')!.trigger('click')
+    await flushPromises()
+
+    expect(guardarCompromisos).toHaveBeenCalledWith('s2', 'Leer capítulo 2')
+    expect(notifySuccess).toHaveBeenCalledWith('Compromisos guardados')
+    expect(wrapper.text()).toContain('Aprendí mucho')
   })
 
   it('shows "Solicitud pendiente" and disables the reschedule button while a request is pending', async () => {
@@ -323,7 +381,7 @@ describe('SesionesView', () => {
 
     expect(confirmDialog).not.toHaveBeenCalled()
     expect(publicarPostSesion).not.toHaveBeenCalled()
-    expect(wrapper.text()).not.toContain('Cuéntanos tu aprendizaje principal.')
+    expect(wrapper.text()).toContain('Cuéntanos tu aprendizaje principal.')
     expect(wrapper.text()).toContain('Elige qué tan útil fue la sesión.')
     expect(wrapper.text()).toContain('Elige qué tan cerca estás de tu objetivo.')
   })
@@ -351,12 +409,8 @@ describe('SesionesView', () => {
     expect(wrapper.text()).toContain('Utilidad: 4/5')
   })
 
-  it('publishes with only the numeric ratings, leaving the private aprendizaje empty', async () => {
+  it('does not publish without the aprendizaje even if the ratings are there', async () => {
     vi.mocked(getMisSesiones).mockResolvedValue([{ ...sesionPasadaSinPublicar, id: 's6' }])
-    vi.mocked(confirmDialog).mockResolvedValue(true)
-    const publicada = { ...sesionPasadaPublicada.postSesion!, sesionId: 's6', aprendizaje: null, utilidad: 5, cercaniaObjetivo: 10 }
-    vi.mocked(guardarPostSesion).mockResolvedValue({ ...publicada, publicada: false })
-    vi.mocked(publicarPostSesion).mockResolvedValue(publicada)
 
     const wrapper = mount(SesionesView)
     await flushPromises()
@@ -365,7 +419,8 @@ describe('SesionesView', () => {
     await wrapper.findAll('button').find((b) => b.text() === 'Publicar')!.trigger('click')
     await flushPromises()
 
-    expect(publicarPostSesion).toHaveBeenCalledWith('s6')
+    expect(wrapper.text()).toContain('Cuéntanos tu aprendizaje principal.')
+    expect(publicarPostSesion).not.toHaveBeenCalled()
   })
 
   it('does not publish when the coachee cancels the confirmation', async () => {

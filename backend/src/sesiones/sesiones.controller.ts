@@ -17,6 +17,7 @@ import { CreateSesionDto } from './dto/create-sesion.dto';
 import { CreateSerieSesionesDto } from './dto/create-serie-sesiones.dto';
 import { UpdateSesionDto } from './dto/update-sesion.dto';
 import { UpdatePostSesionDto } from './dto/update-post-sesion.dto';
+import { UpdateCompromisosDto } from './dto/update-compromisos.dto';
 import { CreateSolicitudDto } from './dto/create-solicitud.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -51,7 +52,7 @@ export class SesionesController {
   @Get()
   async findAll(@Query('coacheeId') coacheeId?: string) {
     const sesiones = await this.sesiones.findAllForCoach(coacheeId);
-    // El aprendizaje del post-sesión es confidencial del coachee: el coach no lo recibe.
+    // El aprendizaje y los compromisos son privados del coachee: el coach no los recibe.
     return this.withPostSesiones(sesiones, false);
   }
 
@@ -101,6 +102,20 @@ export class SesionesController {
   }
 
   @Roles(Role.COACHEE)
+  @Patch(':id/compromisos')
+  guardarCompromisos(
+    @Param('id') id: string,
+    @Body() dto: UpdateCompromisosDto,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.postSesiones.guardarCompromisosOwn(
+      actor.id,
+      id,
+      dto.compromisos,
+    );
+  }
+
+  @Roles(Role.COACHEE)
   @Post(':id/post-sesion/publicar')
   publicarPostSesion(
     @Param('id') id: string,
@@ -111,14 +126,14 @@ export class SesionesController {
 
   private async withPostSesiones<T extends { id: string }>(
     sesiones: T[],
-    incluirAprendizaje: boolean,
+    incluirPrivados: boolean,
   ): Promise<Array<T & { postSesion: unknown }>> {
     return Promise.all(
       sesiones.map(async (sesion) => ({
         ...sesion,
-        postSesion: incluirAprendizaje
+        postSesion: incluirPrivados
           ? await this.postSesiones.findForSesion(sesion.id)
-          : await this.postSesiones.findForSesionSinAprendizaje(sesion.id),
+          : await this.postSesiones.findForSesionSinPrivados(sesion.id),
       })),
     );
   }

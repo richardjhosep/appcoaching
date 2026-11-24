@@ -36,6 +36,11 @@ export class PostSesion {
   @Column({ name: 'temas_proxima_sesion', type: 'text', nullable: true })
   temasProximaSesion: string | null;
 
+  // Tareas y compromisos que el coachee se propone tras la sesión. Privado (como aprendizaje) y
+  // editable también después de publicar: lo va actualizando a su ritmo.
+  @Column({ type: 'text', nullable: true })
+  compromisos: string | null;
+
   @Column({ type: 'boolean', default: false })
   publicada: boolean;
 

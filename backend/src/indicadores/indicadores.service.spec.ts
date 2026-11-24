@@ -24,6 +24,7 @@ describe('IndicadoresService', () => {
     findOne: jest.Mock<Promise<PartialIndicador | null>, unknown[]>;
     create: jest.Mock<PartialIndicador, [PartialIndicador]>;
     save: jest.Mock<Promise<PartialIndicador>, [PartialIndicador]>;
+    upsert: jest.Mock;
   };
   let config: { get: jest.Mock };
   let originalFetch: typeof fetch;
@@ -33,6 +34,7 @@ describe('IndicadoresService', () => {
       findOne: jest.fn<Promise<PartialIndicador | null>, unknown[]>(),
       create: jest.fn((data: PartialIndicador) => data),
       save: jest.fn((data: PartialIndicador) => Promise.resolve(data)),
+      upsert: jest.fn().mockResolvedValue(undefined),
     };
     config = { get: jest.fn() };
     service = new IndicadoresService(
@@ -89,12 +91,13 @@ describe('IndicadoresService', () => {
           desactualizado: false,
         }),
       );
-      expect(repo.save).toHaveBeenCalledWith(
+      expect(repo.upsert).toHaveBeenCalledWith(
         expect.objectContaining({
           valorUf: 40910.1,
           valorUsd: 937.17,
           fuente: 'cmf',
         }),
+        ['fecha'],
       );
     });
 
@@ -123,8 +126,9 @@ describe('IndicadoresService', () => {
 
       await service.getOrFetchHoy();
 
-      expect(repo.save).toHaveBeenCalledWith(
+      expect(repo.upsert).toHaveBeenCalledWith(
         expect.objectContaining({ valorUsd: 937.17 }),
+        ['fecha'],
       );
     });
 

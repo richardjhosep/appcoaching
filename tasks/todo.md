@@ -2709,3 +2709,28 @@ Backend: migración `1788940000000-SolicitudSesionContrapropuesta`, 7 tests nuev
 
 ## Revisión bloques 2-5
 Backend: 672 tests en verde. Frontend: 751 tests, `vue-tsc` y `npm run build` en verde. Sin migraciones nuevas. El "tema a tratar" reutiliza `temasProximaSesion` (no hay columna nueva). Pendiente solo el ítem 6 (Mi perfil), a confirmar con el cliente.
+
+---
+
+# Reunión con Fernando — checklist 2026-11-24
+
+Aprobado por el usuario: 1-6, luego 7, 8 y facturación. La aprobación del plan (9) y el perfil de autoconocimiento (11) esperan decisión.
+
+- [x] 1. Aprendizaje obligatorio para publicar (sin "(opcional)"; sigue siendo confidencial) — front y back
+- [x] 2. Quitar "Enviar solicitud por correo" del consentimiento (perfil del coachee y Legal > Contratos)
+- [x] 3. Mi aprendizaje: Progreso → Próxima sesión → Tareas pendientes
+- [x] 4. Objetivo general visible en Progreso
+- [x] 5. Objetivo general a mano en Sesiones (encabezado y junto a la evaluación)
+- [x] 6. Actividad sin objetivo: alerta visible y no guarda
+- [x] 7. Cuadro de compromisos por sesión (privado, editable también después de publicar) — migración
+- [x] 8. Sesiones del coachee: lista corta de próximas; calendario en "Solicitar sesión"
+- [x] 10. Negocio > Facturación: resumen mensual por coachee (agendadas, realizadas, montos)
+- [ ] 9. Eliminar aprobación del plan (decisión pendiente)
+- [ ] 11. Perfil de autoconocimiento con privacidad por sección (decisión pendiente)
+
+## Revisión (2026-11-24)
+Backend 678 tests, frontend 759, vue-tsc, eslint y build en verde. Migración `1788950000000-PostSesionCompromisos` aplicada en Docker. Verificado en navegador y por API contra el clon `coaching_verify` (SMTP apagado): compromisos editables tras publicar y ausentes en la respuesta al coach, publicación bloqueada sin aprendizaje, alerta de actividad sin objetivo, facturación cuadrada contra SQL, contrapropuesta de punta a punta.
+- Bug encontrado al probar: dos lecturas simultáneas de la UF, primeras del día, chocaban con la PK (500). Corregido con `upsert` en IndicadoresService (8 peticiones simultáneas sin caché → 8×200).
+- Corrección sobre el ítem 9: `PlanesDesarrolloService.enviar` ya deja el plan aprobado sin intervención del coach. Solo quedan textos/etapa "Plan aprobado" y "para aprobación" (MiAprendizajeView).
+- El endpoint de backend `POST /coachees/:id/consentimiento/solicitar` sigue existiendo sin uso en la interfaz.
+- El clon `coaching_verify` quedó con datos QA de esta prueba (contraseñas QA restablecidas solo ahí).

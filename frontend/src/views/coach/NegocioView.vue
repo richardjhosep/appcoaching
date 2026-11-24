@@ -5,14 +5,16 @@ import AppShell from '../../components/AppShell.vue'
 import TabBar from '../../components/TabBar.vue'
 import ResumenTab from './negocio/ResumenTab.vue'
 import ComercialTab from './negocio/ComercialTab.vue'
+import FacturacionTab from './negocio/FacturacionTab.vue'
 
 const route = useRoute()
 const router = useRouter()
 
-type TabKey = 'resumen' | 'comercial'
+type TabKey = 'resumen' | 'comercial' | 'facturacion'
 const tabs: Array<{ key: TabKey; label: string; icon: string }> = [
   { key: 'resumen', label: 'Resumen', icon: 'dashboard' },
   { key: 'comercial', label: 'Comercial', icon: 'comercial' },
+  { key: 'facturacion', label: 'Facturación', icon: 'negocio' },
 ]
 
 const activeTab = computed<TabKey>(() => {
@@ -40,5 +42,6 @@ function irATab(tab: TabKey) {
 
     <ResumenTab v-if="activeTab === 'resumen'" />
     <ComercialTab v-else-if="activeTab === 'comercial'" />
+    <FacturacionTab v-else-if="activeTab === 'facturacion'" />
   </AppShell>
 </template>

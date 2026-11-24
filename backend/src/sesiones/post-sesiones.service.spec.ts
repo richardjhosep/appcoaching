@@ -108,20 +108,24 @@ describe('PostSesionesService', () => {
       );
     });
 
-    it('publishes without a written aprendizaje (it is optional and private)', async () => {
-      repo.findOne.mockResolvedValue({
-        id: 'p1',
-        sesionId: 's1',
-        publicada: false,
-        aprendizaje: null,
-        utilidad: 4,
-        cercaniaObjetivo: 7,
-      });
+    it.each([null, '   '])(
+      'rejects publishing without a written aprendizaje (%p)',
+      async (aprendizaje) => {
+        repo.findOne.mockResolvedValue({
+          id: 'p1',
+          sesionId: 's1',
+          publicada: false,
+          aprendizaje,
+          utilidad: 4,
+          cercaniaObjetivo: 7,
+        });
 
-      const result = await service.publicarOwn('user-1', 's1');
-
-      expect(result.publicada).toBe(true);
-    });
+        await expect(service.publicarOwn('user-1', 's1')).rejects.toThrow(
+          'debes completar el aprendizaje',
+        );
+        expect(repo.save).not.toHaveBeenCalled();
+      },
+    );
 
     it('publishes when all required fields are present', async () => {
       repo.findOne.mockResolvedValue({
@@ -151,6 +155,49 @@ describe('PostSesionesService', () => {
     });
   });
 
+  describe('guardarCompromisosOwn', () => {
+    it('saves them even after the post-sesión was published', async () => {
+      repo.findOne.mockResolvedValue({
+        id: 'p1',
+        sesionId: 's1',
+        publicada: true,
+        aprendizaje: 'aprendí',
+      });
+
+      const result = await service.guardarCompromisosOwn(
+        'user-1',
+        's1',
+        ' Hablar con Eduardo ',
+      );
+
+      expect(result).toMatchObject({
+        compromisos: 'Hablar con Eduardo',
+        publicada: true,
+        aprendizaje: 'aprendí',
+      });
+    });
+
+    it('clears them with an empty text', async () => {
+      repo.findOne.mockResolvedValue({ id: 'p1', compromisos: 'algo' });
+
+      const result = await service.guardarCompromisosOwn('user-1', 's1', '  ');
+
+      expect(result.compromisos).toBeNull();
+    });
+
+    it('rejects a session that has not happened yet', async () => {
+      sesiones.findOneOwnedByCoachee.mockResolvedValue({
+        id: 's1',
+        coacheeId: 'coachee-1',
+        fechaHora: new Date('2999-01-01'),
+      });
+
+      await expect(
+        service.guardarCompromisosOwn('user-1', 's1', 'x'),
+      ).rejects.toThrow(BadRequestException);
+    });
+  });
+
   describe('avanceGeneral', () => {
     it('returns null when there is no published self-assessment', async () => {
       repo.createQueryBuilder.mockReturnValue(makeQueryBuilder(null));
@@ -174,19 +221,21 @@ describe('PostSesionesService', () => {
     });
   });
 
-  describe('findForSesionSinAprendizaje', () => {
-    it('drops aprendizaje but keeps the shared fields', async () => {
+  describe('findForSesionSinPrivados', () => {
+    it('drops aprendizaje and compromisos but keeps the shared fields', async () => {
       repo.findOne.mockResolvedValue({
         id: 'p1',
         sesionId: 's1',
         aprendizaje: 'privado',
+        compromisos: 'privado también',
         recomendacion: 'mejorar X',
         temasProximaSesion: 'tema Y',
       });
 
-      const result = await service.findForSesionSinAprendizaje('s1');
+      const result = await service.findForSesionSinPrivados('s1');
 
       expect(result).not.toHaveProperty('aprendizaje');
+      expect(result).not.toHaveProperty('compromisos');
       expect(result).toMatchObject({
         recomendacion: 'mejorar X',
         temasProximaSesion: 'tema Y',

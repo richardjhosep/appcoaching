@@ -1,13 +1,10 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { setConsentimiento, solicitarConsentimiento } from '../api/coachees'
+import { setConsentimiento } from '../api/coachees'
 import { ApiError } from '../api/client'
-import { notifySuccess, notifyError } from '../lib/notify'
-import NavIcon from './NavIcon.vue'
 
 const props = defineProps<{
   coacheeId: string
-  nombre: string
   informado: boolean
   fecha?: string | null
 }>()
@@ -31,16 +28,6 @@ async function toggle() {
     error.value = err instanceof ApiError ? err.message : 'No se pudo actualizar el consentimiento.'
   } finally {
     guardando.value = false
-  }
-}
-
-async function enviarSolicitud() {
-  try {
-    await solicitarConsentimiento(props.coacheeId)
-    await notifySuccess('Solicitud enviada', `Le enviamos un correo a ${props.nombre} para que confirme su consentimiento.`)
-  } catch (err) {
-    const mensaje = err instanceof ApiError ? err.message : 'No se pudo enviar la solicitud.'
-    await notifyError('No se pudo enviar', mensaje)
   }
 }
 </script>
@@ -91,16 +78,6 @@ async function enviarSolicitud() {
         @click="toggle"
       >
         {{ informado ? 'Marcar como pendiente' : 'Marcar como firmado' }}
-      </button>
-      <button
-        type="button"
-        class="inline-flex items-center gap-1 rounded-full border border-[var(--color-line)] px-2.5 py-1 text-xs text-[var(--color-saltup-ink)] hover:bg-[var(--color-parchment)]/60"
-        @click="enviarSolicitud"
-      >
-        <NavIcon
-          name="correo"
-          :size="13"
-        /> Enviar solicitud por correo
       </button>
     </div>
   </div>

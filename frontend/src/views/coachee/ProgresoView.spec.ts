@@ -134,6 +134,19 @@ async function mountView(ciclos: Ciclo[] = []) {
   return wrapper
 }
 
+describe('ProgresoView — objetivo general', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+  })
+
+  it('shows the general objective of the plan', async () => {
+    const wrapper = await mountView()
+
+    expect(wrapper.text()).toContain('Mi objetivo general')
+    expect(wrapper.text()).toContain('Impacto e Influencia')
+  })
+})
+
 describe('ProgresoView — Certificados', () => {
   beforeEach(() => {
     setActivePinia(createPinia())

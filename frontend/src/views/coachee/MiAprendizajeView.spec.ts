@@ -185,6 +185,34 @@ describe('MiAprendizajeView', () => {
     expect(push).toHaveBeenCalledWith({ name: 'coachee-plan', query: undefined })
   })
 
+  it('orders the page: progreso, próxima sesión, tareas pendientes', async () => {
+    mockEmptySources()
+    vi.mocked(listQuizzesDisponibles).mockResolvedValue([{ id: 'q1', mejorPuntaje: 2 } as never])
+
+    const wrapper = mount(MiAprendizajeView, { global: { plugins: [router] } })
+    await flushPromises()
+
+    const titulos = wrapper.findAll('h2').map((h) => h.text())
+    expect(titulos.filter((t) => ['Mi progreso', 'Próxima sesión', 'Tareas pendientes'].includes(t))).toEqual([
+      'Mi progreso',
+      'Próxima sesión',
+      'Tareas pendientes',
+    ])
+  })
+
+  it('links to the request tab when there is no upcoming session', async () => {
+    mockEmptySources()
+    vi.mocked(listQuizzesDisponibles).mockResolvedValue([{ id: 'q1', mejorPuntaje: 2 } as never])
+
+    const wrapper = mount(MiAprendizajeView, { global: { plugins: [router] } })
+    await flushPromises()
+    const pushSpy = vi.spyOn(router, 'push')
+    await wrapper.findAll('button').find((b) => b.text() === 'Pedir una sesión')!.trigger('click')
+
+    expect(pushSpy).toHaveBeenCalledWith({ name: 'coachee-sesiones', query: { tab: 'solicitar' } })
+    pushSpy.mockRestore()
+  })
+
   it('shows "Nada pendiente por ahora" when there are no tareas pendientes', async () => {
     mockEmptySources()
     vi.mocked(listQuizzesDisponibles).mockResolvedValue([{ id: 'q1', mejorPuntaje: 2 } as never])

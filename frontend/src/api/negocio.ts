@@ -97,6 +97,28 @@ export function getResumenComercial(periodo: PeriodoComercial): Promise<ResumenC
   return apiRequest<ResumenComercial>(`/negocio/comercial?periodo=${periodo}`)
 }
 
+export interface FacturacionCoachee {
+  coacheeId: string
+  nombre: string
+  empresaNombre: string | null
+  // Todas las del mes: realizadas + por realizar.
+  sesionesAgendadas: number
+  sesionesRealizadas: number
+  montoRealizado: number
+  montoPorRealizar: number
+}
+
+export interface FacturacionMensual {
+  mes: string
+  valorUf: number
+  coachees: FacturacionCoachee[]
+}
+
+/** `mes` es "YYYY-MM". */
+export function getFacturacionMensual(mes: string): Promise<FacturacionMensual> {
+  return apiRequest<FacturacionMensual>(`/negocio/facturacion?mes=${mes}`)
+}
+
 export interface MiInversion {
   periodo: PeriodoComercial
   horasRealizadas: number

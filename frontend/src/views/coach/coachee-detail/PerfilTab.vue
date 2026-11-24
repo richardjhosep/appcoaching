@@ -166,7 +166,6 @@ function onConsentimientoActualizado(actualizado: { consentimientoInformado: boo
         <div class="[&>div]:rounded-none [&>div]:border-0 [&>div]:bg-transparent [&>div]:p-0">
           <ConsentimientoInformado
             :coachee-id="coachee.id"
-            :nombre="coachee.nombre"
             :informado="coachee.consentimientoInformado"
             :fecha="coachee.consentimientoFecha"
             @actualizado="onConsentimientoActualizado"

@@ -8,6 +8,8 @@ export interface PostSesion {
   cercaniaObjetivo: number | null
   recomendacion: string | null
   temasProximaSesion: string | null
+  // Privado del coachee: el coach no lo recibe.
+  compromisos?: string | null
   publicada: boolean
   createdAt: string
   updatedAt: string
@@ -158,6 +160,13 @@ export function guardarPostSesion(
   return apiRequest<PostSesion>(`/sesiones/${sesionId}/post-sesion`, {
     method: 'PATCH',
     body: input,
+  })
+}
+
+export function guardarCompromisos(sesionId: string, compromisos: string): Promise<PostSesion> {
+  return apiRequest<PostSesion>(`/sesiones/${sesionId}/compromisos`, {
+    method: 'PATCH',
+    body: { compromisos },
   })
 }
 

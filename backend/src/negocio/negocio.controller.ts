@@ -1,5 +1,6 @@
 import { Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { NegocioService, type PeriodoComercial } from './negocio.service';
+import { FacturacionQueryDto } from './dto/facturacion-query.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -46,6 +47,12 @@ export class NegocioController {
   @Get('comercial')
   comercial(@Query('periodo') periodo: PeriodoComercial = 'mes') {
     return this.negocio.resumenComercial(periodo);
+  }
+
+  @Roles(Role.COACH)
+  @Get('facturacion')
+  facturacion(@Query() query: FacturacionQueryDto) {
+    return this.negocio.facturacionMensual(query.mes);
   }
 
   // null si el coachee pertenece a una empresa — ese gasto es de la empresa, no algo que el

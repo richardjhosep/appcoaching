@@ -74,6 +74,8 @@ const FIELD_LABELS: Record<string, string> = {
   cercaniaObjetivo: 'La cercanía al objetivo',
   recomendacion: 'La recomendación',
   temasProximaSesion: 'Los temas para la próxima sesión',
+  compromisos: 'Los compromisos',
+  mes: 'El mes',
   notasPrivadas: 'Las notas privadas',
   asistio: 'La asistencia',
   currentPassword: 'La contraseña actual',

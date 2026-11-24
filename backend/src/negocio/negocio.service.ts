@@ -95,6 +95,7 @@ export interface CoacheeGastoBruto {
   nombre: string;
   empresaNombre: string | null;
   horasRealizadas: number;
+  sesionesPorRealizar: number;
   gastoBrutoDelPeriodo: number;
   gastoBrutoProyectado: number;
 }
@@ -106,6 +107,26 @@ export interface ResumenCobros {
   horasRealizadasTotal: number;
   ingresoDelPeriodoTotal: number;
   ingresoProyectadoTotal: number;
+}
+
+// Tabla mensual para gestionar cobros: lo agendado y lo realizado por coachee, esté o no pagada
+// su empresa (por eso parte de porCoacheeGastoBruto y no de porCoachee).
+export interface FacturacionCoachee {
+  coacheeId: string;
+  nombre: string;
+  empresaNombre: string | null;
+  // Todas las del mes: realizadas + por realizar.
+  sesionesAgendadas: number;
+  sesionesRealizadas: number;
+  montoRealizado: number;
+  montoPorRealizar: number;
+}
+
+export interface FacturacionMensual {
+  mes: string;
+  // Valor con que se convirtieron las tarifas en UF (el de hoy, no el de cada sesión).
+  valorUf: number;
+  coachees: FacturacionCoachee[];
 }
 
 // Resumen honesto de lo generado en el período por un coachee independiente — no un estado de
@@ -402,6 +423,7 @@ export class NegocioService {
       string,
       {
         horasRealizadas: number;
+        sesionesPorRealizar: number;
         gastoBrutoDelPeriodo: number;
         gastoBrutoProyectado: number;
       }
@@ -462,6 +484,7 @@ export class NegocioService {
 
       const gastoBucket = porCoacheeGastoBrutoMap.get(coachee.id) ?? {
         horasRealizadas: 0,
+        sesionesPorRealizar: 0,
         gastoBrutoDelPeriodo: 0,
         gastoBrutoProyectado: 0,
       };
@@ -469,6 +492,7 @@ export class NegocioService {
         gastoBucket.horasRealizadas += 1;
         gastoBucket.gastoBrutoDelPeriodo += tarifa;
       } else {
+        gastoBucket.sesionesPorRealizar += 1;
         gastoBucket.gastoBrutoProyectado += tarifa;
       }
       porCoacheeGastoBrutoMap.set(coachee.id, gastoBucket);
@@ -592,6 +616,34 @@ export class NegocioService {
       procesosCerradosPorResultado: porResultado,
       reagendamientosSolicitados: reagendamientos,
       porCoachee: cobros.porCoachee,
+    };
+  }
+
+  /** `mes` es "YYYY-MM"; el mes se corta en hora de Chile (una sesión del 31 a las 21:00 es del 31). */
+  async facturacionMensual(
+    mes: string = fechaSimpleHoyChile().slice(0, 7),
+  ): Promise<FacturacionMensual> {
+    const [anio, m] = mes.split('-').map(Number);
+    const mesSiguiente =
+      m === 12 ? `${anio + 1}-01` : `${anio}-${String(m + 1).padStart(2, '0')}`;
+    const cobros = await this.calcularResumenCobros({
+      inicio: inicioDelDiaChileAUtc(`${mes}-01`),
+      // Between incluye el extremo: 1 ms antes de que empiece el mes siguiente.
+      fin: new Date(inicioDelDiaChileAUtc(`${mesSiguiente}-01`).getTime() - 1),
+    });
+    return {
+      mes,
+      // Ya cacheado por calcularResumenCobros.
+      valorUf: await this.valorUfDelDia(),
+      coachees: cobros.porCoacheeGastoBruto.map((c) => ({
+        coacheeId: c.coacheeId,
+        nombre: c.nombre,
+        empresaNombre: c.empresaNombre,
+        sesionesAgendadas: c.horasRealizadas + c.sesionesPorRealizar,
+        sesionesRealizadas: c.horasRealizadas,
+        montoRealizado: c.gastoBrutoDelPeriodo,
+        montoPorRealizar: c.gastoBrutoProyectado,
+      })),
     };
   }
 

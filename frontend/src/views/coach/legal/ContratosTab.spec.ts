@@ -23,17 +23,11 @@ vi.mock('../../../api/coachees', async () => {
     ...actual,
     listCoachees: vi.fn(),
     setConsentimiento: vi.fn(),
-    solicitarConsentimiento: vi.fn(),
   }
 })
-vi.mock('../../../lib/notify', () => ({
-  notifySuccess: vi.fn(),
-  notifyError: vi.fn(),
-}))
 
 import { getResumenLegal, listarAdicionales } from '../../../api/legal'
-import { listCoachees, setConsentimiento, solicitarConsentimiento } from '../../../api/coachees'
-import { notifySuccess, notifyError } from '../../../lib/notify'
+import { listCoachees, setConsentimiento } from '../../../api/coachees'
 
 // Empresa Uno: falta el NDA (necesita acción), creada 2026-01-01.
 // Independiente Uno: falta contrato y NDA (necesita acción), creado 2025-01-01 — más antigua que
@@ -99,7 +93,6 @@ describe('ContratosTab', () => {
     vi.mocked(listarAdicionales).mockResolvedValue(adicionales)
     vi.mocked(listCoachees).mockResolvedValue(coachees)
     vi.mocked(setConsentimiento).mockResolvedValue(coachees[1])
-    vi.mocked(solicitarConsentimiento).mockResolvedValue({ success: true })
   })
 
   it('shows only 2 items on the first page, tagged by type', async () => {
@@ -214,35 +207,5 @@ describe('ContratosTab', () => {
     await toggleBtn!.dispatchEvent(new Event('click'))
 
     expect(setConsentimiento).toHaveBeenCalledWith('c3', true)
-  })
-
-  it('sends a consentimiento email request from an independiente card', async () => {
-    const wrapper = mount(ContratosTab)
-    await flushPromises()
-
-    const card = wrapper.findAll('h3').find((h) => h.text() === 'Independiente Uno')!.element.closest('.rounded-2xl')!
-    const enviarBtn = Array.from(card.querySelectorAll('button')).find((b) =>
-      b.textContent?.includes('Enviar solicitud por correo'),
-    )
-    await enviarBtn!.dispatchEvent(new Event('click'))
-    await flushPromises()
-
-    expect(solicitarConsentimiento).toHaveBeenCalledWith('c3')
-    expect(notifySuccess).toHaveBeenCalled()
-  })
-
-  it('shows an error toast when sending the consentimiento email request fails', async () => {
-    vi.mocked(solicitarConsentimiento).mockRejectedValue(new Error('boom'))
-    const wrapper = mount(ContratosTab)
-    await flushPromises()
-
-    const card = wrapper.findAll('h3').find((h) => h.text() === 'Independiente Uno')!.element.closest('.rounded-2xl')!
-    const enviarBtn = Array.from(card.querySelectorAll('button')).find((b) =>
-      b.textContent?.includes('Enviar solicitud por correo'),
-    )
-    await enviarBtn!.dispatchEvent(new Event('click'))
-    await flushPromises()
-
-    expect(notifyError).toHaveBeenCalled()
   })
 })

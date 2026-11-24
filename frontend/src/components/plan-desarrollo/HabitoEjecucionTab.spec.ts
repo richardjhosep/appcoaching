@@ -151,6 +151,25 @@ describe('HabitoEjecucionTab', () => {
     })
   })
 
+  it('warns and does not save an actividad without a linked objetivo', async () => {
+    vi.mocked(addActividad).mockReset()
+    const wrapper = await mountTab()
+    await wrapper.find('input[type="text"]').setValue('Nueva actividad')
+    await wrapper.findAll('button').find((b) => b.text() === 'Agregar actividad')!.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.find('[role="alert"]').text()).toContain('Vincula la actividad a un objetivo')
+    expect(addActividad).not.toHaveBeenCalled()
+  })
+
+  it('points to Definición when the plan has no objetivos to link', async () => {
+    const wrapper = mount(HabitoEjecucionTab, { props: { plan: { ...basePlan, objetivos: [], actividades: [] } } })
+    await flushPromises()
+    await wrapper.findAll('button').find((b) => b.text() === 'Agregar actividad')!.trigger('click')
+
+    expect(wrapper.find('[role="alert"]').text()).toContain('pestaña Definición')
+  })
+
   it('shows the término date even when the actividad has no inicio, and lets it be edited inline', async () => {
     const wrapper = await mountTab()
     // act-1 ya existe: sus dos inputs de fecha inline vienen antes que los del formulario nuevo.

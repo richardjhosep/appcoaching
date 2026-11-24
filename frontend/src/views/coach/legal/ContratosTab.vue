@@ -12,12 +12,10 @@ import {
 import {
   listCoachees,
   setConsentimiento,
-  solicitarConsentimiento,
   type CoacheeListItem,
 } from '../../../api/coachees'
 import { ApiError } from '../../../api/client'
 import { estadoVisual, alertasLegales } from '../../../lib/legalFormat'
-import { notifySuccess, notifyError } from '../../../lib/notify'
 import DocumentoLegalSlot from '../../../components/DocumentoLegalSlot.vue'
 import OtrosDocumentosLegal from '../../../components/OtrosDocumentosLegal.vue'
 import ConsentimientoInformado from '../../../components/ConsentimientoInformado.vue'
@@ -141,16 +139,6 @@ async function toggleConsentimiento(coacheeId: string, informado: boolean) {
     error.value = err instanceof ApiError ? err.message : 'No se pudo actualizar el consentimiento.'
   }
 }
-
-async function enviarSolicitudConsentimiento(coacheeId: string, nombre: string) {
-  try {
-    await solicitarConsentimiento(coacheeId)
-    await notifySuccess('Solicitud enviada', `Le enviamos un correo a ${nombre} para que confirme su consentimiento.`)
-  } catch (err) {
-    const mensaje = err instanceof ApiError ? err.message : 'No se pudo enviar la solicitud.'
-    await notifyError('No se pudo enviar', mensaje)
-  }
-}
 </script>
 
 <template>
@@ -232,7 +220,12 @@ async function enviarSolicitudConsentimiento(coacheeId: string, nombre: string) 
       v-else
       class="flex items-center gap-2 rounded-2xl bg-[var(--color-sage)]/10 px-4 py-3 text-sm font-medium text-[var(--color-sage)]"
     >
-      <NavIcon name="check" :size="14" class="inline-block align-[-0.15em]" aria-hidden="true" /> Todo al día — sin documentos pendientes ni vencidos.
+      <NavIcon
+        name="check"
+        :size="14"
+        class="inline-block align-[-0.15em]"
+        aria-hidden="true"
+      /> Todo al día — sin documentos pendientes ni vencidos.
     </p>
 
     <p
@@ -345,17 +338,6 @@ async function enviarSolicitudConsentimiento(coacheeId: string, nombre: string) 
               />
             </button>
             <span class="flex-1">{{ c.nombre }}</span>
-            <button
-              type="button"
-              class="text-[var(--color-saltup-ink)] hover:underline"
-              title="Enviar solicitud de consentimiento por correo"
-              @click="enviarSolicitudConsentimiento(c.id, c.nombre)"
-            >
-              <NavIcon
-                name="correo"
-                :size="14"
-              />
-            </button>
           </li>
         </ul>
 
@@ -416,7 +398,6 @@ async function enviarSolicitudConsentimiento(coacheeId: string, nombre: string) 
 
         <ConsentimientoInformado
           :coachee-id="item.coacheeId"
-          :nombre="item.nombre"
           :informado="item.consentimientoInformado"
           @actualizado="cargarResumen"
         />

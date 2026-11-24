@@ -258,8 +258,50 @@ function formatFecha(fecha: string): string {
           </button>
         </p>
 
-        <!-- "¿Qué necesito hacer?" antes que cualquier otra cosa — mismo principio que
-           "Atención inmediata" en el dashboard del coach. -->
+        <SectionCard
+          title="Mi progreso"
+          icon="progreso"
+        >
+          <ProgresoCamino
+            :puntos="puntos"
+            compacto
+          />
+          <AppButton
+            class="mt-3"
+            variant="secondary"
+            size="sm"
+            @click="ir('coachee-progreso')"
+          >
+            Ver progreso completo
+          </AppButton>
+        </SectionCard>
+
+        <SectionCard
+          title="Próxima sesión"
+          icon="sesiones"
+        >
+          <p
+            v-if="resumen!.proximaSesion"
+            class="text-sm"
+          >
+            {{ new Date(resumen!.proximaSesion.fechaHora).toLocaleString('es-CL', { dateStyle: 'medium', timeStyle: 'short' }) }}
+          </p>
+          <p
+            v-else
+            class="text-sm text-[var(--color-muted)]"
+          >
+            Aún no tienes una sesión agendada. Pide una hora entre las que tu coach dejó disponibles.
+          </p>
+          <AppButton
+            class="mt-3"
+            variant="secondary"
+            size="sm"
+            @click="ir('coachee-sesiones', resumen!.proximaSesion ? undefined : { tab: 'solicitar' })"
+          >
+            {{ resumen!.proximaSesion ? 'Ver sesiones' : 'Pedir una sesión' }}
+          </AppButton>
+        </SectionCard>
+
         <SectionCard
           title="Tareas pendientes"
           icon="lista"
@@ -268,7 +310,12 @@ function formatFecha(fecha: string): string {
             v-if="resumen!.tareasPendientes.length === 0"
             class="text-sm text-[var(--color-sage)]"
           >
-            <NavIcon name="check" :size="14" class="inline-block align-[-0.15em]" aria-hidden="true" /> Nada pendiente por ahora.
+            <NavIcon
+              name="check"
+              :size="14"
+              class="inline-block align-[-0.15em]"
+              aria-hidden="true"
+            /> Nada pendiente por ahora.
           </p>
           <ul
             v-else
@@ -296,51 +343,7 @@ function formatFecha(fecha: string): string {
           </ul>
         </SectionCard>
 
-        <SectionCard
-          title="Mi progreso"
-          icon="progreso"
-        >
-          <ProgresoCamino
-            :puntos="puntos"
-            compacto
-          />
-          <AppButton
-            class="mt-3"
-            variant="secondary"
-            size="sm"
-            @click="ir('coachee-progreso')"
-          >
-            Ver progreso completo
-          </AppButton>
-        </SectionCard>
-
         <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <SectionCard
-            title="Próxima sesión"
-            icon="sesiones"
-          >
-            <p
-              v-if="resumen!.proximaSesion"
-              class="text-sm"
-            >
-              {{ new Date(resumen!.proximaSesion.fechaHora).toLocaleString('es-CL', { dateStyle: 'medium', timeStyle: 'short' }) }}
-            </p>
-            <p
-              v-else
-              class="text-sm text-[var(--color-muted)]"
-            >
-              Aún no tienes una sesión agendada. Pide una hora entre las que tu coach dejó disponibles.
-            </p>
-            <AppButton
-              class="mt-3"
-              variant="secondary"
-              size="sm"
-              @click="ir('coachee-sesiones')"
-            >
-              {{ resumen!.proximaSesion ? 'Ver sesiones' : 'Pedir una sesión' }}
-            </AppButton>
-          </SectionCard>
-
           <SectionCard
             title="Biblioteca"
             icon="biblioteca"
