@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
 import AppShell from '../../components/AppShell.vue'
+import AutoconocimientoPanel from '../../components/AutoconocimientoPanel.vue'
 import SectionCard from '../../components/SectionCard.vue'
 import SkeletonBlock from '../../components/SkeletonBlock.vue'
 import ErrorState from '../../components/ErrorState.vue'
@@ -224,6 +225,8 @@ async function onFotoChange(e: Event) {
           </div>
         </form>
       </SectionCard>
+
+      <AutoconocimientoPanel />
     </div>
   </AppShell>
 </template>

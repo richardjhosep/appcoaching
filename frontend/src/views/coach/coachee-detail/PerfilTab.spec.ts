@@ -18,11 +18,13 @@ vi.mock('../../../api/documentosCoachee', async () => {
   const actual = await vi.importActual<typeof import('../../../api/documentosCoachee')>('../../../api/documentosCoachee')
   return { ...actual, listarDocumentosCoachee: vi.fn().mockResolvedValue([]) }
 })
+vi.mock('../../../api/autoconocimiento', () => ({ getAutoconocimientoDeCoachee: vi.fn() }))
 vi.mock('../../../lib/notify', () => ({
   notifySuccess: vi.fn(),
   notifyError: vi.fn(),
 }))
 
+import { getAutoconocimientoDeCoachee } from '../../../api/autoconocimiento'
 import { getCoachee, setConsentimiento, obtenerUrlFotoDeCoachee } from '../../../api/coachees'
 
 const coachee: Coachee = {
@@ -51,6 +53,7 @@ describe('PerfilTab', () => {
     // DocumentosCoacheePanel usa el store de auth.
     setActivePinia(createPinia())
     vi.mocked(getCoachee).mockResolvedValue(coachee)
+    vi.mocked(getAutoconocimientoDeCoachee).mockResolvedValue([])
     vi.mocked(setConsentimiento).mockResolvedValue({
       id: 'c1',
       nombre: 'Rodrigo Peña',
@@ -105,6 +108,29 @@ describe('PerfilTab', () => {
     expect(obtenerUrlFotoDeCoachee).toHaveBeenCalledWith('c1')
     expect(wrapper.text()).toContain('Me gusta correr y leer.')
     expect(wrapper.text()).not.toContain('no ha compartido su perfil personal')
+  })
+
+  it('muestra las secciones de autoconocimiento compartidas', async () => {
+    vi.mocked(getAutoconocimientoDeCoachee).mockResolvedValue([
+      { seccion: 'energia', contenido: 'Enseñar', complemento: 'Reuniones largas', compartida: true },
+      { seccion: 'proposito', contenido: 'Formar equipos', complemento: '', compartida: true },
+    ])
+    const wrapper = mount(PerfilTab, { props: { coacheeId: 'c1' } })
+    await flushPromises()
+
+    const text = wrapper.text()
+    expect(text).toContain('Reuniones largas')
+    expect(text.indexOf('Mi propósito')).toBeLessThan(text.indexOf('Lo que me da energía'))
+    expect(text).not.toContain('Mi red de apoyo')
+  })
+
+  it('si el autoconocimiento no carga, el resto del perfil se muestra igual', async () => {
+    vi.mocked(getAutoconocimientoDeCoachee).mockRejectedValue(new Error('x'))
+    const wrapper = mount(PerfilTab, { props: { coacheeId: 'c1' } })
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('No pudimos cargar esta sección')
+    expect(wrapper.text()).toContain('Liderazgo')
   })
 
   it('reloads when the coacheeId prop changes', async () => {

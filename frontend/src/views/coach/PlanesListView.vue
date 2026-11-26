@@ -23,7 +23,7 @@ const planes = ref<PlanDesarrollo[]>([])
 const loading = ref(true)
 // "Todos los estados" por defecto: si se parte filtrado a cambios_solicitados y no hay
 // ninguno en ese estado (el caso normal, no es lo más común), la vista se ve vacía aunque
-// existan planes sin enviar/aprobados que sí necesitan atención del coach. Los planes con
+// existan planes sin enviar/enviados que sí necesitan atención del coach. Los planes con
 // cambios solicitados igual quedan siempre fijados primero (ver planesVisibles), así que no
 // se pierde la prioridad — sólo se deja de esconder todo lo demás por defecto.
 const filtro = ref<EstadoPlan | ''>('')
@@ -33,8 +33,8 @@ const enviandoRecordatorio = reactive<Record<string, boolean>>({})
 // `franja` = la barra de color a la izquierda de la tarjeta y el punto junto al estado.
 const estadoConfig: Record<EstadoPlan, { label: string; texto: string; franja: string }> = {
   sin_enviar: { label: 'Sin enviar', texto: 'text-[var(--color-bronze)]', franja: 'bg-[var(--color-bronze)]' },
-  pendiente_aprobacion: { label: 'Pendiente de aprobación', texto: 'text-[var(--color-saltup-ink)]', franja: 'bg-[var(--color-saltup)]' },
-  aprobado: { label: 'Aprobado', texto: 'text-[var(--color-sage)]', franja: 'bg-[var(--color-sage)]' },
+  pendiente_aprobacion: { label: 'Enviado', texto: 'text-[var(--color-saltup-ink)]', franja: 'bg-[var(--color-saltup)]' },
+  aprobado: { label: 'Enviado', texto: 'text-[var(--color-sage)]', franja: 'bg-[var(--color-sage)]' },
   cambios_solicitados: { label: 'Cambios solicitados', texto: 'text-[var(--color-danger)]', franja: 'bg-[var(--color-danger)]' },
 }
 
@@ -45,7 +45,7 @@ const tabsFiltro = computed(() =>
   ([
     { key: '', label: 'Todos', icon: 'planes' },
     { key: 'cambios_solicitados', label: 'Cambios solicitados', icon: 'pizarra' },
-    { key: 'aprobado', label: 'Aprobados', icon: 'trofeo' },
+    { key: 'aprobado', label: 'Enviados', icon: 'trofeo' },
     { key: 'sin_enviar', label: 'Sin enviar', icon: 'diario' },
   ] as Array<{ key: EstadoPlan | ''; label: string; icon: string }>).map((t) => ({ ...t, badge: contarEstado(t.key) })),
 )
@@ -182,7 +182,7 @@ async function recordar(coacheeId: string) {
         Cambios solicitados
       </option>
       <option value="aprobado">
-        Aprobados
+        Enviados
       </option>
       <option value="sin_enviar">
         Sin enviar

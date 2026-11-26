@@ -249,7 +249,7 @@ function formatFecha(fecha: string): string {
           v-if="resumen!.planPendienteDeAccion && !mostrarPasos"
           class="rounded-lg border border-[var(--color-bronze)]/40 bg-[var(--color-bronze)]/10 p-3 text-sm text-[var(--color-bronze)]"
         >
-          Todavía no has enviado tu plan de desarrollo para aprobación.
+          Todavía no has enviado tu plan de desarrollo.
           <button
             class="font-medium underline"
             @click="ir('coachee-plan')"

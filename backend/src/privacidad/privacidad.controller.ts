@@ -41,7 +41,8 @@ export class PrivacidadController {
       targetId: coachee.id,
       metadata: { via: 'titular' },
     });
-    return this.privacidad.exportar(coachee.id);
+    // En "Ver como" quien descarga no es el titular.
+    return this.privacidad.exportar(coachee.id, !actor.impersonadoPor);
   }
 
   @Throttle({ default: { limit: 3, ttl: 60_000 } })
@@ -67,7 +68,7 @@ export class PrivacidadController {
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() actor: AuthenticatedUser,
   ) {
-    const exportacion = await this.privacidad.exportar(id);
+    const exportacion = await this.privacidad.exportar(id, false);
     await this.audit.record('DATOS_EXPORTADOS', {
       userId: actor.id,
       targetType: 'Coachee',

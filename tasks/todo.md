@@ -2702,7 +2702,7 @@ Orden: 1 solicitudes → 2 evaluación de sesión → 3 ícono "Ver" → 4 compe
 - [x] 5a. "Practicar conversaciones difíciles" / "Practica el know-feel-do"
 - [x] 5b. Sesiones manuales (etiqueta/opción explícita, sin bloqueo por choque)
 - [x] 5c. Botón destacado "Nueva actividad"
-- [ ] 6. Mi perfil con 9 secciones y toggle por sección
+- [x] 6. Mi perfil con 9 secciones y toggle por sección
 
 ## Revisión bloque 1
 Backend: migración `1788940000000-SolicitudSesionContrapropuesta`, 7 tests nuevos (20 en total en el servicio). Frontend: 743 tests y `npm run build` en verde. Stack Docker reconstruido con la migración aplicada.
@@ -2725,8 +2725,8 @@ Aprobado por el usuario: 1-6, luego 7, 8 y facturación. La aprobación del plan
 - [x] 7. Cuadro de compromisos por sesión (privado, editable también después de publicar) — migración
 - [x] 8. Sesiones del coachee: lista corta de próximas; calendario en "Solicitar sesión"
 - [x] 10. Negocio > Facturación: resumen mensual por coachee (agendadas, realizadas, montos)
-- [ ] 9. Eliminar aprobación del plan (decisión pendiente)
-- [ ] 11. Perfil de autoconocimiento con privacidad por sección (decisión pendiente)
+- [x] 9. Textos y etapa de aprobación del plan (el plan queda "Enviado"; el estado interno sigue siendo `aprobado`)
+- [x] 11. Perfil de autoconocimiento: 9 secciones con privacidad por sección (docx "Recuperado", ítem 6) — migración
 
 ## Revisión (2026-11-24)
 Backend 678 tests, frontend 759, vue-tsc, eslint y build en verde. Migración `1788950000000-PostSesionCompromisos` aplicada en Docker. Verificado en navegador y por API contra el clon `coaching_verify` (SMTP apagado): compromisos editables tras publicar y ausentes en la respuesta al coach, publicación bloqueada sin aprendizaje, alerta de actividad sin objetivo, facturación cuadrada contra SQL, contrapropuesta de punta a punta.
@@ -2734,3 +2734,9 @@ Backend 678 tests, frontend 759, vue-tsc, eslint y build en verde. Migración `1
 - Corrección sobre el ítem 9: `PlanesDesarrolloService.enviar` ya deja el plan aprobado sin intervención del coach. Solo quedan textos/etapa "Plan aprobado" y "para aprobación" (MiAprendizajeView).
 - El endpoint de backend `POST /coachees/:id/consentimiento/solicitar` sigue existiendo sin uso en la interfaz.
 - El clon `coaching_verify` quedó con datos QA de esta prueba (contraseñas QA restablecidas solo ahí).
+
+## Revisión ítems 9 y 11 (2026-11-24)
+Backend 687 tests, frontend 767, vue-tsc, eslint y build en verde. Migración `1788960000000-SeccionesAutoconocimiento` (tabla nueva) aplicada en Docker, con pg_dump previo. Verificado por API y en el navegador contra el clon.
+- El coach solo recibe secciones compartidas y con texto; empresa 403. La copia de datos que descarga el coach y "Ver como" tampoco entregan lo no compartido.
+- No exige el consentimiento de datos sensibles (el docx pide "nada bloquea nada"): decisión pendiente.
+- No verificado: vista móvil, "Ver como" en la pantalla (solo test) y la cuenta real del coach.

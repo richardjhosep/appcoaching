@@ -100,15 +100,14 @@ export class CiclosService {
     if (ciclo.fechaCierre) {
       throw new ConflictException('El ciclo ya está cerrado.');
     }
-    // Un ciclo no puede cerrarse si el coachee nunca llegó a tener su plan de
-    // desarrollo aprobado — sin plan (fila inexistente) cuenta igual que "no
-    // aprobado", no se distingue.
+    // Un ciclo no puede cerrarse si el coachee no ha enviado su plan de desarrollo
+    // (estado `aprobado`, que se asigna al enviar) — sin plan cuenta igual que sin enviar.
     const plan = await this.planesDesarrollo
       .getByCoacheeId(ciclo.coacheeId)
       .catch(() => null);
     if (plan?.estado !== EstadoPlan.APROBADO) {
       throw new ConflictException(
-        'No se puede cerrar el ciclo: el plan de desarrollo del coachee todavía no está aprobado.',
+        'No se puede cerrar el ciclo: el coachee todavía no envía su plan de desarrollo o tiene cambios pendientes.',
       );
     }
     ciclo.fechaCierre = new Date();

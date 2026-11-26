@@ -29,6 +29,7 @@ import { NotificacionesModule } from './notificaciones/notificaciones.module';
 import { QuizModule } from './quiz/quiz.module';
 import { FlashcardsModule } from './flashcards/flashcards.module';
 import { MapasModule } from './mapas/mapas.module';
+import { AutoconocimientoModule } from './autoconocimiento/autoconocimiento.module';
 import { MapasPersonalesModule } from './mapas-personales/mapas-personales.module';
 import { PizarraModule } from './pizarra/pizarra.module';
 import { RecursosPersonalesModule } from './recursos-personales/recursos-personales.module';
@@ -91,6 +92,7 @@ import { ProspectosModule } from './prospectos/prospectos.module';
     FlashcardsModule,
     MapasModule,
     MapasPersonalesModule,
+    AutoconocimientoModule,
     PizarraModule,
     RecursosPersonalesModule,
     DocumentosCoacheeModule,

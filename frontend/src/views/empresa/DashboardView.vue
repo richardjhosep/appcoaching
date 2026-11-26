@@ -505,7 +505,7 @@ function motivoAlerta(fila: FilaDashboard): string {
             v-if="competencias.length === 0"
             icon="formacion"
             title="Sin competencias asignadas todavía"
-            description="Aparecerán acá en cuanto tus coachees tengan un plan de desarrollo aprobado."
+            description="Aparecerán acá en cuanto tus coachees envíen su plan de desarrollo."
           />
           <div
             v-else

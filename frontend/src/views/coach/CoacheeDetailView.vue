@@ -91,8 +91,8 @@ watch(() => props.coacheeId, load)
 
 const planEstadoLabel: Record<EstadoPlan, string> = {
   sin_enviar: 'Plan sin enviar',
-  pendiente_aprobacion: 'Plan por aprobar',
-  aprobado: 'Plan aprobado',
+  pendiente_aprobacion: 'Plan enviado',
+  aprobado: 'Plan enviado',
   cambios_solicitados: 'Cambios solicitados al plan',
 }
 const planEstadoClase: Record<EstadoPlan, string> = {

@@ -329,7 +329,7 @@ export class EmailService {
   }): Promise<void> {
     const subject = 'Recordatorio: tu plan de desarrollo sigue sin enviarse';
     const nombreCoachee = escapeHtml(options.nombreCoachee);
-    const intro = `Hola ${nombreCoachee}, tu coach notó que todavía no envías tu plan de desarrollo para aprobación. Complétalo cuando puedas para seguir avanzando en tu proceso.`;
+    const intro = `Hola ${nombreCoachee}, tu coach notó que todavía no envías tu plan de desarrollo. Complétalo cuando puedas para seguir avanzando en tu proceso.`;
 
     const body = `
       <h1 style="margin:0 0 16px;font-family:Georgia,'Times New Roman',serif;font-weight:500;font-size:24px;color:#121212;">Recordatorio de tu plan de desarrollo</h1>
@@ -341,7 +341,7 @@ export class EmailService {
     const text = [
       'Recordatorio de tu plan de desarrollo',
       '',
-      `Hola ${options.nombreCoachee}, tu coach notó que todavía no envías tu plan de desarrollo para aprobación. Complétalo cuando puedas para seguir avanzando en tu proceso.`,
+      `Hola ${options.nombreCoachee}, tu coach notó que todavía no envías tu plan de desarrollo. Complétalo cuando puedas para seguir avanzando en tu proceso.`,
       '',
       `Ir a mi plan de desarrollo: ${options.verUrl}`,
       '',

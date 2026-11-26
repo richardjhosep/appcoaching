@@ -39,8 +39,8 @@ function descripcionNivel(autoeval: AutoevaluacionCompetencia): string | null {
 
 const estadoLabel: Record<string, string> = {
   sin_enviar: 'Sin enviar',
-  pendiente_aprobacion: 'Pendiente de aprobación',
-  aprobado: 'Aprobado',
+  pendiente_aprobacion: 'Enviado',
+  aprobado: 'Enviado',
   cambios_solicitados: 'Cambios solicitados',
 }
 

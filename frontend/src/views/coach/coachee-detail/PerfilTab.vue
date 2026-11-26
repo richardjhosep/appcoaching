@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
+import { getAutoconocimientoDeCoachee, type SeccionAutoconocimientoVista } from '../../../api/autoconocimiento'
 import { getCoachee, obtenerUrlFotoDeCoachee, type Coachee } from '../../../api/coachees'
 import ConsentimientoInformado from '../../../components/ConsentimientoInformado.vue'
 import SkeletonBlock from '../../../components/SkeletonBlock.vue'
 import DocumentosCoacheePanel from '../../../components/DocumentosCoacheePanel.vue'
 import PrivacidadPanel from '../../../components/PrivacidadPanel.vue'
 import { iniciales } from '../../../lib/avatar'
+import { SECCIONES_AUTOCONOCIMIENTO } from '../../../lib/autoconocimiento'
 import { useRouter } from 'vue-router'
 
 const props = defineProps<{ coacheeId: string }>()
@@ -14,6 +16,14 @@ const router = useRouter()
 const coachee = ref<Coachee | null>(null)
 const loading = ref(true)
 const fotoUrl = ref<string | null>(null)
+// null = no se pudo cargar (secundario: el resto del perfil se muestra igual).
+const autoconocimiento = ref<SeccionAutoconocimientoVista[] | null>([])
+const seccionesCompartidas = computed(() =>
+  SECCIONES_AUTOCONOCIMIENTO.flatMap((def) => {
+    const seccion = autoconocimiento.value?.find((s) => s.seccion === def.key)
+    return seccion ? [{ def, seccion }] : []
+  }),
+)
 
 const formatoCLP = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 })
 
@@ -25,6 +35,7 @@ async function load() {
   fotoUrl.value = coachee.value.compartirPerfilConCoach
     ? await obtenerUrlFotoDeCoachee(props.coacheeId)
     : null
+  autoconocimiento.value = await getAutoconocimientoDeCoachee(props.coacheeId).catch(() => null)
   loading.value = false
 }
 
@@ -140,6 +151,67 @@ function onConsentimientoActualizado(actualizado: { consentimientoInformado: boo
         >
           Este coachee no ha compartido su perfil personal contigo.
         </p>
+      </div>
+
+      <div class="mt-5 border-t border-[var(--color-line)] pt-5">
+        <h2 class="mb-1 font-[family-name:var(--font-heading)] text-base font-semibold text-[var(--color-ink)]">
+          Autoconocimiento
+        </h2>
+        <p class="mb-3 text-xs text-[var(--color-muted)]">
+          Solo las secciones que {{ coachee.nombre.split(' ')[0] }} decidió compartir contigo.
+        </p>
+        <p
+          v-if="autoconocimiento === null"
+          class="italic text-[var(--color-danger)]"
+        >
+          No pudimos cargar esta sección. Recarga la página para reintentar.
+        </p>
+        <p
+          v-else-if="seccionesCompartidas.length === 0"
+          class="italic text-[var(--color-muted)]"
+        >
+          Todavía no comparte ninguna sección.
+        </p>
+        <dl
+          v-else
+          class="space-y-4"
+        >
+          <div
+            v-for="{ def, seccion } in seccionesCompartidas"
+            :key="def.key"
+          >
+            <dt class="font-semibold text-[var(--color-ink)]">
+              {{ def.titulo }}
+            </dt>
+            <dd
+              v-if="def.columnas"
+              class="mt-1 grid gap-3 sm:grid-cols-2"
+            >
+              <div>
+                <p class="text-xs text-[var(--color-muted)]">
+                  {{ def.columnas[0] }}
+                </p>
+                <p class="whitespace-pre-line text-[var(--color-ink)]/80">
+                  {{ seccion.contenido || '—' }}
+                </p>
+              </div>
+              <div>
+                <p class="text-xs text-[var(--color-muted)]">
+                  {{ def.columnas[1] }}
+                </p>
+                <p class="whitespace-pre-line text-[var(--color-ink)]/80">
+                  {{ seccion.complemento || '—' }}
+                </p>
+              </div>
+            </dd>
+            <dd
+              v-else
+              class="mt-1 whitespace-pre-line text-[var(--color-ink)]/80"
+            >
+              {{ seccion.contenido }}
+            </dd>
+          </div>
+        </dl>
       </div>
 
       <div class="mt-6 border-t border-[var(--color-line)] pt-5">

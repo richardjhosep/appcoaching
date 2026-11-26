@@ -97,7 +97,8 @@ async function eliminarDefinitivo() {
           </template>
           <template v-else>
             Descarga un archivo con todo lo que la plataforma guarda sobre {{ coacheeNombre }}, para
-            atender una solicitud de acceso.
+            atender una solicitud de acceso. No incluye las secciones de autoconocimiento que no
+            compartió: esas solo las descarga desde su cuenta.
           </template>
         </p>
       </div>

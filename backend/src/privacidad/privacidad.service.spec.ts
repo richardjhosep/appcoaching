@@ -72,7 +72,7 @@ function crear(opciones: { coachee?: Partial<Coachee> | null } = {}) {
 describe('PrivacidadService', () => {
   it('exporta solo las tablas con FK a coachees y sin columnas secretas', async () => {
     const { service, consultas } = crear();
-    const r = await service.exportar('c1');
+    const r = await service.exportar('c1', true);
 
     expect(r.titular).toEqual({
       id: 'c1',
@@ -84,6 +84,38 @@ describe('PrivacidadService', () => {
     expect(r.datos.coachees[0]).not.toHaveProperty('token_acceso');
     expect(consultas.some((q) => q.includes('otra_cosa'))).toBe(false);
   });
+
+  it.each([
+    [false, true],
+    [true, false],
+  ])(
+    'autoconocimiento: con incluirPrivado=%s filtra por compartida=%s',
+    async (incluirPrivado, filtra) => {
+      const { service, ds, consultas } = crear();
+      ds.entityMetadatas.push({
+        tableName: 'secciones_autoconocimiento',
+        columns: [{ databaseName: 'id' }],
+        foreignKeys: [
+          {
+            referencedEntityMetadata: { target: Coachee },
+            columnNames: ['coachee_id'],
+          },
+        ],
+      });
+
+      await service.exportar('c1', incluirPrivado);
+
+      const sql = consultas.find((q) =>
+        q.includes('secciones_autoconocimiento'),
+      )!;
+      expect(sql.includes('"compartida" = true')).toBe(filtra);
+      expect(
+        consultas
+          .find((q) => q.includes('"sesiones"'))!
+          .includes('"compartida"'),
+      ).toBe(false);
+    },
+  );
 
   it('no suprime si el nombre de confirmación no coincide', async () => {
     const { service, users } = crear();
@@ -101,7 +133,7 @@ describe('PrivacidadService', () => {
 
   it('responde 404 si el coachee no existe', async () => {
     const { service } = crear({ coachee: null });
-    await expect(service.exportar('nada')).rejects.toBeInstanceOf(
+    await expect(service.exportar('nada', true)).rejects.toBeInstanceOf(
       NotFoundException,
     );
   });

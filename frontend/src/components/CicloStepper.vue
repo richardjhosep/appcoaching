@@ -26,8 +26,8 @@ const etapas = computed<Etapa[]>(() => {
 
   const done = [
     true,
-    estadoPlan !== 'sin_enviar',
-    estadoPlan === 'aprobado',
+    // Con cambios solicitados el coachee tiene que volver a enviarlo.
+    estadoPlan !== 'sin_enviar' && estadoPlan !== 'cambios_solicitados',
     sesionesListas,
     !!ciclo.informeFinal?.trim(),
     !!ciclo.fechaCierre,
@@ -35,7 +35,6 @@ const etapas = computed<Etapa[]>(() => {
   const labels = [
     'Ciclo abierto',
     'Plan enviado',
-    'Plan aprobado',
     `Sesiones (${ciclo.sesionesRealizadas}/${ciclo.totalSesiones})`,
     'Informe final',
     'Cierre',

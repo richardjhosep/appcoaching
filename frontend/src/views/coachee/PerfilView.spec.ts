@@ -14,6 +14,10 @@ vi.mock('../../api/coachees', async () => {
     obtenerUrlMiFotoCoachee: vi.fn(),
   }
 })
+// El panel de autoconocimiento pide sus secciones al montar (tiene su propio spec).
+vi.mock('../../components/AutoconocimientoPanel.vue', () => ({
+  default: { template: '<div data-test="autoconocimiento" />' },
+}))
 vi.mock('../../lib/notify', () => ({
   notifySuccess: vi.fn(),
   notifyError: vi.fn(),
@@ -114,6 +118,13 @@ describe('PerfilView (coachee)', () => {
     await wrapper.findAll('button').find((b) => b.text() === 'Reintentar')!.trigger('click')
     await flushPromises()
     expect((wrapper.find('input[type="text"]').element as HTMLInputElement).value).toBe('Rodrigo Peña')
+  })
+
+  it('incluye el panel de autoconocimiento', async () => {
+    const wrapper = mount(PerfilView)
+    await flushPromises()
+
+    expect(wrapper.find('[data-test="autoconocimiento"]').exists()).toBe(true)
   })
 
   it('labels the editable fields', async () => {

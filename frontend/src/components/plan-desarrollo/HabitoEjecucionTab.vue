@@ -36,7 +36,7 @@ const error = ref<string | null>(null)
 const nuevaActividad = reactive({ objetivoId: '', actividad: '', fechaInicio: '', fechaFin: '' })
 
 // Cota inferior de los date pickers: no tiene sentido planificar una actividad antes de
-// que el ciclo de coaching haya empezado. Sin ciclo abierto (plan aún no aprobado, por
+// que el ciclo de coaching haya empezado. Sin ciclo abierto (plan aún no enviado, por
 // ejemplo) simplemente no se acota.
 const fechaAperturaCiclo = ref<string | null>(null)
 onMounted(async () => {

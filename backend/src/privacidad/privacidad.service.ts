@@ -18,6 +18,8 @@ import { UPLOADS_DIR } from '../recursos/uploads-dir.util';
 // Columnas que nunca salen en una exportación: son secretos de la cuenta, no datos del titular.
 const COLUMNA_SECRETA = /token|hash|password/i;
 
+const TABLA_AUTOCONOCIMIENTO = 'secciones_autoconocimiento';
+
 interface TablaDelCoachee {
   tabla: string;
   columna: string;
@@ -88,7 +90,14 @@ export class PrivacidadService {
     );
   }
 
-  async exportar(coacheeId: string): Promise<ExportacionDatos> {
+  /**
+   * `incluirPrivado` solo cuando quien descarga es el propio titular: las secciones de
+   * autoconocimiento que no compartió no salen ni siquiera en la copia que pide el coach.
+   */
+  async exportar(
+    coacheeId: string,
+    incluirPrivado: boolean,
+  ): Promise<ExportacionDatos> {
     const coachee = await this.cargarCoachee(coacheeId);
     const datos: ExportacionDatos['datos'] = {};
     const archivos: ExportacionDatos['archivos'] = [];
@@ -103,8 +112,12 @@ export class PrivacidadService {
     }
 
     for (const t of this.tablasDelCoachee()) {
+      const soloCompartidas =
+        !incluirPrivado && t.tabla === TABLA_AUTOCONOCIMIENTO
+          ? ' AND "compartida" = true'
+          : '';
       const filas = await this.ds.query<Array<Record<string, unknown>>>(
-        `SELECT * FROM "${t.tabla}" WHERE "${t.columna}" = $1`,
+        `SELECT * FROM "${t.tabla}" WHERE "${t.columna}" = $1${soloCompartidas}`,
         [coacheeId],
       );
       if (filas.length === 0) continue;
